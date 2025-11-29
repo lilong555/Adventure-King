@@ -41,9 +41,9 @@ public:
     virtual void initGLContextAttrs();
 
     /**
-    @brief    Implement Director and Scene init code here.
-    @return true    Initialize success, app continue.
-    @return false   Initialize failed, app terminate.
+    @brief    在此处实现Director和Scene的初始化代码。
+    @return true    初始化成功，应用程序继续。
+    @return false   初始化失败，应用程序终止。
     */
     virtual bool applicationDidFinishLaunching();
 
