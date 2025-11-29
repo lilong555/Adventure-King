@@ -9,14 +9,14 @@ Scene* HelloWorld::createScene()
     return HelloWorld::create();
 }
 
-// µ±ÎÄ¼þ²»´æÔÚÊ±£¬´òÓ¡ÓÐÓÃµÄ´íÎóÏûÏ¢¶ø²»ÊÇ¶Î´íÎó¡£
+// å½“æ–‡ä»¶ä¸å­˜åœ¨æ—¶ï¼Œæ‰“å°æœ‰ç”¨çš„é”™è¯¯æ¶ˆæ¯è€Œä¸æ˜¯æ®µé”™è¯¯ã€‚
 static void problemLoading(const char* filename)
 {
     printf("Error while loading: %s\n", filename);
     printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
 }
 
-//³õÊ¼»¯ÊµÀý
+//åˆå§‹åŒ–å®žä¾‹
 bool HelloWorld::init()
 {
     // 1. super init first
@@ -29,115 +29,115 @@ bool HelloWorld::init()
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
 
     // ==========================================================
-    // ²¼¾Ö³£Á¿ºÍ²Î¿¼µã¶¨Òå
+    // å¸ƒå±€å¸¸é‡å’Œå‚è€ƒç‚¹å®šä¹‰
     // ==========================================================
 
-    // ÆÁÄ»ÖÐÐÄµã
+    // å±å¹•ä¸­å¿ƒç‚¹
     Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
-    // °´Å¥Ö®¼äµÄË®Æ½ºÍ´¹Ö±¼ä¾à
-    const float BUTTON_HORIZONTAL_SPACING = 180.0f; // ´æµµ-µØÍ¼-ÉèÖÃ Ö®¼äµÄ¼ä¾à
-    const float BUTTON_GROUP_OFFSET_Y = 100.0f;     // Start°´Å¥ºÍÏÂ·½°´Å¥×éµÄ´¹Ö±Æ«ÒÆÁ¿
+    // æŒ‰é’®ä¹‹é—´çš„æ°´å¹³å’Œåž‚ç›´é—´è·
+    const float BUTTON_HORIZONTAL_SPACING = 180.0f; // å­˜æ¡£-åœ°å›¾-è®¾ç½® ä¹‹é—´çš„é—´è·
+    const float BUTTON_GROUP_OFFSET_Y = 100.0f;     // StartæŒ‰é’®å’Œä¸‹æ–¹æŒ‰é’®ç»„çš„åž‚ç›´åç§»é‡
 
 
 
 
     // ===============================================
-	// ÄÚÈÝÈÝÆ÷½Úµã£¬ÓÃÓÚÍ³Ò»Ëõ·ÅºÍ¶¨Î»
+	// å†…å®¹å®¹å™¨èŠ‚ç‚¹ï¼Œç”¨äºŽç»Ÿä¸€ç¼©æ”¾å’Œå®šä½
     // ===============================================
-    // ´´½¨Ò»¸ö¸¸¼¶ÈÝÆ÷½Úµã
+    // åˆ›å»ºä¸€ä¸ªçˆ¶çº§å®¹å™¨èŠ‚ç‚¹
     auto contentContainer = Node::create();
-    // ½«ÈÝÆ÷½ÚµãÌí¼Óµ½³¡¾°ÖÐ
-    this->addChild(contentContainer, 5); // È·±£ z-order ¸ßÓÚ±³¾° (±³¾° z=0)
-    // ½«ÈÝÆ÷½Úµã¶¨Î»
+    // å°†å®¹å™¨èŠ‚ç‚¹æ·»åŠ åˆ°åœºæ™¯ä¸­
+    this->addChild(contentContainer, 5); // ç¡®ä¿ z-order é«˜äºŽèƒŒæ™¯ (èƒŒæ™¯ z=0)
+    // å°†å®¹å™¨èŠ‚ç‚¹å®šä½
     contentContainer->setPosition(center);
 
     // ==========================================================
-    // 2. ²Ëµ¥Ïî´´½¨ºÍ´íÎó¼ì²é (Ê¹ÓÃ Lambda ¼ò»¯´úÂë)
+    // 2. èœå•é¡¹åˆ›å»ºå’Œé”™è¯¯æ£€æŸ¥ (ä½¿ç”¨ Lambda ç®€åŒ–ä»£ç )
     // ==========================================================
 
-    // ´´½¨Í¨ÓÃ MenuItem µÄ Lambda º¯Êý£¬¸ºÔð´´½¨ºÍ´íÎó±¨¸æ
+    // åˆ›å»ºé€šç”¨ MenuItem çš„ Lambda å‡½æ•°ï¼Œè´Ÿè´£åˆ›å»ºå’Œé”™è¯¯æŠ¥å‘Š
     auto createMenuItem = [&](const char* normal, const char* selected, const ccMenuCallback& callback) -> MenuItemImage*
         {
             auto item = MenuItemImage::create(normal, selected, callback);
             if (item == nullptr || item->getContentSize().width <= 0 || item->getContentSize().height <= 0)
             {
-                problemLoading(normal); // ´òÓ¡¾ßÌåµÄ´íÎóÎÄ¼þÃû
+                problemLoading(normal); // æ‰“å°å…·ä½“çš„é”™è¯¯æ–‡ä»¶å
             }
             return item;
         };
 
-    //// ÍË³ö°´Å¥ (ÓÒÏÂ½Ç)
+    //// é€€å‡ºæŒ‰é’® (å³ä¸‹è§’)
     //auto closeItem = createMenuItem(
     //    "Scene/Menu/CloseNormal.png",
     //    "Scene/Menu/CloseSelected.png",
     //    CC_CALLBACK_1(HelloWorld::menuCloseCallback, this));
 
-    // ¿ªÊ¼°´Å¥ (Ö÷²Ëµ¥ÖÐÐÄ)
+    // å¼€å§‹æŒ‰é’® (ä¸»èœå•ä¸­å¿ƒ)
     auto StartItem = createMenuItem(
         "Scene/Menu/StartItemNormal.png",
         "Scene/Menu/StartItemSelect.png",
         CC_CALLBACK_1(HelloWorld::menuStartCallback, this));
 
-    // ÉèÖÃ°´Å¥ (×ó²à)
+    // è®¾ç½®æŒ‰é’® (å·¦ä¾§)
     auto SetItem = createMenuItem(
         "Scene/Menu/SetingNormal.png",
         "Scene/Menu/SetingSelect.png",
         CC_CALLBACK_1(HelloWorld::menuSetCallback, this));
 
-    // µØÍ¼°´Å¥ (ÖÐÑëÏÂ·½)
+    // åœ°å›¾æŒ‰é’® (ä¸­å¤®ä¸‹æ–¹)
     auto MapItem = createMenuItem(
         "Scene/Menu/MapNormal.png",
         "Scene/Menu/MapSelect.png",
         CC_CALLBACK_1(HelloWorld::menuMapCallback, this));
 
-    // ´æµµ°´Å¥ (ÓÒ²à)
+    // å­˜æ¡£æŒ‰é’® (å³ä¾§)
     auto SaveItem = createMenuItem(
         "Scene/Menu/SaveNormal.png",
         "Scene/Menu/SaveSelect.png",
         CC_CALLBACK_1(HelloWorld::menuSaveCallback, this));
 
     // ==========================================================
-    // 3. Í³Ò»ÉèÖÃ°´Å¥Î»ÖÃ
+    // 3. ç»Ÿä¸€è®¾ç½®æŒ‰é’®ä½ç½®
     // ==========================================================
 
     //if (closeItem)
     //{
-    //    // ¶¨Î»µ½ÓÒÏÂ½Ç
+    //    // å®šä½åˆ°å³ä¸‹è§’
     //    float x = origin.x + visibleSize.width - closeItem->getContentSize().width / 2;
     //    float y = origin.y + closeItem->getContentSize().height / 2;
     //    closeItem->setPosition(Vec2(x, y));
     //}
 
-    // StartItem ¶¨Î»µ½ÆÁÄ»ÖÐÐÄ
+    // StartItem å®šä½åˆ°å±å¹•ä¸­å¿ƒ
     if (StartItem)
     {
         StartItem->setPosition(Vec2::ZERO);
     }
 
-    // ÏÂ·½°´Å¥×éµÄ Y ×ø±ê
+    // ä¸‹æ–¹æŒ‰é’®ç»„çš„ Y åæ ‡
     float sub_menu_y = - (1.2)*StartItem->getContentSize().height;
 
     if (MapItem)
     {
-        // MapItem ÔÚ StartItem ÏÂ·½¾ÓÖÐ
+        // MapItem åœ¨ StartItem ä¸‹æ–¹å±…ä¸­
         MapItem->setPosition(Vec2(0, sub_menu_y));
     }
 
     if (SetItem)
     {
-        // SetItem ÔÚ MapItem ×ó²à
+        // SetItem åœ¨ MapItem å·¦ä¾§
         SetItem->setPosition(Vec2( - BUTTON_HORIZONTAL_SPACING, sub_menu_y));
     }
 
     if (SaveItem)
     {
-        // SaveItem ÔÚ MapItem ÓÒ²à
+        // SaveItem åœ¨ MapItem å³ä¾§
         SaveItem->setPosition(Vec2( BUTTON_HORIZONTAL_SPACING, sub_menu_y));
     }
 
     // ==========================================================
-    // 4. ´´½¨²Ëµ¥²¢Ìí¼Ó
+    // 4. åˆ›å»ºèœå•å¹¶æ·»åŠ 
     // ==========================================================
 
     auto menu = Menu::create(StartItem, SetItem, SaveItem, MapItem, NULL);
@@ -145,7 +145,7 @@ bool HelloWorld::init()
     contentContainer->addChild(menu, 1);
 
     // ==========================================================
-    // 5. Ìí¼Ó±³¾°¾«Áé
+    // 5. æ·»åŠ èƒŒæ™¯ç²¾çµ
     // ==========================================================
 
     auto sprite = Sprite::create("Scene/Menu/menuBacground_1.png");
@@ -158,13 +158,13 @@ bool HelloWorld::init()
         sprite->setPosition(Vec2::ZERO);
         contentContainer->addChild(sprite, 0);
 
-		//Ëõ·ÅÕû¸öÄÚÈÝÈÝÆ÷ÒÔÊÊÓ¦ÆÁÄ»
+		//ç¼©æ”¾æ•´ä¸ªå†…å®¹å®¹å™¨ä»¥é€‚åº”å±å¹•
         Size textureSize = sprite->getContentSize();
         float scaleX = visibleSize.width / textureSize.width;
         float scaleY = visibleSize.height / textureSize.height;
         float scaleFactor = std::min(scaleX, scaleY);
 
-        // ½«ÏàÍ¬µÄËõ·Å±ÈÀýÓ¦ÓÃµ½ X ºÍ Y Öá
+        // å°†ç›¸åŒçš„ç¼©æ”¾æ¯”ä¾‹åº”ç”¨åˆ° X å’Œ Y è½´
         contentContainer->setScale(scaleFactor);
     }
     return true;
@@ -173,10 +173,10 @@ bool HelloWorld::init()
 
 void HelloWorld::menuCloseCallback(Ref* pSender)
 {
-   // ¹Ø±Õcocos2d - xÓÎÏ·³¡¾°²¢ÍË³öÓ¦ÓÃ³ÌÐò
+   // å…³é—­cocos2d - xæ¸¸æˆåœºæ™¯å¹¶é€€å‡ºåº”ç”¨ç¨‹åº
     Director::getInstance()->end();
 
-    /*ÈôÒªÔÚ²»ÍË³öÓ¦ÓÃµÄÇé¿öÏÂ·µ»Øµ½Ô­Éú iOS ÆÁÄ»£¨Èç¹û´æÔÚ£©£¬Çë²»ÒªÊ¹ÓÃÉÏÃæ¸ø³öµÄ Director::getInstance()->end()£¬¶øÊÇ´¥·¢ÔÚ RootViewController.mm ÖÐ´´½¨µÄ×Ô¶¨ÒåÊÂ¼þ£¬ÈçÏÂËùÊ¾*/
+    /*è‹¥è¦åœ¨ä¸é€€å‡ºåº”ç”¨çš„æƒ…å†µä¸‹è¿”å›žåˆ°åŽŸç”Ÿ iOS å±å¹•ï¼ˆå¦‚æžœå­˜åœ¨ï¼‰ï¼Œè¯·ä¸è¦ä½¿ç”¨ä¸Šé¢ç»™å‡ºçš„ Director::getInstance()->end()ï¼Œè€Œæ˜¯è§¦å‘åœ¨ RootViewController.mm ä¸­åˆ›å»ºçš„è‡ªå®šä¹‰äº‹ä»¶ï¼Œå¦‚ä¸‹æ‰€ç¤º*/
 
     //EventCustom customEndEvent("game_scene_close_event");
     //_eventDispatcher->dispatchEvent(&customEndEvent);
