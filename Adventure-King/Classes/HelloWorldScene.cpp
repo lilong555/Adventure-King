@@ -73,7 +73,7 @@ bool HelloWorld::init()
     auto SetItem = MenuItemImage::create(
         "Scene/Menu/SetingNormal.png",
         "Scene/Menu/SetingSelect.png",
-        CC_CALLBACK_1(HelloWorld::menuStartCallback, this));
+        CC_CALLBACK_1(HelloWorld::menuSetCallback, this));
 
     if (SetItem == nullptr ||
         SetItem->getContentSize().width <= 0 ||
@@ -90,7 +90,7 @@ bool HelloWorld::init()
     auto MapItem = MenuItemImage::create(
         "Scene/Menu/MapNormal.png",
         "Scene/Menu/MapSelect.png",
-        CC_CALLBACK_1(HelloWorld::menuStartCallback, this));
+        CC_CALLBACK_1(HelloWorld::menuMapCallback, this));
 
     if (MapItem == nullptr ||
         MapItem->getContentSize().width <= 0 ||
@@ -107,13 +107,13 @@ bool HelloWorld::init()
     auto SaveItem = MenuItemImage::create(
         "Scene/Menu/SaveNormal.png",
         "Scene/Menu/SaveSelect.png",
-        CC_CALLBACK_1(HelloWorld::menuStartCallback, this));
+        CC_CALLBACK_1(HelloWorld::menuSaveCallback, this));
     //SaveItem;
     if (SaveItem == nullptr ||
         SaveItem->getContentSize().width <= 0 ||
         SaveItem->getContentSize().height <= 0)
     {
-        problemLoading("MapNormal.png");
+        problemLoading("SaveSelect.png");
     }
     else
     {
