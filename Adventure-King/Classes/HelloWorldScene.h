@@ -8,16 +8,16 @@
 class HelloWorld : public cocos2d::Scene
 {
 public:
-    static cocos2d::Scene* createScene();
+    static cocos2d::Scene *createScene();
 
     virtual bool init();
-    
+
     // a selector callback
-    void menuCloseCallback(cocos2d::Ref* pSender);
-    void menuStartCallback(cocos2d::Ref* pSender);
-    void HelloWorld::menuSaveCallback(cocos2d::Ref* pSender);
-    void HelloWorld::menuMapCallback(cocos2d::Ref* pSender);
-    void HelloWorld::menuSetCallback(cocos2d::Ref* pSender);
+    void menuCloseCallback(cocos2d::Ref *pSender);
+    void menuStartCallback(cocos2d::Ref *pSender);
+    void HelloWorld::menuSaveCallback(cocos2d::Ref *pSender);
+    void HelloWorld::menuMapCallback(cocos2d::Ref *pSender);
+    void HelloWorld::menuSetCallback(cocos2d::Ref *pSender);
     // implement the "static create()" method manually
     CREATE_FUNC(HelloWorld);
 };

@@ -1,0 +1,26 @@
+# Cocos2d-x
+cocos2d/
+compile_commands.json
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+CMakeFiles/
+
+# Visual Studio
+*.suo
+*.user
+*.vcxproj.user
+proj.win32/Debug.win32/
+proj.win32/Release.win32/
+*.sln.docstates
+
+# Xcode
+xcuserdata/
+
+# Build artifacts
+bin/
+build/
+
+# OS generated files
+.DS_Store
+Thumbs.db
