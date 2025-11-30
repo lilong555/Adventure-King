@@ -1,5 +1,6 @@
 
 #include "HelloWorldScene.h"
+#include "HomeScene.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;
@@ -139,7 +140,7 @@ bool HelloWorld::init()
     // ==========================================================
 
     auto menu = Menu::create(StartItem, SetItem, SaveItem, MapItem, NULL);
-    menu->setPosition(Vec2::ZERO);
+    menu->setPosition(Vec2(0,-visibleSize.height/20));
     contentContainer->addChild(menu, 1);
 
     // ==========================================================
@@ -180,6 +181,28 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
 }
 void HelloWorld::menuStartCallback(Ref *pSender)
 {
+    auto newScene = HomeScene::createScene();
+
+    if (newScene)
+    {
+        // 4. 使用 Director 切换场景
+
+        // 场景过渡：使用 Director::replaceScene 替换当前场景
+        // 建议使用过渡效果，让画面切换更平滑。例如：FadeTransition（淡入淡出）
+        const float TRANSITION_DURATION = 1.0f; // 过渡时长1.0秒
+
+        // 创建一个过渡场景
+        auto transition = cocos2d::TransitionFade::create(TRANSITION_DURATION, newScene, cocos2d::Color3B::BLACK);
+
+        // 运行场景过渡
+        cocos2d::Director::getInstance()->replaceScene(transition);
+
+        CCLOG("--- Game Started: Transitioning to GameScene ---");
+    }
+    else
+    {
+        CCLOG("Error: Failed to create the new GameScene!");
+    }
 }
 
 
@@ -226,7 +249,7 @@ void HelloWorld::menuSaveCallback(Ref* pSender)
     // 2. 将等比例缩放因子应用到 SaveMenu
     // 为了保持图片不失真，我们应用同一个比例到 X 和 Y
     SaveMenu->setScale(scaleY);
-    float buttonTargetScale = 0.4f;  // 你想要的按钮缩放(最终视觉效果)
+    float buttonTargetScale = 0.3f;  // 你想要的按钮缩放(最终视觉效果)
     CloseItem->setScale(buttonTargetScale / scaleY);
     //设置合理的位置
     SaveMenu->setPosition(Vec2::ZERO);
