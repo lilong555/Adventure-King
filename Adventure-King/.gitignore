@@ -6,6 +6,9 @@ Makefile
 cmake_install.cmake
 CMakeFiles/
 
+# VS Code (本机特定配置)
+.vscode/
+
 # Visual Studio
 *.suo
 *.user

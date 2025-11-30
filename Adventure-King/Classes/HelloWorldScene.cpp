@@ -1,10 +1,8 @@
-
 #include "HelloWorldScene.h"
 #include "HomeScene.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;
-
 
 Scene *HelloWorld::createScene()
 {
@@ -17,10 +15,10 @@ static void problemLoading(const char *filename)
     printf("Error while loading: %s\n", filename);
     printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
 }
-MenuItemImage* HelloWorld::createMenuItem(
-    const char* normal,
-    const char* selected,
-    const ccMenuCallback& callback)
+MenuItemImage *HelloWorld::createMenuItem(
+    const char *normal,
+    const char *selected,
+    const ccMenuCallback &callback)
 {
     auto item = MenuItemImage::create(normal, selected, callback);
     if (!item || item->getContentSize().width <= 0 || item->getContentSize().height <= 0)
@@ -140,7 +138,7 @@ bool HelloWorld::init()
     // ==========================================================
 
     auto menu = Menu::create(StartItem, SetItem, SaveItem, MapItem, NULL);
-    menu->setPosition(Vec2(0,-visibleSize.height/20));
+    menu->setPosition(Vec2(0, -visibleSize.height / 20));
     contentContainer->addChild(menu, 1);
 
     // ==========================================================
@@ -205,18 +203,19 @@ void HelloWorld::menuStartCallback(Ref *pSender)
     }
 }
 
-
-void HelloWorld::menuSaveCallback(Ref* pSender)
+void HelloWorld::menuSaveCallback(Ref *pSender)
 {
-    //检查资源文件是否存在
-    if (!FileUtils::getInstance()->isFileExist("Scene/UI/SaveGround.png")) {
+    // 检查资源文件是否存在
+    if (!FileUtils::getInstance()->isFileExist("Scene/UI/SaveGround.png"))
+    {
         CCLOG("Error: SaveGround.png file not found!");
         return;
     }
 
-    //创建精灵并检查是否成功
+    // 创建精灵并检查是否成功
     auto SaveMenu = Sprite::create("Scene/UI/SaveGround.png");
-    if (!SaveMenu) {
+    if (!SaveMenu)
+    {
         CCLOG("Error: Failed to create SaveGround sprite!");
         return;
     }
@@ -225,56 +224,57 @@ void HelloWorld::menuSaveCallback(Ref* pSender)
     auto CloseItem = createMenuItem(
         "Scene/UI/CloseSaveMenu.png",
         "Scene/UI/CloseSaveMenuSelected.png",
-        CC_CALLBACK_1(HelloWorld::menuSaveCloseCallback, this)
-    );
+        CC_CALLBACK_1(HelloWorld::menuSaveCloseCallback, this));
 
     // 2. 创建菜单
     auto closeMenu = Menu::create(CloseItem, nullptr);
     closeMenu->setPosition(Vec2::ZERO); // 让菜单坐标相对 SaveMenu
     SaveMenu->addChild(closeMenu, 10);
 
-    //设置关闭按钮的位置
+    // 设置关闭按钮的位置
     CloseItem->setPosition(
-        SaveMenu->getContentSize().width/2,
-		SaveMenu->getContentSize().height/8
-    );
+        SaveMenu->getContentSize().width / 2,
+        SaveMenu->getContentSize().height / 8);
 
     const float TARGET_WIDTH_RATIO = 0.6f;
 
-    //计算 X 轴缩放因子
+    // 计算 X 轴缩放因子
     auto visibleSize = Director::getInstance()->getVisibleSize();
     float targetHeight = visibleSize.height * TARGET_WIDTH_RATIO;
-    float scaleY= targetHeight / SaveMenu->getContentSize().height;
+    float scaleY = targetHeight / SaveMenu->getContentSize().height;
 
     // 2. 将等比例缩放因子应用到 SaveMenu
     // 为了保持图片不失真，我们应用同一个比例到 X 和 Y
     SaveMenu->setScale(scaleY);
-    float buttonTargetScale = 0.3f;  // 你想要的按钮缩放(最终视觉效果)
+    float buttonTargetScale = 0.3f; // 你想要的按钮缩放(最终视觉效果)
     CloseItem->setScale(buttonTargetScale / scaleY);
-    //设置合理的位置
+    // 设置合理的位置
     SaveMenu->setPosition(Vec2::ZERO);
-	//获取 contentContainer 并检查
+    // 获取 contentContainer 并检查
     auto contentContainer = this->getChildByTag(TAG_CONTENT_CONTAINER);
-    if (!contentContainer) {
+    if (!contentContainer)
+    {
         CCLOG("Error: contentContainer with tag 5 not found!");
         SaveMenu->release(); // 清理资源
         return;
     }
     // 5. 安全地添加到容器
-    contentContainer->addChild(SaveMenu, 2);
+    contentContainer->addChild(SaveMenu, 1);
 
     CCLOG("Save menu created successfully");
 }
 
-void HelloWorld::menuSaveCloseCallback(Ref* pSender)
+void HelloWorld::menuSaveCloseCallback(Ref *pSender)
 {
     // 找到 contentContainer
     auto contentContainer = this->getChildByTag(TAG_CONTENT_CONTAINER);
-    if (!contentContainer) return;
+    if (!contentContainer)
+        return;
 
     // ⭐ 直接移除 SaveMenu
     auto saveMenu = contentContainer->getChildByTag(TAG_SAVE_MENU);
-    if (saveMenu) {
+    if (saveMenu)
+    {
         contentContainer->removeChild(saveMenu, true);
         CCLOG("Save menu removed.");
     }
