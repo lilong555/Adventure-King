@@ -4,6 +4,7 @@
 
 USING_NS_CC;
 
+
 Scene *HelloWorld::createScene()
 {
     return HelloWorld::create();
@@ -14,6 +15,18 @@ static void problemLoading(const char *filename)
 {
     printf("Error while loading: %s\n", filename);
     printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
+}
+MenuItemImage* HelloWorld::createMenuItem(
+    const char* normal,
+    const char* selected,
+    const ccMenuCallback& callback)
+{
+    auto item = MenuItemImage::create(normal, selected, callback);
+    if (!item || item->getContentSize().width <= 0 || item->getContentSize().height <= 0)
+    {
+        problemLoading(normal);
+    }
+    return item;
 }
 
 // 初始化实例
@@ -42,6 +55,7 @@ bool HelloWorld::init()
     // ===============================================
     // 创建一个父级容器节点
     auto contentContainer = Node::create();
+    contentContainer->setTag(TAG_CONTENT_CONTAINER);
     // 将容器节点添加到场景中
     this->addChild(contentContainer, 5); // 确保 z-order 高于背景 (背景 z=0)
     // 将容器节点定位
@@ -51,45 +65,34 @@ bool HelloWorld::init()
     // 2. 菜单项创建和错误检查 (使用 Lambda 简化代码)
     // ==========================================================
 
-    // 创建通用 MenuItem 的 Lambda 函数，负责创建和错误报告
-    auto createMenuItem = [&](const char *normal, const char *selected, const ccMenuCallback &callback) -> MenuItemImage *
-    {
-        auto item = MenuItemImage::create(normal, selected, callback);
-        if (item == nullptr || item->getContentSize().width <= 0 || item->getContentSize().height <= 0)
-        {
-            problemLoading(normal); // 打印具体的错误文件名
-        }
-        return item;
-    };
-
     //// 退出按钮 (右下角)
     // auto closeItem = createMenuItem(
-    //     "Scene/Menu/CloseNormal.png",
-    //     "Scene/Menu/CloseSelected.png",
+    //     "Scene/UI/CloseNormal.png",
+    //     "Scene/UI/CloseSelected.png",
     //     CC_CALLBACK_1(HelloWorld::menuCloseCallback, this));
 
     // 开始按钮 (主菜单中心)
     auto StartItem = createMenuItem(
-        "Scene/Menu/StartItemNormal.png",
-        "Scene/Menu/StartItemSelect.png",
+        "Scene/UI/StartItemNormal.png",
+        "Scene/UI/StartItemSelect.png",
         CC_CALLBACK_1(HelloWorld::menuStartCallback, this));
 
     // 设置按钮 (左侧)
     auto SetItem = createMenuItem(
-        "Scene/Menu/SetingNormal.png",
-        "Scene/Menu/SetingSelect.png",
+        "Scene/UI/SetingNormal.png",
+        "Scene/UI/SetingSelect.png",
         CC_CALLBACK_1(HelloWorld::menuSetCallback, this));
 
     // 地图按钮 (中央下方)
     auto MapItem = createMenuItem(
-        "Scene/Menu/MapNormal.png",
-        "Scene/Menu/MapSelect.png",
+        "Scene/UI/MapNormal.png",
+        "Scene/UI/MapSelect.png",
         CC_CALLBACK_1(HelloWorld::menuMapCallback, this));
 
     // 存档按钮 (右侧)
     auto SaveItem = createMenuItem(
-        "Scene/Menu/SaveNormal.png",
-        "Scene/Menu/SaveSelect.png",
+        "Scene/UI/SaveNormal.png",
+        "Scene/UI/SaveSelect.png",
         CC_CALLBACK_1(HelloWorld::menuSaveCallback, this));
 
     // ==========================================================
@@ -143,10 +146,10 @@ bool HelloWorld::init()
     // 5. 添加背景精灵
     // ==========================================================
 
-    auto sprite = Sprite::create("Scene/Menu/menuBacground_1.png");
+    auto sprite = Sprite::create("Scene/UI/menuBacground_1.png");
     if (sprite == nullptr)
     {
-        problemLoading("'Scene/Menu/menuBacground_1.png'");
+        problemLoading("'Scene/UI/menuBacground_1.png'");
     }
     else
     {
@@ -178,8 +181,80 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
 void HelloWorld::menuStartCallback(Ref *pSender)
 {
 }
-void HelloWorld::menuSaveCallback(Ref *pSender)
+
+
+void HelloWorld::menuSaveCallback(Ref* pSender)
 {
+    //检查资源文件是否存在
+    if (!FileUtils::getInstance()->isFileExist("Scene/UI/SaveGround.png")) {
+        CCLOG("Error: SaveGround.png file not found!");
+        return;
+    }
+
+    //创建精灵并检查是否成功
+    auto SaveMenu = Sprite::create("Scene/UI/SaveGround.png");
+    if (!SaveMenu) {
+        CCLOG("Error: Failed to create SaveGround sprite!");
+        return;
+    }
+    SaveMenu->setTag(TAG_SAVE_MENU);
+    // 1. 创建关闭按钮
+    auto CloseItem = createMenuItem(
+        "Scene/UI/CloseSaveMenu.png",
+        "Scene/UI/CloseSaveMenuSelected.png",
+        CC_CALLBACK_1(HelloWorld::menuSaveCloseCallback, this)
+    );
+
+    // 2. 创建菜单
+    auto closeMenu = Menu::create(CloseItem, nullptr);
+    closeMenu->setPosition(Vec2::ZERO); // 让菜单坐标相对 SaveMenu
+    SaveMenu->addChild(closeMenu, 10);
+
+    //设置关闭按钮的位置
+    CloseItem->setPosition(
+        SaveMenu->getContentSize().width/2,
+		SaveMenu->getContentSize().height/8
+    );
+
+    const float TARGET_WIDTH_RATIO = 0.6f;
+
+    //计算 X 轴缩放因子
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    float targetHeight = visibleSize.height * TARGET_WIDTH_RATIO;
+    float scaleY= targetHeight / SaveMenu->getContentSize().height;
+
+    // 2. 将等比例缩放因子应用到 SaveMenu
+    // 为了保持图片不失真，我们应用同一个比例到 X 和 Y
+    SaveMenu->setScale(scaleY);
+    float buttonTargetScale = 0.4f;  // 你想要的按钮缩放(最终视觉效果)
+    CloseItem->setScale(buttonTargetScale / scaleY);
+    //设置合理的位置
+    SaveMenu->setPosition(Vec2::ZERO);
+	//获取 contentContainer 并检查
+    auto contentContainer = this->getChildByTag(TAG_CONTENT_CONTAINER);
+    if (!contentContainer) {
+        CCLOG("Error: contentContainer with tag 5 not found!");
+        SaveMenu->release(); // 清理资源
+        return;
+    }
+    // 5. 安全地添加到容器
+    contentContainer->addChild(SaveMenu, 2);
+
+    CCLOG("Save menu created successfully");
+}
+
+void HelloWorld::menuSaveCloseCallback(Ref* pSender)
+{
+    // 找到 contentContainer
+    auto contentContainer = this->getChildByTag(TAG_CONTENT_CONTAINER);
+    if (!contentContainer) return;
+
+    // ⭐ 直接移除 SaveMenu
+    auto saveMenu = contentContainer->getChildByTag(TAG_SAVE_MENU);
+    if (saveMenu) {
+        contentContainer->removeChild(saveMenu, true);
+        CCLOG("Save menu removed.");
+    }
 }
 void HelloWorld::menuMapCallback(Ref *pSender)
 {
