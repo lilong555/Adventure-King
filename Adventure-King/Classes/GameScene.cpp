@@ -33,7 +33,7 @@ void GameScene::createMapButton()
     // 创建地图按钮
     auto mapButton = MenuItemImage::create(
         "Scene/UI/MapInGame.png",
-        "Scene/UI/MapInGame.png",
+        "Scene/UI/MapInGameSelected.png",
         CC_CALLBACK_1(GameScene::onMapButtonClicked, this));
 
     if (mapButton)
@@ -183,7 +183,7 @@ bool MysteryForestScene::init()
 
     // 添加提示文字
     auto hintLabel = Label::createWithTTF(
-        "点击左上角地图按钮返回",
+        "点击左上角地图进入选择界面",
         "fonts/ZCOOLKuaiLe-Regular.ttf",
         32);
 
