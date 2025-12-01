@@ -1,10 +1,27 @@
 #include "MapScene.h"
+#include "GameScene.h"
 USING_NS_CC;
 
 static void problemLoading(const char *filename)
 {
     printf("Error while loading: %s\n", filename);
     printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
+}
+
+Scene *MapScene::createScene()
+{
+    return MapScene::create();
+}
+
+MapScene::~MapScene()
+{
+    for (auto marker : _mapMarkers)
+    {
+        auto selectedImage = static_cast<std::string *>(marker->getUserData());
+        delete selectedImage;
+        marker->setUserData(nullptr);
+    }
+    _mapMarkers.clear();
 }
 MenuItemImage *MapScene::createMenuItem(
     const char *normal,
@@ -25,87 +42,199 @@ bool MapScene::init()
     Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
     // ===============================================
-    // 内容容器节点，用于统一缩放和定位
+    // 1. 初始化容器节点
     // ===============================================
-    // 创建一个父级容器节点
+    // 创建一个父级容器节点，用于统一缩放和定位
     auto contentContainer = Node::create();
     contentContainer->setTag(TAG_CONTENT_CONTAINER);
-    // 将容器节点添加到场景中
-    this->addChild(contentContainer, TAG_CONTENT_CONTAINER); // 确保 z-order 高于背景 (背景 z=0)
-    // 将容器节点定位
+    // 将容器节点添加到场景中，确保 z-order 高于背景 (背景 z=0)
+    this->addChild(contentContainer, TAG_CONTENT_CONTAINER);
+    // 将容器节点定位到屏幕中心
     contentContainer->setPosition(center);
+
     // ==========================================================
-    // 添加背景精灵
+    // 2. 添加背景精灵
     // ==========================================================
-    auto sprite = Sprite::create("Scene/Scence/MapBackground.png");
+    auto sprite = Sprite::create("Scene/Backgrounds/MapBackground.png");
     if (sprite == nullptr)
     {
-        problemLoading("'Scene/Scence/MapBackground.png'");
+        problemLoading("'Scene/Backgrounds/MapBackground.png'");
     }
     else
     {
         sprite->setPosition(Vec2::ZERO);
         contentContainer->addChild(sprite, 0);
-        // 缩放整个内容容器以适应屏幕
+
+        // 计算缩放比例，使背景适应屏幕
         Size textureSize = sprite->getContentSize();
         float scaleX = visibleSize.width / textureSize.width;
         float scaleY = visibleSize.height / textureSize.height;
         float scaleFactor = std::min(scaleX, scaleY);
-        // 将相同的缩放比例应用到 X 和 Y 轴
+
+        // 将相同的缩放比例应用到容器
         contentContainer->setScale(scaleFactor);
     }
-    // 用 Sprite
-    auto mapselectItem_1 = Sprite::create("Scene/UI/mapselectItem_1.png");
-    mapselectItem_1->setPosition(origin.x + visibleSize.height - mapselectItem_1->getContentSize().width / 1.5,
-                                 origin.y + visibleSize.height / 1.5);
-    mapselectItem_1->setTag(1);
-    contentContainer->addChild(mapselectItem_1, 1);
 
+    // ==========================================================
+    // 3. 初始化地图标记数据
+    // ==========================================================
+    Size backgroundSize = sprite->getContentSize();
+    _markerInfos = {
+        {"Scene/UI/mapselectItem_1.png", "Scene/UI/mapselectItem_1_selected.png", Vec2(backgroundSize.width / 20, backgroundSize.height / 2.7), 1, 0.32f, "起源之菇"},
+        {"Scene/UI/mapselectItem_2.png", "Scene/UI/mapselectItem_2_selected.png", Vec2(backgroundSize.width / 8.46, backgroundSize.height / 8), 2, 0.32f, "神秘之森"},
+        // 在此处添加更多关卡...
+    };
+
+    // ==========================================================
+    // 4. 创建并添加地标精灵
+    // ==========================================================
+    for (const auto &info : _markerInfos)
+    {
+        auto marker = Sprite::create(info.normalImage);
+        if (!marker)
+        {
+            problemLoading(info.normalImage.c_str());
+            continue;
+        }
+
+        marker->setPosition(info.position);
+        marker->setTag(info.mapId);                               // 用 tag 存储地图ID
+        marker->setName(info.normalImage);                        // 用 name 存储普通图片路径
+        marker->setUserData(new std::string(info.selectedImage)); // 存储选中图片路径
+        marker->setScale(info.scale);                             // 设置地标缩放比例
+
+        // 创建名称标签
+        auto nameLabel = Label::createWithTTF(info.name, "fonts/ZCOOLKuaiLe-Regular.ttf", 48);
+        if (nameLabel)
+        {
+            // 将标签放在图标下方（相对于 marker 的本地坐标）
+            Size markerSize = marker->getContentSize();
+            nameLabel->setPosition(Vec2(markerSize.width / 2, -nameLabel->getContentSize().height / 2 - 10));
+            nameLabel->setAnchorPoint(Vec2(0.5f, 0.5f));
+            marker->addChild(nameLabel, 1);
+        }
+
+        contentContainer->addChild(marker, 1);
+        _mapMarkers.push_back(marker); // 保存到成员变量以便后续访问
+    }
+
+    // ==========================================================
+    // 5. 添加鼠标事件监听器
+    // ==========================================================
     auto mouseListener = EventListenerMouse::create();
 
-    mouseListener->onMouseMove = [this, mapselectItem_1](EventMouse *event)
+    mouseListener->onMouseMove = [this](EventMouse *event)
     {
         Vec2 mousePos = Vec2(event->getCursorX(), event->getCursorY());
-        Vec2 localPos = mapselectItem_1->convertToNodeSpace(mousePos);
-        Rect rect = Rect(Vec2::ZERO, mapselectItem_1->getContentSize());
 
-        if (rect.containsPoint(localPos))
+        for (auto marker : _mapMarkers)
         {
-            mapselectItem_1->setTexture("Scene/UI/mapselectItem_1_selected.png");
-        }
-        else
-        {
-            mapselectItem_1->setTexture("Scene/UI/mapselectItem_1.png");
+            Vec2 localPos = marker->convertToNodeSpace(mousePos);
+            Rect rect = Rect(Vec2::ZERO, marker->getContentSize());
+
+            std::string *selectedImage = static_cast<std::string *>(marker->getUserData());
+
+            if (rect.containsPoint(localPos))
+            {
+                marker->setTexture(*selectedImage);
+            }
+            else
+            {
+                marker->setTexture(marker->getName());
+            }
         }
     };
 
-    mouseListener->onMouseDown = [this, mapselectItem_1](EventMouse *event)
+    mouseListener->onMouseDown = [this](EventMouse *event)
     {
         Vec2 mousePos = Vec2(event->getCursorX(), event->getCursorY());
-        Vec2 localPos = mapselectItem_1->convertToNodeSpace(mousePos);
-        Rect rect = Rect(Vec2::ZERO, mapselectItem_1->getContentSize());
 
-        if (rect.containsPoint(localPos))
+        for (auto marker : _mapMarkers)
         {
-            this->mapSelectCallback(nullptr);
+            Vec2 localPos = marker->convertToNodeSpace(mousePos);
+            Rect rect = Rect(Vec2::ZERO, marker->getContentSize());
+
+            if (rect.containsPoint(localPos))
+            {
+                int mapId = marker->getTag();
+                this->onMapMarkerClicked(mapId);
+                break; // 只处理第一个点击到的
+            }
         }
     };
 
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, mapselectItem_1);
-    auto mapselectItem_2 = createMenuItem(
-        "Scene/UI/mapselectItem_2.png",
-        "Scene/UI/mapselectItem_2_selected.png",
-        CC_CALLBACK_1(MapScene::mapSelectCallback, this));
-    mapselectItem_2->setPosition(origin.x + visibleSize.height - mapselectItem_2->getContentSize().width / 1.5,
-                                 origin.y + visibleSize.height / 1.5);
-    auto mapMenu = Menu::create(mapselectItem_2, mapselectItem_2, nullptr);
-    mapMenu->setPosition(Vec2::ZERO);
-    contentContainer->addChild(mapMenu, 1);
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
+
+    auto closeItem = MenuItemImage::create(
+        "CloseNormal.png",
+        "CloseSelected.png",
+        CC_CALLBACK_1(MapScene::mapCloseCallback, this));
+
+    if (closeItem)
+    {
+        float closeX = origin.x + visibleSize.width - closeItem->getContentSize().width / 2;
+        float closeY = origin.y + visibleSize.height - closeItem->getContentSize().height / 2;
+        closeItem->setPosition(Vec2(closeX, closeY));
+
+        auto closeMenu = Menu::create(closeItem, nullptr);
+        closeMenu->setPosition(Vec2::ZERO);
+        closeMenu->setTag(TAG_MAP_MENU);
+        this->addChild(closeMenu, TAG_MAP_MENU);
+    }
+
     return true;
+}
+
+void MapScene::onMapMarkerClicked(int mapId)
+{
+    CCLOG("Clicked map: %d", mapId);
+
+    auto destinationScene = createDestinationScene(mapId);
+    if (!destinationScene)
+    {
+        CCLOG("Failed to create destination scene for map: %d", mapId);
+        return;
+    }
+
+    auto director = Director::getInstance();
+    director->popToRootScene();
+
+    const float TRANSITION_DURATION = 0.6f;
+    auto transition = TransitionFade::create(TRANSITION_DURATION, destinationScene, Color3B::BLACK);
+    director->replaceScene(transition);
 }
 
 void MapScene::mapCloseCallback(cocos2d::Ref *pSender)
 {
     // 返回上一个场景（场景栈）
     cocos2d::Director::getInstance()->popScene();
+}
+
+cocos2d::Scene *MapScene::createDestinationScene(int mapId)
+{
+    // 检查 mapId 是否有效
+    if (mapId < 1 || mapId > static_cast<int>(_markerInfos.size()))
+    {
+        CCLOG("Invalid mapId: %d", mapId);
+        return nullptr;
+    }
+
+    // 根据 mapId 创建对应的游戏场景
+    Scene *scene = nullptr;
+    switch (mapId)
+    {
+    case 1:
+        // 起源之菇
+        scene = OriginMushroomScene::createScene();
+        break;
+    case 2:
+        // 神秘之森
+        scene = MysteryForestScene::createScene();
+        break;
+    default:
+        CCLOG("Unknown mapId: %d, creating default scene", mapId);
+        break;
+    }
+
+    return scene;
 }

@@ -24,7 +24,7 @@ Debug.win32/
 Release.win32/
 proj.win32/Debug.win32/
 proj.win32/Release.win32/
-
+tempresource/
 # ========================
 # Visual Studio 配置文件 & 临时文件
 # ========================

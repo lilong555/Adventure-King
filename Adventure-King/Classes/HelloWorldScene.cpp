@@ -1,5 +1,6 @@
 #include "HelloWorldScene.h"
 #include "HomeScene.h"
+#include "MapScene.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;
@@ -281,6 +282,16 @@ void HelloWorld::menuSaveCloseCallback(Ref *pSender)
 }
 void HelloWorld::menuMapCallback(Ref *pSender)
 {
+    auto mapScene = MapScene::createScene();
+    if (!mapScene)
+    {
+        CCLOG("Error: Failed to create MapScene.");
+        return;
+    }
+
+    const float TRANSITION_DURATION = 0.6f;
+    auto transition = TransitionFade::create(TRANSITION_DURATION, mapScene, Color3B::BLACK);
+    Director::getInstance()->pushScene(transition);
 }
 void HelloWorld::menuSetCallback(Ref *pSender)
 {
