@@ -1,4 +1,4 @@
-#include "MapScene.h"
+﻿#include "MapScene.h"
 #include "GameScene.h"
 USING_NS_CC;
 
@@ -44,12 +44,9 @@ bool MapScene::init()
     // ===============================================
     // 1. 初始化容器节点
     // ===============================================
-    // 创建一个父级容器节点，用于统一缩放和定位
     auto contentContainer = Node::create();
     contentContainer->setTag(TAG_CONTENT_CONTAINER);
-    // 将容器节点添加到场景中，确保 z-order 高于背景 (背景 z=0)
     this->addChild(contentContainer, TAG_CONTENT_CONTAINER);
-    // 将容器节点定位到屏幕中心
     contentContainer->setPosition(center);
 
     // ==========================================================
@@ -65,13 +62,10 @@ bool MapScene::init()
         sprite->setPosition(Vec2::ZERO);
         contentContainer->addChild(sprite, 0);
 
-        // 计算缩放比例，使背景适应屏幕
         Size textureSize = sprite->getContentSize();
         float scaleX = visibleSize.width / textureSize.width;
         float scaleY = visibleSize.height / textureSize.height;
         float scaleFactor = std::min(scaleX, scaleY);
-
-        // 将相同的缩放比例应用到容器
         contentContainer->setScale(scaleFactor);
     }
 
@@ -82,7 +76,6 @@ bool MapScene::init()
     _markerInfos = {
         {"Scene/UI/mapselectItem_1.png", "Scene/UI/mapselectItem_1_selected.png", Vec2(backgroundSize.width / 20, backgroundSize.height / 2.7), 1, 0.32f, "起源之菇"},
         {"Scene/UI/mapselectItem_2.png", "Scene/UI/mapselectItem_2_selected.png", Vec2(backgroundSize.width / 8.46, backgroundSize.height / 8), 2, 0.32f, "神秘之森"},
-        // 在此处添加更多关卡...
     };
 
     // ==========================================================
@@ -98,16 +91,14 @@ bool MapScene::init()
         }
 
         marker->setPosition(info.position);
-        marker->setTag(info.mapId);                               // 用 tag 存储地图ID
-        marker->setName(info.normalImage);                        // 用 name 存储普通图片路径
-        marker->setUserData(new std::string(info.selectedImage)); // 存储选中图片路径
-        marker->setScale(info.scale);                             // 设置地标缩放比例
+        marker->setTag(info.mapId);
+        marker->setName(info.normalImage);
+        marker->setUserData(new std::string(info.selectedImage));
+        marker->setScale(info.scale);
 
-        // 创建名称标签
         auto nameLabel = Label::createWithTTF(info.name, "fonts/ZCOOLKuaiLe-Regular.ttf", 48);
         if (nameLabel)
         {
-            // 将标签放在图标下方（相对于 marker 的本地坐标）
             Size markerSize = marker->getContentSize();
             nameLabel->setPosition(Vec2(markerSize.width / 2, -nameLabel->getContentSize().height / 2 - 10));
             nameLabel->setAnchorPoint(Vec2(0.5f, 0.5f));
@@ -115,7 +106,7 @@ bool MapScene::init()
         }
 
         contentContainer->addChild(marker, 1);
-        _mapMarkers.push_back(marker); // 保存到成员变量以便后续访问
+        _mapMarkers.push_back(marker);
     }
 
     // ==========================================================
@@ -158,7 +149,7 @@ bool MapScene::init()
             {
                 int mapId = marker->getTag();
                 this->onMapMarkerClicked(mapId);
-                break; // 只处理第一个点击到的
+                break;
             }
         }
     };
@@ -206,29 +197,24 @@ void MapScene::onMapMarkerClicked(int mapId)
 
 void MapScene::mapCloseCallback(cocos2d::Ref *pSender)
 {
-    // 返回上一个场景（场景栈）
     cocos2d::Director::getInstance()->popScene();
 }
 
 cocos2d::Scene *MapScene::createDestinationScene(int mapId)
 {
-    // 检查 mapId 是否有效
     if (mapId < 1 || mapId > static_cast<int>(_markerInfos.size()))
     {
         CCLOG("Invalid mapId: %d", mapId);
         return nullptr;
     }
 
-    // 根据 mapId 创建对应的游戏场景
     Scene *scene = nullptr;
     switch (mapId)
     {
     case 1:
-        // 起源之菇
         scene = OriginMushroomScene::createScene();
         break;
     case 2:
-        // 神秘之森
         scene = MysteryForestScene::createScene();
         break;
     default:

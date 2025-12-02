@@ -1,14 +1,14 @@
-#include "HelloWorldScene.h" // 包含主菜单场景，以便返回
+﻿#include "HelloWorldScene.h" // 包含主菜单场景，以便返回
 #include "HomeScene.h"
 #include "GameScene.h"
+#include "DebugScene.h"      // 角色调试场景
 #include "SceneTransitionManager.h"
 #include "MusicManager.h"
-
 
 USING_NS_CC;
 
 // 静态创建场景方法
-Scene* HomeScene::createScene()
+Scene *HomeScene::createScene()
 {
     return HomeScene::create();
 }
@@ -27,7 +27,7 @@ bool HomeScene::init()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
     Vec2 center = Vec2(origin.x + visibleSize.width / 2,
-        origin.y + visibleSize.height / 2);
+                       origin.y + visibleSize.height / 2);
 
     // 1. 背景
     auto bg = Sprite::create("Scene/Backgrounds/HomeBackground_1.jpg");
@@ -50,41 +50,58 @@ bool HomeScene::init()
     auto setItem = MenuItemImage::create(
         "CloseNormal.png",
         "CloseSelected.png",
-        CC_CALLBACK_1(HomeScene::menuReturnCallback, this)
-    );
+        CC_CALLBACK_1(HomeScene::menuReturnCallback, this));
 
     setItem->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
     setItem->setPosition(Vec2(origin.x, origin.y + visibleSize.height));
 
-    auto menu = Menu::create(setItem, nullptr);
+    // 3. 调试场景入口按钮
+    auto debugLabel = Label::createWithTTF("角色调试", "fonts/ZCOOLKuaiLe-Regular.ttf", 24);
+    auto debugItem = MenuItemLabel::create(
+        debugLabel,
+        CC_CALLBACK_1(HomeScene::menuDebugCallback, this));
+    debugItem->setAnchorPoint(Vec2::ANCHOR_TOP_RIGHT);
+    debugItem->setPosition(Vec2(origin.x + visibleSize.width - 20, origin.y + visibleSize.height - 20));
+
+    auto menu = Menu::create(setItem, debugItem, nullptr);
     menu->setPosition(Vec2::ZERO);
     this->addChild(menu, 5);
 
-	// 播放背景音乐
-	std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
-	float musicVolume = 0.5f;
+    // 播放背景音乐
+    std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
+    float musicVolume = 0.5f;
     this->scheduleOnce(
         [musicFile, musicVolume](float dt) {
             MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
         },
-        1.2f, // 比如你希望延迟 1.2 秒再播放
+        1.2f,
         "PlayMusicAfterSceneChange"
     );
-	return true;
+    return true;
 }
 
 // 返回主菜单的回调函数
-void HomeScene::menuReturnCallback(Ref* pSender)
+void HomeScene::menuReturnCallback(Ref *pSender)
 {
-    // 停止当前背景音乐
     MusicManager::getInstance()->stopBGM();
 
     auto helloWorldScene = HelloWorld::createScene();
 
     SceneTransitionManager::transitionToScene(
-        this,                      // 当前场景
-        helloWorldScene,           // 目标场景
-        "返回主菜单...",            // 提示文字
-        1.0f                       // 音量
+        this,
+        helloWorldScene,
+        "返回主菜单...",
+        1.0f
     );
+}
+
+// 进入调试场景的回调函数
+void HomeScene::menuDebugCallback(Ref *pSender)
+{
+    MusicManager::getInstance()->stopBGM();
+
+    auto debugScene = DebugScene::createScene();
+    const float TRANSITION_DURATION = 0.5f;
+    auto transition = TransitionFade::create(TRANSITION_DURATION, debugScene, Color3B::BLACK);
+    Director::getInstance()->replaceScene(transition);
 }

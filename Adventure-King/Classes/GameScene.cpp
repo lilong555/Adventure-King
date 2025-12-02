@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file GameScene.cpp
  * @brief 游戏关卡场景实现
  */
@@ -65,7 +65,7 @@ void GameScene::onMapButtonClicked(cocos2d::Ref *pSender)
     {
         const float TRANSITION_DURATION = 0.5f;
         auto transition = TransitionFade::create(TRANSITION_DURATION, mapScene, Color3B::BLACK);
-        Director::getInstance()->replaceScene(transition);
+        Director::getInstance()->pushScene(transition);
     }
 }
 
