@@ -10,6 +10,12 @@
     <Filter Include="src">
       <UniqueIdentifier>{bb6c862e-70e9-49d9-81b7-3829a6f50471}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Character">
+      <UniqueIdentifier>{a1b2c3d4-e5f6-7890-abcd-ef1234567890}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Character\components">
+      <UniqueIdentifier>{b2c3d4e5-f6a7-8901-bcde-f12345678901}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -17,6 +23,21 @@
     </ClCompile>
     <ClCompile Include="..\Classes\AppDelegate.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\CharacterBase.cpp">
+      <Filter>src\Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\PlayerCharacter.cpp">
+      <Filter>src\Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp">
+      <Filter>src\Character\components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\components\SkillComponent.cpp">
+      <Filter>src\Character\components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\components\StateMachineComponent.cpp">
+      <Filter>src\Character\components</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\GameScene.cpp">
       <Filter>src</Filter>
@@ -40,6 +61,24 @@
     </ClInclude>
     <ClInclude Include="..\Classes\AppDelegate.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\CharacterBase.h">
+      <Filter>src\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\CharacterData.h">
+      <Filter>src\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\PlayerCharacter.h">
+      <Filter>src\Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\components\AttributeComponent.h">
+      <Filter>src\Character\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\components\SkillComponent.h">
+      <Filter>src\Character\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\components\StateMachineComponent.h">
+      <Filter>src\Character\components</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\GameScene.h">
       <Filter>src</Filter>
