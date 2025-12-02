@@ -1146,7 +1146,7 @@ void DebugScene::doThrowBomb()
 
     // 根据角色朝向决定炸弹方向
     bool facingLeft = _player->isFlippedX();
-    auto BOMB_THROW_DETAT_X = facingLeft ? -getContentSize().width / 20 : getContentSize().width / 20; // 水平投掷速度
+    auto BOMB_THROW_DETAT_X = facingLeft ? -getContentSize().width / 10 : getContentSize().width / 10; // 水平投掷速度
     bomb.velocityX = facingLeft ? -BOMB_THROW_SPEED_X : BOMB_THROW_SPEED_X;
     bomb.velocityY = BOMB_THROW_SPEED_Y;
     bomb.isExploded = false;
