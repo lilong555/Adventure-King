@@ -317,7 +317,7 @@ void DebugScene::initControlButtons()
 
     // 添加快捷键提示
     auto hintLabel = Label::createWithTTF(
-        "[AD] 移动  [W/Space] 跳跃  [1] 受击  [2] 暴击  [3] 治疗  [4] 攻击  [5] 升级  [R] 重置  [ESC] 返回",
+        "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 返回",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     hintLabel->setPosition(Vec2(centerX, origin.y + 70));
     hintLabel->setColor(Color3B(150, 150, 150));
@@ -328,6 +328,7 @@ void DebugScene::update(float dt)
 {
     Scene::update(dt);
     updateGravity(dt);
+    updateBombs(dt);
     updatePlayerMovement(dt);
     updateDebugInfo();
 }
@@ -594,6 +595,10 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_UP_ARROW:
     case EventKeyboard::KeyCode::KEY_SPACE:
         jump();
+        break;
+    // 技能按键 - 丢炸弹
+    case EventKeyboard::KeyCode::KEY_E:
+        throwBomb();
         break;
     // 功能按键
     case EventKeyboard::KeyCode::KEY_1:
@@ -960,4 +965,156 @@ void DebugScene::jump()
         addDamageLog("跳跃!");
         CCLOG("Player jumped");
     }
+}
+
+void DebugScene::throwBomb()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 创建炸弹精灵
+    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/TNT.png");
+    if (!bombSprite)
+    {
+        CCLOG("Failed to create bomb sprite");
+        return;
+    }
+
+    // 创建炸弹对象
+    Bomb bomb;
+
+    // 根据角色朝向决定炸弹方向
+    bool facingLeft = _player->isFlippedX();
+    auto BOMB_THROW_DETAT_X = facingLeft ? -getContentSize().width / 20 : getContentSize().width / 20; // 水平投掷速度
+    bomb.velocityX = facingLeft ? -BOMB_THROW_SPEED_X : BOMB_THROW_SPEED_X;
+    bomb.velocityY = BOMB_THROW_SPEED_Y;
+    bomb.isExploded = false;
+    // 设置炸弹初始位置（角色头顶上方）
+    Vec2 playerPos = _player->getPosition();
+    float offsetY = getContentSize().height / 4; // 从角色脚底往上偏移
+    bombSprite->setPosition(playerPos + Vec2(BOMB_THROW_DETAT_X, offsetY));
+    bombSprite->setScale(0.5f); // 调整炸弹大小
+    this->addChild(bombSprite, 4);
+
+    bomb.sprite = bombSprite;
+    _bombs.push_back(bomb);
+
+    addDamageLog("丢出炸弹!");
+    CCLOG("Bomb thrown!");
+}
+
+void DebugScene::updateBombs(float dt)
+{
+    auto origin = Director::getInstance()->getVisibleOrigin();
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+
+    for (auto it = _bombs.begin(); it != _bombs.end();)
+    {
+        Bomb &bomb = *it;
+
+        if (bomb.isExploded || !bomb.sprite)
+        {
+            ++it;
+            continue;
+        }
+
+        // 应用重力
+        bomb.velocityY += BOMB_GRAVITY * dt;
+
+        // 更新位置
+        Vec2 pos = bomb.sprite->getPosition();
+        pos.x += bomb.velocityX * dt;
+        pos.y += bomb.velocityY * dt;
+
+        // 检测与平台的碰撞
+        bool hitPlatform = false;
+        float bombRadius = 10.0f; // 炸弹碰撞半径
+
+        for (const auto &platform : _platforms)
+        {
+            // 只有向下移动时才检测碰撞
+            if (bomb.velocityY <= 0)
+            {
+                float bombLeft = pos.x - bombRadius;
+                float bombRight = pos.x + bombRadius;
+                float platformLeft = platform.origin.x;
+                float platformRight = platform.origin.x + platform.size.width;
+
+                bool horizontalOverlap = bombRight > platformLeft && bombLeft < platformRight;
+
+                if (horizontalOverlap)
+                {
+                    float platformTop = platform.origin.y + platform.size.height;
+                    float bombBottom = pos.y - bombRadius;
+
+                    // 如果炸弹底部穿过平台顶部
+                    if (bombBottom <= platformTop && pos.y > platform.origin.y)
+                    {
+                        hitPlatform = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 检测是否超出屏幕范围
+        bool outOfBounds = pos.x < origin.x - 50 ||
+                           pos.x > origin.x + visibleSize.width + 50 ||
+                           pos.y < origin.y - 50;
+
+        if (hitPlatform || outOfBounds)
+        {
+            // 爆炸
+            explodeBomb(bomb);
+            bomb.isExploded = true;
+        }
+        else
+        {
+            bomb.sprite->setPosition(pos);
+            // 炸弹旋转效果
+            bomb.sprite->setRotation(bomb.sprite->getRotation() + 360 * dt);
+        }
+
+        ++it;
+    }
+
+    // 清理已爆炸的炸弹
+    _bombs.erase(
+        std::remove_if(_bombs.begin(), _bombs.end(),
+                       [](const Bomb &b)
+                       { return b.isExploded && b.sprite == nullptr; }),
+        _bombs.end());
+}
+
+void DebugScene::explodeBomb(Bomb &bomb)
+{
+    if (!bomb.sprite)
+        return;
+
+    Vec2 explodePos = bomb.sprite->getPosition();
+
+    // 移除炸弹精灵
+    bomb.sprite->removeFromParent();
+
+    // 创建爆炸效果
+    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
+    if (boomSprite)
+    {
+        boomSprite->setPosition(explodePos);
+        boomSprite->setScale(0.8f);
+        this->addChild(boomSprite, 6);
+
+        // 爆炸动画：放大 + 淡出
+        auto scaleUp = ScaleTo::create(0.2f, 1.2f);
+        auto fadeOut = FadeOut::create(0.3f);
+        auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
+        auto remove = RemoveSelf::create();
+        auto sequence = Sequence::create(spawn, remove, nullptr);
+        boomSprite->runAction(sequence);
+    }
+
+    bomb.sprite = nullptr;
+
+    addDamageLog("炸弹爆炸!");
+    CCLOG("Bomb exploded at (%.0f, %.0f)", explodePos.x, explodePos.y);
 }

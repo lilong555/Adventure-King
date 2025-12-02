@@ -6,6 +6,17 @@
 class PlayerCharacter;
 
 /**
+ * @brief 炸弹结构体
+ */
+struct Bomb
+{
+    cocos2d::Sprite *sprite = nullptr;
+    float velocityX = 0.0f;
+    float velocityY = 0.0f;
+    bool isExploded = false; // 是否已爆炸
+};
+
+/**
  * @brief 角色功能调试场景
  * 用于测试角色的各种功能：受击、攻击、属性、状态机等
  */
@@ -57,6 +68,11 @@ private:
     void playAttackAnimation();
     void onAttackAnimationFinished();
 
+    // 技能相关
+    void throwBomb();
+    void updateBombs(float dt);
+    void explodeBomb(Bomb &bomb);
+
     // 成员变量
     PlayerCharacter *_player = nullptr;
 
@@ -83,6 +99,12 @@ private:
 
     // 平台列表 (x, y, width, height)
     std::vector<cocos2d::Rect> _platforms;
+
+    // 炸弹列表
+    std::vector<Bomb> _bombs;
+    static constexpr float BOMB_THROW_SPEED_X = 300.0f; // 炸弹水平初速度
+    static constexpr float BOMB_THROW_SPEED_Y = 350.0f; // 炸弹垂直初速度
+    static constexpr float BOMB_GRAVITY = -600.0f;      // 炸弹重力
 
     // 调试信息标签
     cocos2d::Label *_infoLabel = nullptr;
