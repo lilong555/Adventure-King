@@ -1,5 +1,6 @@
 #include "MapScene.h"
 #include "GameScene.h"
+#include "SceneTransitionHelper.h"
 USING_NS_CC;
 
 static void problemLoading(const char *filename)
@@ -170,17 +171,24 @@ bool MapScene::init()
         "CloseSelected.png",
         CC_CALLBACK_1(MapScene::mapCloseCallback, this));
 
+    Menu *closeMenu = nullptr;
     if (closeItem)
     {
         float closeX = origin.x + visibleSize.width - closeItem->getContentSize().width / 2;
         float closeY = origin.y + visibleSize.height - closeItem->getContentSize().height / 2;
         closeItem->setPosition(Vec2(closeX, closeY));
 
-        auto closeMenu = Menu::create(closeItem, nullptr);
+        closeMenu = Menu::create(closeItem, nullptr);
         closeMenu->setPosition(Vec2::ZERO);
         closeMenu->setTag(TAG_MAP_MENU);
         this->addChild(closeMenu, TAG_MAP_MENU);
     }
+
+    // 播放黑色遮罩过场动画
+    SceneTransitionHelper::runEnterTransition(
+        this,
+        closeMenu,
+        "进入地图...");
 
     return true;
 }
@@ -206,8 +214,14 @@ void MapScene::onMapMarkerClicked(int mapId)
 
 void MapScene::mapCloseCallback(cocos2d::Ref *pSender)
 {
-    // 返回上一个场景（场景栈）
-    cocos2d::Director::getInstance()->popScene();
+    // 播放退出过场动画，然后返回上一个场景
+    SceneTransitionHelper::runExitTransition(
+        this,
+        "返回...",
+        []()
+        {
+            cocos2d::Director::getInstance()->popScene();
+        });
 }
 
 cocos2d::Scene *MapScene::createDestinationScene(int mapId)
