@@ -29,6 +29,7 @@ bool DebugScene::init()
     initBackground();
     initPlatforms();
     initPlayer();
+    initTargetDummy();
     initDebugUI();
     initControlButtons();
 
@@ -182,6 +183,46 @@ void DebugScene::initPlayer()
     this->addChild(_collisionBoxDebug, 10);
 
     CCLOG("Player created at position (%.0f, %.0f)", startPos.x, startPos.y);
+}
+
+void DebugScene::initTargetDummy()
+{
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
+
+    // 创建木桩精灵
+    _targetDummy.sprite = Sprite::create("Sprites/Enemies/YuanSheMenJiang/ysmj_stand.png");
+    if (_targetDummy.sprite)
+    {
+        // 放置在场景右侧的地面上
+        Vec2 dummyPos(origin.x + visibleSize.width * 0.75f, origin.y + GROUND_Y);
+        _targetDummy.sprite->setPosition(dummyPos);
+        _targetDummy.sprite->setAnchorPoint(Vec2(0.5f, 0)); // 锚点在脚底
+        _targetDummy.sprite->setScale(0.5f);
+        this->addChild(_targetDummy.sprite, 4);
+
+        // 初始化属性
+        _targetDummy.maxHP = 2147483674.0f;
+        _targetDummy.currentHP = 2147483674.0f;
+
+        // 创建血条背景
+        _targetDummy.hpBar = DrawNode::create();
+        this->addChild(_targetDummy.hpBar, 6);
+
+        // 创建HP数值标签
+        _targetDummy.hpLabel = Label::createWithTTF("1000/1000", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
+        _targetDummy.hpLabel->setPosition(dummyPos + Vec2(0, 90));
+        _targetDummy.hpLabel->setColor(Color3B::WHITE);
+        this->addChild(_targetDummy.hpLabel, 7);
+
+        updateTargetHPBar();
+
+        CCLOG("Target dummy created at position (%.0f, %.0f)", dummyPos.x, dummyPos.y);
+    }
+    else
+    {
+        CCLOG("Failed to create target dummy sprite");
+    }
 }
 
 void DebugScene::initDebugUI()
@@ -524,8 +565,8 @@ void DebugScene::onAttackClicked(Ref *sender)
     if (!_player || _player->isDead())
         return;
 
-    // 如果正在攻击中，禁用攻击
-    if (_isAttacking)
+    // 如果正在攻击或施放技能中，禁用攻击
+    if (_isAttacking || _isCastingSkill)
     {
         return;
     }
@@ -739,6 +780,9 @@ void DebugScene::stopWalkAnimation()
 
     _isWalkAnimationPlaying = false;
 
+    // 保存当前翻转状态
+    bool wasFlippedX = _player->isFlippedX();
+
     // 停止行走动画
     _player->stopActionByTag(999);
 
@@ -748,6 +792,11 @@ void DebugScene::stopWalkAnimation()
     if (defaultTexture)
     {
         _player->setTexture(defaultTexture);
+        // 设置正确的纹理矩形
+        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                     defaultTexture->getContentSize().height));
+        // 恢复翻转状态
+        _player->setFlippedX(wasFlippedX);
     }
 
     CCLOG("Walk animation stopped");
@@ -841,12 +890,20 @@ void DebugScene::onAttackAnimationFinished()
 {
     _isAttacking = false;
 
+    // 保存当前翻转状态
+    bool wasFlippedX = _player ? _player->isFlippedX() : false;
+
     // 恢复到默认静止图片
     auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
         "Sprites/Characters/Player/Klee/spr_klee_run.png");
     if (defaultTexture && _player)
     {
         _player->setTexture(defaultTexture);
+        // 设置正确的纹理矩形
+        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                     defaultTexture->getContentSize().height));
+        // 恢复翻转状态
+        _player->setFlippedX(wasFlippedX);
     }
 
     CCLOG("Attack animation finished");
@@ -968,6 +1025,110 @@ void DebugScene::jump()
 }
 
 void DebugScene::throwBomb()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 如果正在施放技能或攻击中，禁用技能
+    if (_isCastingSkill || _isAttacking)
+    {
+        return;
+    }
+
+    // 播放技能动画
+    playSkillAnimation();
+    addDamageLog("施放技能: 丢炸弹!");
+    CCLOG("Skill started: Throw Bomb");
+}
+
+void DebugScene::playSkillAnimation()
+{
+    if (!_player)
+        return;
+
+    // 停止行走动画（如果在播放）
+    if (_isWalkAnimationPlaying)
+    {
+        stopWalkAnimation();
+    }
+
+    _isCastingSkill = true;
+
+    // 加载3张攻击图片（技能动画暂时使用攻击动画，后期可改）
+    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
+    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
+    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
+
+    if (texture1 && texture2 && texture3)
+    {
+        // 创建精灵帧
+        auto frame1 = SpriteFrame::createWithTexture(texture1,
+                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
+        auto frame2 = SpriteFrame::createWithTexture(texture2,
+                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
+        auto frame3 = SpriteFrame::createWithTexture(texture3,
+                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
+
+        // 创建动画帧序列
+        Vector<SpriteFrame *> frames;
+        frames.pushBack(frame1);
+        frames.pushBack(frame2);
+        frames.pushBack(frame3);
+
+        // 每帧0.15秒，共0.45秒
+        auto animation = Animation::createWithSpriteFrames(frames, 0.13f);
+        auto animate = Animate::create(animation);
+
+        // 停止之前的技能动画
+        _player->stopActionByTag(1001);
+
+        // 创建动画序列：播放动画 -> 回调结束
+        auto callbackAction = CallFunc::create([this]()
+                                               { this->onSkillAnimationFinished(); });
+        auto sequence = Sequence::create(animate, callbackAction, nullptr);
+        sequence->setTag(1001);
+
+        _player->runAction(sequence);
+
+        CCLOG("Skill animation started (3-hit combo)");
+    }
+    else
+    {
+        CCLOG("Failed to load skill sprites");
+        _isCastingSkill = false;
+    }
+}
+
+void DebugScene::onSkillAnimationFinished()
+{
+    _isCastingSkill = false;
+
+    // 动画结束后实际丢出炸弹
+    doThrowBomb();
+
+    // 保存当前翻转状态
+    bool wasFlippedX = _player ? _player->isFlippedX() : false;
+
+    // 恢复到默认静止图片
+    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    if (defaultTexture && _player)
+    {
+        _player->setTexture(defaultTexture);
+        // 设置正确的纹理矩形
+        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                     defaultTexture->getContentSize().height));
+        // 恢复翻转状态
+        _player->setFlippedX(wasFlippedX);
+    }
+
+    CCLOG("Skill animation finished");
+}
+
+void DebugScene::doThrowBomb()
 {
     if (!_player || _player->isDead())
         return;
@@ -1113,8 +1274,140 @@ void DebugScene::explodeBomb(Bomb &bomb)
         boomSprite->runAction(sequence);
     }
 
+    // 检测是否命中木桩
+    if (_targetDummy.sprite && _targetDummy.currentHP > 0)
+    {
+        Vec2 dummyPos = _targetDummy.sprite->getPosition();
+        float distance = explodePos.distance(dummyPos);
+
+        if (distance <= BOMB_EXPLOSION_RADIUS)
+        {
+            // 随机暴击（30%概率）
+            bool isCrit = (rand() % 100) < 30;
+            float damage = BOMB_DAMAGE;
+            if (isCrit)
+            {
+                damage *= 1.5f; // 暴击1.5倍伤害
+            }
+            dealDamageToTarget(damage, isCrit);
+        }
+    }
+
     bomb.sprite = nullptr;
 
     addDamageLog("炸弹爆炸!");
     CCLOG("Bomb exploded at (%.0f, %.0f)", explodePos.x, explodePos.y);
+}
+
+void DebugScene::dealDamageToTarget(float damage, bool isCrit)
+{
+    if (!_targetDummy.sprite || _targetDummy.currentHP <= 0)
+        return;
+
+    // 扣血
+    _targetDummy.currentHP -= damage;
+    if (_targetDummy.currentHP < 0)
+    {
+        _targetDummy.currentHP = 0;
+    }
+
+    // 显示伤害数字
+    Vec2 dummyPos = _targetDummy.sprite->getPosition();
+    // 随机偏移让伤害数字不重叠
+    float offsetX = (rand() % 40) - 20;
+    float offsetY = 50 + (rand() % 30);
+    showDamageNumber(dummyPos + Vec2(offsetX, offsetY), damage, isCrit);
+
+    // 更新血条
+    updateTargetHPBar();
+
+    // 受击闪烁效果
+    auto tintRed = TintTo::create(0.1f, 255, 100, 100);
+    auto tintBack = TintTo::create(0.1f, 255, 255, 255);
+    _targetDummy.sprite->runAction(Sequence::create(tintRed, tintBack, nullptr));
+
+    addDamageLog(StringUtils::format("%s %.0f 伤害!", isCrit ? "暴击!" : "造成", damage));
+    CCLOG("Dealt %.0f damage to target (crit: %d), HP: %.0f/%.0f",
+          damage, isCrit, _targetDummy.currentHP, _targetDummy.maxHP);
+}
+
+void DebugScene::showDamageNumber(const Vec2 &pos, float damage, bool isCrit)
+{
+    // 创建伤害数字标签
+    std::string damageText = StringUtils::format("%.0f", damage);
+    if (isCrit)
+    {
+        damageText = "暴击 " + damageText + "!";
+    }
+
+    auto damageLabel = Label::createWithTTF(damageText, "fonts/ZCOOLKuaiLe-Regular.ttf", isCrit ? 28 : 22);
+    damageLabel->setPosition(pos);
+    damageLabel->setColor(isCrit ? Color3B(255, 50, 50) : Color3B(255, 200, 50)); // 暴击红色，普通黄色
+    damageLabel->enableOutline(Color4B::BLACK, 2);
+    this->addChild(damageLabel, 100);
+
+    // 伤害数字动画：向上飘 + 淡出
+    auto moveUp = MoveBy::create(0.8f, Vec2(0, 60));
+    auto fadeOut = FadeOut::create(0.5f);
+    auto spawn = Spawn::create(moveUp, fadeOut, nullptr);
+    auto remove = RemoveSelf::create();
+    damageLabel->runAction(Sequence::create(spawn, remove, nullptr));
+}
+
+void DebugScene::updateTargetHPBar()
+{
+    if (!_targetDummy.sprite || !_targetDummy.hpBar)
+        return;
+
+    _targetDummy.hpBar->clear();
+
+    Vec2 dummyPos = _targetDummy.sprite->getPosition();
+    float barWidth = 60.0f;
+    float barHeight = 8.0f;
+    float barY = 75.0f; // 血条在头顶上方
+
+    Vec2 barPos(dummyPos.x - barWidth / 2, dummyPos.y + barY);
+
+    // 绘制血条背景（黑色）
+    _targetDummy.hpBar->drawSolidRect(
+        barPos,
+        barPos + Vec2(barWidth, barHeight),
+        Color4F(0.2f, 0.2f, 0.2f, 1.0f));
+
+    // 绘制当前血量（红色渐变）
+    float hpRatio = _targetDummy.currentHP / _targetDummy.maxHP;
+    float currentWidth = barWidth * hpRatio;
+
+    Color4F hpColor;
+    if (hpRatio > 0.5f)
+    {
+        hpColor = Color4F(0.2f, 0.8f, 0.2f, 1.0f); // 绿色
+    }
+    else if (hpRatio > 0.25f)
+    {
+        hpColor = Color4F(1.0f, 0.8f, 0.0f, 1.0f); // 黄色
+    }
+    else
+    {
+        hpColor = Color4F(1.0f, 0.2f, 0.2f, 1.0f); // 红色
+    }
+
+    _targetDummy.hpBar->drawSolidRect(
+        barPos,
+        barPos + Vec2(currentWidth, barHeight),
+        hpColor);
+
+    // 绘制边框
+    _targetDummy.hpBar->drawRect(
+        barPos,
+        barPos + Vec2(barWidth, barHeight),
+        Color4F::WHITE);
+
+    // 更新HP文字
+    if (_targetDummy.hpLabel)
+    {
+        _targetDummy.hpLabel->setString(StringUtils::format("%.0f/%.0f",
+                                                            _targetDummy.currentHP, _targetDummy.maxHP));
+        _targetDummy.hpLabel->setPosition(dummyPos + Vec2(0, barY + 15));
+    }
 }
