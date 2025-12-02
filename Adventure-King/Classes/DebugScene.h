@@ -40,18 +40,30 @@ private:
 
     // 键盘输入处理
     void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
+    void onKeyReleased(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
+
+    // 移动相关
+    void updatePlayerMovement(float dt);
+    void startWalkAnimation();
+    void stopWalkAnimation();
 
     // 成员变量
     PlayerCharacter *_player = nullptr;
+
+    // 移动状态
+    bool _isMovingLeft = false;
+    bool _isMovingRight = false;
+    bool _isMovingUp = false;
+    bool _isMovingDown = false;
+    float _moveSpeed = 150.0f; // 移动速度（像素/秒）
+    bool _isWalkAnimationPlaying = false;
 
     // 调试信息标签
     cocos2d::Label *_infoLabel = nullptr;
     cocos2d::Label *_stateLabel = nullptr;
     cocos2d::Label *_damageLogLabel = nullptr;
-
-    // HP/MP 进度条
-    cocos2d::ui::LoadingBar *_hpBar = nullptr;
-    cocos2d::ui::LoadingBar *_mpBar = nullptr;
+    cocos2d::Label *_hpLabel = nullptr;
+    cocos2d::Label *_mpLabel = nullptr;
 
     // 伤害日志
     std::vector<std::string> _damageLog;

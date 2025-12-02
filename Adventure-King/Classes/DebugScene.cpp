@@ -9,6 +9,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "HomeScene.h"
+#include <algorithm>
 
 USING_NS_CC;
 using namespace cocos2d::ui;
@@ -33,6 +34,7 @@ bool DebugScene::init()
     // 启用键盘事件
     auto keyboardListener = EventListenerKeyboard::create();
     keyboardListener->onKeyPressed = CC_CALLBACK_2(DebugScene::onKeyPressed, this);
+    keyboardListener->onKeyReleased = CC_CALLBACK_2(DebugScene::onKeyReleased, this);
     _eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
 
     // 启用 update
@@ -107,7 +109,7 @@ void DebugScene::initPlayer()
     }
 
     _player->setPosition(center);
-    _player->setScale(2.0f); // 放大以便观察
+    _player->setScale(1.0f); // 放大以便观察
     this->addChild(_player, 5);
 
     CCLOG("Player created at position (%.0f, %.0f)", center.x, center.y);
@@ -151,11 +153,11 @@ void DebugScene::initDebugUI()
     float barY = origin.y + 100;
 
     // HP 标签
-    auto hpLabel = Label::createWithTTF("HP:", "fonts/ZCOOLKuaiLe-Regular.ttf", 18);
-    hpLabel->setAnchorPoint(Vec2(1, 0.5f));
-    hpLabel->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2 - 10, barY + 25));
-    hpLabel->setColor(Color3B::RED);
-    this->addChild(hpLabel, 10);
+    _hpLabel = Label::createWithTTF("HP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
+    _hpLabel->setAnchorPoint(Vec2(1, 0.5f));
+    _hpLabel->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2 - 10, barY + 15));
+    _hpLabel->setColor(Color3B::RED);
+    this->addChild(_hpLabel, 10);
 
     // HP 进度条背景
     auto hpBg = DrawNode::create();
@@ -164,23 +166,18 @@ void DebugScene::initDebugUI()
     this->addChild(hpBg, 9);
 
     // HP 进度条（使用 DrawNode 模拟）
-    _hpBar = LoadingBar::create("Scene/UI/hp_bar.png");
-    if (!_hpBar)
-    {
-        // 如果没有资源，创建一个简单的进度条
-        auto hpFill = DrawNode::create();
-        hpFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, 20), Color4F::RED);
-        hpFill->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2, barY + 15));
-        hpFill->setTag(100); // 用于后续更新
-        this->addChild(hpFill, 10);
-    }
+    auto hpFill = DrawNode::create();
+    hpFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, 20), Color4F::RED);
+    hpFill->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2, barY + 15));
+    hpFill->setTag(100); // 用于后续更新
+    this->addChild(hpFill, 10);
 
     // MP 标签
-    auto mpLabel = Label::createWithTTF("MP:", "fonts/ZCOOLKuaiLe-Regular.ttf", 18);
-    mpLabel->setAnchorPoint(Vec2(1, 0.5f));
-    mpLabel->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2 - 10, barY - 5));
-    mpLabel->setColor(Color3B::BLUE);
-    this->addChild(mpLabel, 10);
+    _mpLabel = Label::createWithTTF("MP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
+    _mpLabel->setAnchorPoint(Vec2(1, 0.5f));
+    _mpLabel->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2 - 10, barY - 15));
+    _mpLabel->setColor(Color3B::BLUE);
+    this->addChild(_mpLabel, 10);
 
     // MP 进度条背景
     auto mpBg = DrawNode::create();
@@ -251,7 +248,7 @@ void DebugScene::initControlButtons()
 
     // 添加快捷键提示
     auto hintLabel = Label::createWithTTF(
-        "[1] 受击  [2] 暴击  [3] 治疗  [4] 攻击  [5] 升级  [R] 重置  [ESC] 返回",
+        "[WASD] 移动  [1] 受击  [2] 暴击  [3] 治疗  [4] 攻击  [5] 升级  [R] 重置  [ESC] 返回",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     hintLabel->setPosition(Vec2(centerX, origin.y + 70));
     hintLabel->setColor(Color3B(150, 150, 150));
@@ -261,6 +258,7 @@ void DebugScene::initControlButtons()
 void DebugScene::update(float dt)
 {
     Scene::update(dt);
+    updatePlayerMovement(dt);
     updateDebugInfo();
 }
 
@@ -348,15 +346,37 @@ void DebugScene::updateDebugInfo()
     {
         float maxHP = attr->getAttributeValue(AttributeType::MAX_HP);
         float maxMP = attr->getAttributeValue(AttributeType::MAX_MP);
-        float hpPercent = maxHP > 0 ? _player->getCurrentHP() / maxHP : 0;
-        float mpPercent = maxMP > 0 ? _player->getCurrentMP() / maxMP : 0;
+        float currentHP = _player->getCurrentHP();
+        float currentMP = _player->getCurrentMP();
+
+        // 确保HP和MP不超过最大值，且不低于0
+        currentHP = std::max(0.0f, std::min(currentHP, maxHP));
+        currentMP = std::max(0.0f, std::min(currentMP, maxMP));
+
+        float hpPercent = maxHP > 0 ? currentHP / maxHP : 0;
+        float mpPercent = maxMP > 0 ? currentMP / maxMP : 0;
+
+        // 更新 HP 标签
+        if (_hpLabel)
+        {
+            _hpLabel->setString(StringUtils::format("HP: %.0f/%.0f",
+                                                    currentHP, maxHP));
+        }
+
+        // 更新 MP 标签
+        if (_mpLabel)
+        {
+            _mpLabel->setString(StringUtils::format("MP: %.0f/%.0f",
+                                                    currentMP, maxMP));
+        }
 
         // 更新 HP 条宽度
         auto hpFill = dynamic_cast<DrawNode *>(this->getChildByTag(100));
         if (hpFill)
         {
             hpFill->clear();
-            hpFill->drawSolidRect(Vec2(0, 0), Vec2(200.0f * hpPercent, 20), Color4F::RED);
+            float hpBarWidth = 200.0f * hpPercent;
+            hpFill->drawSolidRect(Vec2(0, 0), Vec2(hpBarWidth, 20), Color4F::RED);
         }
 
         // 更新 MP 条宽度
@@ -364,7 +384,8 @@ void DebugScene::updateDebugInfo()
         if (mpFill)
         {
             mpFill->clear();
-            mpFill->drawSolidRect(Vec2(0, 0), Vec2(200.0f * mpPercent, 20), Color4F::BLUE);
+            float mpBarWidth = 200.0f * mpPercent;
+            mpFill->drawSolidRect(Vec2(0, 0), Vec2(mpBarWidth, 20), Color4F::BLUE);
         }
     }
 }
@@ -476,6 +497,32 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
 {
     switch (keyCode)
     {
+    // 移动按键
+    case EventKeyboard::KeyCode::KEY_A:
+    case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
+        _isMovingLeft = true;
+        if (_player)
+            _player->setFlippedX(true); // 向左翻转
+        startWalkAnimation();
+        break;
+    case EventKeyboard::KeyCode::KEY_D:
+    case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
+        _isMovingRight = true;
+        if (_player)
+            _player->setFlippedX(false); // 向右不翻转
+        startWalkAnimation();
+        break;
+    case EventKeyboard::KeyCode::KEY_W:
+    case EventKeyboard::KeyCode::KEY_UP_ARROW:
+        _isMovingUp = true;
+        startWalkAnimation();
+        break;
+    case EventKeyboard::KeyCode::KEY_S:
+    case EventKeyboard::KeyCode::KEY_DOWN_ARROW:
+        _isMovingDown = true;
+        startWalkAnimation();
+        break;
+    // 功能按键
     case EventKeyboard::KeyCode::KEY_1:
         onTakeDamageClicked(nullptr);
         break;
@@ -500,6 +547,147 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     default:
         break;
     }
+}
+
+void DebugScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
+{
+    switch (keyCode)
+    {
+    case EventKeyboard::KeyCode::KEY_A:
+    case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
+        _isMovingLeft = false;
+        break;
+    case EventKeyboard::KeyCode::KEY_D:
+    case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
+        _isMovingRight = false;
+        break;
+    case EventKeyboard::KeyCode::KEY_W:
+    case EventKeyboard::KeyCode::KEY_UP_ARROW:
+        _isMovingUp = false;
+        break;
+    case EventKeyboard::KeyCode::KEY_S:
+    case EventKeyboard::KeyCode::KEY_DOWN_ARROW:
+        _isMovingDown = false;
+        break;
+    default:
+        break;
+    }
+
+    // 如果没有任何方向键按下，停止动画
+    if (!_isMovingLeft && !_isMovingRight && !_isMovingUp && !_isMovingDown)
+    {
+        stopWalkAnimation();
+    }
+}
+
+void DebugScene::updatePlayerMovement(float dt)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    Vec2 velocity(0, 0);
+
+    if (_isMovingLeft)
+        velocity.x -= 1;
+    if (_isMovingRight)
+        velocity.x += 1;
+    if (_isMovingUp)
+        velocity.y += 1;
+    if (_isMovingDown)
+        velocity.y -= 1;
+
+    // 归一化方向向量（斜向移动时速度不会变快）
+    if (velocity.lengthSquared() > 0)
+    {
+        velocity.normalize();
+        velocity *= _moveSpeed * dt;
+
+        Vec2 newPos = _player->getPosition() + velocity;
+
+        // 限制在屏幕范围内
+        auto visibleSize = Director::getInstance()->getVisibleSize();
+        auto origin = Director::getInstance()->getVisibleOrigin();
+        float margin = 50.0f;
+
+        newPos.x = std::max(origin.x + margin, std::min(newPos.x, origin.x + visibleSize.width - margin));
+        newPos.y = std::max(origin.y + margin, std::min(newPos.y, origin.y + visibleSize.height - margin));
+
+        _player->setPosition(newPos);
+    }
+}
+
+void DebugScene::startWalkAnimation()
+{
+    if (!_player || _isWalkAnimationPlaying)
+        return;
+
+    _isWalkAnimationPlaying = true;
+
+    // 创建行走动画帧 - 使用Texture自动获取尺寸
+    Vector<SpriteFrame *> frames;
+    auto textureCache = Director::getInstance()->getTextureCache();
+
+    auto texture1 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_1.png");
+    auto texture2 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_2.png");
+    auto texture3 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run.png");
+
+    if (texture1 && texture2 && texture3)
+    {
+        Size size1 = texture1->getContentSize();
+        Size size2 = texture2->getContentSize();
+        Size size3 = texture3->getContentSize();
+
+        auto frame1 = SpriteFrame::createWithTexture(texture1, Rect(0, 0, size1.width, size1.height));
+        auto frame2 = SpriteFrame::createWithTexture(texture2, Rect(0, 0, size2.width, size2.height));
+        auto frame3 = SpriteFrame::createWithTexture(texture3, Rect(0, 0, size3.width, size3.height));
+
+        if (frame1 && frame2 && frame3)
+        {
+            frames.pushBack(frame1);
+            frames.pushBack(frame2);
+            frames.pushBack(frame3);
+
+            // 创建动画，每帧0.15秒
+            auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
+            auto animate = Animate::create(animation);
+            auto repeatAnimate = RepeatForever::create(animate);
+            repeatAnimate->setTag(999); // 设置标签以便后续停止
+
+            _player->runAction(repeatAnimate);
+            CCLOG("Walk animation started (frame size: %.0fx%.0f)", size1.width, size1.height);
+        }
+        else
+        {
+            CCLOG("Failed to create sprite frames");
+            _isWalkAnimationPlaying = false;
+        }
+    }
+    else
+    {
+        CCLOG("Failed to load walk animation textures");
+        _isWalkAnimationPlaying = false;
+    }
+}
+
+void DebugScene::stopWalkAnimation()
+{
+    if (!_player || !_isWalkAnimationPlaying)
+        return;
+
+    _isWalkAnimationPlaying = false;
+
+    // 停止行走动画
+    _player->stopActionByTag(999);
+
+    // 恢复到默认静止图片
+    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    if (defaultTexture)
+    {
+        _player->setTexture(defaultTexture);
+    }
+
+    CCLOG("Walk animation stopped");
 }
 
 void DebugScene::addDamageLog(const std::string &log)
