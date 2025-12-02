@@ -4,12 +4,11 @@
 USING_NS_CC;
 
 void SceneTransitionManager::transitionToScene(
-    Scene* currentScene,
-    Scene* targetScene,
-    const std::string& message,
+    Scene *currentScene,
+    Scene *targetScene,
+    const std::string &message,
     float delayBeforeFadeOut,
-    float fadeDuration
-)
+    float fadeDuration)
 {
     if (!currentScene || !targetScene)
         return;
@@ -20,7 +19,7 @@ void SceneTransitionManager::transitionToScene(
     auto visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
     Vec2 center = Vec2(origin.x + visibleSize.width / 2,
-        origin.y + visibleSize.height / 2);
+                       origin.y + visibleSize.height / 2);
 
     // 停止播放当前音乐
     MusicManager::getInstance()->stopBGM();
@@ -45,20 +44,18 @@ void SceneTransitionManager::transitionToScene(
             FadeIn::create(fadeDuration * 0.5f),
             DelayTime::create(delayBeforeFadeOut),
             FadeOut::create(fadeDuration * 0.5f),
-            nullptr
-        ));
+            nullptr));
     }
 
     overlay->runAction(Sequence::create(
         DelayTime::create(fadeDuration * 0.5f + delayBeforeFadeOut),
 
         // 在完全黑屏时，移除 overlay 并执行 TransitionFade 切换
-        CallFunc::create([targetScene, fadeDuration]() {
+        CallFunc::create([targetScene, fadeDuration]()
+                         {
             auto transition = TransitionFade::create(fadeDuration * 0.5f, targetScene, Color3B::BLACK);
             // 执行场景切换 (replaceScene)
             Director::getInstance()->replaceScene(transition);
-            targetScene->release();
-            }),
-        nullptr
-    ));
+            targetScene->release(); }),
+        nullptr));
 }

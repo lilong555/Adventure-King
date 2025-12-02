@@ -27,7 +27,9 @@ bool DebugScene::init()
     }
 
     initBackground();
+    initPlatforms();
     initPlayer();
+    initTargetDummy();
     initDebugUI();
     initControlButtons();
 
@@ -76,15 +78,72 @@ void DebugScene::initBackground()
     this->addChild(titleLabel, 10);
 }
 
+void DebugScene::initPlatforms()
+{
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
+
+    auto platformDraw = DrawNode::create();
+    platformDraw->setTag(200); // 平台绘制节点标签
+
+    // 地面平台 (底部)
+    Rect groundPlatform(origin.x, origin.y + GROUND_Y - 20, visibleSize.width, 20);
+    _platforms.push_back(groundPlatform);
+    platformDraw->drawSolidRect(
+        Vec2(groundPlatform.origin.x, groundPlatform.origin.y),
+        Vec2(groundPlatform.origin.x + groundPlatform.size.width,
+             groundPlatform.origin.y + groundPlatform.size.height),
+        Color4F(0.4f, 0.3f, 0.2f, 1.0f));
+
+    // 左侧平台
+    Rect leftPlatform(origin.x + 50, origin.y + 200, 200, 20);
+    _platforms.push_back(leftPlatform);
+    platformDraw->drawSolidRect(
+        Vec2(leftPlatform.origin.x, leftPlatform.origin.y),
+        Vec2(leftPlatform.origin.x + leftPlatform.size.width,
+             leftPlatform.origin.y + leftPlatform.size.height),
+        Color4F(0.5f, 0.4f, 0.3f, 1.0f));
+
+    // 中间平台
+    Rect middlePlatform(origin.x + visibleSize.width / 2 - 100, origin.y + 300, 200, 20);
+    _platforms.push_back(middlePlatform);
+    platformDraw->drawSolidRect(
+        Vec2(middlePlatform.origin.x, middlePlatform.origin.y),
+        Vec2(middlePlatform.origin.x + middlePlatform.size.width,
+             middlePlatform.origin.y + middlePlatform.size.height),
+        Color4F(0.5f, 0.4f, 0.3f, 1.0f));
+
+    // 右侧平台
+    Rect rightPlatform(origin.x + visibleSize.width - 250, origin.y + 200, 200, 20);
+    _platforms.push_back(rightPlatform);
+    platformDraw->drawSolidRect(
+        Vec2(rightPlatform.origin.x, rightPlatform.origin.y),
+        Vec2(rightPlatform.origin.x + rightPlatform.size.width,
+             rightPlatform.origin.y + rightPlatform.size.height),
+        Color4F(0.5f, 0.4f, 0.3f, 1.0f));
+
+    // 高层平台
+    Rect topPlatform(origin.x + visibleSize.width / 2 - 75, origin.y + 420, 150, 20);
+    _platforms.push_back(topPlatform);
+    platformDraw->drawSolidRect(
+        Vec2(topPlatform.origin.x, topPlatform.origin.y),
+        Vec2(topPlatform.origin.x + topPlatform.size.width,
+             topPlatform.origin.y + topPlatform.size.height),
+        Color4F(0.6f, 0.5f, 0.4f, 1.0f));
+
+    this->addChild(platformDraw, 1);
+
+    CCLOG("Platforms initialized: %zu platforms", _platforms.size());
+}
+
 void DebugScene::initPlayer()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
-    Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
     // 加载精灵帧缓存（如果需要的话）
-    auto cache = SpriteFrameCache::getInstance();
-
+    auto cache = SpriteFrameCache::getInstance(); // 角色初始位置在地面上
+    Vec2 startPos(origin.x + visibleSize.width / 2 + getContentSize().width / 2, origin.y + GROUND_Y + getContentSize().height / 2);
     // 尝试创建玩家角色
     // 先尝试用精灵帧，如果失败则用普通精灵创建
     _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/spr_klee_run.png");
@@ -97,22 +156,73 @@ void DebugScene::initPlayer()
         // 创建一个简单的占位符
         auto placeholder = DrawNode::create();
         placeholder->drawSolidRect(Vec2(-25, -40), Vec2(25, 40), Color4F::GREEN);
-        placeholder->setPosition(center);
+        placeholder->setPosition(startPos);
         this->addChild(placeholder, 5);
 
         // 添加提示标签
         auto label = Label::createWithTTF("玩家占位符\n(需要精灵帧)", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
-        label->setPosition(center + Vec2(0, 60));
+        label->setPosition(startPos + Vec2(0, 60));
         this->addChild(label, 6);
 
         return;
     }
 
-    _player->setPosition(center);
-    _player->setScale(1.0f); // 放大以便观察
+    _player->setPosition(startPos);
+    _player->setAnchorPoint(Vec2(0.5f, 0)); // 锚点设置在脚底中心
+    _player->setScale(1.0f);
+    _isGrounded = true; // 初始在地面上
     this->addChild(_player, 5);
 
-    CCLOG("Player created at position (%.0f, %.0f)", center.x, center.y);
+    // 初始化碰撞箱 (相对于角色位置，锚点在脚底)
+    // 碰撞箱：宽30，高60，从脚底向上
+    _collisionBox = Rect(-15, 0, 30, 60);
+
+    // 创建碰撞箱可视化（调试用）
+    _collisionBoxDebug = DrawNode::create();
+    _collisionBoxDebug->setTag(300);
+    this->addChild(_collisionBoxDebug, 10);
+
+    CCLOG("Player created at position (%.0f, %.0f)", startPos.x, startPos.y);
+}
+
+void DebugScene::initTargetDummy()
+{
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
+
+    // 创建木桩精灵
+    _targetDummy.sprite = Sprite::create("Sprites/Enemies/YuanSheMenJiang/ysmj_stand.png");
+    if (_targetDummy.sprite)
+    {
+        // 放置在场景右侧的地面上
+        Vec2 dummyPos(origin.x + visibleSize.width * 0.75f, origin.y + GROUND_Y);
+        _targetDummy.sprite->setPosition(dummyPos);
+        _targetDummy.sprite->setAnchorPoint(Vec2(0.5f, 0)); // 锚点在脚底
+        _targetDummy.sprite->setScale(0.5f);
+        this->addChild(_targetDummy.sprite, 4);
+
+        // 初始化属性
+        _targetDummy.maxHP = 2147483674.0f;
+        _targetDummy.currentHP = 2147483674.0f;
+
+        // 创建血条背景
+        _targetDummy.hpBar = DrawNode::create();
+        this->addChild(_targetDummy.hpBar, 6);
+
+        // 创建HP数值标签
+        _targetDummy.hpLabel = Label::createWithTTF("1000/1000", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
+        _targetDummy.hpLabel->setPosition(dummyPos + Vec2(0, 90));
+        _targetDummy.hpLabel->setColor(Color3B::WHITE);
+        this->addChild(_targetDummy.hpLabel, 7);
+
+        updateTargetHPBar();
+
+        CCLOG("Target dummy created at position (%.0f, %.0f)", dummyPos.x, dummyPos.y);
+    }
+    else
+    {
+        CCLOG("Failed to create target dummy sprite");
+    }
 }
 
 void DebugScene::initDebugUI()
@@ -248,7 +358,7 @@ void DebugScene::initControlButtons()
 
     // 添加快捷键提示
     auto hintLabel = Label::createWithTTF(
-        "[WASD] 移动  [1] 受击  [2] 暴击  [3] 治疗  [4] 攻击  [5] 升级  [R] 重置  [ESC] 返回",
+        "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 返回",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     hintLabel->setPosition(Vec2(centerX, origin.y + 70));
     hintLabel->setColor(Color3B(150, 150, 150));
@@ -258,6 +368,8 @@ void DebugScene::initControlButtons()
 void DebugScene::update(float dt)
 {
     Scene::update(dt);
+    updateGravity(dt);
+    updateBombs(dt);
     updatePlayerMovement(dt);
     updateDebugInfo();
 }
@@ -453,10 +565,17 @@ void DebugScene::onAttackClicked(Ref *sender)
     if (!_player || _player->isDead())
         return;
 
-    _player->attack();
-    addDamageLog("执行攻击动作");
+    // 如果正在攻击或施放技能中，禁用攻击
+    if (_isAttacking || _isCastingSkill)
+    {
+        return;
+    }
 
-    CCLOG("Player attacked");
+    _player->attack();
+    playAttackAnimation();
+    addDamageLog("执行攻击动作 (3连击)");
+
+    CCLOG("Player attack started");
 }
 
 void DebugScene::onLevelUpClicked(Ref *sender)
@@ -512,15 +631,15 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
             _player->setFlippedX(false); // 向右不翻转
         startWalkAnimation();
         break;
+    // 跳跃按键
     case EventKeyboard::KeyCode::KEY_W:
     case EventKeyboard::KeyCode::KEY_UP_ARROW:
-        _isMovingUp = true;
-        startWalkAnimation();
+    case EventKeyboard::KeyCode::KEY_SPACE:
+        jump();
         break;
-    case EventKeyboard::KeyCode::KEY_S:
-    case EventKeyboard::KeyCode::KEY_DOWN_ARROW:
-        _isMovingDown = true;
-        startWalkAnimation();
+    // 技能按键 - 丢炸弹
+    case EventKeyboard::KeyCode::KEY_E:
+        throwBomb();
         break;
     // 功能按键
     case EventKeyboard::KeyCode::KEY_1:
@@ -561,20 +680,12 @@ void DebugScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
         _isMovingRight = false;
         break;
-    case EventKeyboard::KeyCode::KEY_W:
-    case EventKeyboard::KeyCode::KEY_UP_ARROW:
-        _isMovingUp = false;
-        break;
-    case EventKeyboard::KeyCode::KEY_S:
-    case EventKeyboard::KeyCode::KEY_DOWN_ARROW:
-        _isMovingDown = false;
-        break;
     default:
         break;
     }
 
     // 如果没有任何方向键按下，停止动画
-    if (!_isMovingLeft && !_isMovingRight && !_isMovingUp && !_isMovingDown)
+    if (!_isMovingLeft && !_isMovingRight)
     {
         stopWalkAnimation();
     }
@@ -585,32 +696,25 @@ void DebugScene::updatePlayerMovement(float dt)
     if (!_player || _player->isDead())
         return;
 
-    Vec2 velocity(0, 0);
+    // 只处理水平移动，垂直由重力系统处理
+    float velocityX = 0;
 
     if (_isMovingLeft)
-        velocity.x -= 1;
+        velocityX -= 1;
     if (_isMovingRight)
-        velocity.x += 1;
-    if (_isMovingUp)
-        velocity.y += 1;
-    if (_isMovingDown)
-        velocity.y -= 1;
+        velocityX += 1;
 
-    // 归一化方向向量（斜向移动时速度不会变快）
-    if (velocity.lengthSquared() > 0)
+    if (velocityX != 0)
     {
-        velocity.normalize();
-        velocity *= _moveSpeed * dt;
-
-        Vec2 newPos = _player->getPosition() + velocity;
+        float moveX = velocityX * _moveSpeed * dt;
+        Vec2 newPos = _player->getPosition() + Vec2(moveX, 0);
 
         // 限制在屏幕范围内
         auto visibleSize = Director::getInstance()->getVisibleSize();
         auto origin = Director::getInstance()->getVisibleOrigin();
-        float margin = 50.0f;
+        float margin = 30.0f;
 
         newPos.x = std::max(origin.x + margin, std::min(newPos.x, origin.x + visibleSize.width - margin));
-        newPos.y = std::max(origin.y + margin, std::min(newPos.y, origin.y + visibleSize.height - margin));
 
         _player->setPosition(newPos);
     }
@@ -676,6 +780,9 @@ void DebugScene::stopWalkAnimation()
 
     _isWalkAnimationPlaying = false;
 
+    // 保存当前翻转状态
+    bool wasFlippedX = _player->isFlippedX();
+
     // 停止行走动画
     _player->stopActionByTag(999);
 
@@ -685,6 +792,11 @@ void DebugScene::stopWalkAnimation()
     if (defaultTexture)
     {
         _player->setTexture(defaultTexture);
+        // 设置正确的纹理矩形
+        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                     defaultTexture->getContentSize().height));
+        // 恢复翻转状态
+        _player->setFlippedX(wasFlippedX);
     }
 
     CCLOG("Walk animation stopped");
@@ -710,5 +822,592 @@ void DebugScene::addDamageLog(const std::string &log)
     if (_damageLogLabel)
     {
         _damageLogLabel->setString(logText);
+    }
+}
+
+void DebugScene::playAttackAnimation()
+{
+    if (!_player)
+        return;
+
+    // 停止行走动画（如果在播放）
+    if (_isWalkAnimationPlaying)
+    {
+        stopWalkAnimation();
+    }
+
+    _isAttacking = true;
+
+    // 加载3张攻击图片
+    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
+    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
+    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
+
+    if (texture1 && texture2 && texture3)
+    {
+        // 创建精灵帧
+        auto frame1 = SpriteFrame::createWithTexture(texture1,
+                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
+        auto frame2 = SpriteFrame::createWithTexture(texture2,
+                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
+        auto frame3 = SpriteFrame::createWithTexture(texture3,
+                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
+
+        // 创建动画帧序列
+        Vector<SpriteFrame *> frames;
+        frames.pushBack(frame1);
+        frames.pushBack(frame2);
+        frames.pushBack(frame3);
+
+        // 每帧0.15秒，共0.45秒
+        auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
+        auto animate = Animate::create(animation);
+
+        // 停止之前的攻击动画
+        _player->stopActionByTag(1000);
+
+        // 创建动画序列：播放动画 -> 回调结束
+        auto callbackAction = CallFunc::create([this]()
+                                               { this->onAttackAnimationFinished(); });
+        auto sequence = Sequence::create(animate, callbackAction, nullptr);
+        sequence->setTag(1000);
+
+        _player->runAction(sequence);
+
+        CCLOG("Attack animation started (3-hit combo)");
+    }
+    else
+    {
+        CCLOG("Failed to load attack sprites");
+        _isAttacking = false;
+    }
+}
+
+void DebugScene::onAttackAnimationFinished()
+{
+    _isAttacking = false;
+
+    // 保存当前翻转状态
+    bool wasFlippedX = _player ? _player->isFlippedX() : false;
+
+    // 恢复到默认静止图片
+    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    if (defaultTexture && _player)
+    {
+        _player->setTexture(defaultTexture);
+        // 设置正确的纹理矩形
+        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                     defaultTexture->getContentSize().height));
+        // 恢复翻转状态
+        _player->setFlippedX(wasFlippedX);
+    }
+
+    CCLOG("Attack animation finished");
+}
+
+void DebugScene::updateGravity(float dt)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 应用重力
+    _velocityY += GRAVITY * dt;
+
+    // 更新位置
+    Vec2 pos = _player->getPosition();
+    float previousY = pos.y;
+    pos.y += _velocityY * dt;
+
+    // 获取世界坐标下的碰撞箱
+    // 角色锚点在脚底中心 (0.5, 0)，所以碰撞箱直接加上角色位置
+    Rect worldCollisionBox(
+        pos.x + _collisionBox.origin.x,
+        pos.y + _collisionBox.origin.y,
+        _collisionBox.size.width,
+        _collisionBox.size.height);
+
+    _isGrounded = false;
+
+    for (const auto &platform : _platforms)
+    {
+        // 只有向下移动时才检测地面碰撞
+        if (_velocityY <= 0)
+        {
+            // 使用碰撞箱检测水平范围是否重叠
+            float playerLeft = worldCollisionBox.origin.x;
+            float playerRight = worldCollisionBox.origin.x + worldCollisionBox.size.width;
+            float platformLeft = platform.origin.x;
+            float platformRight = platform.origin.x + platform.size.width;
+
+            bool horizontalOverlap = playerRight > platformLeft && playerLeft < platformRight;
+
+            if (horizontalOverlap)
+            {
+                float platformTop = platform.origin.y + platform.size.height;
+                float playerBottom = worldCollisionBox.origin.y; // 碰撞箱底部（脚底）
+
+                // 如果之前脚底在平台上方，现在穿过了平台顶部
+                if (previousY >= platformTop && playerBottom < platformTop)
+                {
+                    pos.y = platformTop; // 角色脚底对齐平台顶部
+                    _velocityY = 0;
+                    _isGrounded = true;
+                    break;
+                }
+                // 或者脚底正好在平台顶部附近
+                else if (playerBottom >= platformTop - 5 && playerBottom <= platformTop + 5 && _velocityY <= 0)
+                {
+                    pos.y = platformTop;
+                    _velocityY = 0;
+                    _isGrounded = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    // 限制最低位置（防止掉出屏幕）
+    auto origin = Director::getInstance()->getVisibleOrigin();
+    if (pos.y < origin.y + 50)
+    {
+        pos.y = origin.y + 50;
+        _velocityY = 0;
+        _isGrounded = true;
+    }
+
+    _player->setPosition(pos);
+
+    // 更新碰撞箱可视化（调试用）
+    if (_collisionBoxDebug)
+    {
+        _collisionBoxDebug->clear();
+
+        // 绘制碰撞箱边框
+        Rect debugBox(
+            pos.x + _collisionBox.origin.x,
+            pos.y + _collisionBox.origin.y,
+            _collisionBox.size.width,
+            _collisionBox.size.height);
+
+        Color4F boxColor = _isGrounded ? Color4F(0, 1, 0, 0.5f) : Color4F(1, 0, 0, 0.5f);
+        _collisionBoxDebug->drawRect(
+            Vec2(debugBox.origin.x, debugBox.origin.y),
+            Vec2(debugBox.origin.x + debugBox.size.width, debugBox.origin.y + debugBox.size.height),
+            boxColor);
+
+        // 绘制脚底点
+        _collisionBoxDebug->drawDot(pos, 3, Color4F::YELLOW);
+    }
+}
+
+bool DebugScene::checkGrounded()
+{
+    return _isGrounded;
+}
+
+void DebugScene::jump()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 只有在地面上才能跳跃
+    if (_isGrounded)
+    {
+        _velocityY = JUMP_FORCE;
+        _isGrounded = false;
+        addDamageLog("跳跃!");
+        CCLOG("Player jumped");
+    }
+}
+
+void DebugScene::throwBomb()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 如果正在施放技能或攻击中，禁用技能
+    if (_isCastingSkill || _isAttacking)
+    {
+        return;
+    }
+
+    // 播放技能动画
+    playSkillAnimation();
+    addDamageLog("施放技能: 丢炸弹!");
+    CCLOG("Skill started: Throw Bomb");
+}
+
+void DebugScene::playSkillAnimation()
+{
+    if (!_player)
+        return;
+
+    // 停止行走动画（如果在播放）
+    if (_isWalkAnimationPlaying)
+    {
+        stopWalkAnimation();
+    }
+
+    _isCastingSkill = true;
+
+    // 加载3张攻击图片（技能动画暂时使用攻击动画，后期可改）
+    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
+    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
+    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
+
+    if (texture1 && texture2 && texture3)
+    {
+        // 创建精灵帧
+        auto frame1 = SpriteFrame::createWithTexture(texture1,
+                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
+        auto frame2 = SpriteFrame::createWithTexture(texture2,
+                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
+        auto frame3 = SpriteFrame::createWithTexture(texture3,
+                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
+
+        // 创建动画帧序列
+        Vector<SpriteFrame *> frames;
+        frames.pushBack(frame1);
+        frames.pushBack(frame2);
+        frames.pushBack(frame3);
+
+        // 每帧0.15秒，共0.45秒
+        auto animation = Animation::createWithSpriteFrames(frames, 0.13f);
+        auto animate = Animate::create(animation);
+
+        // 停止之前的技能动画
+        _player->stopActionByTag(1001);
+
+        // 创建动画序列：播放动画 -> 回调结束
+        auto callbackAction = CallFunc::create([this]()
+                                               { this->onSkillAnimationFinished(); });
+        auto sequence = Sequence::create(animate, callbackAction, nullptr);
+        sequence->setTag(1001);
+
+        _player->runAction(sequence);
+
+        CCLOG("Skill animation started (3-hit combo)");
+    }
+    else
+    {
+        CCLOG("Failed to load skill sprites");
+        _isCastingSkill = false;
+    }
+}
+
+void DebugScene::onSkillAnimationFinished()
+{
+    _isCastingSkill = false;
+
+    // 动画结束后实际丢出炸弹
+    doThrowBomb();
+
+    // 保存当前翻转状态
+    bool wasFlippedX = _player ? _player->isFlippedX() : false;
+
+    // 恢复到默认静止图片
+    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    if (defaultTexture && _player)
+    {
+        _player->setTexture(defaultTexture);
+        // 设置正确的纹理矩形
+        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                     defaultTexture->getContentSize().height));
+        // 恢复翻转状态
+        _player->setFlippedX(wasFlippedX);
+    }
+
+    CCLOG("Skill animation finished");
+}
+
+void DebugScene::doThrowBomb()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 创建炸弹精灵
+    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/TNT.png");
+    if (!bombSprite)
+    {
+        CCLOG("Failed to create bomb sprite");
+        return;
+    }
+
+    // 创建炸弹对象
+    Bomb bomb;
+
+    // 根据角色朝向决定炸弹方向
+    bool facingLeft = _player->isFlippedX();
+    auto BOMB_THROW_DETAT_X = facingLeft ? -getContentSize().width / 10 : getContentSize().width / 10; // 水平投掷速度
+    bomb.velocityX = facingLeft ? -BOMB_THROW_SPEED_X : BOMB_THROW_SPEED_X;
+    bomb.velocityY = BOMB_THROW_SPEED_Y;
+    bomb.isExploded = false;
+    // 设置炸弹初始位置（角色头顶上方）
+    Vec2 playerPos = _player->getPosition();
+    float offsetY = getContentSize().height / 4; // 从角色脚底往上偏移
+    bombSprite->setPosition(playerPos + Vec2(BOMB_THROW_DETAT_X, offsetY));
+    bombSprite->setScale(0.5f); // 调整炸弹大小
+    this->addChild(bombSprite, 4);
+
+    bomb.sprite = bombSprite;
+    _bombs.push_back(bomb);
+
+    addDamageLog("丢出炸弹!");
+    CCLOG("Bomb thrown!");
+}
+
+void DebugScene::updateBombs(float dt)
+{
+    auto origin = Director::getInstance()->getVisibleOrigin();
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+
+    for (auto it = _bombs.begin(); it != _bombs.end();)
+    {
+        Bomb &bomb = *it;
+
+        if (bomb.isExploded || !bomb.sprite)
+        {
+            ++it;
+            continue;
+        }
+
+        // 应用重力
+        bomb.velocityY += BOMB_GRAVITY * dt;
+
+        // 更新位置
+        Vec2 pos = bomb.sprite->getPosition();
+        pos.x += bomb.velocityX * dt;
+        pos.y += bomb.velocityY * dt;
+
+        // 检测与平台的碰撞
+        bool hitPlatform = false;
+        float bombRadius = 10.0f; // 炸弹碰撞半径
+
+        for (const auto &platform : _platforms)
+        {
+            // 只有向下移动时才检测碰撞
+            if (bomb.velocityY <= 0)
+            {
+                float bombLeft = pos.x - bombRadius;
+                float bombRight = pos.x + bombRadius;
+                float platformLeft = platform.origin.x;
+                float platformRight = platform.origin.x + platform.size.width;
+
+                bool horizontalOverlap = bombRight > platformLeft && bombLeft < platformRight;
+
+                if (horizontalOverlap)
+                {
+                    float platformTop = platform.origin.y + platform.size.height;
+                    float bombBottom = pos.y - bombRadius;
+
+                    // 如果炸弹底部穿过平台顶部
+                    if (bombBottom <= platformTop && pos.y > platform.origin.y)
+                    {
+                        hitPlatform = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 检测是否超出屏幕范围
+        bool outOfBounds = pos.x < origin.x - 50 ||
+                           pos.x > origin.x + visibleSize.width + 50 ||
+                           pos.y < origin.y - 50;
+
+        if (hitPlatform || outOfBounds)
+        {
+            // 爆炸
+            explodeBomb(bomb);
+            bomb.isExploded = true;
+        }
+        else
+        {
+            bomb.sprite->setPosition(pos);
+            // 炸弹旋转效果
+            bomb.sprite->setRotation(bomb.sprite->getRotation() + 360 * dt);
+        }
+
+        ++it;
+    }
+
+    // 清理已爆炸的炸弹
+    _bombs.erase(
+        std::remove_if(_bombs.begin(), _bombs.end(),
+                       [](const Bomb &b)
+                       { return b.isExploded && b.sprite == nullptr; }),
+        _bombs.end());
+}
+
+void DebugScene::explodeBomb(Bomb &bomb)
+{
+    if (!bomb.sprite)
+        return;
+
+    Vec2 explodePos = bomb.sprite->getPosition();
+
+    // 移除炸弹精灵
+    bomb.sprite->removeFromParent();
+
+    // 创建爆炸效果
+    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
+    if (boomSprite)
+    {
+        boomSprite->setPosition(explodePos);
+        boomSprite->setScale(0.8f);
+        this->addChild(boomSprite, 6);
+
+        // 爆炸动画：放大 + 淡出
+        auto scaleUp = ScaleTo::create(0.2f, 1.2f);
+        auto fadeOut = FadeOut::create(0.3f);
+        auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
+        auto remove = RemoveSelf::create();
+        auto sequence = Sequence::create(spawn, remove, nullptr);
+        boomSprite->runAction(sequence);
+    }
+
+    // 检测是否命中木桩
+    if (_targetDummy.sprite && _targetDummy.currentHP > 0)
+    {
+        Vec2 dummyPos = _targetDummy.sprite->getPosition();
+        float distance = explodePos.distance(dummyPos);
+
+        if (distance <= BOMB_EXPLOSION_RADIUS)
+        {
+            // 随机暴击（30%概率）
+            bool isCrit = (rand() % 100) < 30;
+            float damage = BOMB_DAMAGE;
+            if (isCrit)
+            {
+                damage *= 1.5f; // 暴击1.5倍伤害
+            }
+            dealDamageToTarget(damage, isCrit);
+        }
+    }
+
+    bomb.sprite = nullptr;
+
+    addDamageLog("炸弹爆炸!");
+    CCLOG("Bomb exploded at (%.0f, %.0f)", explodePos.x, explodePos.y);
+}
+
+void DebugScene::dealDamageToTarget(float damage, bool isCrit)
+{
+    if (!_targetDummy.sprite || _targetDummy.currentHP <= 0)
+        return;
+
+    // 扣血
+    _targetDummy.currentHP -= damage;
+    if (_targetDummy.currentHP < 0)
+    {
+        _targetDummy.currentHP = 0;
+    }
+
+    // 显示伤害数字
+    Vec2 dummyPos = _targetDummy.sprite->getPosition();
+    // 随机偏移让伤害数字不重叠
+    float offsetX = (rand() % 40) - 20;
+    float offsetY = 50 + (rand() % 30);
+    showDamageNumber(dummyPos + Vec2(offsetX, offsetY), damage, isCrit);
+
+    // 更新血条
+    updateTargetHPBar();
+
+    // 受击闪烁效果
+    auto tintRed = TintTo::create(0.1f, 255, 100, 100);
+    auto tintBack = TintTo::create(0.1f, 255, 255, 255);
+    _targetDummy.sprite->runAction(Sequence::create(tintRed, tintBack, nullptr));
+
+    addDamageLog(StringUtils::format("%s %.0f 伤害!", isCrit ? "暴击!" : "造成", damage));
+    CCLOG("Dealt %.0f damage to target (crit: %d), HP: %.0f/%.0f",
+          damage, isCrit, _targetDummy.currentHP, _targetDummy.maxHP);
+}
+
+void DebugScene::showDamageNumber(const Vec2 &pos, float damage, bool isCrit)
+{
+    // 创建伤害数字标签
+    std::string damageText = StringUtils::format("%.0f", damage);
+    if (isCrit)
+    {
+        damageText = "暴击 " + damageText + "!";
+    }
+
+    auto damageLabel = Label::createWithTTF(damageText, "fonts/ZCOOLKuaiLe-Regular.ttf", isCrit ? 28 : 22);
+    damageLabel->setPosition(pos);
+    damageLabel->setColor(isCrit ? Color3B(255, 50, 50) : Color3B(255, 200, 50)); // 暴击红色，普通黄色
+    damageLabel->enableOutline(Color4B::BLACK, 2);
+    this->addChild(damageLabel, 100);
+
+    // 伤害数字动画：向上飘 + 淡出
+    auto moveUp = MoveBy::create(0.8f, Vec2(0, 60));
+    auto fadeOut = FadeOut::create(0.5f);
+    auto spawn = Spawn::create(moveUp, fadeOut, nullptr);
+    auto remove = RemoveSelf::create();
+    damageLabel->runAction(Sequence::create(spawn, remove, nullptr));
+}
+
+void DebugScene::updateTargetHPBar()
+{
+    if (!_targetDummy.sprite || !_targetDummy.hpBar)
+        return;
+
+    _targetDummy.hpBar->clear();
+
+    Vec2 dummyPos = _targetDummy.sprite->getPosition();
+    float barWidth = 60.0f;
+    float barHeight = 8.0f;
+    float barY = 75.0f; // 血条在头顶上方
+
+    Vec2 barPos(dummyPos.x - barWidth / 2, dummyPos.y + barY);
+
+    // 绘制血条背景（黑色）
+    _targetDummy.hpBar->drawSolidRect(
+        barPos,
+        barPos + Vec2(barWidth, barHeight),
+        Color4F(0.2f, 0.2f, 0.2f, 1.0f));
+
+    // 绘制当前血量（红色渐变）
+    float hpRatio = _targetDummy.currentHP / _targetDummy.maxHP;
+    float currentWidth = barWidth * hpRatio;
+
+    Color4F hpColor;
+    if (hpRatio > 0.5f)
+    {
+        hpColor = Color4F(0.2f, 0.8f, 0.2f, 1.0f); // 绿色
+    }
+    else if (hpRatio > 0.25f)
+    {
+        hpColor = Color4F(1.0f, 0.8f, 0.0f, 1.0f); // 黄色
+    }
+    else
+    {
+        hpColor = Color4F(1.0f, 0.2f, 0.2f, 1.0f); // 红色
+    }
+
+    _targetDummy.hpBar->drawSolidRect(
+        barPos,
+        barPos + Vec2(currentWidth, barHeight),
+        hpColor);
+
+    // 绘制边框
+    _targetDummy.hpBar->drawRect(
+        barPos,
+        barPos + Vec2(barWidth, barHeight),
+        Color4F::WHITE);
+
+    // 更新HP文字
+    if (_targetDummy.hpLabel)
+    {
+        _targetDummy.hpLabel->setString(StringUtils::format("%.0f/%.0f",
+                                                            _targetDummy.currentHP, _targetDummy.maxHP));
+        _targetDummy.hpLabel->setPosition(dummyPos + Vec2(0, barY + 15));
     }
 }
