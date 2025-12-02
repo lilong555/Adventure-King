@@ -1,6 +1,9 @@
-#include "HomeScene.h"
-#include "SceneTransitionHelper.h"
 #include "HelloWorldScene.h" // 包含主菜单场景，以便返回
+#include "HomeScene.h"
+#include "GameScene.h"
+#include "SceneTransitionManager.h"
+#include "MusicManager.h"
+
 
 USING_NS_CC;
 
@@ -9,7 +12,7 @@ Scene* HomeScene::createScene()
 {
     return HomeScene::create();
 }
-// 当文件不存在时，打印有用的错误消息而不是段错误。
+// 当文件不存在时，打印有用的错误消息而不是错误。
 static void problemLoading(const char* filename)
 {
     printf("Error while loading: %s\n", filename);
@@ -57,30 +60,31 @@ bool HomeScene::init()
     menu->setPosition(Vec2::ZERO);
     this->addChild(menu, 5);
 
-    // 3. 播放黑色遮罩过场动画
-    SceneTransitionHelper::runEnterTransition(
-        this,
-        menu,
-        "进入冒险王之家..."
+	// 播放背景音乐
+	std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
+	float musicVolume = 0.5f;
+    this->scheduleOnce(
+        [musicFile, musicVolume](float dt) {
+            MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
+        },
+        1.2f, // 比如你希望延迟 1.2 秒再播放
+        "PlayMusicAfterSceneChange"
     );
-
-    return true;
+	return true;
 }
-
-
-
-
-
 
 // 返回主菜单的回调函数
 void HomeScene::menuReturnCallback(Ref* pSender)
 {
-    // 重新创建主菜单场景
+    // 停止当前背景音乐
+    MusicManager::getInstance()->stopBGM();
+
     auto helloWorldScene = HelloWorld::createScene();
 
-    // 使用淡出过渡返回主菜单
-    const float TRANSITION_DURATION = 1.0f;
-    auto transition = TransitionFade::create(TRANSITION_DURATION, helloWorldScene, Color3B::BLACK);
-
-    Director::getInstance()->replaceScene(transition);
+    SceneTransitionManager::transitionToScene(
+        this,                      // 当前场景
+        helloWorldScene,           // 目标场景
+        "返回主菜单...",            // 提示文字
+        1.0f                       // 音量
+    );
 }
