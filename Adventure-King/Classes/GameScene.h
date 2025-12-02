@@ -16,7 +16,7 @@ class GameScene : public cocos2d::Scene
 {
 public:
     virtual bool init() override;
-
+    static cocos2d::Scene* createScene();
     // 节点标签枚举
     enum NodeTags
     {

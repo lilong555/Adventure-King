@@ -178,29 +178,31 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
     // EventCustom customEndEvent("game_scene_close_event");
     //_eventDispatcher->dispatchEvent(&customEndEvent);
 }
-void HelloWorld::menuStartCallback(Ref *pSender)
+
+void HelloWorld::menuStartCallback(Ref* pSender)
 {
     auto newScene = HomeScene::createScene();
 
     if (newScene)
-    {
-        // 4. 使用 Director 切换场景
 
+    {
         // 场景过渡：使用 Director::replaceScene 替换当前场景
         // 建议使用过渡效果，让画面切换更平滑。例如：FadeTransition（淡入淡出）
-        const float TRANSITION_DURATION = 1.0f; // 过渡时长1.0秒
-
+        const float TRANSITION_DURATION = 0.6f; // 过渡时长1.0秒
         // 创建一个过渡场景
         auto transition = cocos2d::TransitionFade::create(TRANSITION_DURATION, newScene, cocos2d::Color3B::BLACK);
-
-        // 运行场景过渡
+		// 运行场景过渡，直接销毁当前场景
         cocos2d::Director::getInstance()->replaceScene(transition);
-
         CCLOG("--- Game Started: Transitioning to GameScene ---");
+
     }
+
     else
+
     {
+
         CCLOG("Error: Failed to create the new GameScene!");
+
     }
 }
 
