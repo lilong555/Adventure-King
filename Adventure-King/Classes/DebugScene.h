@@ -47,16 +47,42 @@ private:
     void startWalkAnimation();
     void stopWalkAnimation();
 
+    // 物理系统相关
+    void initPlatforms();
+    void updateGravity(float dt);
+    bool checkGrounded();
+    void jump();
+
+    // 攻击相关
+    void playAttackAnimation();
+    void onAttackAnimationFinished();
+
     // 成员变量
     PlayerCharacter *_player = nullptr;
 
     // 移动状态
     bool _isMovingLeft = false;
     bool _isMovingRight = false;
-    bool _isMovingUp = false;
-    bool _isMovingDown = false;
-    float _moveSpeed = 150.0f; // 移动速度（像素/秒）
+    float _moveSpeed = 200.0f; // 移动速度（像素/秒）
     bool _isWalkAnimationPlaying = false;
+
+    // 攻击状态
+    bool _isAttacking = false;
+
+    // 物理系统
+    float _velocityY = 0.0f;                    // 垂直速度
+    bool _isGrounded = false;                   // 是否在地面上
+    static constexpr float GRAVITY = -800.0f;   // 重力加速度
+    static constexpr float JUMP_FORCE = 655.0f; // 跳跃力度
+    static constexpr float GROUND_Y = 100.0f;   // 地面Y坐标
+
+    // 角色碰撞箱 (相对于角色锚点的偏移)
+    // 锚点在角色脚底中心 (0.5, 0)
+    cocos2d::Rect _collisionBox;                     // 碰撞箱
+    cocos2d::DrawNode *_collisionBoxDebug = nullptr; // 碰撞箱可视化（调试用）
+
+    // 平台列表 (x, y, width, height)
+    std::vector<cocos2d::Rect> _platforms;
 
     // 调试信息标签
     cocos2d::Label *_infoLabel = nullptr;
