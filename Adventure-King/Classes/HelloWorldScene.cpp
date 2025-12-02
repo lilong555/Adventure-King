@@ -1,6 +1,8 @@
 #include "HelloWorldScene.h"
 #include "HomeScene.h"
 #include "MapScene.h"
+#include "SceneTransitionManager.h"
+#include "MusicManager.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;
@@ -98,15 +100,7 @@ bool HelloWorld::init()
     // ==========================================================
     // 3. 统一设置按钮位置
     // ==========================================================
-
-    // if (closeItem)
-    //{
-    //     // 定位到右下角
-    //     float x = origin.x + visibleSize.width - closeItem->getContentSize().width / 2;
-    //     float y = origin.y + closeItem->getContentSize().height / 2;
-    //     closeItem->setPosition(Vec2(x, y));
-    // }
-
+    
     // StartItem 定位到屏幕中心
     if (StartItem)
     {
@@ -165,6 +159,15 @@ bool HelloWorld::init()
         // 将相同的缩放比例应用到 X 和 Y 轴
         contentContainer->setScale(scaleFactor);
     }
+    std::string musicFile = "Scene/MusicOfScene/Music_HelloWorldScene.mp3";
+	float musicVolume = 0.5f;//必须加一定延迟否则会被场景切换截断
+    this->scheduleOnce(
+        [musicFile, musicVolume](float dt) {
+            MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
+        },
+        1.2f, // 比如你希望延迟 1.2 秒再播放
+        "PlayMusicAfterSceneChange"
+    );
     return true;
 }
 
@@ -182,29 +185,13 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
 void HelloWorld::menuStartCallback(Ref* pSender)
 {
     auto newScene = HomeScene::createScene();
-
-    if (newScene)
-
-    {
-        // 场景过渡：使用 Director::replaceScene 替换当前场景
-        // 建议使用过渡效果，让画面切换更平滑。例如：FadeTransition（淡入淡出）
-        const float TRANSITION_DURATION = 0.6f; // 过渡时长1.0秒
-        // 创建一个过渡场景
-        auto transition = cocos2d::TransitionFade::create(TRANSITION_DURATION, newScene, cocos2d::Color3B::BLACK);
-		// 运行场景过渡，直接销毁当前场景
-        cocos2d::Director::getInstance()->replaceScene(transition);
-        CCLOG("--- Game Started: Transitioning to GameScene ---");
-
-    }
-
-    else
-
-    {
-
-        CCLOG("Error: Failed to create the new GameScene!");
-
-    }
+    SceneTransitionManager::transitionToScene(
+        this,                       // 当前场景
+        newScene,
+        "进入冒险王之家..."         // 文字
+    );
 }
+
 
 void HelloWorld::menuSaveCallback(Ref *pSender)
 {
