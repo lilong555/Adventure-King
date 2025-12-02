@@ -1,4 +1,5 @@
 #include "HomeScene.h"
+#include "SceneTransitionHelper.h"
 #include "HelloWorldScene.h" // 包含主菜单场景，以便返回
 
 USING_NS_CC;
@@ -8,72 +9,78 @@ Scene* HomeScene::createScene()
 {
     return HomeScene::create();
 }
-
+// 当文件不存在时，打印有用的错误消息而不是段错误。
+static void problemLoading(const char* filename)
+{
+    printf("Error while loading: %s\n", filename);
+    printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
+}
 // 初始化方法
 bool HomeScene::init()
 {
-    // 1. 调用父类初始化
     if (!Scene::init())
-    {
         return false;
-    }
 
-    // 获取可见尺寸和中心点
     auto visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
-    Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
+    Vec2 center = Vec2(origin.x + visibleSize.width / 2,
+        origin.y + visibleSize.height / 2);
 
-    // ==========================================================
-    // 核心内容：显示“游戏进行中”文本
-    // ==========================================================
-
-    // 创建一个文本标签
-    auto label = Label::createWithTTF("进入冒险王之家...", "fonts/ZCOOLKuaiLe-Regular.ttf", 48);
-
-    if (label)
+    // 1. 背景
+    auto bg = Sprite::create("Scene/Backgrounds/HomeBackground_1.jpg");
+    if (bg)
     {
-        // 定位到屏幕中心
-        label->setPosition(center);
-
-        // 添加到场景
-        this->addChild(label, 1);
+        Size textureSize = bg->getContentSize();
+        float scaleX = visibleSize.width / textureSize.width;
+        float scaleY = visibleSize.height / textureSize.height;
+        float scaleFactor = std::max(scaleX, scaleY); // 覆盖屏幕
+        bg->setScale(scaleFactor);
+        bg->setPosition(center);
+        this->addChild(bg, 0);
+    }
+    else
+    {
+        problemLoading("'Scene/Backgrounds/HomeBackground_1.jpg'");
     }
 
-    // ==========================================================
-    // 添加按钮，不过也建议在游戏中不使用鼠标点击的方法实现功能
-    // ==========================================================
-
-    // 创建设置按钮（未完成）
+    // 2. 菜单按钮
     auto setItem = MenuItemImage::create(
-        "CloseNormal.png", 
+        "CloseNormal.png",
         "CloseSelected.png",
-        CC_CALLBACK_1(HomeScene::menuReturnCallback, this));
+        CC_CALLBACK_1(HomeScene::menuReturnCallback, this)
+    );
 
-    if (setItem)
-    {
-        // 定位到屏幕左上角
-        setItem->setPosition(Vec2(origin.x + setItem->getContentSize().width / 2,
-            origin.y + visibleSize.height - setItem->getContentSize().height / 2));
+    setItem->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
+    setItem->setPosition(Vec2(origin.x, origin.y + visibleSize.height));
 
-        // 创建菜单容器
-        auto menu = Menu::create(setItem, NULL);
-        menu->setPosition(Vec2(0, -visibleSize.height / 20));
-        this->addChild(menu, 1);
-    }
+    auto menu = Menu::create(setItem, nullptr);
+    menu->setPosition(Vec2::ZERO);
+    this->addChild(menu, 5);
 
+    // 3. 播放黑色遮罩过场动画
+    SceneTransitionHelper::runEnterTransition(
+        this,
+        menu,
+        "进入冒险王之家..."
+    );
 
     return true;
 }
 
+
+
+
+
+
 // 返回主菜单的回调函数
 void HomeScene::menuReturnCallback(Ref* pSender)
 {
-    // 创建主菜单场景
+    // 重新创建主菜单场景
     auto helloWorldScene = HelloWorld::createScene();
 
     // 使用淡出过渡返回主菜单
     const float TRANSITION_DURATION = 1.0f;
-    auto transition = TransitionFade::create(TRANSITION_DURATION, helloWorldScene, Color3B::BLUE);
+    auto transition = TransitionFade::create(TRANSITION_DURATION, helloWorldScene, Color3B::BLACK);
 
     Director::getInstance()->replaceScene(transition);
 }
