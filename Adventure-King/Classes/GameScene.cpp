@@ -1,11 +1,10 @@
-/**
+﻿/**
  * @file GameScene.cpp
  * @brief 游戏关卡场景实现
  */
 
 #include "GameScene.h"
 #include "MapScene.h"
-#include "SceneTransitionHelper.h"
 
 USING_NS_CC;
 
@@ -142,13 +141,6 @@ bool OriginMushroomScene::init()
         this->addChild(hintLabel, 1);
     }
 
-    // 播放黑色遮罩过场动画
-    auto mapMenu = dynamic_cast<Menu *>(this->getChildByTag(TAG_MAP_BUTTON));
-    SceneTransitionHelper::runEnterTransition(
-        this,
-        mapMenu,
-        "进入起源之菇...");
-
     CCLOG("OriginMushroomScene initialized");
     return true;
 }
@@ -201,13 +193,6 @@ bool MysteryForestScene::init()
         hintLabel->setColor(Color3B(200, 200, 200));
         this->addChild(hintLabel, 1);
     }
-
-    // 播放黑色遮罩过场动画
-    auto mapMenu = dynamic_cast<Menu *>(this->getChildByTag(TAG_MAP_BUTTON));
-    SceneTransitionHelper::runEnterTransition(
-        this,
-        mapMenu,
-        "进入神秘之森...");
 
     CCLOG("MysteryForestScene initialized");
     return true;
