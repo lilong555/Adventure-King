@@ -36,7 +36,8 @@ bool DebugScene::init()
     initBackground();
     initPlatforms();
     initPlayer();
-    initEquipments(); // 初始化装备系统
+    initEquipments();    // 初始化装备系统
+    initPassiveSkills(); // 初始化被动技能
     initTargetDummy();
     initDebugUI();
     initControlButtons();
@@ -321,56 +322,65 @@ void DebugScene::initDebugUI()
     _equipmentLabel->setColor(Color3B(192, 192, 192));
     this->addChild(_equipmentLabel, 10);
 
+    // 被动技能标签
+    _passiveSkillLabel = Label::createWithTTF("被动技能: 无", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
+    _passiveSkillLabel->setAnchorPoint(Vec2(0, 1));
+    _passiveSkillLabel->setPosition(Vec2(rightPanelX, panelY - 80));
+    _passiveSkillLabel->setColor(Color3B(100, 200, 100));
+    this->addChild(_passiveSkillLabel, 10);
+
     // 伤害日志标签
     _damageLogLabel = Label::createWithTTF("--- 伤害日志 ---", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     _damageLogLabel->setAnchorPoint(Vec2(0, 1));
-    _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 130));
+    _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 155));
     _damageLogLabel->setColor(Color3B(200, 200, 200));
     this->addChild(_damageLogLabel, 10);
 
-    // ========== HP/MP 进度条 ==========
+    // ========== 左上角：HP/MP 进度条 ==========
     float barWidth = 200.0f;
-    float barY = origin.y + 100;
+    float barHeight = 18.0f;
+    float barX = origin.x + 20;
+    float barY = origin.y + visibleSize.height - 20;
 
     // HP 标签
-    _hpLabel = Label::createWithTTF("HP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
-    _hpLabel->setAnchorPoint(Vec2(1, 0.5f));
-    _hpLabel->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2 - 10, barY + 15));
-    _hpLabel->setColor(Color3B::RED);
+    _hpLabel = Label::createWithTTF("HP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
+    _hpLabel->setAnchorPoint(Vec2(0, 0.5f));
+    _hpLabel->setPosition(Vec2(barX + barWidth + 10, barY - barHeight / 2));
+    _hpLabel->setColor(Color3B::WHITE);
     this->addChild(_hpLabel, 10);
 
     // HP 进度条背景
-    auto hpBg = DrawNode::create();
-    hpBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, 20), Color4F(0.3f, 0.1f, 0.1f, 1.0f));
-    hpBg->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2, barY + 15));
-    this->addChild(hpBg, 9);
+    _hpBarBg = DrawNode::create();
+    _hpBarBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.3f, 0.1f, 0.1f, 0.8f));
+    _hpBarBg->setPosition(Vec2(barX, barY - barHeight));
+    this->addChild(_hpBarBg, 9);
 
-    // HP 进度条（使用 DrawNode 模拟）
-    auto hpFill = DrawNode::create();
-    hpFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, 20), Color4F::RED);
-    hpFill->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2, barY + 15));
-    hpFill->setTag(100); // 用于后续更新
-    this->addChild(hpFill, 10);
+    // HP 进度条填充
+    _hpBarFill = DrawNode::create();
+    _hpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.8f, 0.2f, 0.2f, 1.0f));
+    _hpBarFill->setPosition(Vec2(barX, barY - barHeight));
+    _hpBarFill->setTag(100);
+    this->addChild(_hpBarFill, 10);
 
     // MP 标签
-    _mpLabel = Label::createWithTTF("MP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
-    _mpLabel->setAnchorPoint(Vec2(1, 0.5f));
-    _mpLabel->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2 - 10, barY - 15));
-    _mpLabel->setColor(Color3B::BLUE);
+    _mpLabel = Label::createWithTTF("MP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
+    _mpLabel->setAnchorPoint(Vec2(0, 0.5f));
+    _mpLabel->setPosition(Vec2(barX + barWidth + 10, barY - barHeight - 8 - barHeight / 2));
+    _mpLabel->setColor(Color3B::WHITE);
     this->addChild(_mpLabel, 10);
 
     // MP 进度条背景
-    auto mpBg = DrawNode::create();
-    mpBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, 20), Color4F(0.1f, 0.1f, 0.3f, 1.0f));
-    mpBg->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2, barY - 15));
-    this->addChild(mpBg, 9);
+    _mpBarBg = DrawNode::create();
+    _mpBarBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.1f, 0.1f, 0.3f, 0.8f));
+    _mpBarBg->setPosition(Vec2(barX, barY - barHeight * 2 - 8));
+    this->addChild(_mpBarBg, 9);
 
-    // MP 进度条
-    auto mpFill = DrawNode::create();
-    mpFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, 20), Color4F::BLUE);
-    mpFill->setPosition(Vec2(origin.x + visibleSize.width / 2 - barWidth / 2, barY - 15));
-    mpFill->setTag(101); // 用于后续更新
-    this->addChild(mpFill, 10);
+    // MP 进度条填充
+    _mpBarFill = DrawNode::create();
+    _mpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.2f, 0.4f, 0.9f, 1.0f));
+    _mpBarFill->setPosition(Vec2(barX, barY - barHeight * 2 - 8));
+    _mpBarFill->setTag(101);
+    this->addChild(_mpBarFill, 10);
 }
 
 void DebugScene::initControlButtons()
@@ -410,6 +420,13 @@ void DebugScene::initControlButtons()
         {"装备法杖", CC_CALLBACK_1(DebugScene::onEquipStaffClicked, this), Color3B(138, 43, 226)},     // 紫罗兰
         {"装备匕首", CC_CALLBACK_1(DebugScene::onEquipDaggerClicked, this), Color3B(50, 205, 50)},     // 酸橙绿
         {"卸下武器", CC_CALLBACK_1(DebugScene::onUnequipWeaponClicked, this), Color3B(128, 128, 128)}, // 灰色
+    };
+
+    // 第四行：被动技能按钮
+    std::vector<ButtonInfo> passiveButtons = {
+        {"力量+5", CC_CALLBACK_1(DebugScene::onLearnPassive1Clicked, this), Color3B(255, 100, 100)}, // 红色
+        {"防御+3", CC_CALLBACK_1(DebugScene::onLearnPassive2Clicked, this), Color3B(100, 100, 255)}, // 蓝色
+        {"暴击+10%", CC_CALLBACK_1(DebugScene::onLearnPassive3Clicked, this), Color3B(255, 215, 0)}, // 金色
     };
 
     float buttonWidth = 150.0f;
@@ -490,11 +507,35 @@ void DebugScene::initControlButtons()
         this->addChild(menu, 20);
     }
 
+    // 第四行：被动技能按钮
+    float passiveStartY = equipStartY + 30;
+    float passiveTotalWidth = passiveButtons.size() * buttonWidth + (passiveButtons.size() - 1) * spacing;
+    float passiveStartX = centerX - passiveTotalWidth / 2 + buttonWidth / 2;
+
+    for (size_t i = 0; i < passiveButtons.size(); ++i)
+    {
+        const auto &info = passiveButtons[i];
+
+        auto button = MenuItemLabel::create(
+            Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
+            info.callback);
+
+        if (button)
+        {
+            button->setColor(info.color);
+            button->setPosition(Vec2(passiveStartX + i * (buttonWidth + spacing), passiveStartY));
+        }
+
+        auto menu = Menu::create(button, nullptr);
+        menu->setPosition(Vec2::ZERO);
+        this->addChild(menu, 20);
+    }
+
     // 添加快捷键提示
     auto hintLabel = Label::createWithTTF(
         "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 返回",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
-    hintLabel->setPosition(Vec2(centerX, origin.y + 130));
+    hintLabel->setPosition(Vec2(centerX, origin.y + 160));
     hintLabel->setColor(Color3B(150, 150, 150));
     this->addChild(hintLabel, 10);
 }
@@ -689,22 +730,22 @@ void DebugScene::updateDebugInfo()
                                                     currentMP, maxMP));
         }
 
-        // 更新 HP 条宽度
-        auto hpFill = dynamic_cast<DrawNode *>(this->getChildByTag(100));
-        if (hpFill)
+        // 更新 HP 条宽度（使用成员变量）
+        if (_hpBarFill)
         {
-            hpFill->clear();
+            _hpBarFill->clear();
             float hpBarWidth = 200.0f * hpPercent;
-            hpFill->drawSolidRect(Vec2(0, 0), Vec2(hpBarWidth, 20), Color4F::RED);
+            float barHeight = 18.0f;
+            _hpBarFill->drawSolidRect(Vec2(0, 0), Vec2(hpBarWidth, barHeight), Color4F(0.8f, 0.2f, 0.2f, 1.0f));
         }
 
-        // 更新 MP 条宽度
-        auto mpFill = dynamic_cast<DrawNode *>(this->getChildByTag(101));
-        if (mpFill)
+        // 更新 MP 条宽度（使用成员变量）
+        if (_mpBarFill)
         {
-            mpFill->clear();
+            _mpBarFill->clear();
             float mpBarWidth = 200.0f * mpPercent;
-            mpFill->drawSolidRect(Vec2(0, 0), Vec2(mpBarWidth, 20), Color4F::BLUE);
+            float barHeight = 18.0f;
+            _mpBarFill->drawSolidRect(Vec2(0, 0), Vec2(mpBarWidth, barHeight), Color4F(0.2f, 0.4f, 0.9f, 1.0f));
         }
     }
 }
@@ -1292,6 +1333,119 @@ void DebugScene::onUnequipWeaponClicked(Ref *sender)
 
     _player->unequip(EquipmentSlot::WEAPON);
     CCLOG("Weapon unequipped");
+}
+
+// ==================== 被动技能系统 ====================
+
+void DebugScene::initPassiveSkills()
+{
+    // 创建被动技能1：力量提升
+    _passiveSkill1 = std::make_shared<PassiveSkill>();
+    _passiveSkill1->id = 2001;
+    _passiveSkill1->name = "力量精通";
+    _passiveSkill1->description = "永久增加5点力量";
+    _passiveSkill1->attributeBonus.set(AttributeType::STRENGTH, 5.0f);
+
+    // 创建被动技能2：防御提升
+    _passiveSkill2 = std::make_shared<PassiveSkill>();
+    _passiveSkill2->id = 2002;
+    _passiveSkill2->name = "铁壁";
+    _passiveSkill2->description = "永久增加3点防御";
+    _passiveSkill2->attributeBonus.set(AttributeType::DEFENSE, 3.0f);
+
+    // 创建被动技能3：暴击提升
+    _passiveSkill3 = std::make_shared<PassiveSkill>();
+    _passiveSkill3->id = 2003;
+    _passiveSkill3->name = "致命一击";
+    _passiveSkill3->description = "永久增加10%暴击率";
+    _passiveSkill3->attributeBonus.set(AttributeType::CRITICAL_RATE, 0.10f);
+
+    CCLOG("Passive skills initialized: 3 skills created");
+}
+
+void DebugScene::onLearnPassive1Clicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+        return;
+
+    // 学习并装备到槽位0
+    skillComp->learnSkill(_passiveSkill1);
+    skillComp->equipPassiveSkill(_passiveSkill1, 0);
+
+    addDamageLog(StringUtils::format("学习被动: %s (力量+5)", _passiveSkill1->name.c_str()));
+    updatePassiveSkillLabel();
+    CCLOG("Learned passive skill: %s", _passiveSkill1->name.c_str());
+}
+
+void DebugScene::onLearnPassive2Clicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+        return;
+
+    // 学习并装备到槽位1
+    skillComp->learnSkill(_passiveSkill2);
+    skillComp->equipPassiveSkill(_passiveSkill2, 1);
+
+    addDamageLog(StringUtils::format("学习被动: %s (防御+3)", _passiveSkill2->name.c_str()));
+    updatePassiveSkillLabel();
+    CCLOG("Learned passive skill: %s", _passiveSkill2->name.c_str());
+}
+
+void DebugScene::onLearnPassive3Clicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+        return;
+
+    // 学习并装备到槽位2
+    skillComp->learnSkill(_passiveSkill3);
+    skillComp->equipPassiveSkill(_passiveSkill3, 2);
+
+    addDamageLog(StringUtils::format("学习被动: %s (暴击+10%%)", _passiveSkill3->name.c_str()));
+    updatePassiveSkillLabel();
+    CCLOG("Learned passive skill: %s", _passiveSkill3->name.c_str());
+}
+
+void DebugScene::updatePassiveSkillLabel()
+{
+    if (!_passiveSkillLabel || !_player)
+        return;
+
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+    {
+        _passiveSkillLabel->setString("被动技能: 无");
+        return;
+    }
+
+    const auto &passiveSlots = skillComp->getPassiveSlots();
+    if (passiveSlots.empty())
+    {
+        _passiveSkillLabel->setString("被动技能: 无");
+        return;
+    }
+
+    std::string passiveText = "被动技能:\n";
+    for (size_t i = 0; i < passiveSlots.size(); ++i)
+    {
+        if (passiveSlots[i])
+        {
+            passiveText += "  - " + passiveSlots[i]->name + "\n";
+        }
+    }
+
+    _passiveSkillLabel->setString(passiveText);
 }
 
 void DebugScene::addDamageLog(const std::string &log)

@@ -89,11 +89,11 @@ private:
     void onEquipmentChanged(EquipmentSlot slot, const std::shared_ptr<Equipment> &equipment); // 装备变更回调
 
     // 被动技能相关
-    void initPassiveSkills();                            // 初始化被动技能
-    void onLearnPassive1Clicked(cocos2d::Ref *sender);   // 学习被动技能1
-    void onLearnPassive2Clicked(cocos2d::Ref *sender);   // 学习被动技能2
-    void onLearnPassive3Clicked(cocos2d::Ref *sender);   // 学习被动技能3
-    void updatePassiveSkillLabel();                      // 更新被动技能显示
+    void initPassiveSkills();                          // 初始化被动技能
+    void onLearnPassive1Clicked(cocos2d::Ref *sender); // 学习被动技能1
+    void onLearnPassive2Clicked(cocos2d::Ref *sender); // 学习被动技能2
+    void onLearnPassive3Clicked(cocos2d::Ref *sender); // 学习被动技能3
+    void updatePassiveSkillLabel();                    // 更新被动技能显示
 
     // 键盘输入处理
     void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
@@ -185,6 +185,18 @@ private:
     std::shared_ptr<Weapon> _staffWeapon;      // 法杖武器
     std::shared_ptr<Weapon> _daggerWeapon;     // 匕首武器
     cocos2d::Label *_equipmentLabel = nullptr; // 装备显示标签
+
+    // 被动技能相关
+    std::shared_ptr<PassiveSkill> _passiveSkill1; // 被动技能1：力量提升
+    std::shared_ptr<PassiveSkill> _passiveSkill2; // 被动技能2：防御提升
+    std::shared_ptr<PassiveSkill> _passiveSkill3; // 被动技能3：暴击提升
+    cocos2d::Label *_passiveSkillLabel = nullptr; // 被动技能显示标签
+
+    // HP/MP 进度条相关
+    cocos2d::DrawNode *_hpBarBg = nullptr;   // HP进度条背景
+    cocos2d::DrawNode *_hpBarFill = nullptr; // HP进度条填充
+    cocos2d::DrawNode *_mpBarBg = nullptr;   // MP进度条背景
+    cocos2d::DrawNode *_mpBarFill = nullptr; // MP进度条填充
 
     // 伤害日志
     std::vector<std::string> _damageLog;
