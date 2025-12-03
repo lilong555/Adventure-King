@@ -8,6 +8,7 @@
 #include "Character/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
+#include "Character/components/SkillComponent.h"
 #include "HomeScene.h"
 #include <algorithm>
 
@@ -205,7 +206,38 @@ void DebugScene::initPlayer()
     _isGrounded = true; // 初始在地面上
     _groundContactCount = 1;
 
+    // 初始化玩家技能
+    initPlayerSkills();
+
     CCLOG("Player created with physics at position (%.0f, %.0f)", startPos.x, startPos.y);
+}
+
+void DebugScene::initPlayerSkills()
+{
+    if (!_player)
+        return;
+
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+    {
+        CCLOG("Failed to get skill component");
+        return;
+    }
+
+    // 创建炸弹技能
+    auto bombSkill = std::make_shared<ActiveSkill>();
+    bombSkill->id = BOMB_SKILL_ID;
+    bombSkill->name = "炸弹";
+    bombSkill->description = "丢出一个炸弹，造成范围伤害";
+    bombSkill->manaCost = BOMB_SKILL_MP_COST;
+    bombSkill->cooldown = BOMB_SKILL_COOLDOWN;
+    bombSkill->currentCooldown = 0.0f;
+
+    // 学习技能并装备到槽位
+    skillComp->learnSkill(bombSkill);
+    skillComp->equipActiveSkill(bombSkill, BOMB_SKILL_SLOT);
+
+    CCLOG("Player skills initialized: Bomb skill equipped to slot %zu", BOMB_SKILL_SLOT);
 }
 
 void DebugScene::initTargetDummy()
@@ -394,6 +426,16 @@ void DebugScene::update(float dt)
     // 物理引擎自动处理重力和碰撞，不需要手写更新
     updatePlayerMovement(dt);
     updateDebugInfo();
+
+    // 更新技能冷却
+    if (_player)
+    {
+        auto skillComp = _player->getSkillComponent();
+        if (skillComp)
+        {
+            skillComp->update(dt);
+        }
+    }
 }
 
 void DebugScene::updateDebugInfo()
@@ -1132,9 +1174,39 @@ void DebugScene::throwBomb()
         return;
     }
 
-    // 播放技能动画
+    // 通过技能组件释放技能（会自动检查 MP、冷却，并扣除 MP）
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+    {
+        CCLOG("Skill component not found");
+        return;
+    }
+
+    // 尝试使用槽位 0 的技能（炸弹技能）
+    if (!skillComp->useActiveSkill(BOMB_SKILL_SLOT))
+    {
+        // 技能释放失败（可能是 MP 不足或冷却中）
+        float currentMP = _player->getCurrentMP();
+        auto activeSlots = skillComp->getActiveSlots();
+        if (BOMB_SKILL_SLOT < activeSlots.size() && activeSlots[BOMB_SKILL_SLOT])
+        {
+            auto skill = activeSlots[BOMB_SKILL_SLOT];
+            if (skill->currentCooldown > 0)
+            {
+                addDamageLog(StringUtils::format("技能冷却中: %.1f秒", skill->currentCooldown));
+            }
+            else if (currentMP < skill->manaCost)
+            {
+                addDamageLog(StringUtils::format("MP不足! 需要: %.0f, 当前: %.0f", skill->manaCost, currentMP));
+            }
+        }
+        CCLOG("Skill cast failed - MP insufficient or on cooldown");
+        return;
+    }
+
+    // 技能释放成功，播放技能动画
     playSkillAnimation();
-    addDamageLog("施放技能: 丢炸弹!");
+    addDamageLog(StringUtils::format("施放技能: 丢炸弹! (消耗 %.0f MP)", BOMB_SKILL_MP_COST));
     CCLOG("Skill started: Throw Bomb");
 }
 

@@ -93,6 +93,7 @@ private:
     void onAttackAnimationFinished();
 
     // 技能相关
+    void initPlayerSkills(); // 初始化玩家技能
     void playSkillAnimation();
     void onSkillAnimationFinished();
     void throwBomb();
@@ -135,6 +136,12 @@ private:
     static constexpr float BOMB_THROW_SPEED_Y = 350.0f;   // 炸弹垂直初速度
     static constexpr float BOMB_DAMAGE = 150.0f;          // 炸弹伤害
     static constexpr float BOMB_EXPLOSION_RADIUS = 80.0f; // 爆炸半径
+
+    // 炸弹技能相关
+    static constexpr size_t BOMB_SKILL_SLOT = 0;       // 炸弹技能槽位
+    static constexpr int BOMB_SKILL_ID = 1001;         // 炸弹技能ID
+    static constexpr float BOMB_SKILL_MP_COST = 10.0f; // 炸弹技能MP消耗
+    static constexpr float BOMB_SKILL_COOLDOWN = 1.0f; // 炸弹技能冷却时间
 
     // 木桩（靶子）
     TargetDummy _targetDummy;
