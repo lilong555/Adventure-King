@@ -166,7 +166,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\HomeScene.cpp" />
     <ClCompile Include="..\Classes\MapScene.cpp" />
     <ClCompile Include="..\Classes\MusicManager.cpp" />
+    <ClCompile Include="..\Classes\SaveMenuLayer.cpp" />
     <ClCompile Include="..\Classes\SceneTransitionManager.cpp" />
+    <ClCompile Include="..\Classes\SetMenuLayer.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -183,7 +185,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\HomeScene.h" />
     <ClInclude Include="..\Classes\MapScene.h" />
     <ClInclude Include="..\Classes\MusicManager.h" />
+    <ClInclude Include="..\Classes\SaveMenuLayer.h" />
     <ClInclude Include="..\Classes\SceneTransitionManager.h" />
+    <ClInclude Include="..\Classes\SetMenuLayer.h" />
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
