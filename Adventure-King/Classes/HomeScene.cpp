@@ -66,8 +66,9 @@ bool HomeScene::init()
         {
             MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
         },
-        1.2f,
-        "PlayMusicAfterSceneChange");
+        0.5f, //必须加一定延迟否则会被场景切换截断
+        "PlayMusicAfterSceneChange"
+    );
     return true;
 }
 

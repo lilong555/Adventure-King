@@ -1,5 +1,6 @@
 #include "MusicManager.h"
 
+
 using namespace cocos2d;
 using namespace cocos2d::experimental;
 
@@ -11,19 +12,45 @@ MusicManager* MusicManager::getInstance()
         _instance = new MusicManager();
     return _instance;
 }
-
 MusicManager::MusicManager()
-    : _bgmId(-1), _volume(0.5f)
+    : _bgmId(-1)
+    , _volume(0.5f)
+    , _enabled(true)  // 默认开启音乐
 {
 }
-
 MusicManager::~MusicManager()
 {
     stopBGM();
 }
+bool MusicManager::isEnabled() const
+{
+    return _enabled;
+}
+void MusicManager::setEnabled(bool enabled)
+{
+    if (_enabled == enabled)
+        return; // 状态一样，不用做任何事
+
+    _enabled = enabled;
+
+    if (!_enabled)
+    {
+        // 关闭音乐：只暂停，不 stop
+        if (_bgmId != -1)
+            AudioEngine::pause(_bgmId);
+        return;
+    }
+
+    // 开启音乐：恢复播放
+    if (_bgmId != -1)
+        AudioEngine::resume(_bgmId);
+}
 
 void MusicManager::playBGM(const std::string& filePath, bool loop, float volume)
 {
+    if (!_enabled)
+        return;
+
     // 停止之前的音乐
     if (_bgmId != -1)
         AudioEngine::stop(_bgmId);

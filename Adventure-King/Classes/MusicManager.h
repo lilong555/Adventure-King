@@ -11,6 +11,9 @@ public:
     // 获取单例
     static MusicManager* getInstance();
 
+    bool isEnabled() const;
+
+	void setEnabled(bool enabled);
     // 播放背景音乐，自动停止之前的音乐
     void playBGM(const std::string& filePath, bool loop = true, float volume = 0.5f);
 
@@ -34,7 +37,7 @@ private:
     ~MusicManager();
 
     static MusicManager* _instance;
-
+    bool _enabled;
     int _bgmId;        // AudioEngine 返回的音乐 ID
     float _volume;     // 音量
 };

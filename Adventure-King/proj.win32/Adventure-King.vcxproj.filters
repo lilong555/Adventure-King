@@ -22,6 +22,9 @@
     <Filter Include="src\Managers">
       <UniqueIdentifier>{bf4ef00a-b19d-410b-a7b4-823d1f71b97e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Scenes\Layers">
+      <UniqueIdentifier>{62b910af-8692-426d-9c85-6dd3d3e84bf2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -65,6 +68,12 @@
     </ClCompile>
     <ClCompile Include="..\Classes\SceneTransitionManager.cpp">
       <Filter>src\Managers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SaveMenuLayer.cpp">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\SetMenuLayer.cpp">
+      <Filter>src\Scenes\Layers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -112,6 +121,12 @@
     </ClInclude>
     <ClInclude Include="..\Classes\SceneTransitionManager.h">
       <Filter>src\Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SaveMenuLayer.h">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\SetMenuLayer.h">
+      <Filter>src\Scenes\Layers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
