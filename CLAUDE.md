@@ -6,6 +6,19 @@
 
 本项目是一款基于 C++ 和 Cocos2d-x 引擎开发的横版动作冒险游戏，名为《冒险王之神兵传奇》。游戏的核心是扮演一名冒险者，通过探索世界、击败怪物和收集装备来提升实力。
 
+## 如何构建和运行
+
+1.  **环境要求**:
+    *   Windows 操作系统
+    *   Visual Studio (建议使用 2019 或更高版本)
+2.  **构建步骤**:
+    *   使用 Visual Studio 打开位于 `Adventure-King/proj.win32/Adventure-King.sln` 的解决方案文件。
+    *   在 Visual Studio 中，选择 `Debug` 或 `Release` 配置。
+    *   选择 `x86` 或 `x64` 平台（根据你的环境）。
+    *   点击“生成” > “生成解决方案”(Build > Build Solution) 来编译项目。
+3.  **运行项目**:
+    *   编译成功后，点击“调试” > “开始执行(不调试)”(Debug > Start Without Debugging) 或按 `Ctrl+F5` 来运行游戏。
+
 ## 代码架构和组件功能
 
 ### 目录结构
@@ -63,6 +76,22 @@
         -   `createDestinationScene(mapId)`: 使用 `switch` 语句，根据 `mapId` 返回一个新创建的场景实例（例如，`mapId` 为 1 时创建 `OriginMushroomScene`）。
         -   创建成功后，使用黑色淡出效果 (`TransitionFade`) 切换到目标关卡场景。
 
+#### 5. `DebugScene` (角色功能调试场景)
+
+-   **职责**: 一个用于独立测试和调试角色核心功能的开发场景。它不属于主游戏流程，但对开发至关重要。
+-   **已实现功能**:
+    -   **UI 调试面板**:
+        -   实时显示角色的详细属性（等级、经验、HP/MP、力量、防御等）。
+        -   显示角色的当前状态（待机、行走、跳跃、攻击等）。
+        -   提供一系列控制按钮，用于模拟各种游戏事件，如“受击”、“治疗”、“攻击”、“升级”和“重置”。
+    -   **物理与环境**:
+        -   包含多个平台，用于测试跳跃和重力。
+        -   实现了一个独立的物理循环，处理重力、跳跃和平台碰撞检测。
+    -   **战斗测试**:
+        -   可以触发角色的攻击和技能（如投掷炸弹）。
+        -   场景中放置了一个木桩 (`TargetDummy`) 作为攻击目标，可以承受伤害并显示血条和伤害数字，方便测试伤害计算。
+    -   **键盘控制**: 支持使用 `A`/`D` 键移动，`W`/`Space` 键跳跃，以及其他快捷键来触发调试功能。
+
 ### 场景流程
 
 1.  **启动**: `AppDelegate` 加载 `HelloWorldScene`。
@@ -70,3 +99,4 @@
 3.  **选择关卡**: 切换到 `MapScene`，玩家在地图上点击一个关卡标记。
 4.  **进入游戏**: 从 `MapScene` 切换到对应 `mapId` 的游戏场景（如 `OriginMushroomScene` 或 `MysteryForestScene`）。
 5.  **返回**: 在 `MapScene` 中点击关闭按钮可以返回到 `HelloWorldScene`。
+6.  **调试流程**: (独立于主流程) 开发者可以直接修改 `AppDelegate.cpp`，将 `HelloWorldScene::createScene()` 替换为 `DebugScene::createScene()` 来直接启动调试场景。

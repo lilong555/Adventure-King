@@ -153,13 +153,27 @@ void CharacterBase::die()
     {
         _stateMachineComponent->changeState(CharacterState::DEAD);
     }
-    // 播放死亡动画后移除角色
-    setCascadeOpacityEnabled(true);
-    runAction(Sequence::create(
-        FadeOut::create(0.5f),
-        CallFunc::create([this]()
-                         { this->removeFromParent(); }),
-        nullptr));
+
+    // 根据设置决定是否自动移除
+    if (_autoRemoveOnDeath)
+    {
+        // 播放死亡动画后移除角色
+        setCascadeOpacityEnabled(true);
+        runAction(Sequence::create(
+            FadeOut::create(0.5f),
+            CallFunc::create([this]()
+                             { this->removeFromParent(); }),
+            nullptr));
+    }
+    else
+    {
+        // 不自动移除，只播放死亡视觉效果（变红闪烁）
+        setCascadeOpacityEnabled(true);
+        auto tintRed = TintTo::create(0.2f, 255, 100, 100);
+        auto tintBack = TintTo::create(0.2f, 200, 200, 200);
+        auto blink = Sequence::create(tintRed, tintBack, nullptr);
+        runAction(RepeatForever::create(blink));
+    }
 }
 
 void CharacterBase::setCurrentHP(float hp)

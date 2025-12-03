@@ -1,5 +1,6 @@
 ﻿#include "MapScene.h"
 #include "GameScene.h"
+#include "DebugScene.h"
 USING_NS_CC;
 
 static void problemLoading(const char *filename)
@@ -76,6 +77,7 @@ bool MapScene::init()
     _markerInfos = {
         {"Scene/UI/mapselectItem_1.png", "Scene/UI/mapselectItem_1_selected.png", Vec2(backgroundSize.width / 20, backgroundSize.height / 2.7), 1, 0.32f, "起源之菇"},
         {"Scene/UI/mapselectItem_2.png", "Scene/UI/mapselectItem_2_selected.png", Vec2(backgroundSize.width / 8.46, backgroundSize.height / 8), 2, 0.32f, "神秘之森"},
+        {"Scene/UI/PaintRoom.png", "Scene/UI/PaintRoomSelected.png", Vec2(-backgroundSize.width * 0.2f, backgroundSize.height * 0.2f), 99, 0.35f, "画室"},
     };
 
     // ==========================================================
@@ -188,8 +190,9 @@ void MapScene::onMapMarkerClicked(int mapId)
     }
 
     auto director = Director::getInstance();
+    // 清空场景栈，回到根场景
     director->popToRootScene();
-
+    // 用 replaceScene 替换当前场景（这样返回时才能回到 MapScene）
     const float TRANSITION_DURATION = 0.6f;
     auto transition = TransitionFade::create(TRANSITION_DURATION, destinationScene, Color3B::BLACK);
     director->replaceScene(transition);
@@ -202,12 +205,6 @@ void MapScene::mapCloseCallback(cocos2d::Ref *pSender)
 
 cocos2d::Scene *MapScene::createDestinationScene(int mapId)
 {
-    if (mapId < 1 || mapId > static_cast<int>(_markerInfos.size()))
-    {
-        CCLOG("Invalid mapId: %d", mapId);
-        return nullptr;
-    }
-
     Scene *scene = nullptr;
     switch (mapId)
     {
@@ -217,9 +214,17 @@ cocos2d::Scene *MapScene::createDestinationScene(int mapId)
     case 2:
         scene = MysteryForestScene::createScene();
         break;
-    default:
-        CCLOG("Unknown mapId: %d, creating default scene", mapId);
+    case 99: // 测试场景（画室）
+        scene = DebugScene::createScene();
         break;
+    default:
+        CCLOG("Unknown mapId: %d", mapId);
+        break;
+    }
+
+    if (!scene)
+    {
+        CCLOG("Failed to create scene for mapId: %d", mapId);
     }
 
     return scene;
