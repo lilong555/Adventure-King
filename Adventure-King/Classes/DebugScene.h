@@ -72,6 +72,12 @@ private:
     void onResetClicked(cocos2d::Ref *sender);
     void onBackClicked(cocos2d::Ref *sender);
 
+    // 状态效果相关
+    void onPoisonClicked(cocos2d::Ref *sender);  // 添加中毒效果
+    void onExcitedClicked(cocos2d::Ref *sender); // 添加亢奋效果
+    void onStunnedClicked(cocos2d::Ref *sender); // 添加眩晕效果
+    void applyPoisonDamage(float dt);            // 中毒持续伤害
+
     // 键盘输入处理
     void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
     void onKeyReleased(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
@@ -149,9 +155,13 @@ private:
     // 调试信息标签
     cocos2d::Label *_infoLabel = nullptr;
     cocos2d::Label *_stateLabel = nullptr;
+    cocos2d::Label *_statusEffectLabel = nullptr; // 状态效果显示标签
     cocos2d::Label *_damageLogLabel = nullptr;
     cocos2d::Label *_hpLabel = nullptr;
     cocos2d::Label *_mpLabel = nullptr;
+
+    // 状态效果相关
+    bool _isPoisoned = false; // 是否中毒中（用于持续伤害计时）
 
     // 伤害日志
     std::vector<std::string> _damageLog;

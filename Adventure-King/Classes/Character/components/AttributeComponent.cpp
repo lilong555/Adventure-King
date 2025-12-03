@@ -99,6 +99,18 @@ void AttributeComponent::updateStatusEffects(float dt)
     }
 }
 
+bool AttributeComponent::hasStatusEffect(StatusEffectType type) const
+{
+    for (const auto &effect : _statusEffects)
+    {
+        if (effect.type == type && !effect.isExpired())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 //---------------- 最终属性 ----------------
 
 void AttributeComponent::recalculateFinalAttributes()

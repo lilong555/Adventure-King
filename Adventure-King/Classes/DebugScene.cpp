@@ -306,10 +306,17 @@ void DebugScene::initDebugUI()
     _stateLabel->setColor(Color3B::YELLOW);
     this->addChild(_stateLabel, 10);
 
+    // 状态效果标签
+    _statusEffectLabel = Label::createWithTTF("状态效果: 无", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
+    _statusEffectLabel->setAnchorPoint(Vec2(0, 1));
+    _statusEffectLabel->setPosition(Vec2(rightPanelX, panelY - 30));
+    _statusEffectLabel->setColor(Color3B(200, 150, 255));
+    this->addChild(_statusEffectLabel, 10);
+
     // 伤害日志标签
     _damageLogLabel = Label::createWithTTF("--- 伤害日志 ---", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     _damageLogLabel->setAnchorPoint(Vec2(0, 1));
-    _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 80));
+    _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 100));
     _damageLogLabel->setColor(Color3B(200, 200, 200));
     this->addChild(_damageLogLabel, 10);
 
@@ -371,6 +378,7 @@ void DebugScene::initControlButtons()
         Color3B color;
     };
 
+    // 第一行：基础功能按钮
     std::vector<ButtonInfo> buttons = {
         {"受击 (10伤害)", CC_CALLBACK_1(DebugScene::onTakeDamageClicked, this), Color3B::RED},
         {"暴击 (25伤害)", CC_CALLBACK_1(DebugScene::onTakeCriticalDamageClicked, this), Color3B::ORANGE},
@@ -381,13 +389,20 @@ void DebugScene::initControlButtons()
         {"返回主菜单", CC_CALLBACK_1(DebugScene::onBackClicked, this), Color3B::WHITE},
     };
 
+    // 第二行：状态效果按钮
+    std::vector<ButtonInfo> statusButtons = {
+        {"中毒 (5秒)", CC_CALLBACK_1(DebugScene::onPoisonClicked, this), Color3B(148, 0, 211)},   // 紫色
+        {"亢奋 (8秒)", CC_CALLBACK_1(DebugScene::onExcitedClicked, this), Color3B(255, 165, 0)},  // 橙色
+        {"眩晕 (3秒)", CC_CALLBACK_1(DebugScene::onStunnedClicked, this), Color3B(70, 130, 180)}, // 钢蓝色
+    };
+
     float buttonWidth = 150.0f;
     float buttonHeight = 40.0f;
     float spacing = 10.0f;
     float startY = origin.y + 40;
     float centerX = origin.x + visibleSize.width / 2;
 
-    // 计算按钮起始X位置（居中排列）
+    // 计算按钮起始X位置（居中排列）- 第一行
     float totalWidth = buttons.size() * buttonWidth + (buttons.size() - 1) * spacing;
     float startX = centerX - totalWidth / 2 + buttonWidth / 2;
 
@@ -411,11 +426,35 @@ void DebugScene::initControlButtons()
         this->addChild(menu, 20);
     }
 
+    // 第二行：状态效果按钮
+    float statusStartY = startY + 30;
+    float statusTotalWidth = statusButtons.size() * buttonWidth + (statusButtons.size() - 1) * spacing;
+    float statusStartX = centerX - statusTotalWidth / 2 + buttonWidth / 2;
+
+    for (size_t i = 0; i < statusButtons.size(); ++i)
+    {
+        const auto &info = statusButtons[i];
+
+        auto button = MenuItemLabel::create(
+            Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
+            info.callback);
+
+        if (button)
+        {
+            button->setColor(info.color);
+            button->setPosition(Vec2(statusStartX + i * (buttonWidth + spacing), statusStartY));
+        }
+
+        auto menu = Menu::create(button, nullptr);
+        menu->setPosition(Vec2::ZERO);
+        this->addChild(menu, 20);
+    }
+
     // 添加快捷键提示
     auto hintLabel = Label::createWithTTF(
         "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 返回",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
-    hintLabel->setPosition(Vec2(centerX, origin.y + 70));
+    hintLabel->setPosition(Vec2(centerX, origin.y + 100));
     hintLabel->setColor(Color3B(150, 150, 150));
     this->addChild(hintLabel, 10);
 }
@@ -434,6 +473,32 @@ void DebugScene::update(float dt)
         if (skillComp)
         {
             skillComp->update(dt);
+        }
+    }
+
+    // 处理中毒持续伤害
+    static float poisonTimer = 0.0f;
+    if (_player && !_player->isDead())
+    {
+        auto attr = _player->getAttributeComponent();
+        if (attr)
+        {
+            // 检查是否仍有中毒效果
+            _isPoisoned = attr->hasStatusEffect(StatusEffectType::POISONED);
+
+            if (_isPoisoned)
+            {
+                poisonTimer += dt;
+                if (poisonTimer >= 1.0f) // 每秒造成伤害
+                {
+                    applyPoisonDamage(dt);
+                    poisonTimer = 0.0f;
+                }
+            }
+            else
+            {
+                poisonTimer = 0.0f; // 重置计时器
+            }
         }
     }
 }
@@ -515,6 +580,44 @@ void DebugScene::updateDebugInfo()
             _stateLabel->setColor(Color3B::YELLOW);
         else
             _stateLabel->setColor(Color3B::GREEN);
+    }
+
+    // 更新状态效果显示
+    if (attr && _statusEffectLabel)
+    {
+        const auto &effects = attr->getStatusEffects();
+        if (effects.empty())
+        {
+            _statusEffectLabel->setString("状态效果: 无");
+            _statusEffectLabel->setColor(Color3B(150, 150, 150));
+        }
+        else
+        {
+            std::string effectStr = "状态效果: ";
+            for (size_t i = 0; i < effects.size(); ++i)
+            {
+                const auto &eff = effects[i];
+                float remaining = eff.duration - eff.elapsed;
+                std::string effectName;
+                switch (eff.type)
+                {
+                case StatusEffectType::POISONED:
+                    effectName = "中毒";
+                    break;
+                case StatusEffectType::EXCITED:
+                    effectName = "亢奋";
+                    break;
+                case StatusEffectType::STUNNED:
+                    effectName = "眩晕";
+                    break;
+                }
+                effectStr += StringUtils::format("%s(%.1fs)", effectName.c_str(), remaining);
+                if (i < effects.size() - 1)
+                    effectStr += ", ";
+            }
+            _statusEffectLabel->setString(effectStr);
+            _statusEffectLabel->setColor(Color3B(255, 200, 100));
+        }
     }
 
     // 更新 HP/MP 进度条
@@ -686,6 +789,108 @@ void DebugScene::onBackClicked(Ref *sender)
     auto homeScene = HomeScene::createScene();
     Director::getInstance()->replaceScene(
         TransitionFade::create(0.5f, homeScene, Color3B::BLACK));
+}
+
+// ==================== 状态效果回调 ====================
+
+void DebugScene::onPoisonClicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    auto attr = _player->getAttributeComponent();
+    if (!attr)
+        return;
+
+    // 创建中毒状态效果
+    StatusEffectInstance poison;
+    poison.type = StatusEffectType::POISONED;
+    poison.duration = 5.0f; // 持续5秒
+    poison.elapsed = 0.0f;
+    // 中毒不提供属性加成，但会造成持续伤害（在 update 中处理）
+
+    attr->addStatusEffect(poison);
+    _isPoisoned = true;
+
+    addDamageLog("中毒! 持续5秒");
+    CCLOG("Poison effect applied for 5 seconds");
+}
+
+void DebugScene::onExcitedClicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    auto attr = _player->getAttributeComponent();
+    if (!attr)
+        return;
+
+    // 创建亢奋状态效果
+    StatusEffectInstance excited;
+    excited.type = StatusEffectType::EXCITED;
+    excited.duration = 8.0f; // 持续8秒
+    excited.elapsed = 0.0f;
+    // 亢奋效果：移速+50，力量+10, 暴击+10%
+    excited.attributeBonus.set(AttributeType::MOVE_SPEED, 50.0f);
+    excited.attributeBonus.set(AttributeType::CRITICAL_RATE, 0.10f);
+    excited.attributeBonus.set(AttributeType::STRENGTH, 10.0f);
+
+    attr->addStatusEffect(excited);
+
+    addDamageLog("亢奋! 移速+50, 暴击+10% (8秒)");
+    CCLOG("Excited effect applied: +50 move speed, +10%% crit for 8 seconds");
+}
+
+void DebugScene::onStunnedClicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    auto attr = _player->getAttributeComponent();
+    if (!attr)
+        return;
+
+    // 创建眩晕状态效果
+    StatusEffectInstance stunned;
+    stunned.type = StatusEffectType::STUNNED;
+    stunned.duration = 3.0f; // 持续3秒
+    stunned.elapsed = 0.0f;
+    // 眩晕效果：移速降为0
+    stunned.attributeBonus.set(AttributeType::MOVE_SPEED, -200.0f); // 移速大幅降低
+
+    attr->addStatusEffect(stunned);
+
+    addDamageLog("眩晕! 无法移动 (3秒)");
+    CCLOG("Stunned effect applied for 3 seconds");
+}
+
+void DebugScene::applyPoisonDamage(float dt)
+{
+    if (!_player || _player->isDead() || !_isPoisoned)
+        return;
+
+    // 中毒伤害：每秒造成 5 点伤害
+    DamageInfo poisonDamage;
+    poisonDamage.amount = 5.0f;
+    poisonDamage.penetration = 1000.0f; // 中毒伤害穿透防御
+    poisonDamage.isCritical = false;
+    poisonDamage.attacker = nullptr;
+
+    _player->takeDamage(poisonDamage);
+
+    // 在玩家位置显示中毒伤害数字（绿色）
+    auto damageLabel = Label::createWithTTF(StringUtils::format("-%.0f", poisonDamage.amount),
+                                            "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
+    damageLabel->setColor(Color3B(0, 200, 0)); // 绿色表示中毒伤害
+    damageLabel->setPosition(_player->getPosition() + Vec2(rand() % 30 - 15, 50));
+    this->addChild(damageLabel, 100);
+
+    // 飘字动画
+    auto moveUp = MoveBy::create(0.8f, Vec2(0, 30));
+    auto fadeOut = FadeOut::create(0.8f);
+    auto spawn = Spawn::create(moveUp, fadeOut, nullptr);
+    auto remove = RemoveSelf::create();
+    damageLabel->runAction(Sequence::create(spawn, remove, nullptr));
 }
 
 void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
