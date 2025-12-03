@@ -70,7 +70,7 @@ void PlayerCharacter::initAttributesByRole(CharacterRole role)
         attrs.set(AttributeType::CRITICAL_RATE, 0.10f);
         attrs.set(AttributeType::MOVE_SPEED, 200.0f);
         attrs.set(AttributeType::MAX_HP, 100.0f);
-        attrs.set(AttributeType::MAX_MP, 30.0f);
+        attrs.set(AttributeType::MAX_MP, 200.0f);
         break;
     case CharacterRole::MAGE:
         attrs.set(AttributeType::STRENGTH, 4);

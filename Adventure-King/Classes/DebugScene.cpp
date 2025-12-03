@@ -1,6 +1,25 @@
 /**
  * @file DebugScene.cpp
  * @brief 角色功能调试场景实现
+ *
+ * 本文件实现了 DebugScene 类的所有功能，可作为正式关卡开发的参考模板。
+ *
+ * @note 文件结构说明（共12部分）：
+ * - 第1部分：场景初始化（init 系列函数）
+ * - 第2部分：主循环更新（update 系列函数）
+ * - 第3部分：UI按钮回调 - 基础功能
+ * - 第4部分：状态效果系统（中毒、亢奋、眩晕）
+ * - 第5部分：装备系统（武器切换、属性加成）
+ * - 第6部分：被动技能系统（常规被动、条件性被动）
+ * - 第7部分：输入处理（键盘、移动、动画）
+ * - 第8部分：攻击和战斗系统（伤害计算、武器特效）
+ * - 第9部分：物理碰撞系统（落地检测、碰撞响应）
+ * - 第10部分：跳跃与技能系统（跳跃、技能释放）
+ * - 第11部分：炸弹物理系统（投掷、爆炸）
+ * - 第12部分：伤害显示系统（飘字、血条）
+ *
+ * @author Adventure-King Team
+ * @version 1.0
  */
 
 #include "DebugScene.h"
@@ -9,72 +28,106 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
-#include "HomeScene.h"
+#include "MapScene.h"
 #include <algorithm>
 
 USING_NS_CC;
 using namespace cocos2d::ui;
+
+//=============================================================================
+// 第1部分：场景初始化
+//=============================================================================
 
 Scene *DebugScene::createScene()
 {
     return DebugScene::create();
 }
 
+/**
+ * @brief 场景初始化入口
+ *
+ * 初始化顺序很重要，必须按以下顺序执行：
+ * 1. 物理世界初始化
+ * 2. 背景和平台（提供物理碰撞）
+ * 3. 玩家（需要物理世界和平台）
+ * 4. 装备和技能系统（依赖玩家）
+ * 5. UI（显示玩家信息）
+ * 6. 输入监听器
+ *
+ * @return 初始化是否成功
+ */
 bool DebugScene::init()
 {
-    // 使用物理引擎初始化场景
+    //-------------------------------------------------------------------------
+    // 步骤1：物理引擎初始化
+    //-------------------------------------------------------------------------
     if (!Scene::initWithPhysics())
     {
         return false;
     }
 
-    // 设置物理世界属性
+    // 配置物理世界参数
     auto physicsWorld = this->getPhysicsWorld();
-    physicsWorld->setGravity(Vec2(0, -800.0f));                  // 设置重力
-    physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL); // 开启调试绘制（可选）
+    physicsWorld->setGravity(Vec2(0, -800.0f)); // 设置重力加速度（向下）
 
-    initBackground();
-    initPlatforms();
-    initPlayer();
-    initEquipments();    // 初始化装备系统
-    initPassiveSkills(); // 初始化被动技能
-    initTargetDummy();
-    initDebugUI();
-    initControlButtons();
-    initPhysicsContactListener(); // 初始化物理碰撞监听
+    // 开启物理调试绘制（开发时可视化碰撞体，发布时应关闭）
+    physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
 
-    // 启用键盘事件
+    //-------------------------------------------------------------------------
+    // 步骤2：初始化场景元素
+    //-------------------------------------------------------------------------
+    initBackground();             // 背景和网格线
+    initPlatforms();              // 平台和地面（物理刚体）
+    initPlayer();                 // 玩家角色（物理刚体）
+    initEquipments();             // 装备系统
+    initPassiveSkills();          // 被动技能系统
+    initTargetDummy();            // 测试用木桩
+    initDebugUI();                // UI面板
+    initControlButtons();         // 控制按钮
+    initPhysicsContactListener(); // 物理碰撞监听
+
+    //-------------------------------------------------------------------------
+    // 步骤3：启用输入事件
+    //-------------------------------------------------------------------------
     auto keyboardListener = EventListenerKeyboard::create();
     keyboardListener->onKeyPressed = CC_CALLBACK_2(DebugScene::onKeyPressed, this);
     keyboardListener->onKeyReleased = CC_CALLBACK_2(DebugScene::onKeyReleased, this);
     _eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
 
-    // 启用 update
+    //-------------------------------------------------------------------------
+    // 步骤4：启用帧更新
+    //-------------------------------------------------------------------------
     scheduleUpdate();
 
     CCLOG("DebugScene initialized with Physics Engine");
     return true;
 }
 
+/**
+ * @brief 初始化背景
+ *
+ * 创建深灰色背景和网格线，帮助开发时定位元素位置。
+ * 网格线间距为50像素。
+ */
 void DebugScene::initBackground()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // 创建深灰色背景
+    // 创建深灰色背景层
     auto background = LayerColor::create(Color4B(40, 40, 50, 255));
     this->addChild(background, -1);
 
-    // 添加网格线帮助定位
+    // 添加网格线（开发辅助，可在正式关卡中移除）
     auto drawNode = DrawNode::create();
     Color4F gridColor(0.2f, 0.2f, 0.3f, 1.0f);
 
-    // 垂直线
+    // 绘制垂直网格线
     for (float x = origin.x; x < origin.x + visibleSize.width; x += 50)
     {
         drawNode->drawLine(Vec2(x, origin.y), Vec2(x, origin.y + visibleSize.height), gridColor);
     }
-    // 水平线
+    // 绘制水平网格线
     for (float y = origin.y; y < origin.y + visibleSize.height; y += 50)
     {
         drawNode->drawLine(Vec2(origin.x, y), Vec2(origin.x + visibleSize.width, y), gridColor);
@@ -88,38 +141,58 @@ void DebugScene::initBackground()
     this->addChild(titleLabel, 10);
 }
 
+/**
+ * @brief 初始化平台和地面
+ *
+ * 创建场景中的静态平台，包括：
+ * - 地面平台（横跨整个屏幕底部）
+ * - 可选的浮空平台
+ *
+ * 每个平台都有对应的物理刚体，用于与玩家和炸弹进行碰撞检测。
+ *
+ * @note 物理材质参数说明：
+ * - 密度(density)：影响碰撞时的力传递
+ * - 弹性(restitution)：设为0避免弹跳
+ * - 摩擦(friction)：影响在表面上的滑动
+ */
 void DebugScene::initPlatforms()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
+    // 创建平台可视化绘制节点
     auto platformDraw = DrawNode::create();
-    platformDraw->setTag(200); // 平台绘制节点标签
+    platformDraw->setTag(200);
 
-    // 物理材质：密度、弹性、摩擦力
+    // 定义物理材质：密度=1.0, 弹性=0, 摩擦=0.8
     PhysicsMaterial platformMaterial(1.0f, 0.0f, 0.8f);
 
-    // 辅助函数：创建平台节点并添加物理刚体
+    /**
+     * @brief 辅助Lambda：创建带物理的平台
+     * @param rect 平台矩形区域
+     * @param color 可视化颜色
+     */
     auto createPlatform = [&](const Rect &rect, const Color4F &color)
     {
-        // 绘制可视化
+        // 绘制可视化矩形
         platformDraw->drawSolidRect(
             Vec2(rect.origin.x, rect.origin.y),
             Vec2(rect.origin.x + rect.size.width, rect.origin.y + rect.size.height),
             color);
 
-        // 创建一个节点作为平台
+        // 创建平台节点
         auto platformNode = Node::create();
-        platformNode->setPosition(Vec2(rect.origin.x + rect.size.width / 2,
-                                       rect.origin.y + rect.size.height / 2));
+        platformNode->setPosition(Vec2(
+            rect.origin.x + rect.size.width / 2,
+            rect.origin.y + rect.size.height / 2));
 
-        // 创建静态物理刚体（EdgeBox 用于边缘检测更稳定）
+        // 创建静态物理刚体
         auto physicsBody = PhysicsBody::createBox(
             Size(rect.size.width, rect.size.height),
             platformMaterial);
-        physicsBody->setDynamic(false); // 静态刚体
+        physicsBody->setDynamic(false); // 静态刚体不受力影响
 
-        // 设置碰撞掩码
+        // 配置碰撞掩码
         physicsBody->setCategoryBitmask(CATEGORY_PLATFORM);
         physicsBody->setCollisionBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
         physicsBody->setContactTestBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
@@ -130,12 +203,12 @@ void DebugScene::initPlatforms()
         _platforms.push_back(rect);
     };
 
-    // 地面平台 (底部)
+    // 创建地面平台（覆盖屏幕底部）
     Rect groundPlatform(origin.x, origin.y + GROUND_Y - 20, visibleSize.width, 20);
     createPlatform(groundPlatform, Color4F(0.4f, 0.3f, 0.2f, 1.0f));
 
-    // 左侧平台
-    Rect leftPlatform(origin.x + 50, origin.y + 200, 200, 20);
+    // 可选：创建浮空平台（取消注释以启用）
+    // Rect leftPlatform(origin.x + 50, origin.y + 200, 200, 20);
     // createPlatform(leftPlatform, Color4F(0.5f, 0.4f, 0.3f, 1.0f));
 
     this->addChild(platformDraw, 1);
@@ -143,32 +216,38 @@ void DebugScene::initPlatforms()
     CCLOG("Platforms initialized with physics: %zu platforms", _platforms.size());
 }
 
+/**
+ * @brief 初始化玩家角色
+ *
+ * 创建玩家角色实例，配置物理刚体，并设置初始位置。
+ *
+ * 玩家物理配置说明：
+ * - 使用动态刚体（受重力影响）
+ * - 碰撞体略小于精灵尺寸（80%宽，95%高）以获得更好的手感
+ * - 禁用旋转，避免角色倾倒
+ * - 与平台碰撞，检测炸弹接触
+ */
 void DebugScene::initPlayer()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // 加载精灵帧缓存（如果需要的话）
-    auto cache = SpriteFrameCache::getInstance();
-
-    // 角色初始位置在地面上
+    // 计算玩家初始位置（屏幕中央，地面上方）
     Vec2 startPos(origin.x + visibleSize.width / 2, origin.y + GROUND_Y + getContentSize().height / 2);
 
-    // 尝试创建玩家角色
+    // 创建玩家角色（战士职业）
     _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/spr_klee_run.png");
 
     if (!_player)
     {
-        // 如果无法加载图片，创建一个简单的占位精灵
+        // 创建失败时显示占位符
         CCLOG("Failed to create player with sprite, creating placeholder");
 
-        // 创建一个简单的占位符
         auto placeholder = DrawNode::create();
         placeholder->drawSolidRect(Vec2(-25, -40), Vec2(25, 40), Color4F::GREEN);
         placeholder->setPosition(startPos);
         this->addChild(placeholder, 5);
 
-        // 添加提示标签
         auto label = Label::createWithTTF("玩家占位符\n(需要精灵帧)", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
         label->setPosition(startPos + Vec2(0, 60));
         this->addChild(label, 6);
@@ -176,36 +255,43 @@ void DebugScene::initPlayer()
         return;
     }
 
+    // 配置玩家位置和锚点
     _player->setPosition(startPos);
     _player->setAnchorPoint(Vec2(0.5f, 0.5f)); // 物理引擎要求锚点在中心
     _player->setScale(1.0f);
 
+    //-------------------------------------------------------------------------
     // 创建玩家物理刚体
-    // 物理材质：密度、弹性、摩擦力
-    // 弹性设为0避免弹跳，摩擦力设为0避免与平台边缘卡住
+    //-------------------------------------------------------------------------
+
+    // 物理材质：密度=1.0, 弹性=0（不弹跳）, 摩擦=0（水平移动流畅）
     PhysicsMaterial playerMaterial(1.0f, 0.0f, 0.0f);
 
-    // 使用简单的矩形碰撞体
+    // 计算碰撞体尺寸（略小于精灵以获得更好的游戏体验）
     Size playerSize = _player->getContentSize();
     float scale = _player->getScale();
-    float boxWidth = playerSize.width * scale * 0.8f;    // 宽度缩小到80%更贴合角色
-    float boxHeight = playerSize.height * scale * 0.95f; // 高度缩小到95%
+    float boxWidth = playerSize.width * scale * 0.8f;    // 宽度80%
+    float boxHeight = playerSize.height * scale * 0.95f; // 高度95%
 
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), playerMaterial);
-    physicsBody->setDynamic(true);         // 动态刚体
+    physicsBody->setDynamic(true);         // 动态刚体，受力影响
     physicsBody->setRotationEnable(false); // 禁止旋转
-    physicsBody->setMass(1.0f);            // 设置质量
-    physicsBody->setLinearDamping(0.0f);   // 无线性阻尼，确保移动流畅
+    physicsBody->setMass(1.0f);            // 质量1kg
+    physicsBody->setLinearDamping(0.0f);   // 无线性阻尼
 
-    // 设置碰撞掩码
+    // 配置碰撞掩码
     physicsBody->setCategoryBitmask(CATEGORY_PLAYER);
-    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);                   // 只与平台碰撞
-    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM | CATEGORY_BOMB); // 检测与平台和炸弹的接触
+    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);
+    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM | CATEGORY_BOMB);
 
     _player->addComponent(physicsBody);
     this->addChild(_player, 5);
 
-    _isGrounded = true; // 初始在地面上
+    // 设置死亡时不自动移除（由DebugScene控制重置）
+    _player->setAutoRemoveOnDeath(false);
+
+    // 初始化地面状态
+    _isGrounded = true;
     _groundContactCount = 1;
 
     // 初始化玩家技能
@@ -214,6 +300,18 @@ void DebugScene::initPlayer()
     CCLOG("Player created with physics at position (%.0f, %.0f)", startPos.x, startPos.y);
 }
 
+/**
+ * @brief 初始化玩家技能
+ *
+ * 通过 SkillComponent 创建并装备主动技能。
+ * 当前实现了炸弹技能作为示例。
+ *
+ * 技能系统工作流程：
+ * 1. 创建技能数据（ActiveSkill）
+ * 2. 学习技能（learnSkill）
+ * 3. 装备到槽位（equipActiveSkill）
+ * 4. 使用时通过 useActiveSkill() 触发
+ */
 void DebugScene::initPlayerSkills()
 {
     if (!_player)
@@ -235,13 +333,22 @@ void DebugScene::initPlayerSkills()
     bombSkill->cooldown = BOMB_SKILL_COOLDOWN;
     bombSkill->currentCooldown = 0.0f;
 
-    // 学习技能并装备到槽位
+    // 学习并装备技能
     skillComp->learnSkill(bombSkill);
     skillComp->equipActiveSkill(bombSkill, BOMB_SKILL_SLOT);
 
     CCLOG("Player skills initialized: Bomb skill equipped to slot %zu", BOMB_SKILL_SLOT);
 }
 
+/**
+ * @brief 初始化测试用木桩
+ *
+ * 木桩是一个静态的攻击目标，用于测试伤害计算和攻击系统。
+ * 包含：
+ * - 木桩精灵
+ * - 血条显示
+ * - HP数值标签
+ */
 void DebugScene::initTargetDummy()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
@@ -251,18 +358,18 @@ void DebugScene::initTargetDummy()
     _targetDummy.sprite = Sprite::create("Sprites/Enemies/YuanSheMenJiang/ysmj_stand.png");
     if (_targetDummy.sprite)
     {
-        // 放置在场景右侧的地面上
+        // 放置在场景右侧
         Vec2 dummyPos(origin.x + visibleSize.width * 0.75f, origin.y + GROUND_Y);
         _targetDummy.sprite->setPosition(dummyPos);
         _targetDummy.sprite->setAnchorPoint(Vec2(0.5f, 0)); // 锚点在脚底
         _targetDummy.sprite->setScale(0.5f);
         this->addChild(_targetDummy.sprite, 4);
 
-        // 初始化属性
+        // 初始化血量（使用较大的值方便测试）
         _targetDummy.maxHP = 2147483674.0f;
         _targetDummy.currentHP = 2147483674.0f;
 
-        // 创建血条背景
+        // 创建血条绘制节点
         _targetDummy.hpBar = DrawNode::create();
         this->addChild(_targetDummy.hpBar, 6);
 
@@ -282,26 +389,41 @@ void DebugScene::initTargetDummy()
     }
 }
 
+/**
+ * @brief 初始化调试UI面板
+ *
+ * 创建以下UI元素：
+ * - 左上角：HP/MP进度条
+ * - 左侧：角色属性信息面板
+ * - 右侧：状态信息面板（状态机状态、状态效果、装备、被动技能、伤害日志）
+ *
+ * UI层级说明：
+ * - z-order 9：进度条背景
+ * - z-order 10：进度条填充和标签
+ */
 void DebugScene::initDebugUI()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // ========== 左侧：属性信息面板 ==========
+    //=========================================================================
+    // 左侧：属性信息面板
+    //=========================================================================
     float panelX = origin.x + 20;
     float panelY = origin.y + visibleSize.height - 80;
 
-    // 属性信息标签
     _infoLabel = Label::createWithTTF("加载中...", "fonts/ZCOOLKuaiLe-Regular.ttf", 18);
     _infoLabel->setAnchorPoint(Vec2(0, 1));
     _infoLabel->setPosition(Vec2(panelX, panelY));
     _infoLabel->setColor(Color3B::WHITE);
     this->addChild(_infoLabel, 10);
 
-    // ========== 右侧：状态信息面板 ==========
+    //=========================================================================
+    // 右侧：状态信息面板
+    //=========================================================================
     float rightPanelX = origin.x + visibleSize.width - 250;
 
-    // 状态标签
+    // 状态机状态标签
     _stateLabel = Label::createWithTTF("状态: 未知", "fonts/ZCOOLKuaiLe-Regular.ttf", 20);
     _stateLabel->setAnchorPoint(Vec2(0, 1));
     _stateLabel->setPosition(Vec2(rightPanelX, panelY));
@@ -336,46 +458,48 @@ void DebugScene::initDebugUI()
     _damageLogLabel->setColor(Color3B(200, 200, 200));
     this->addChild(_damageLogLabel, 10);
 
-    // ========== 左上角：HP/MP 进度条 ==========
+    //=========================================================================
+    // 左上角：HP/MP进度条
+    //=========================================================================
     float barWidth = 200.0f;
     float barHeight = 18.0f;
     float barX = origin.x + 20;
     float barY = origin.y + visibleSize.height - 20;
 
-    // HP 标签
+    // HP标签（显示在进度条右侧）
     _hpLabel = Label::createWithTTF("HP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     _hpLabel->setAnchorPoint(Vec2(0, 0.5f));
     _hpLabel->setPosition(Vec2(barX + barWidth + 10, barY - barHeight / 2));
     _hpLabel->setColor(Color3B::WHITE);
     this->addChild(_hpLabel, 10);
 
-    // HP 进度条背景
+    // HP进度条背景（深红色）
     _hpBarBg = DrawNode::create();
     _hpBarBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.3f, 0.1f, 0.1f, 0.8f));
     _hpBarBg->setPosition(Vec2(barX, barY - barHeight));
     this->addChild(_hpBarBg, 9);
 
-    // HP 进度条填充
+    // HP进度条填充（红色）
     _hpBarFill = DrawNode::create();
     _hpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.8f, 0.2f, 0.2f, 1.0f));
     _hpBarFill->setPosition(Vec2(barX, barY - barHeight));
     _hpBarFill->setTag(100);
     this->addChild(_hpBarFill, 10);
 
-    // MP 标签
+    // MP标签
     _mpLabel = Label::createWithTTF("MP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     _mpLabel->setAnchorPoint(Vec2(0, 0.5f));
     _mpLabel->setPosition(Vec2(barX + barWidth + 10, barY - barHeight - 8 - barHeight / 2));
     _mpLabel->setColor(Color3B::WHITE);
     this->addChild(_mpLabel, 10);
 
-    // MP 进度条背景
+    // MP进度条背景（深蓝色）
     _mpBarBg = DrawNode::create();
     _mpBarBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.1f, 0.1f, 0.3f, 0.8f));
     _mpBarBg->setPosition(Vec2(barX, barY - barHeight * 2 - 8));
     this->addChild(_mpBarBg, 9);
 
-    // MP 进度条填充
+    // MP进度条填充（蓝色）
     _mpBarFill = DrawNode::create();
     _mpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.2f, 0.4f, 0.9f, 1.0f));
     _mpBarFill->setPosition(Vec2(barX, barY - barHeight * 2 - 8));
@@ -383,20 +507,35 @@ void DebugScene::initDebugUI()
     this->addChild(_mpBarFill, 10);
 }
 
+/**
+ * @brief 初始化控制按钮
+ *
+ * 创建4行功能按钮：
+ * - 第1行：基础功能（受击、暴击、治疗、攻击、升级、重置、返回）
+ * - 第2行：状态效果（中毒、亢奋、眩晕）
+ * - 第3行：装备切换（剑、法杖、匕首、卸下）
+ * - 第4行：被动技能（力量+5、防御+3、满血暴击）
+ *
+ * @note 按钮使用 MenuItemLabel，通过回调函数响应点击事件
+ */
 void DebugScene::initControlButtons()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // 按钮配置
+    //=========================================================================
+    // 按钮配置数据结构
+    //=========================================================================
     struct ButtonInfo
     {
-        std::string label;
-        std::function<void(Ref *)> callback;
-        Color3B color;
+        std::string label;                   ///< 按钮文本
+        std::function<void(Ref *)> callback; ///< 点击回调
+        Color3B color;                       ///< 按钮颜色
     };
 
-    // 第一行：基础功能按钮
+    //-------------------------------------------------------------------------
+    // 第1行：基础功能按钮
+    //-------------------------------------------------------------------------
     std::vector<ButtonInfo> buttons = {
         {"受击 (10伤害)", CC_CALLBACK_1(DebugScene::onTakeDamageClicked, this), Color3B::RED},
         {"暴击 (25伤害)", CC_CALLBACK_1(DebugScene::onTakeCriticalDamageClicked, this), Color3B::ORANGE},
@@ -404,134 +543,83 @@ void DebugScene::initControlButtons()
         {"攻击", CC_CALLBACK_1(DebugScene::onAttackClicked, this), Color3B::YELLOW},
         {"升级", CC_CALLBACK_1(DebugScene::onLevelUpClicked, this), Color3B::MAGENTA},
         {"重置角色", CC_CALLBACK_1(DebugScene::onResetClicked, this), Color3B::GRAY},
-        {"返回主菜单", CC_CALLBACK_1(DebugScene::onBackClicked, this), Color3B::WHITE},
+        {"返回地图", CC_CALLBACK_1(DebugScene::onBackClicked, this), Color3B::WHITE},
     };
 
-    // 第二行：状态效果按钮
+    //-------------------------------------------------------------------------
+    // 第2行：状态效果按钮
+    //-------------------------------------------------------------------------
     std::vector<ButtonInfo> statusButtons = {
-        {"中毒 (5秒)", CC_CALLBACK_1(DebugScene::onPoisonClicked, this), Color3B(148, 0, 211)},   // 紫色
-        {"亢奋 (8秒)", CC_CALLBACK_1(DebugScene::onExcitedClicked, this), Color3B(255, 165, 0)},  // 橙色
-        {"眩晕 (3秒)", CC_CALLBACK_1(DebugScene::onStunnedClicked, this), Color3B(70, 130, 180)}, // 钢蓝色
+        {"中毒 (5秒)", CC_CALLBACK_1(DebugScene::onPoisonClicked, this), Color3B(148, 0, 211)},
+        {"亢奋 (8秒)", CC_CALLBACK_1(DebugScene::onExcitedClicked, this), Color3B(255, 165, 0)},
+        {"眩晕 (3秒)", CC_CALLBACK_1(DebugScene::onStunnedClicked, this), Color3B(70, 130, 180)},
     };
 
-    // 第三行：装备按钮
+    //-------------------------------------------------------------------------
+    // 第3行：装备按钮
+    //-------------------------------------------------------------------------
     std::vector<ButtonInfo> equipButtons = {
-        {"装备剑", CC_CALLBACK_1(DebugScene::onEquipSwordClicked, this), Color3B(192, 192, 192)},      // 银色
-        {"装备法杖", CC_CALLBACK_1(DebugScene::onEquipStaffClicked, this), Color3B(138, 43, 226)},     // 紫罗兰
-        {"装备匕首", CC_CALLBACK_1(DebugScene::onEquipDaggerClicked, this), Color3B(50, 205, 50)},     // 酸橙绿
-        {"卸下武器", CC_CALLBACK_1(DebugScene::onUnequipWeaponClicked, this), Color3B(128, 128, 128)}, // 灰色
+        {"装备剑", CC_CALLBACK_1(DebugScene::onEquipSwordClicked, this), Color3B(192, 192, 192)},
+        {"装备法杖", CC_CALLBACK_1(DebugScene::onEquipStaffClicked, this), Color3B(138, 43, 226)},
+        {"装备匕首", CC_CALLBACK_1(DebugScene::onEquipDaggerClicked, this), Color3B(50, 205, 50)},
+        {"卸下武器", CC_CALLBACK_1(DebugScene::onUnequipWeaponClicked, this), Color3B(128, 128, 128)},
     };
 
-    // 第四行：被动技能按钮
+    //-------------------------------------------------------------------------
+    // 第4行：被动技能按钮
+    //-------------------------------------------------------------------------
     std::vector<ButtonInfo> passiveButtons = {
-        {"力量+5", CC_CALLBACK_1(DebugScene::onLearnPassive1Clicked, this), Color3B(255, 100, 100)}, // 红色
-        {"防御+3", CC_CALLBACK_1(DebugScene::onLearnPassive2Clicked, this), Color3B(100, 100, 255)}, // 蓝色
-        {"暴击+10%", CC_CALLBACK_1(DebugScene::onLearnPassive3Clicked, this), Color3B(255, 215, 0)}, // 金色
+        {"力量+5", CC_CALLBACK_1(DebugScene::onLearnPassive1Clicked, this), Color3B(255, 100, 100)},
+        {"防御+3", CC_CALLBACK_1(DebugScene::onLearnPassive2Clicked, this), Color3B(100, 100, 255)},
+        {"满血暴击", CC_CALLBACK_1(DebugScene::onLearnPassive3Clicked, this), Color3B(255, 215, 0)},
     };
 
+    //=========================================================================
+    // 布局参数
+    //=========================================================================
     float buttonWidth = 150.0f;
     float buttonHeight = 40.0f;
     float spacing = 10.0f;
     float startY = origin.y + 40;
     float centerX = origin.x + visibleSize.width / 2;
 
-    // 计算按钮起始X位置（居中排列）- 第一行
-    float totalWidth = buttons.size() * buttonWidth + (buttons.size() - 1) * spacing;
-    float startX = centerX - totalWidth / 2 + buttonWidth / 2;
-
-    for (size_t i = 0; i < buttons.size(); ++i)
+    //=========================================================================
+    // 辅助Lambda：创建一行按钮
+    //=========================================================================
+    auto createButtonRow = [&](const std::vector<ButtonInfo> &buttonInfos, float rowY)
     {
-        const auto &info = buttons[i];
+        float totalWidth = buttonInfos.size() * buttonWidth + (buttonInfos.size() - 1) * spacing;
+        float startX = centerX - totalWidth / 2 + buttonWidth / 2;
 
-        // 创建按钮背景
-        auto button = MenuItemLabel::create(
-            Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
-            info.callback);
-
-        if (button)
+        for (size_t i = 0; i < buttonInfos.size(); ++i)
         {
-            button->setColor(info.color);
-            button->setPosition(Vec2(startX + i * (buttonWidth + spacing), startY));
+            const auto &info = buttonInfos[i];
+
+            auto button = MenuItemLabel::create(
+                Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
+                info.callback);
+
+            if (button)
+            {
+                button->setColor(info.color);
+                button->setPosition(Vec2(startX + i * (buttonWidth + spacing), rowY));
+            }
+
+            auto menu = Menu::create(button, nullptr);
+            menu->setPosition(Vec2::ZERO);
+            this->addChild(menu, 20);
         }
+    };
 
-        auto menu = Menu::create(button, nullptr);
-        menu->setPosition(Vec2::ZERO);
-        this->addChild(menu, 20);
-    }
+    // 创建各行按钮
+    createButtonRow(buttons, startY);
+    createButtonRow(statusButtons, startY + 30);
+    createButtonRow(equipButtons, startY + 60);
+    createButtonRow(passiveButtons, startY + 90);
 
-    // 第二行：状态效果按钮
-    float statusStartY = startY + 30;
-    float statusTotalWidth = statusButtons.size() * buttonWidth + (statusButtons.size() - 1) * spacing;
-    float statusStartX = centerX - statusTotalWidth / 2 + buttonWidth / 2;
-
-    for (size_t i = 0; i < statusButtons.size(); ++i)
-    {
-        const auto &info = statusButtons[i];
-
-        auto button = MenuItemLabel::create(
-            Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
-            info.callback);
-
-        if (button)
-        {
-            button->setColor(info.color);
-            button->setPosition(Vec2(statusStartX + i * (buttonWidth + spacing), statusStartY));
-        }
-
-        auto menu = Menu::create(button, nullptr);
-        menu->setPosition(Vec2::ZERO);
-        this->addChild(menu, 20);
-    }
-
-    // 第三行：装备按钮
-    float equipStartY = statusStartY + 30;
-    float equipTotalWidth = equipButtons.size() * buttonWidth + (equipButtons.size() - 1) * spacing;
-    float equipStartX = centerX - equipTotalWidth / 2 + buttonWidth / 2;
-
-    for (size_t i = 0; i < equipButtons.size(); ++i)
-    {
-        const auto &info = equipButtons[i];
-
-        auto button = MenuItemLabel::create(
-            Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
-            info.callback);
-
-        if (button)
-        {
-            button->setColor(info.color);
-            button->setPosition(Vec2(equipStartX + i * (buttonWidth + spacing), equipStartY));
-        }
-
-        auto menu = Menu::create(button, nullptr);
-        menu->setPosition(Vec2::ZERO);
-        this->addChild(menu, 20);
-    }
-
-    // 第四行：被动技能按钮
-    float passiveStartY = equipStartY + 30;
-    float passiveTotalWidth = passiveButtons.size() * buttonWidth + (passiveButtons.size() - 1) * spacing;
-    float passiveStartX = centerX - passiveTotalWidth / 2 + buttonWidth / 2;
-
-    for (size_t i = 0; i < passiveButtons.size(); ++i)
-    {
-        const auto &info = passiveButtons[i];
-
-        auto button = MenuItemLabel::create(
-            Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
-            info.callback);
-
-        if (button)
-        {
-            button->setColor(info.color);
-            button->setPosition(Vec2(passiveStartX + i * (buttonWidth + spacing), passiveStartY));
-        }
-
-        auto menu = Menu::create(button, nullptr);
-        menu->setPosition(Vec2::ZERO);
-        this->addChild(menu, 20);
-    }
-
-    // 添加快捷键提示
+    //=========================================================================
+    // 快捷键提示
+    //=========================================================================
     auto hintLabel = Label::createWithTTF(
         "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 返回",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
@@ -540,14 +628,74 @@ void DebugScene::initControlButtons()
     this->addChild(hintLabel, 10);
 }
 
+//=============================================================================
+// 第2部分：主循环更新
+//=============================================================================
+
+/**
+ * @brief 每帧更新函数
+ *
+ * 按顺序处理：
+ * 1. 玩家移动（物理驱动）
+ * 2. 更新UI显示
+ * 3. 技能冷却
+ * 4. 条件性被动技能检查
+ * 5. 中毒持续伤害
+ *
+ * @param dt 距离上一帧的时间间隔（秒）
+ */
 void DebugScene::update(float dt)
 {
     Scene::update(dt);
-    // 物理引擎自动处理重力和碰撞，不需要手写更新
+
+    //-------------------------------------------------------------------------
+    // 死亡重置检测
+    //-------------------------------------------------------------------------
+    if (_player && _player->isDead())
+    {
+        if (!_isDeathResetPending)
+        {
+            // 首次检测到死亡，启动重置倒计时
+            _isDeathResetPending = true;
+            _deathResetTimer = DEATH_RESET_DELAY;
+            addDamageLog(StringUtils::format("角色死亡! %.0f秒后自动重置...", DEATH_RESET_DELAY));
+            CCLOG("Player died, will reset in %.1f seconds", DEATH_RESET_DELAY);
+        }
+        else
+        {
+            // 更新重置倒计时
+            _deathResetTimer -= dt;
+            if (_deathResetTimer <= 0.0f)
+            {
+                // 执行重置
+                _isDeathResetPending = false;
+                _deathResetTimer = 0.0f;
+                onResetClicked(nullptr);
+                CCLOG("Player auto-reset after death");
+                return; // 重置后跳过本帧其他更新
+            }
+        }
+
+        // 死亡状态下只更新UI，不处理其他逻辑
+        updateDebugInfo();
+        return;
+    }
+
+    // 如果之前在等待重置但玩家复活了（例如通过治疗），取消重置
+    if (_isDeathResetPending && _player && !_player->isDead())
+    {
+        _isDeathResetPending = false;
+        _deathResetTimer = 0.0f;
+        addDamageLog("重置取消（角色复活）");
+    }
+
+    // 更新玩家移动（基于输入和物理）
     updatePlayerMovement(dt);
+
+    // 更新调试UI显示
     updateDebugInfo();
 
-    // 更新技能冷却
+    // 更新技能冷却时间
     if (_player)
     {
         auto skillComp = _player->getSkillComponent();
@@ -557,20 +705,25 @@ void DebugScene::update(float dt)
         }
     }
 
-    // 处理中毒持续伤害
+    // 更新条件性被动技能（如满血暴击）
+    updateConditionalPassives();
+
+    //-------------------------------------------------------------------------
+    // 中毒持续伤害处理
+    //-------------------------------------------------------------------------
     static float poisonTimer = 0.0f;
     if (_player && !_player->isDead())
     {
         auto attr = _player->getAttributeComponent();
         if (attr)
         {
-            // 检查是否仍有中毒效果
+            // 检查中毒状态
             _isPoisoned = attr->hasStatusEffect(StatusEffectType::POISONED);
 
             if (_isPoisoned)
             {
                 poisonTimer += dt;
-                if (poisonTimer >= 1.0f) // 每秒造成伤害
+                if (poisonTimer >= 1.0f) // 每秒触发一次伤害
                 {
                     applyPoisonDamage(dt);
                     poisonTimer = 0.0f;
@@ -578,12 +731,20 @@ void DebugScene::update(float dt)
             }
             else
             {
-                poisonTimer = 0.0f; // 重置计时器
+                poisonTimer = 0.0f;
             }
         }
     }
 }
-
+/**
+ * @brief 更新调试信息显示
+ *
+ * 刷新所有UI面板的显示内容：
+ * - 角色属性面板
+ * - 状态机状态
+ * - 状态效果列表
+ * - HP/MP进度条
+ */
 void DebugScene::updateDebugInfo()
 {
     if (!_player)
@@ -592,7 +753,9 @@ void DebugScene::updateDebugInfo()
     auto attr = _player->getAttributeComponent();
     auto sm = _player->getStateMachineComponent();
 
-    // 更新属性信息
+    //=========================================================================
+    // 更新角色属性面板
+    //=========================================================================
     std::string info;
     info += "=== 角色属性 ===\n";
     info += StringUtils::format("等级: %d\n", _player->getLevel());
@@ -613,9 +776,12 @@ void DebugScene::updateDebugInfo()
 
     _infoLabel->setString(info);
 
-    // 更新状态信息
+    //=========================================================================
+    // 更新状态机状态显示
+    //=========================================================================
     if (sm)
     {
+        // 状态枚举转字符串
         std::string stateStr;
         switch (sm->getCurrentState())
         {
@@ -652,7 +818,7 @@ void DebugScene::updateDebugInfo()
         }
         _stateLabel->setString("状态: " + stateStr);
 
-        // 根据状态改变颜色
+        // 根据状态设置标签颜色
         if (sm->getCurrentState() == CharacterState::DEAD)
             _stateLabel->setColor(Color3B::RED);
         else if (sm->getCurrentState() == CharacterState::HURT)
@@ -663,7 +829,9 @@ void DebugScene::updateDebugInfo()
             _stateLabel->setColor(Color3B::GREEN);
     }
 
+    //=========================================================================
     // 更新状态效果显示
+    //=========================================================================
     if (attr && _statusEffectLabel)
     {
         const auto &effects = attr->getStatusEffects();
@@ -679,6 +847,8 @@ void DebugScene::updateDebugInfo()
             {
                 const auto &eff = effects[i];
                 float remaining = eff.duration - eff.elapsed;
+
+                // 状态类型转名称
                 std::string effectName;
                 switch (eff.type)
                 {
@@ -691,6 +861,9 @@ void DebugScene::updateDebugInfo()
                 case StatusEffectType::STUNNED:
                     effectName = "眩晕";
                     break;
+                case StatusEffectType::FULL_HP_CRIT:
+                    effectName = "满血暴击";
+                    break;
                 }
                 effectStr += StringUtils::format("%s(%.1fs)", effectName.c_str(), remaining);
                 if (i < effects.size() - 1)
@@ -701,67 +874,64 @@ void DebugScene::updateDebugInfo()
         }
     }
 
-    // 更新 HP/MP 进度条
+    //=========================================================================
+    // 更新HP/MP进度条
+    //=========================================================================
     if (attr)
     {
         float maxHP = attr->getAttributeValue(AttributeType::MAX_HP);
         float maxMP = attr->getAttributeValue(AttributeType::MAX_MP);
-        float currentHP = _player->getCurrentHP();
-        float currentMP = _player->getCurrentMP();
-
-        // 确保HP和MP不超过最大值，且不低于0
-        currentHP = std::max(0.0f, std::min(currentHP, maxHP));
-        currentMP = std::max(0.0f, std::min(currentMP, maxMP));
+        float currentHP = std::max(0.0f, std::min(_player->getCurrentHP(), maxHP));
+        float currentMP = std::max(0.0f, std::min(_player->getCurrentMP(), maxMP));
 
         float hpPercent = maxHP > 0 ? currentHP / maxHP : 0;
         float mpPercent = maxMP > 0 ? currentMP / maxMP : 0;
 
-        // 更新 HP 标签
+        // 更新标签文本
         if (_hpLabel)
-        {
-            _hpLabel->setString(StringUtils::format("HP: %.0f/%.0f",
-                                                    currentHP, maxHP));
-        }
-
-        // 更新 MP 标签
+            _hpLabel->setString(StringUtils::format("HP: %.0f/%.0f", currentHP, maxHP));
         if (_mpLabel)
-        {
-            _mpLabel->setString(StringUtils::format("MP: %.0f/%.0f",
-                                                    currentMP, maxMP));
-        }
+            _mpLabel->setString(StringUtils::format("MP: %.0f/%.0f", currentMP, maxMP));
 
-        // 更新 HP 条宽度（使用成员变量）
+        // 更新进度条填充宽度
+        float barWidth = 200.0f;
+        float barHeight = 18.0f;
+
         if (_hpBarFill)
         {
             _hpBarFill->clear();
-            float hpBarWidth = 200.0f * hpPercent;
-            float barHeight = 18.0f;
-            _hpBarFill->drawSolidRect(Vec2(0, 0), Vec2(hpBarWidth, barHeight), Color4F(0.8f, 0.2f, 0.2f, 1.0f));
+            _hpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth * hpPercent, barHeight),
+                                      Color4F(0.8f, 0.2f, 0.2f, 1.0f));
         }
 
-        // 更新 MP 条宽度（使用成员变量）
         if (_mpBarFill)
         {
             _mpBarFill->clear();
-            float mpBarWidth = 200.0f * mpPercent;
-            float barHeight = 18.0f;
-            _mpBarFill->drawSolidRect(Vec2(0, 0), Vec2(mpBarWidth, barHeight), Color4F(0.2f, 0.4f, 0.9f, 1.0f));
+            _mpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth * mpPercent, barHeight),
+                                      Color4F(0.2f, 0.4f, 0.9f, 1.0f));
         }
     }
 }
 
+//=============================================================================
+// 第3部分：UI按钮回调 - 基础功能
+//=============================================================================
+
+/**
+ * @brief 受击按钮回调 - 模拟受到10点普通伤害
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onTakeDamageClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
         return;
 
-    // 模拟敌人攻击：使用固定基础伤害
+    // 构造伤害信息
     DamageInfo info;
-    info.amount = 10.0f; // 敌人基础攻击力
-    info.penetration = 0.0f;
-    info.isCritical = false;
+    info.amount = 10.0f;     // 基础伤害
+    info.penetration = 0.0f; // 无护甲穿透
+    info.isCritical = false; // 非暴击
     info.attacker = nullptr;
-    // 注意：实际伤害会被 takeDamage 中的防御计算减少
 
     float hpBefore = _player->getCurrentHP();
     _player->takeDamage(info);
@@ -773,6 +943,10 @@ void DebugScene::onTakeDamageClicked(Ref *sender)
     CCLOG("Player took 10 damage, HP: %.0f", _player->getCurrentHP());
 }
 
+/**
+ * @brief 暴击按钮回调 - 模拟受到25点暴击伤害
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onTakeCriticalDamageClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
@@ -795,6 +969,10 @@ void DebugScene::onTakeCriticalDamageClicked(Ref *sender)
     CCLOG("Player took critical damage, HP: %.0f", _player->getCurrentHP());
 }
 
+/**
+ * @brief 治疗按钮回调 - 恢复20点HP
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onHealClicked(Ref *sender)
 {
     if (!_player)
@@ -810,21 +988,23 @@ void DebugScene::onHealClicked(Ref *sender)
     CCLOG("Player healed, HP: %.0f", _player->getCurrentHP());
 }
 
+/**
+ * @brief 攻击按钮回调 - 触发攻击动画和伤害判定
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onAttackClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
         return;
 
-    // 如果正在攻击或施放技能中，禁用攻击
+    // 动画互斥检查
     if (_isAttacking || _isCastingSkill)
-    {
         return;
-    }
 
     _player->attack();
     playAttackAnimation();
 
-    // 显示角色的实际攻击力信息
+    // 显示攻击信息
     float strength = 0.0f;
     float critRate = 0.0f;
     auto attr = _player->getAttributeComponent();
@@ -838,6 +1018,10 @@ void DebugScene::onAttackClicked(Ref *sender)
     CCLOG("Player attack started with STR: %.0f, Crit: %.0f%%", strength, critRate * 100);
 }
 
+/**
+ * @brief 升级按钮回调 - 增加经验值触发升级
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onLevelUpClicked(Ref *sender)
 {
     if (!_player)
@@ -849,14 +1033,34 @@ void DebugScene::onLevelUpClicked(Ref *sender)
     CCLOG("Player leveled up to %d", _player->getLevel());
 }
 
+/**
+ * @brief 重置按钮回调 - 销毁并重新创建玩家
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onResetClicked(Ref *sender)
 {
-    // 移除旧玩家并创建新玩家
     if (_player)
     {
+        // 停止所有动作（包括死亡闪烁动画）
+        _player->stopAllActions();
+        // 恢复颜色和透明度
+        _player->setColor(Color3B::WHITE);
+        _player->setOpacity(255);
+        // 移除玩家
         _player->removeFromParent();
         _player = nullptr;
     }
+
+    // 重置死亡相关状态
+    _isDeathResetPending = false;
+    _deathResetTimer = 0.0f;
+
+    // 重置移动和战斗状态
+    _isMovingLeft = false;
+    _isMovingRight = false;
+    _isAttacking = false;
+    _isCastingSkill = false;
+    _isWalkAnimationPlaying = false;
 
     initPlayer();
     _damageLog.clear();
@@ -865,15 +1069,33 @@ void DebugScene::onResetClicked(Ref *sender)
     CCLOG("Player reset");
 }
 
+/**
+ * @brief 返回按钮回调 - 使用场景入栈方式返回地图
+ * @param sender 按钮引用（未使用）
+ *
+ * @note 使用 pushScene 而非 replaceScene，以便支持场景返回
+ */
 void DebugScene::onBackClicked(Ref *sender)
 {
-    auto homeScene = HomeScene::createScene();
-    Director::getInstance()->replaceScene(
-        TransitionFade::create(0.5f, homeScene, Color3B::BLACK));
+    auto mapScene = MapScene::createScene();
+    Director::getInstance()->pushScene(
+        TransitionFade::create(0.5f, mapScene, Color3B::BLACK));
 }
 
-// ==================== 状态效果回调 ====================
+//=============================================================================
+// 第4部分：状态效果系统
+//=============================================================================
 
+/**
+ * @brief 中毒按钮回调 - 添加5秒中毒效果
+ *
+ * 中毒效果特点：
+ * - 持续5秒
+ * - 每秒造成5点真实伤害（无视防御）
+ * - 显示绿色伤害飘字
+ *
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onPoisonClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
@@ -883,12 +1105,12 @@ void DebugScene::onPoisonClicked(Ref *sender)
     if (!attr)
         return;
 
-    // 创建中毒状态效果
+    // 创建中毒状态效果实例
     StatusEffectInstance poison;
     poison.type = StatusEffectType::POISONED;
-    poison.duration = 5.0f; // 持续5秒
+    poison.duration = 5.0f;
     poison.elapsed = 0.0f;
-    // 中毒不提供属性加成，但会造成持续伤害（在 update 中处理）
+    // 中毒不提供属性加成，持续伤害在 update() 中处理
 
     attr->addStatusEffect(poison);
     _isPoisoned = true;
@@ -897,6 +1119,17 @@ void DebugScene::onPoisonClicked(Ref *sender)
     CCLOG("Poison effect applied for 5 seconds");
 }
 
+/**
+ * @brief 亢奋按钮回调 - 添加8秒亢奋效果
+ *
+ * 亢奋效果特点：
+ * - 持续8秒
+ * - 移速+50
+ * - 暴击率+10%
+ * - 力量+10
+ *
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onExcitedClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
@@ -906,12 +1139,11 @@ void DebugScene::onExcitedClicked(Ref *sender)
     if (!attr)
         return;
 
-    // 创建亢奋状态效果
     StatusEffectInstance excited;
     excited.type = StatusEffectType::EXCITED;
-    excited.duration = 8.0f; // 持续8秒
+    excited.duration = 8.0f;
     excited.elapsed = 0.0f;
-    // 亢奋效果：移速+50，力量+10, 暴击+10%
+    // 设置属性加成
     excited.attributeBonus.set(AttributeType::MOVE_SPEED, 50.0f);
     excited.attributeBonus.set(AttributeType::CRITICAL_RATE, 0.10f);
     excited.attributeBonus.set(AttributeType::STRENGTH, 10.0f);
@@ -922,6 +1154,15 @@ void DebugScene::onExcitedClicked(Ref *sender)
     CCLOG("Excited effect applied: +50 move speed, +10%% crit for 8 seconds");
 }
 
+/**
+ * @brief 眩晕按钮回调 - 添加3秒眩晕效果
+ *
+ * 眩晕效果特点：
+ * - 持续3秒
+ * - 移速大幅降低（-200）
+ *
+ * @param sender 按钮引用（未使用）
+ */
 void DebugScene::onStunnedClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
@@ -931,13 +1172,11 @@ void DebugScene::onStunnedClicked(Ref *sender)
     if (!attr)
         return;
 
-    // 创建眩晕状态效果
     StatusEffectInstance stunned;
     stunned.type = StatusEffectType::STUNNED;
-    stunned.duration = 3.0f; // 持续3秒
+    stunned.duration = 3.0f;
     stunned.elapsed = 0.0f;
-    // 眩晕效果：移速降为0
-    stunned.attributeBonus.set(AttributeType::MOVE_SPEED, -200.0f); // 移速大幅降低
+    stunned.attributeBonus.set(AttributeType::MOVE_SPEED, -200.0f);
 
     attr->addStatusEffect(stunned);
 
@@ -945,28 +1184,36 @@ void DebugScene::onStunnedClicked(Ref *sender)
     CCLOG("Stunned effect applied for 3 seconds");
 }
 
+/**
+ * @brief 应用中毒持续伤害
+ *
+ * 由 update() 每秒调用一次，造成5点真实伤害并显示飘字。
+ *
+ * @param dt 时间间隔（未使用）
+ */
 void DebugScene::applyPoisonDamage(float dt)
 {
     if (!_player || _player->isDead() || !_isPoisoned)
         return;
 
-    // 中毒伤害：每秒造成 5 点伤害
+    // 中毒伤害：5点/秒，穿透所有防御
     DamageInfo poisonDamage;
     poisonDamage.amount = 5.0f;
-    poisonDamage.penetration = 1000.0f; // 中毒伤害穿透防御
+    poisonDamage.penetration = 1000.0f; // 高穿透 = 真实伤害
     poisonDamage.isCritical = false;
     poisonDamage.attacker = nullptr;
 
     _player->takeDamage(poisonDamage);
 
-    // 在玩家位置显示中毒伤害数字（绿色）
-    auto damageLabel = Label::createWithTTF(StringUtils::format("-%.0f", poisonDamage.amount),
-                                            "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
-    damageLabel->setColor(Color3B(0, 200, 0)); // 绿色表示中毒伤害
+    // 显示绿色中毒伤害飘字
+    auto damageLabel = Label::createWithTTF(
+        StringUtils::format("-%.0f", poisonDamage.amount),
+        "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
+    damageLabel->setColor(Color3B(0, 200, 0));
     damageLabel->setPosition(_player->getPosition() + Vec2(rand() % 30 - 15, 50));
     this->addChild(damageLabel, 100);
 
-    // 飘字动画
+    // 飘字动画：上移 + 淡出
     auto moveUp = MoveBy::create(0.8f, Vec2(0, 30));
     auto fadeOut = FadeOut::create(0.8f);
     auto spawn = Spawn::create(moveUp, fadeOut, nullptr);
@@ -974,36 +1221,67 @@ void DebugScene::applyPoisonDamage(float dt)
     damageLabel->runAction(Sequence::create(spawn, remove, nullptr));
 }
 
+//=============================================================================
+// 第7部分：输入处理
+//=============================================================================
+
+/**
+ * @brief 键盘按下事件处理
+ *
+ * 按键映射：
+ * - A/左箭头：向左移动
+ * - D/右箭头：向右移动
+ * - W/上箭头/空格：跳跃
+ * - E：释放炸弹技能
+ * - 1-5：功能测试快捷键
+ * - R：重置角色
+ * - ESC：返回地图
+ *
+ * @param keyCode 按键代码
+ * @param event 事件对象（未使用）
+ */
 void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
 {
     switch (keyCode)
     {
+    //-------------------------------------------------------------------------
     // 移动按键
+    //-------------------------------------------------------------------------
     case EventKeyboard::KeyCode::KEY_A:
     case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
         _isMovingLeft = true;
         if (_player)
-            _player->setFlippedX(true); // 向左翻转
+            _player->setFlippedX(true); // 朝左
         startWalkAnimation();
         break;
+
     case EventKeyboard::KeyCode::KEY_D:
     case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
         _isMovingRight = true;
         if (_player)
-            _player->setFlippedX(false); // 向右不翻转
+            _player->setFlippedX(false); // 朝右
         startWalkAnimation();
         break;
+
+    //-------------------------------------------------------------------------
     // 跳跃按键
+    //-------------------------------------------------------------------------
     case EventKeyboard::KeyCode::KEY_W:
     case EventKeyboard::KeyCode::KEY_UP_ARROW:
     case EventKeyboard::KeyCode::KEY_SPACE:
         jump();
         break;
-    // 技能按键 - 丢炸弹
+
+    //-------------------------------------------------------------------------
+    // 技能按键
+    //-------------------------------------------------------------------------
     case EventKeyboard::KeyCode::KEY_E:
         throwBomb();
         break;
-    // 功能按键
+
+    //-------------------------------------------------------------------------
+    // 功能快捷键
+    //-------------------------------------------------------------------------
     case EventKeyboard::KeyCode::KEY_1:
         onTakeDamageClicked(nullptr);
         break;
@@ -1025,11 +1303,21 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_ESCAPE:
         onBackClicked(nullptr);
         break;
+
     default:
         break;
     }
 }
 
+/**
+ * @brief 键盘释放事件处理
+ *
+ * 主要处理移动按键的释放，停止对应方向的移动。
+ * 当所有移动按键都释放时，停止行走动画。
+ *
+ * @param keyCode 按键代码
+ * @param event 事件对象（未使用）
+ */
 void DebugScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
 {
     switch (keyCode)
@@ -1038,21 +1326,31 @@ void DebugScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
         _isMovingLeft = false;
         break;
+
     case EventKeyboard::KeyCode::KEY_D:
     case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
         _isMovingRight = false;
         break;
+
     default:
         break;
     }
 
-    // 如果没有任何方向键按下，停止动画
+    // 所有方向键释放时停止动画
     if (!_isMovingLeft && !_isMovingRight)
     {
         stopWalkAnimation();
     }
 }
 
+/**
+ * @brief 更新玩家移动
+ *
+ * 通过修改物理刚体的水平速度来实现移动。
+ * 移动速度受角色属性（MOVE_SPEED）影响，可被状态效果修改。
+ *
+ * @param dt 时间间隔（未使用）
+ */
 void DebugScene::updatePlayerMovement(float dt)
 {
     if (!_player || _player->isDead())
@@ -1062,20 +1360,19 @@ void DebugScene::updatePlayerMovement(float dt)
     if (!physicsBody)
         return;
 
-    // 从角色属性组件获取移动速度
-    float currentMoveSpeed = _moveSpeed; // 默认值
+    // 从属性组件获取当前移动速度
+    float currentMoveSpeed = _moveSpeed;
     auto attr = _player->getAttributeComponent();
     if (attr)
     {
         currentMoveSpeed = attr->getAttributeValue(AttributeType::MOVE_SPEED);
     }
 
-    // 获取当前垂直速度（保持重力效果）
+    // 保持垂直速度（重力效果）
     Vec2 currentVelocity = physicsBody->getVelocity();
 
     // 计算水平速度
     float velocityX = 0.0f;
-
     if (_isMovingLeft && !_isMovingRight)
     {
         velocityX = -currentMoveSpeed;
@@ -1085,10 +1382,12 @@ void DebugScene::updatePlayerMovement(float dt)
         velocityX = currentMoveSpeed;
     }
 
-    // 设置物理刚体的速度（保持垂直速度不变）
+    // 设置速度（保持垂直分量）
     physicsBody->setVelocity(Vec2(velocityX, currentVelocity.y));
 
-    // 限制在屏幕范围内
+    //-------------------------------------------------------------------------
+    // 屏幕边界限制
+    //-------------------------------------------------------------------------
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
     float margin = 30.0f;
@@ -1106,6 +1405,12 @@ void DebugScene::updatePlayerMovement(float dt)
     }
 }
 
+/**
+ * @brief 开始播放行走动画
+ *
+ * 加载行走帧序列并创建循环动画。
+ * 动画使用 Tag=999 标识，便于后续停止。
+ */
 void DebugScene::startWalkAnimation()
 {
     if (!_player || _isWalkAnimationPlaying)
@@ -1113,44 +1418,31 @@ void DebugScene::startWalkAnimation()
 
     _isWalkAnimationPlaying = true;
 
-    // 创建行走动画帧 - 使用Texture自动获取尺寸
-    Vector<SpriteFrame *> frames;
+    // 加载行走动画纹理
     auto textureCache = Director::getInstance()->getTextureCache();
-
     auto texture1 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_1.png");
     auto texture2 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_2.png");
     auto texture3 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run.png");
 
     if (texture1 && texture2 && texture3)
     {
-        Size size1 = texture1->getContentSize();
-        Size size2 = texture2->getContentSize();
-        Size size3 = texture3->getContentSize();
+        // 从纹理创建精灵帧
+        Vector<SpriteFrame *> frames;
+        frames.pushBack(SpriteFrame::createWithTexture(texture1,
+                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture2,
+                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture3,
+                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
 
-        auto frame1 = SpriteFrame::createWithTexture(texture1, Rect(0, 0, size1.width, size1.height));
-        auto frame2 = SpriteFrame::createWithTexture(texture2, Rect(0, 0, size2.width, size2.height));
-        auto frame3 = SpriteFrame::createWithTexture(texture3, Rect(0, 0, size3.width, size3.height));
+        // 创建并运行循环动画
+        auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
+        auto animate = Animate::create(animation);
+        auto repeatAnimate = RepeatForever::create(animate);
+        repeatAnimate->setTag(999);
 
-        if (frame1 && frame2 && frame3)
-        {
-            frames.pushBack(frame1);
-            frames.pushBack(frame2);
-            frames.pushBack(frame3);
-
-            // 创建动画，每帧0.15秒
-            auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
-            auto animate = Animate::create(animation);
-            auto repeatAnimate = RepeatForever::create(animate);
-            repeatAnimate->setTag(999); // 设置标签以便后续停止
-
-            _player->runAction(repeatAnimate);
-            CCLOG("Walk animation started (frame size: %.0fx%.0f)", size1.width, size1.height);
-        }
-        else
-        {
-            CCLOG("Failed to create sprite frames");
-            _isWalkAnimationPlaying = false;
-        }
+        _player->runAction(repeatAnimate);
+        CCLOG("Walk animation started");
     }
     else
     {
@@ -1159,6 +1451,11 @@ void DebugScene::startWalkAnimation()
     }
 }
 
+/**
+ * @brief 停止行走动画
+ *
+ * 停止动画并恢复到默认静止帧，同时保持角色朝向。
+ */
 void DebugScene::stopWalkAnimation()
 {
     if (!_player || !_isWalkAnimationPlaying)
@@ -1166,33 +1463,44 @@ void DebugScene::stopWalkAnimation()
 
     _isWalkAnimationPlaying = false;
 
-    // 保存当前翻转状态
+    // 保存翻转状态
     bool wasFlippedX = _player->isFlippedX();
 
-    // 停止行走动画
+    // 停止动画
     _player->stopActionByTag(999);
 
-    // 恢复到默认静止图片
+    // 恢复默认纹理
     auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
         "Sprites/Characters/Player/Klee/spr_klee_run.png");
     if (defaultTexture)
     {
         _player->setTexture(defaultTexture);
-        // 设置正确的纹理矩形
-        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+        _player->setTextureRect(Rect(0, 0,
+                                     defaultTexture->getContentSize().width,
                                      defaultTexture->getContentSize().height));
-        // 恢复翻转状态
-        _player->setFlippedX(wasFlippedX);
+        _player->setFlippedX(wasFlippedX); // 恢复翻转状态
     }
 
     CCLOG("Walk animation stopped");
 }
 
-// ==================== 装备系统 ====================
+//=============================================================================
+// 第5部分：装备系统
+//=============================================================================
 
+/**
+ * @brief 初始化测试用装备
+ *
+ * 创建三种不同类型的武器用于测试：
+ * - 铁剑(SWORD)：高伤害，普通攻速
+ * - 魔法杖(STAFF)：中伤害，远距离，MP加成
+ * - 锋利匕首(DAGGER)：低伤害，快攻速，高暴击
+ */
 void DebugScene::initEquipments()
 {
+    //-------------------------------------------------------------------------
     // 创建剑武器
+    //-------------------------------------------------------------------------
     _swordWeapon = std::make_shared<Weapon>();
     _swordWeapon->id = 1;
     _swordWeapon->name = "铁剑";
@@ -1201,12 +1509,14 @@ void DebugScene::initEquipments()
     _swordWeapon->attackDamage = 15.0f;
     _swordWeapon->attackRange = 50.0f;
     _swordWeapon->attackSpeed = 1.0f;
-    _swordWeapon->attackAnimationPrefix = "spr_klee_attack"; // 暂用默认动画
+    _swordWeapon->attackAnimationPrefix = "spr_klee_attack";
     _swordWeapon->attackFrameCount = 3;
     _swordWeapon->attributeBonus.set(AttributeType::STRENGTH, 5.0f);
-    _swordWeapon->spritePath = "default"; // 后期替换为实际路径
+    _swordWeapon->spritePath = "default";
 
+    //-------------------------------------------------------------------------
     // 创建法杖武器
+    //-------------------------------------------------------------------------
     _staffWeapon = std::make_shared<Weapon>();
     _staffWeapon->id = 2;
     _staffWeapon->name = "魔法杖";
@@ -1215,13 +1525,15 @@ void DebugScene::initEquipments()
     _staffWeapon->attackDamage = 8.0f;
     _staffWeapon->attackRange = 100.0f;
     _staffWeapon->attackSpeed = 0.8f;
-    _staffWeapon->attackAnimationPrefix = "spr_klee_attack"; // 暂用默认动画
+    _staffWeapon->attackAnimationPrefix = "spr_klee_attack";
     _staffWeapon->attackFrameCount = 3;
     _staffWeapon->attributeBonus.set(AttributeType::MAX_MP, 20.0f);
     _staffWeapon->attributeBonus.set(AttributeType::CRITICAL_RATE, 0.05f);
-    _staffWeapon->spritePath = "default"; // 后期替换为实际路径
+    _staffWeapon->spritePath = "default";
 
+    //-------------------------------------------------------------------------
     // 创建匕首武器
+    //-------------------------------------------------------------------------
     _daggerWeapon = std::make_shared<Weapon>();
     _daggerWeapon->id = 3;
     _daggerWeapon->name = "锋利匕首";
@@ -1230,13 +1542,15 @@ void DebugScene::initEquipments()
     _daggerWeapon->attackDamage = 10.0f;
     _daggerWeapon->attackRange = 30.0f;
     _daggerWeapon->attackSpeed = 1.5f;
-    _daggerWeapon->attackAnimationPrefix = "spr_klee_attack"; // 暂用默认动画
+    _daggerWeapon->attackAnimationPrefix = "spr_klee_attack";
     _daggerWeapon->attackFrameCount = 3;
     _daggerWeapon->attributeBonus.set(AttributeType::CRITICAL_RATE, 0.15f);
     _daggerWeapon->attributeBonus.set(AttributeType::MOVE_SPEED, 20.0f);
-    _daggerWeapon->spritePath = "default"; // 后期替换为实际路径
+    _daggerWeapon->spritePath = "default";
 
+    //-------------------------------------------------------------------------
     // 设置装备变更回调
+    //-------------------------------------------------------------------------
     if (_player)
     {
         _player->setEquipmentChangeCallback(
@@ -1249,61 +1563,63 @@ void DebugScene::initEquipments()
     CCLOG("Equipment system initialized: 3 weapons created");
 }
 
+/**
+ * @brief 装备变更回调处理
+ *
+ * 当玩家装备/卸下武器时被调用，更新UI显示。
+ *
+ * @param slot 装备槽位
+ * @param equipment 新装备（nullptr表示卸下）
+ */
 void DebugScene::onEquipmentChanged(EquipmentSlot slot, const std::shared_ptr<Equipment> &equipment)
 {
-    if (slot == EquipmentSlot::WEAPON)
+    if (slot != EquipmentSlot::WEAPON)
+        return;
+
+    if (equipment)
     {
-        if (equipment)
+        auto weapon = std::dynamic_pointer_cast<Weapon>(equipment);
+        if (weapon)
         {
-            auto weapon = std::dynamic_pointer_cast<Weapon>(equipment);
-            if (weapon)
+            // 武器类型转换为显示文本
+            std::string weaponTypeStr;
+            switch (weapon->type)
             {
-                // 更新装备标签
-                std::string weaponTypeStr;
-                switch (weapon->type)
-                {
-                case WeaponType::SWORD:
-                    weaponTypeStr = "剑";
-                    break;
-                case WeaponType::STAFF:
-                    weaponTypeStr = "法杖";
-                    break;
-                case WeaponType::DAGGER:
-                    weaponTypeStr = "匕首";
-                    break;
-                }
-
-                if (_equipmentLabel)
-                {
-                    _equipmentLabel->setString(StringUtils::format("武器: %s (%s)\n攻击力+%.0f 范围%.0f",
-                                                                   weapon->name.c_str(),
-                                                                   weaponTypeStr.c_str(),
-                                                                   weapon->attackDamage,
-                                                                   weapon->attackRange));
-                }
-
-                addDamageLog(StringUtils::format("装备: %s", weapon->name.c_str()));
-
-                // TODO: 后期根据 weapon->spritePath 更换角色贴图
-                // 目前使用默认贴图
+            case WeaponType::SWORD:
+                weaponTypeStr = "剑";
+                break;
+            case WeaponType::STAFF:
+                weaponTypeStr = "法杖";
+                break;
+            case WeaponType::DAGGER:
+                weaponTypeStr = "匕首";
+                break;
             }
-        }
-        else
-        {
+
             if (_equipmentLabel)
             {
-                _equipmentLabel->setString("武器: 无");
+                _equipmentLabel->setString(StringUtils::format(
+                    "武器: %s (%s)\n攻击力+%.0f 范围%.0f",
+                    weapon->name.c_str(), weaponTypeStr.c_str(),
+                    weapon->attackDamage, weapon->attackRange));
             }
-            addDamageLog("卸下武器");
+
+            addDamageLog(StringUtils::format("装备: %s", weapon->name.c_str()));
         }
+    }
+    else
+    {
+        if (_equipmentLabel)
+            _equipmentLabel->setString("武器: 无");
+        addDamageLog("卸下武器");
     }
 }
 
+// 装备按钮回调
 void DebugScene::onEquipSwordClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
         return;
-
     _player->equip(_swordWeapon);
     CCLOG("Equipped sword: %s", _swordWeapon->name.c_str());
 }
@@ -1312,7 +1628,6 @@ void DebugScene::onEquipStaffClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
         return;
-
     _player->equip(_staffWeapon);
     CCLOG("Equipped staff: %s", _staffWeapon->name.c_str());
 }
@@ -1321,7 +1636,6 @@ void DebugScene::onEquipDaggerClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
         return;
-
     _player->equip(_daggerWeapon);
     CCLOG("Equipped dagger: %s", _daggerWeapon->name.c_str());
 }
@@ -1330,39 +1644,49 @@ void DebugScene::onUnequipWeaponClicked(Ref *sender)
 {
     if (!_player || _player->isDead())
         return;
-
     _player->unequip(EquipmentSlot::WEAPON);
     CCLOG("Weapon unequipped");
 }
 
-// ==================== 被动技能系统 ====================
+//=============================================================================
+// 第6部分：被动技能系统
+//=============================================================================
 
+/**
+ * @brief 初始化被动技能
+ *
+ * 创建三种被动技能用于测试：
+ * - 力量精通：永久+5力量
+ * - 铁壁：永久+3防御
+ * - 满血暴击：条件性被动，血量满时暴击率+25%
+ */
 void DebugScene::initPassiveSkills()
 {
-    // 创建被动技能1：力量提升
+    // 被动技能1：力量提升（常规被动）
     _passiveSkill1 = std::make_shared<PassiveSkill>();
     _passiveSkill1->id = 2001;
     _passiveSkill1->name = "力量精通";
     _passiveSkill1->description = "永久增加5点力量";
     _passiveSkill1->attributeBonus.set(AttributeType::STRENGTH, 5.0f);
 
-    // 创建被动技能2：防御提升
+    // 被动技能2：防御提升（常规被动）
     _passiveSkill2 = std::make_shared<PassiveSkill>();
     _passiveSkill2->id = 2002;
     _passiveSkill2->name = "铁壁";
     _passiveSkill2->description = "永久增加3点防御";
     _passiveSkill2->attributeBonus.set(AttributeType::DEFENSE, 3.0f);
 
-    // 创建被动技能3：暴击提升
+    // 被动技能3：满血暴击（条件性被动）
     _passiveSkill3 = std::make_shared<PassiveSkill>();
     _passiveSkill3->id = 2003;
-    _passiveSkill3->name = "致命一击";
-    _passiveSkill3->description = "永久增加10%暴击率";
-    _passiveSkill3->attributeBonus.set(AttributeType::CRITICAL_RATE, 0.10f);
+    _passiveSkill3->name = "满血暴击";
+    _passiveSkill3->description = "血量满时暴击率+25%";
+    // 注意：条件性被动不设置固定属性加成，由 updateConditionalPassives() 动态处理
 
     CCLOG("Passive skills initialized: 3 skills created");
 }
 
+// 被动技能按钮回调
 void DebugScene::onLearnPassive1Clicked(Ref *sender)
 {
     if (!_player || _player->isDead())
@@ -1372,7 +1696,6 @@ void DebugScene::onLearnPassive1Clicked(Ref *sender)
     if (!skillComp)
         return;
 
-    // 学习并装备到槽位0
     skillComp->learnSkill(_passiveSkill1);
     skillComp->equipPassiveSkill(_passiveSkill1, 0);
 
@@ -1390,7 +1713,6 @@ void DebugScene::onLearnPassive2Clicked(Ref *sender)
     if (!skillComp)
         return;
 
-    // 学习并装备到槽位1
     skillComp->learnSkill(_passiveSkill2);
     skillComp->equipPassiveSkill(_passiveSkill2, 1);
 
@@ -1408,15 +1730,65 @@ void DebugScene::onLearnPassive3Clicked(Ref *sender)
     if (!skillComp)
         return;
 
-    // 学习并装备到槽位2
+    // 条件性被动只学习，不通过 equipPassiveSkill 添加固定属性
     skillComp->learnSkill(_passiveSkill3);
-    skillComp->equipPassiveSkill(_passiveSkill3, 2);
+    _hasFullHpCritPassive = true;
 
-    addDamageLog(StringUtils::format("学习被动: %s (暴击+10%%)", _passiveSkill3->name.c_str()));
+    addDamageLog(StringUtils::format("学习被动: %s (满血时暴击+25%%)", _passiveSkill3->name.c_str()));
     updatePassiveSkillLabel();
     CCLOG("Learned passive skill: %s", _passiveSkill3->name.c_str());
 }
 
+/**
+ * @brief 更新条件性被动技能效果
+ *
+ * 检查条件性被动的触发条件，动态添加/移除效果。
+ * 当前实现：满血暴击 - 血量满时通过状态效果添加25%暴击率。
+ */
+void DebugScene::updateConditionalPassives()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    auto attr = _player->getAttributeComponent();
+    if (!attr)
+        return;
+
+    // 满血暴击被动检查
+    if (_hasFullHpCritPassive)
+    {
+        float currentHP = _player->getCurrentHP();
+        float maxHP = attr->getAttributeValue(AttributeType::MAX_HP);
+        bool isFullHP = (currentHP >= maxHP - 0.01f); // 允许微小误差
+
+        if (isFullHP && !_isFullHpCritActive)
+        {
+            // 激活效果：通过状态效果系统添加暴击加成
+            StatusEffectInstance fullHpCrit;
+            fullHpCrit.type = StatusEffectType::FULL_HP_CRIT;
+            fullHpCrit.duration = 999999.0f; // 超长持续时间（由代码控制）
+            fullHpCrit.elapsed = 0.0f;
+            fullHpCrit.attributeBonus.set(AttributeType::CRITICAL_RATE, 0.25f);
+
+            attr->addStatusEffect(fullHpCrit);
+            _isFullHpCritActive = true;
+
+            addDamageLog("满血暴击激活! 暴击+25%");
+            CCLOG("Full HP Crit passive activated!");
+        }
+        else if (!isFullHP && _isFullHpCritActive)
+        {
+            // 失效：标记状态，等待状态效果系统自然更新
+            _isFullHpCritActive = false;
+            addDamageLog("满血暴击失效!");
+            CCLOG("Full HP Crit passive deactivated!");
+        }
+    }
+}
+
+/**
+ * @brief 更新被动技能UI显示
+ */
 void DebugScene::updatePassiveSkillLabel()
 {
     if (!_passiveSkillLabel || !_player)
@@ -1430,35 +1802,50 @@ void DebugScene::updatePassiveSkillLabel()
     }
 
     const auto &passiveSlots = skillComp->getPassiveSlots();
-    if (passiveSlots.empty())
-    {
-        _passiveSkillLabel->setString("被动技能: 无");
-        return;
-    }
 
     std::string passiveText = "被动技能:\n";
+    bool hasPassive = false;
+
+    // 显示已装备的常规被动
     for (size_t i = 0; i < passiveSlots.size(); ++i)
     {
         if (passiveSlots[i])
         {
             passiveText += "  - " + passiveSlots[i]->name + "\n";
+            hasPassive = true;
         }
     }
 
-    _passiveSkillLabel->setString(passiveText);
+    // 显示条件性被动
+    if (_hasFullHpCritPassive)
+    {
+        std::string status = _isFullHpCritActive ? "(激活中)" : "(未激活)";
+        passiveText += "  - 满血暴击 " + status + "\n";
+        hasPassive = true;
+    }
+
+    _passiveSkillLabel->setString(hasPassive ? passiveText : "被动技能: 无");
 }
 
+/**
+ * @brief 添加伤害日志
+ *
+ * 将日志添加到列表并更新UI显示。
+ * 日志数量超过 MAX_LOG_LINES 时自动移除最旧的条目。
+ *
+ * @param log 日志内容
+ */
 void DebugScene::addDamageLog(const std::string &log)
 {
     _damageLog.push_back(log);
 
-    // 保持日志在最大行数内
+    // 限制日志行数
     while (_damageLog.size() > MAX_LOG_LINES)
     {
         _damageLog.erase(_damageLog.begin());
     }
 
-    // 更新日志显示
+    // 更新显示
     std::string logText = "--- 伤害日志 ---\n";
     for (const auto &line : _damageLog)
     {
@@ -1471,31 +1858,40 @@ void DebugScene::addDamageLog(const std::string &log)
     }
 }
 
+//=============================================================================
+// 第9部分：攻击与技能系统
+//=============================================================================
+
+/**
+ * @brief 播放攻击动画
+ *
+ * 根据当前装备的武器类型播放对应的攻击动画。
+ * 攻击速度受武器属性影响。
+ * 动画使用 Tag=1000 标识。
+ */
 void DebugScene::playAttackAnimation()
 {
     if (!_player)
         return;
 
-    // 停止行走动画（如果在播放）
+    // 停止行走动画
     if (_isWalkAnimationPlaying)
-    {
         stopWalkAnimation();
-    }
 
     _isAttacking = true;
 
-    // 获取当前装备的武器类型
+    // 获取武器信息
     WeaponType currentWeaponType = _player->getCurrentWeaponType();
     auto equippedWeapon = _player->getEquippedWeapon();
 
-    // 根据武器类型设置不同的攻击动画速度
-    float animSpeed = 0.15f; // 默认动画速度
+    // 计算动画速度（攻击速度越高越快）
+    float animSpeed = 0.15f;
     if (equippedWeapon)
     {
-        animSpeed = 0.15f / equippedWeapon->attackSpeed; // 攻击速度越高，动画越快
+        animSpeed = 0.15f / equippedWeapon->attackSpeed;
     }
 
-    // 加载3张攻击图片 (目前使用默认动画，后期根据武器类型替换)
+    // 加载攻击动画纹理
     auto texture1 = Director::getInstance()->getTextureCache()->addImage(
         "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
     auto texture2 = Director::getInstance()->getTextureCache()->addImage(
@@ -1505,19 +1901,14 @@ void DebugScene::playAttackAnimation()
 
     if (texture1 && texture2 && texture3)
     {
-        // 创建精灵帧
-        auto frame1 = SpriteFrame::createWithTexture(texture1,
-                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
-        auto frame2 = SpriteFrame::createWithTexture(texture2,
-                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
-        auto frame3 = SpriteFrame::createWithTexture(texture3,
-                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
-
-        // 创建动画帧序列
+        // 创建动画帧
         Vector<SpriteFrame *> frames;
-        frames.pushBack(frame1);
-        frames.pushBack(frame2);
-        frames.pushBack(frame3);
+        frames.pushBack(SpriteFrame::createWithTexture(texture1,
+                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture2,
+                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture3,
+                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
 
         auto animation = Animation::createWithSpriteFrames(frames, animSpeed);
         auto animate = Animate::create(animation);
@@ -1525,7 +1916,7 @@ void DebugScene::playAttackAnimation()
         // 停止之前的攻击动画
         _player->stopActionByTag(1000);
 
-        // 创建动画序列：播放动画 -> 回调结束
+        // 创建动画序列：播放 -> 回调
         auto callbackAction = CallFunc::create([this]()
                                                { this->onAttackAnimationFinished(); });
         auto sequence = Sequence::create(animate, callbackAction, nullptr);
@@ -1533,7 +1924,7 @@ void DebugScene::playAttackAnimation()
 
         _player->runAction(sequence);
 
-        // 根据武器类型输出不同的攻击提示
+        // 输出攻击类型日志
         std::string attackTypeStr;
         switch (currentWeaponType)
         {
@@ -1547,7 +1938,6 @@ void DebugScene::playAttackAnimation()
             attackTypeStr = "匕首突刺";
             break;
         }
-
         CCLOG("Attack animation started: %s (speed: %.2f)", attackTypeStr.c_str(), animSpeed);
     }
     else
@@ -1557,49 +1947,67 @@ void DebugScene::playAttackAnimation()
     }
 }
 
+/**
+ * @brief 攻击动画结束回调
+ *
+ * 执行伤害判定逻辑，包括：
+ * - 距离检测（武器攻击范围 + 目标碰撞半径）
+ * - 伤害计算（武器伤害 + 力量加成）
+ * - 暴击判定
+ * - 武器特殊效果（法杖消耗MP、匕首背刺）
+ */
 void DebugScene::onAttackAnimationFinished()
 {
     _isAttacking = false;
 
-    // 保存当前翻转状态
+    // 保存翻转状态
     bool wasFlippedX = _player ? _player->isFlippedX() : false;
 
-    // 执行攻击伤害判定
+    //-------------------------------------------------------------------------
+    // 伤害判定
+    //-------------------------------------------------------------------------
     if (_player && _targetDummy.sprite && _targetDummy.currentHP > 0)
     {
         Vec2 playerPos = _player->getPosition();
         Vec2 dummyPos = _targetDummy.sprite->getPosition();
         float distance = playerPos.distance(dummyPos);
 
-        // 获取当前武器和攻击范围
+        // 获取武器属性
         auto weapon = _player->getEquippedWeapon();
-        float attackRange = weapon ? weapon->attackRange : 60.0f;  // 默认徒手攻击范围
-        float weaponDamage = weapon ? weapon->attackDamage : 5.0f; // 默认徒手伤害
+        float attackRange = weapon ? weapon->attackRange : 60.0f;
+        float weaponDamage = weapon ? weapon->attackDamage : 5.0f;
 
         // 获取角色属性
         auto attr = _player->getAttributeComponent();
         float strength = attr ? attr->getAttributeValue(AttributeType::STRENGTH) : 10.0f;
         float critRate = attr ? attr->getAttributeValue(AttributeType::CRITICAL_RATE) : 0.1f;
 
-        // 检查是否在攻击范围内
-        if (distance <= attackRange + 50.0f) // 加一些容差
+        // 计算木桩碰撞半径
+        Size dummySize = _targetDummy.sprite->getContentSize();
+        float dummyScale = _targetDummy.sprite->getScale();
+        float dummyHitRadius = dummySize.width * dummyScale;
+
+        // 判定攻击范围
+        float totalHitRange = attackRange + dummyHitRadius;
+        if (distance <= totalHitRange)
         {
-            // 计算基础伤害 = 武器伤害 + 力量 * 系数
+            // 计算伤害：武器伤害 + 力量 × 1.5
             float baseDamage = weaponDamage + strength * 1.5f;
 
-            // 判断暴击
+            // 暴击判定
             bool isCrit = (static_cast<float>(rand()) / RAND_MAX) < critRate;
             float finalDamage = isCrit ? baseDamage * 1.5f : baseDamage;
 
-            // 根据武器类型添加特殊效果
+            // 武器特殊效果
             WeaponType weaponType = _player->getCurrentWeaponType();
             switch (weaponType)
             {
             case WeaponType::SWORD:
-                // 剑：普通伤害
+                // 剑：无特殊效果
                 break;
+
             case WeaponType::STAFF:
-                // 法杖：消耗 MP 增加 50% 伤害
+                // 法杖：消耗5MP增加50%伤害
                 if (_player->getCurrentMP() >= 5.0f)
                 {
                     _player->setCurrentMP(_player->getCurrentMP() - 5.0f);
@@ -1607,8 +2015,9 @@ void DebugScene::onAttackAnimationFinished()
                     addDamageLog("法杖魔力攻击! (消耗5MP)");
                 }
                 break;
+
             case WeaponType::DAGGER:
-                // 匕首：背刺判定（简单模拟：额外暴击几率）
+                // 匕首：20%额外暴击几率（背刺）
                 if (!isCrit && (static_cast<float>(rand()) / RAND_MAX) < 0.2f)
                 {
                     isCrit = true;
@@ -1622,23 +2031,24 @@ void DebugScene::onAttackAnimationFinished()
         }
     }
 
-    // 如果玩家仍在移动，恢复行走动画
+    //-------------------------------------------------------------------------
+    // 恢复角色状态
+    //-------------------------------------------------------------------------
     if (_isMovingLeft || _isMovingRight)
     {
         startWalkAnimation();
     }
     else
     {
-        // 恢复到默认静止图片
+        // 恢复默认纹理
         auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
             "Sprites/Characters/Player/Klee/spr_klee_run.png");
         if (defaultTexture && _player)
         {
             _player->setTexture(defaultTexture);
-            // 设置正确的纹理矩形
-            _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+            _player->setTextureRect(Rect(0, 0,
+                                         defaultTexture->getContentSize().width,
                                          defaultTexture->getContentSize().height));
-            // 恢复翻转状态
             _player->setFlippedX(wasFlippedX);
         }
     }
@@ -1646,7 +2056,31 @@ void DebugScene::onAttackAnimationFinished()
     CCLOG("Attack animation finished");
 }
 
-// 初始化物理碰撞监听器
+//=============================================================================
+// 第9部分：物理碰撞系统 (Physics Collision System)
+//=============================================================================
+// 本部分处理 cocos2d-x 物理引擎的碰撞检测逻辑，主要包括：
+// 1. 玩家与平台的碰撞 - 用于判定角色是否在地面上
+// 2. 炸弹与平台的碰撞 - 触发炸弹爆炸
+// 3. 碰撞分离检测 - 判断角色离开平台进入空中
+//
+// 碰撞类别(Category)使用位掩码区分：
+// - CATEGORY_PLAYER (0x01)   : 玩家
+// - CATEGORY_PLATFORM (0x02) : 平台/地面
+// - CATEGORY_BOMB (0x04)     : 炸弹
+// - CATEGORY_ENEMY (0x08)    : 敌人
+//=============================================================================
+
+/**
+ * @brief 初始化物理碰撞监听器
+ *
+ * 创建物理接触事件监听器，设置三个关键回调：
+ * - onContactBegin: 碰撞开始时调用
+ * - onContactPreSolve: 碰撞处理前调用，可修改碰撞参数
+ * - onContactSeparate: 碰撞分离时调用
+ *
+ * @note 该函数在场景初始化时调用，必须在物理世界创建后执行
+ */
 void DebugScene::initPhysicsContactListener()
 {
     auto contactListener = EventListenerPhysicsContact::create();
@@ -1687,6 +2121,18 @@ void DebugScene::initPhysicsContactListener()
     CCLOG("Physics contact listener initialized");
 }
 
+/**
+ * @brief 碰撞开始回调函数
+ *
+ * 当两个物理刚体开始接触时调用。主要处理：
+ * 1. 玩家落地检测 - 通过碰撞法向量判断是否从上方落下
+ * 2. 炸弹碰撞平台 - 触发炸弹爆炸效果
+ *
+ * @param contact 物理接触对象，包含碰撞双方的信息
+ * @return true 允许碰撞响应，false 忽略此次碰撞
+ *
+ * @note 使用 _groundContactCount 引用计数处理多平台接触
+ */
 bool DebugScene::onContactBegin(PhysicsContact &contact)
 {
     auto nodeA = contact.getShapeA()->getBody()->getNode();
@@ -1743,6 +2189,15 @@ bool DebugScene::onContactBegin(PhysicsContact &contact)
     return true;
 }
 
+/**
+ * @brief 碰撞分离回调函数
+ *
+ * 当两个物理刚体分离时调用。主要用于：
+ * - 检测玩家离开平台，进入空中状态
+ * - 使用引用计数确保只有完全离开所有平台才设为空中状态
+ *
+ * @param contact 物理接触对象
+ */
 void DebugScene::onContactSeparate(PhysicsContact &contact)
 {
     auto nodeA = contact.getShapeA()->getBody()->getNode();
@@ -1772,6 +2227,30 @@ void DebugScene::onContactSeparate(PhysicsContact &contact)
     }
 }
 
+//=============================================================================
+// 第10部分：跳跃与技能系统 (Jump & Skill System)
+//=============================================================================
+// 本部分包含角色的跳跃机制和技能释放逻辑：
+// 1. 跳跃 - 基于物理引擎的冲量跳跃
+// 2. 技能释放 - 通过技能组件管理 MP 消耗和冷却
+// 3. 技能动画 - 播放施法动画后执行技能效果
+//
+// 技能系统常量：
+// - BOMB_SKILL_SLOT (0)    : 炸弹技能的槽位索引
+// - BOMB_SKILL_ID (1001)   : 炸弹技能的唯一标识
+// - BOMB_SKILL_MP_COST (10): 释放技能的 MP 消耗
+// - BOMB_SKILL_COOLDOWN (1): 技能冷却时间（秒）
+// - JUMP_IMPULSE (350)     : 跳跃冲量值
+//=============================================================================
+
+/**
+ * @brief 执行跳跃动作
+ *
+ * 使用物理引擎的冲量(Impulse)实现跳跃，只有在地面上时才能跳跃。
+ * 跳跃冲量会考虑角色质量，确保跳跃高度一致。
+ *
+ * @note 跳跃后立即设置 _isGrounded = false，防止连跳
+ */
 void DebugScene::jump()
 {
     if (!_player || _player->isDead())
@@ -1792,6 +2271,17 @@ void DebugScene::jump()
     }
 }
 
+/**
+ * @brief 释放炸弹技能
+ *
+ * 通过技能组件检查并释放炸弹技能，流程如下：
+ * 1. 检查角色状态（死亡、正在攻击、正在施法则不可释放）
+ * 2. 调用 SkillComponent::useActiveSkill() 检查 MP 和冷却
+ * 3. 如果条件满足，播放技能动画
+ * 4. 动画结束后实际创建炸弹
+ *
+ * @note 使用 _isCastingSkill 标记防止技能打断
+ */
 void DebugScene::throwBomb()
 {
     if (!_player || _player->isDead())
@@ -1839,6 +2329,17 @@ void DebugScene::throwBomb()
     CCLOG("Skill started: Throw Bomb");
 }
 
+/**
+ * @brief 播放技能施法动画
+ *
+ * 加载并播放3帧攻击/施法动画。动画结束后调用 onSkillAnimationFinished()
+ * 执行实际的技能效果（丢出炸弹）。
+ *
+ * 动画配置：
+ * - 使用 spr_klee_attack_1/2/3.png 作为帧
+ * - 每帧 0.13 秒，总时长约 0.4 秒
+ * - 动画标签(Tag): 1001，用于停止/识别
+ */
 void DebugScene::playSkillAnimation()
 {
     if (!_player)
@@ -1900,6 +2401,16 @@ void DebugScene::playSkillAnimation()
     }
 }
 
+/**
+ * @brief 技能动画播放完成回调
+ *
+ * 当技能施法动画播放完毕后调用，执行以下操作：
+ * 1. 重置 _isCastingSkill 标记
+ * 2. 调用 doThrowBomb() 实际创建并投掷炸弹
+ * 3. 根据移动状态恢复行走动画或静止贴图
+ *
+ * @note 保持角色朝向不变
+ */
 void DebugScene::onSkillAnimationFinished()
 {
     _isCastingSkill = false;
@@ -1934,6 +2445,33 @@ void DebugScene::onSkillAnimationFinished()
     CCLOG("Skill animation finished");
 }
 
+//=============================================================================
+// 第11部分：炸弹物理系统 (Bomb Physics System)
+//=============================================================================
+// 本部分处理炸弹的创建、物理模拟和爆炸效果：
+// 1. 炸弹创建 - 带物理刚体的抛物线投掷
+// 2. 爆炸效果 - 视觉特效和范围伤害计算
+//
+// 炸弹物理参数：
+// - BOMB_THROW_SPEED_X (300) : 水平抛出速度
+// - BOMB_THROW_SPEED_Y (350) : 垂直抛出速度
+// - BOMB_DAMAGE (150)        : 基础爆炸伤害
+// - BOMB_EXPLOSION_RADIUS (80): 爆炸范围半径
+//=============================================================================
+
+/**
+ * @brief 实际创建并投掷炸弹
+ *
+ * 创建带有物理刚体的炸弹精灵，并施加初始冲量实现抛物线轨迹。
+ *
+ * 物理设置：
+ * - 使用圆形碰撞体(半径15)
+ * - 碰撞类别: CATEGORY_BOMB
+ * - 只与 CATEGORY_PLATFORM 产生碰撞
+ * - 允许旋转，模拟真实物理效果
+ *
+ * @note 炸弹方向由角色当前朝向决定
+ */
 void DebugScene::doThrowBomb()
 {
     if (!_player || _player->isDead())
@@ -1989,6 +2527,19 @@ void DebugScene::doThrowBomb()
     CCLOG("Bomb thrown with physics!");
 }
 
+/**
+ * @brief 处理炸弹爆炸
+ *
+ * 当炸弹碰撞平台时触发爆炸，执行以下操作：
+ * 1. 移除炸弹精灵
+ * 2. 在爆炸位置创建爆炸视觉特效（放大+淡出）
+ * 3. 检测爆炸范围内的目标并计算伤害
+ * 4. 伤害公式: (BOMB_DAMAGE + 力量*5) × 暴击倍率
+ *
+ * @param bomb 要爆炸的炸弹对象引用
+ *
+ * @note 暴击率从角色属性组件读取
+ */
 void DebugScene::explodeBomb(Bomb &bomb)
 {
     if (!bomb.sprite)
@@ -2020,12 +2571,14 @@ void DebugScene::explodeBomb(Bomb &bomb)
     if (_targetDummy.sprite && _targetDummy.currentHP > 0)
     {
         Vec2 dummyPos = _targetDummy.sprite->getPosition();
-        float distance = explodePos.distance(dummyPos);
-
-        if (distance <= BOMB_EXPLOSION_RADIUS)
+        Size dummySize = _targetDummy.sprite->getContentSize();       // 获取木桩大小
+        float distance = explodePos.distance(dummyPos);               // 计算与木桩的距离
+        float dummyScale = _targetDummy.sprite->getScale();           // 获取木桩缩放比例
+        float dummyHitRadius = (dummySize.width * dummyScale) * 0.5f; // 木桩的碰撞半径
+        if (distance - dummyHitRadius <= BOMB_EXPLOSION_RADIUS)
         {
             // 从角色属性组件获取暴击率和攻击力
-            float critRate = 0.3f;          // 默认暴击率 30%
+            float critRate = 0.0f;          // 默认暴击率 0%
             float critMultiplier = 1.5f;    // 默认暴击倍率 1.5
             float baseDamage = BOMB_DAMAGE; // 基础伤害
 
@@ -2059,6 +2612,28 @@ void DebugScene::explodeBomb(Bomb &bomb)
     CCLOG("Bomb exploded at (%.0f, %.0f)", explodePos.x, explodePos.y);
 }
 
+//=============================================================================
+// 第12部分：伤害显示系统 (Damage Display System)
+//=============================================================================
+// 本部分负责目标受击时的视觉反馈，包括：
+// 1. 伤害数字飘字 - 在目标位置显示伤害值
+// 2. 血条更新 - 实时更新目标血量显示
+// 3. 受击特效 - 目标精灵闪红效果
+//=============================================================================
+
+/**
+ * @brief 对目标造成伤害
+ *
+ * 处理伤害结算的核心函数，执行以下操作：
+ * 1. 扣除目标 HP（不会低于0）
+ * 2. 在目标位置显示伤害飘字
+ * 3. 更新血条显示
+ * 4. 播放受击闪红特效
+ * 5. 添加伤害日志
+ *
+ * @param damage 造成的伤害值
+ * @param isCrit 是否暴击（影响显示样式）
+ */
 void DebugScene::dealDamageToTarget(float damage, bool isCrit)
 {
     if (!_targetDummy.sprite || _targetDummy.currentHP <= 0)
@@ -2091,6 +2666,25 @@ void DebugScene::dealDamageToTarget(float damage, bool isCrit)
           damage, isCrit, _targetDummy.currentHP, _targetDummy.maxHP);
 }
 
+/**
+ * @brief 显示伤害飘字
+ *
+ * 在指定位置创建伤害数字标签，带有飘字动画效果。
+ *
+ * 样式设置：
+ * - 暴击: 红色(255,50,50)，字号28，显示"暴击 xxx!"
+ * - 普通: 黄色(255,200,50)，字号22
+ * - 黑色描边增强可读性
+ *
+ * 动画效果：
+ * - 向上飘动 60 像素
+ * - 持续 0.8 秒
+ * - 淡出后自动移除
+ *
+ * @param pos 显示位置（通常为目标头顶）
+ * @param damage 伤害数值
+ * @param isCrit 是否暴击
+ */
 void DebugScene::showDamageNumber(const Vec2 &pos, float damage, bool isCrit)
 {
     // 创建伤害数字标签
@@ -2114,6 +2708,21 @@ void DebugScene::showDamageNumber(const Vec2 &pos, float damage, bool isCrit)
     damageLabel->runAction(Sequence::create(spawn, remove, nullptr));
 }
 
+/**
+ * @brief 更新目标血条显示
+ *
+ * 使用 DrawNode 重新绘制目标的血条 UI。
+ *
+ * 血条配置：
+ * - 宽度: 60 像素
+ * - 高度: 8 像素
+ * - 位置: 目标头顶上方 75 像素
+ *
+ * 血条颜色随血量变化：
+ * - HP > 50%: 绿色
+ * - HP > 25%: 黄色
+ * - HP <= 25%: 红色（危险状态）
+ */
 void DebugScene::updateTargetHPBar()
 {
     if (!_targetDummy.sprite || !_targetDummy.hpBar)
