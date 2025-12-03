@@ -2,6 +2,8 @@
 
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
+#include "Character/CharacterData.h"
+#include <memory>
 
 class PlayerCharacter;
 
@@ -77,6 +79,21 @@ private:
     void onExcitedClicked(cocos2d::Ref *sender); // 添加亢奋效果
     void onStunnedClicked(cocos2d::Ref *sender); // 添加眩晕效果
     void applyPoisonDamage(float dt);            // 中毒持续伤害
+
+    // 装备系统相关
+    void onEquipSwordClicked(cocos2d::Ref *sender);                                           // 装备剑
+    void onEquipStaffClicked(cocos2d::Ref *sender);                                           // 装备法杖
+    void onEquipDaggerClicked(cocos2d::Ref *sender);                                          // 装备匕首
+    void onUnequipWeaponClicked(cocos2d::Ref *sender);                                        // 卸下武器
+    void initEquipments();                                                                    // 初始化测试装备
+    void onEquipmentChanged(EquipmentSlot slot, const std::shared_ptr<Equipment> &equipment); // 装备变更回调
+
+    // 被动技能相关
+    void initPassiveSkills();                            // 初始化被动技能
+    void onLearnPassive1Clicked(cocos2d::Ref *sender);   // 学习被动技能1
+    void onLearnPassive2Clicked(cocos2d::Ref *sender);   // 学习被动技能2
+    void onLearnPassive3Clicked(cocos2d::Ref *sender);   // 学习被动技能3
+    void updatePassiveSkillLabel();                      // 更新被动技能显示
 
     // 键盘输入处理
     void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
@@ -162,6 +179,12 @@ private:
 
     // 状态效果相关
     bool _isPoisoned = false; // 是否中毒中（用于持续伤害计时）
+
+    // 装备系统相关
+    std::shared_ptr<Weapon> _swordWeapon;      // 剑武器
+    std::shared_ptr<Weapon> _staffWeapon;      // 法杖武器
+    std::shared_ptr<Weapon> _daggerWeapon;     // 匕首武器
+    cocos2d::Label *_equipmentLabel = nullptr; // 装备显示标签
 
     // 伤害日志
     std::vector<std::string> _damageLog;

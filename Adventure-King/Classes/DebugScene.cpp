@@ -36,6 +36,7 @@ bool DebugScene::init()
     initBackground();
     initPlatforms();
     initPlayer();
+    initEquipments(); // 初始化装备系统
     initTargetDummy();
     initDebugUI();
     initControlButtons();
@@ -313,10 +314,17 @@ void DebugScene::initDebugUI()
     _statusEffectLabel->setColor(Color3B(200, 150, 255));
     this->addChild(_statusEffectLabel, 10);
 
+    // 装备信息标签
+    _equipmentLabel = Label::createWithTTF("武器: 无", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
+    _equipmentLabel->setAnchorPoint(Vec2(0, 1));
+    _equipmentLabel->setPosition(Vec2(rightPanelX, panelY - 55));
+    _equipmentLabel->setColor(Color3B(192, 192, 192));
+    this->addChild(_equipmentLabel, 10);
+
     // 伤害日志标签
     _damageLogLabel = Label::createWithTTF("--- 伤害日志 ---", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     _damageLogLabel->setAnchorPoint(Vec2(0, 1));
-    _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 100));
+    _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 130));
     _damageLogLabel->setColor(Color3B(200, 200, 200));
     this->addChild(_damageLogLabel, 10);
 
@@ -396,6 +404,14 @@ void DebugScene::initControlButtons()
         {"眩晕 (3秒)", CC_CALLBACK_1(DebugScene::onStunnedClicked, this), Color3B(70, 130, 180)}, // 钢蓝色
     };
 
+    // 第三行：装备按钮
+    std::vector<ButtonInfo> equipButtons = {
+        {"装备剑", CC_CALLBACK_1(DebugScene::onEquipSwordClicked, this), Color3B(192, 192, 192)},      // 银色
+        {"装备法杖", CC_CALLBACK_1(DebugScene::onEquipStaffClicked, this), Color3B(138, 43, 226)},     // 紫罗兰
+        {"装备匕首", CC_CALLBACK_1(DebugScene::onEquipDaggerClicked, this), Color3B(50, 205, 50)},     // 酸橙绿
+        {"卸下武器", CC_CALLBACK_1(DebugScene::onUnequipWeaponClicked, this), Color3B(128, 128, 128)}, // 灰色
+    };
+
     float buttonWidth = 150.0f;
     float buttonHeight = 40.0f;
     float spacing = 10.0f;
@@ -450,11 +466,35 @@ void DebugScene::initControlButtons()
         this->addChild(menu, 20);
     }
 
+    // 第三行：装备按钮
+    float equipStartY = statusStartY + 30;
+    float equipTotalWidth = equipButtons.size() * buttonWidth + (equipButtons.size() - 1) * spacing;
+    float equipStartX = centerX - equipTotalWidth / 2 + buttonWidth / 2;
+
+    for (size_t i = 0; i < equipButtons.size(); ++i)
+    {
+        const auto &info = equipButtons[i];
+
+        auto button = MenuItemLabel::create(
+            Label::createWithTTF(info.label, "fonts/ZCOOLKuaiLe-Regular.ttf", 16),
+            info.callback);
+
+        if (button)
+        {
+            button->setColor(info.color);
+            button->setPosition(Vec2(equipStartX + i * (buttonWidth + spacing), equipStartY));
+        }
+
+        auto menu = Menu::create(button, nullptr);
+        menu->setPosition(Vec2::ZERO);
+        this->addChild(menu, 20);
+    }
+
     // 添加快捷键提示
     auto hintLabel = Label::createWithTTF(
         "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 返回",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
-    hintLabel->setPosition(Vec2(centerX, origin.y + 100));
+    hintLabel->setPosition(Vec2(centerX, origin.y + 130));
     hintLabel->setColor(Color3B(150, 150, 150));
     this->addChild(hintLabel, 10);
 }
@@ -1107,6 +1147,153 @@ void DebugScene::stopWalkAnimation()
     CCLOG("Walk animation stopped");
 }
 
+// ==================== 装备系统 ====================
+
+void DebugScene::initEquipments()
+{
+    // 创建剑武器
+    _swordWeapon = std::make_shared<Weapon>();
+    _swordWeapon->id = 1;
+    _swordWeapon->name = "铁剑";
+    _swordWeapon->description = "一把普通的铁剑";
+    _swordWeapon->type = WeaponType::SWORD;
+    _swordWeapon->attackDamage = 15.0f;
+    _swordWeapon->attackRange = 50.0f;
+    _swordWeapon->attackSpeed = 1.0f;
+    _swordWeapon->attackAnimationPrefix = "spr_klee_attack"; // 暂用默认动画
+    _swordWeapon->attackFrameCount = 3;
+    _swordWeapon->attributeBonus.set(AttributeType::STRENGTH, 5.0f);
+    _swordWeapon->spritePath = "default"; // 后期替换为实际路径
+
+    // 创建法杖武器
+    _staffWeapon = std::make_shared<Weapon>();
+    _staffWeapon->id = 2;
+    _staffWeapon->name = "魔法杖";
+    _staffWeapon->description = "蕴含魔力的法杖";
+    _staffWeapon->type = WeaponType::STAFF;
+    _staffWeapon->attackDamage = 8.0f;
+    _staffWeapon->attackRange = 100.0f;
+    _staffWeapon->attackSpeed = 0.8f;
+    _staffWeapon->attackAnimationPrefix = "spr_klee_attack"; // 暂用默认动画
+    _staffWeapon->attackFrameCount = 3;
+    _staffWeapon->attributeBonus.set(AttributeType::MAX_MP, 20.0f);
+    _staffWeapon->attributeBonus.set(AttributeType::CRITICAL_RATE, 0.05f);
+    _staffWeapon->spritePath = "default"; // 后期替换为实际路径
+
+    // 创建匕首武器
+    _daggerWeapon = std::make_shared<Weapon>();
+    _daggerWeapon->id = 3;
+    _daggerWeapon->name = "锋利匕首";
+    _daggerWeapon->description = "快速但短距离的匕首";
+    _daggerWeapon->type = WeaponType::DAGGER;
+    _daggerWeapon->attackDamage = 10.0f;
+    _daggerWeapon->attackRange = 30.0f;
+    _daggerWeapon->attackSpeed = 1.5f;
+    _daggerWeapon->attackAnimationPrefix = "spr_klee_attack"; // 暂用默认动画
+    _daggerWeapon->attackFrameCount = 3;
+    _daggerWeapon->attributeBonus.set(AttributeType::CRITICAL_RATE, 0.15f);
+    _daggerWeapon->attributeBonus.set(AttributeType::MOVE_SPEED, 20.0f);
+    _daggerWeapon->spritePath = "default"; // 后期替换为实际路径
+
+    // 设置装备变更回调
+    if (_player)
+    {
+        _player->setEquipmentChangeCallback(
+            [this](EquipmentSlot slot, const std::shared_ptr<Equipment> &equipment)
+            {
+                this->onEquipmentChanged(slot, equipment);
+            });
+    }
+
+    CCLOG("Equipment system initialized: 3 weapons created");
+}
+
+void DebugScene::onEquipmentChanged(EquipmentSlot slot, const std::shared_ptr<Equipment> &equipment)
+{
+    if (slot == EquipmentSlot::WEAPON)
+    {
+        if (equipment)
+        {
+            auto weapon = std::dynamic_pointer_cast<Weapon>(equipment);
+            if (weapon)
+            {
+                // 更新装备标签
+                std::string weaponTypeStr;
+                switch (weapon->type)
+                {
+                case WeaponType::SWORD:
+                    weaponTypeStr = "剑";
+                    break;
+                case WeaponType::STAFF:
+                    weaponTypeStr = "法杖";
+                    break;
+                case WeaponType::DAGGER:
+                    weaponTypeStr = "匕首";
+                    break;
+                }
+
+                if (_equipmentLabel)
+                {
+                    _equipmentLabel->setString(StringUtils::format("武器: %s (%s)\n攻击力+%.0f 范围%.0f",
+                                                                   weapon->name.c_str(),
+                                                                   weaponTypeStr.c_str(),
+                                                                   weapon->attackDamage,
+                                                                   weapon->attackRange));
+                }
+
+                addDamageLog(StringUtils::format("装备: %s", weapon->name.c_str()));
+
+                // TODO: 后期根据 weapon->spritePath 更换角色贴图
+                // 目前使用默认贴图
+            }
+        }
+        else
+        {
+            if (_equipmentLabel)
+            {
+                _equipmentLabel->setString("武器: 无");
+            }
+            addDamageLog("卸下武器");
+        }
+    }
+}
+
+void DebugScene::onEquipSwordClicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    _player->equip(_swordWeapon);
+    CCLOG("Equipped sword: %s", _swordWeapon->name.c_str());
+}
+
+void DebugScene::onEquipStaffClicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    _player->equip(_staffWeapon);
+    CCLOG("Equipped staff: %s", _staffWeapon->name.c_str());
+}
+
+void DebugScene::onEquipDaggerClicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    _player->equip(_daggerWeapon);
+    CCLOG("Equipped dagger: %s", _daggerWeapon->name.c_str());
+}
+
+void DebugScene::onUnequipWeaponClicked(Ref *sender)
+{
+    if (!_player || _player->isDead())
+        return;
+
+    _player->unequip(EquipmentSlot::WEAPON);
+    CCLOG("Weapon unequipped");
+}
+
 void DebugScene::addDamageLog(const std::string &log)
 {
     _damageLog.push_back(log);
@@ -1143,7 +1330,18 @@ void DebugScene::playAttackAnimation()
 
     _isAttacking = true;
 
-    // 加载3张攻击图片
+    // 获取当前装备的武器类型
+    WeaponType currentWeaponType = _player->getCurrentWeaponType();
+    auto equippedWeapon = _player->getEquippedWeapon();
+
+    // 根据武器类型设置不同的攻击动画速度
+    float animSpeed = 0.15f; // 默认动画速度
+    if (equippedWeapon)
+    {
+        animSpeed = 0.15f / equippedWeapon->attackSpeed; // 攻击速度越高，动画越快
+    }
+
+    // 加载3张攻击图片 (目前使用默认动画，后期根据武器类型替换)
     auto texture1 = Director::getInstance()->getTextureCache()->addImage(
         "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
     auto texture2 = Director::getInstance()->getTextureCache()->addImage(
@@ -1167,8 +1365,7 @@ void DebugScene::playAttackAnimation()
         frames.pushBack(frame2);
         frames.pushBack(frame3);
 
-        // 每帧0.15秒，共0.45秒
-        auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
+        auto animation = Animation::createWithSpriteFrames(frames, animSpeed);
         auto animate = Animate::create(animation);
 
         // 停止之前的攻击动画
@@ -1182,7 +1379,22 @@ void DebugScene::playAttackAnimation()
 
         _player->runAction(sequence);
 
-        CCLOG("Attack animation started (3-hit combo)");
+        // 根据武器类型输出不同的攻击提示
+        std::string attackTypeStr;
+        switch (currentWeaponType)
+        {
+        case WeaponType::SWORD:
+            attackTypeStr = "挥剑攻击";
+            break;
+        case WeaponType::STAFF:
+            attackTypeStr = "法杖施法";
+            break;
+        case WeaponType::DAGGER:
+            attackTypeStr = "匕首突刺";
+            break;
+        }
+
+        CCLOG("Attack animation started: %s (speed: %.2f)", attackTypeStr.c_str(), animSpeed);
     }
     else
     {
@@ -1197,6 +1409,64 @@ void DebugScene::onAttackAnimationFinished()
 
     // 保存当前翻转状态
     bool wasFlippedX = _player ? _player->isFlippedX() : false;
+
+    // 执行攻击伤害判定
+    if (_player && _targetDummy.sprite && _targetDummy.currentHP > 0)
+    {
+        Vec2 playerPos = _player->getPosition();
+        Vec2 dummyPos = _targetDummy.sprite->getPosition();
+        float distance = playerPos.distance(dummyPos);
+
+        // 获取当前武器和攻击范围
+        auto weapon = _player->getEquippedWeapon();
+        float attackRange = weapon ? weapon->attackRange : 60.0f;  // 默认徒手攻击范围
+        float weaponDamage = weapon ? weapon->attackDamage : 5.0f; // 默认徒手伤害
+
+        // 获取角色属性
+        auto attr = _player->getAttributeComponent();
+        float strength = attr ? attr->getAttributeValue(AttributeType::STRENGTH) : 10.0f;
+        float critRate = attr ? attr->getAttributeValue(AttributeType::CRITICAL_RATE) : 0.1f;
+
+        // 检查是否在攻击范围内
+        if (distance <= attackRange + 50.0f) // 加一些容差
+        {
+            // 计算基础伤害 = 武器伤害 + 力量 * 系数
+            float baseDamage = weaponDamage + strength * 1.5f;
+
+            // 判断暴击
+            bool isCrit = (static_cast<float>(rand()) / RAND_MAX) < critRate;
+            float finalDamage = isCrit ? baseDamage * 1.5f : baseDamage;
+
+            // 根据武器类型添加特殊效果
+            WeaponType weaponType = _player->getCurrentWeaponType();
+            switch (weaponType)
+            {
+            case WeaponType::SWORD:
+                // 剑：普通伤害
+                break;
+            case WeaponType::STAFF:
+                // 法杖：消耗 MP 增加 50% 伤害
+                if (_player->getCurrentMP() >= 5.0f)
+                {
+                    _player->setCurrentMP(_player->getCurrentMP() - 5.0f);
+                    finalDamage *= 1.5f;
+                    addDamageLog("法杖魔力攻击! (消耗5MP)");
+                }
+                break;
+            case WeaponType::DAGGER:
+                // 匕首：背刺判定（简单模拟：额外暴击几率）
+                if (!isCrit && (static_cast<float>(rand()) / RAND_MAX) < 0.2f)
+                {
+                    isCrit = true;
+                    finalDamage = baseDamage * 1.5f;
+                    addDamageLog("背刺暴击!");
+                }
+                break;
+            }
+
+            dealDamageToTarget(finalDamage, isCrit);
+        }
+    }
 
     // 如果玩家仍在移动，恢复行走动画
     if (_isMovingLeft || _isMovingRight)

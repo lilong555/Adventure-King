@@ -164,9 +164,24 @@ void PlayerCharacter::equip(const std::shared_ptr<Equipment> &item)
     _equippedItems[slot] = item;
     attr->addEquipmentBonus(item->attributeBonus);
 
+    // 如果是武器，更新攻击动画配置
+    if (slot == EquipmentSlot::WEAPON)
+    {
+        auto weapon = std::dynamic_pointer_cast<Weapon>(item);
+        onWeaponChanged(weapon);
+    }
+
     // 确保 HP/MP 不超过新的上限
     setCurrentHP(_currentHP);
     setCurrentMP(_currentMP);
+
+    // 触发装备变更回调
+    if (_equipmentChangeCallback)
+    {
+        _equipmentChangeCallback(slot, item);
+    }
+
+    CCLOG("Equipped: %s (slot: %d)", item->name.c_str(), static_cast<int>(slot));
 }
 
 void PlayerCharacter::unequip(EquipmentSlot slot)
@@ -179,11 +194,79 @@ void PlayerCharacter::unequip(EquipmentSlot slot)
     if (it == _equippedItems.end())
         return;
 
+    std::string itemName = it->second->name;
     attr->removeEquipmentBonus(it->second->attributeBonus);
     _equippedItems.erase(it);
 
+    // 如果卸下武器，恢复默认攻击配置
+    if (slot == EquipmentSlot::WEAPON)
+    {
+        onWeaponChanged(nullptr);
+    }
+
     setCurrentHP(_currentHP);
     setCurrentMP(_currentMP);
+
+    // 触发装备变更回调
+    if (_equipmentChangeCallback)
+    {
+        _equipmentChangeCallback(slot, nullptr);
+    }
+
+    CCLOG("Unequipped: %s (slot: %d)", itemName.c_str(), static_cast<int>(slot));
+}
+
+std::shared_ptr<Equipment> PlayerCharacter::getEquipment(EquipmentSlot slot) const
+{
+    auto it = _equippedItems.find(slot);
+    if (it != _equippedItems.end())
+    {
+        return it->second;
+    }
+    return nullptr;
+}
+
+std::shared_ptr<Weapon> PlayerCharacter::getEquippedWeapon() const
+{
+    auto equipment = getEquipment(EquipmentSlot::WEAPON);
+    if (equipment)
+    {
+        return std::dynamic_pointer_cast<Weapon>(equipment);
+    }
+    return nullptr;
+}
+
+WeaponType PlayerCharacter::getCurrentWeaponType() const
+{
+    auto weapon = getEquippedWeapon();
+    if (weapon)
+    {
+        return weapon->type;
+    }
+    return WeaponType::SWORD; // 默认剑
+}
+
+void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon> &weapon)
+{
+    if (weapon)
+    {
+        _attackAnimationPrefix = weapon->attackAnimationPrefix.empty()
+                                     ? "default"
+                                     : weapon->attackAnimationPrefix;
+        _attackFrameCount = weapon->attackFrameCount > 0 ? weapon->attackFrameCount : 3;
+
+        CCLOG("Weapon changed: %s, animation: %s, frames: %d",
+              weapon->name.c_str(),
+              _attackAnimationPrefix.c_str(),
+              _attackFrameCount);
+    }
+    else
+    {
+        // 恢复默认配置（无武器/拳头）
+        _attackAnimationPrefix = "default";
+        _attackFrameCount = 3;
+        CCLOG("Weapon unequipped, using default attack");
+    }
 }
 
 void PlayerCharacter::useSkill(size_t slotIndex)
