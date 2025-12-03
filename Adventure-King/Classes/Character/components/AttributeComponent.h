@@ -25,7 +25,9 @@ public:
 
     //------------ 状态效果（中毒、亢奋等）------------
     void addStatusEffect(const StatusEffectInstance &effect);
-    void updateStatusEffects(float dt); // 每帧更新持续时间
+    void updateStatusEffects(float dt);                                                          // 每帧更新持续时间
+    bool hasStatusEffect(StatusEffectType type) const;                                           // 检查是否有某种状态效果
+    const std::vector<StatusEffectInstance> &getStatusEffects() const { return _statusEffects; } // 获取当前状态效果列表
 
     //------------ 最终属性 ------------
     void recalculateFinalAttributes();

@@ -44,6 +44,13 @@ public:
 
     bool isDead() const { return _currentHP <= 0.0f; }
 
+    /**
+     * @brief 设置死亡后是否自动从场景移除
+     * @param autoRemove true=自动移除(默认), false=保留在场景中
+     */
+    void setAutoRemoveOnDeath(bool autoRemove) { _autoRemoveOnDeath = autoRemove; }
+    bool getAutoRemoveOnDeath() const { return _autoRemoveOnDeath; }
+
     // 等级/经验
     int getLevel() const { return _level; }
     void setLevel(int level) { _level = level; }
@@ -68,9 +75,10 @@ protected:
     std::unique_ptr<StateMachineComponent> _stateMachineComponent; // 状态机组件
     std::unique_ptr<SkillComponent> _skillComponent;               // 技能组件
 
-    int _level = 1;          // 角色等级
-    int _experience = 0;     // 经验值
-    float _currentHP = 0.0f; // 当前生命值
-    float _currentMP = 0.0f; // 当前能量值
-    float _maxHP = 0.0f;     // 最大生命值（用于受击阈值判断）
+    int _level = 1;                 // 角色等级
+    int _experience = 0;            // 经验值
+    float _currentHP = 0.0f;        // 当前生命值
+    float _currentMP = 0.0f;        // 当前能量值
+    float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断）
+    bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
 };

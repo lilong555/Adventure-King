@@ -63,7 +63,8 @@ enum class StatusEffectType : uint8_t
 {
     POISONED, // 中毒
     EXCITED,  // 亢奋
-    STUNNED   // 眩晕
+    STUNNED,  // 眩晕
+    FULL_HP_CRIT // 满血暴击
 };
 
 //================== 属性结构 ==================
@@ -156,15 +157,25 @@ struct Equipment
     std::string description;                    // 装备描述
     EquipmentSlot slot = EquipmentSlot::WEAPON; // 装备槽位
     Attributes attributeBonus;                  // 装备提供的属性加成
+    std::string spritePath;                     // 装备对应的角色贴图路径（可选）
 
     virtual ~Equipment() = default;
 };
+
 // 武器装备
 struct Weapon : public Equipment
 {
     WeaponType type = WeaponType::SWORD; // 武器类型
     float attackDamage = 0.0f;           // 攻击力
     float attackRange = 0.0f;            // 攻击范围
+    float attackSpeed = 1.0f;            // 攻击速度（攻击间隔倍率）
+    std::string attackAnimationPrefix;   // 攻击动画前缀（如 "spr_klee_attack"）
+    int attackFrameCount = 3;            // 攻击动画帧数
+
+    Weapon()
+    {
+        slot = EquipmentSlot::WEAPON;
+    }
 };
 
 //================== 状态效果实例 ==================

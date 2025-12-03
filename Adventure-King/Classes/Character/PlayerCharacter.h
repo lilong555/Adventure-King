@@ -20,6 +20,8 @@ public:
     // 装备管理
     void equip(const std::shared_ptr<Equipment> &item);
     void unequip(EquipmentSlot slot);
+    std::shared_ptr<Equipment> getEquipment(EquipmentSlot slot) const;
+    std::shared_ptr<Weapon> getEquippedWeapon() const;
 
     // 技能管理（外层接口，内部转发给 SkillComponent）
     void useSkill(size_t slotIndex);
@@ -30,14 +32,33 @@ public:
     // 技能回调：SkillComponent 在技能成功释放时调用
     virtual void onUseActiveSkill(const ActiveSkill &skill) override;
 
+    // 获取当前武器类型
+    WeaponType getCurrentWeaponType() const;
+
+    // 获取当前攻击动画前缀
+    const std::string &getAttackAnimationPrefix() const { return _attackAnimationPrefix; }
+    int getAttackFrameCount() const { return _attackFrameCount; }
+
+    // 装备变更回调（供外部监听装备变化）
+    using EquipmentChangeCallback = std::function<void(EquipmentSlot, const std::shared_ptr<Equipment> &)>;
+    void setEquipmentChangeCallback(const EquipmentChangeCallback &callback) { _equipmentChangeCallback = callback; }
+
 private:
     PlayerCharacter() = default;
 
     void initAttributesByRole(CharacterRole role);
     void refreshHpMpFromAttributes();
+    void onWeaponChanged(const std::shared_ptr<Weapon> &weapon); // 武器变更时调用
 
     CharacterRole _role = CharacterRole::WARRIOR;
     int _skillPoints = 0;
 
     std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;
+
+    // 当前攻击动画配置
+    std::string _attackAnimationPrefix = "default";
+    int _attackFrameCount = 3;
+
+    // 装备变更回调
+    EquipmentChangeCallback _equipmentChangeCallback = nullptr;
 };
