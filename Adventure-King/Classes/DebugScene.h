@@ -6,13 +6,24 @@
 class PlayerCharacter;
 
 /**
+ * @brief 物理碰撞分类掩码
+ */
+enum PhysicsCategory
+{
+    CATEGORY_NONE = 0,
+    CATEGORY_PLAYER = 1 << 0,   // 0x01 玩家
+    CATEGORY_PLATFORM = 1 << 1, // 0x02 平台
+    CATEGORY_BOMB = 1 << 2,     // 0x04 炸弹
+    CATEGORY_ENEMY = 1 << 3,    // 0x08 敌人/木桩
+    CATEGORY_ALL = 0xFFFFFFFF   // 所有
+};
+
+/**
  * @brief 炸弹结构体
  */
 struct Bomb
 {
     cocos2d::Sprite *sprite = nullptr;
-    float velocityX = 0.0f;
-    float velocityY = 0.0f;
     bool isExploded = false; // 是否已爆炸
 };
 
@@ -72,8 +83,9 @@ private:
 
     // 物理系统相关
     void initPlatforms();
-    void updateGravity(float dt);
-    bool checkGrounded();
+    void initPhysicsContactListener();                        // 初始化碰撞监听器
+    bool onContactBegin(cocos2d::PhysicsContact &contact);    // 碰撞开始回调
+    void onContactSeparate(cocos2d::PhysicsContact &contact); // 碰撞分离回调
     void jump();
 
     // 攻击相关
@@ -85,7 +97,6 @@ private:
     void onSkillAnimationFinished();
     void throwBomb();
     void doThrowBomb(); // 实际丢出炸弹的逻辑
-    void updateBombs(float dt);
     void explodeBomb(Bomb &bomb);
 
     // 木桩相关
@@ -109,26 +120,19 @@ private:
     // 技能施放状态
     bool _isCastingSkill = false;
 
-    // 物理系统
-    float _velocityY = 0.0f;                    // 垂直速度
-    bool _isGrounded = false;                   // 是否在地面上
-    static constexpr float GRAVITY = -800.0f;   // 重力加速度
-    static constexpr float JUMP_FORCE = 655.0f; // 跳跃力度
-    static constexpr float GROUND_Y = 100.0f;   // 地面Y坐标
+    // 物理系统常量
+    bool _isGrounded = false;                     // 是否在地面上（通过碰撞检测更新）
+    int _groundContactCount = 0;                  // 与地面接触的计数
+    static constexpr float JUMP_IMPULSE = 350.0f; // 跳跃冲量
+    static constexpr float GROUND_Y = 100.0f;     // 地面Y坐标
 
-    // 角色碰撞箱 (相对于角色锚点的偏移)
-    // 锚点在角色脚底中心 (0.5, 0)
-    cocos2d::Rect _collisionBox;                     // 碰撞箱
-    cocos2d::DrawNode *_collisionBoxDebug = nullptr; // 碰撞箱可视化（调试用）
-
-    // 平台列表 (x, y, width, height)
+    // 平台列表 (用于可视化，物理由引擎处理)
     std::vector<cocos2d::Rect> _platforms;
 
     // 炸弹列表
     std::vector<Bomb> _bombs;
     static constexpr float BOMB_THROW_SPEED_X = 300.0f;   // 炸弹水平初速度
     static constexpr float BOMB_THROW_SPEED_Y = 350.0f;   // 炸弹垂直初速度
-    static constexpr float BOMB_GRAVITY = -600.0f;        // 炸弹重力
     static constexpr float BOMB_DAMAGE = 150.0f;          // 炸弹伤害
     static constexpr float BOMB_EXPLOSION_RADIUS = 80.0f; // 爆炸半径
 

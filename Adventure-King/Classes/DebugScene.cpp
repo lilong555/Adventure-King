@@ -21,10 +21,16 @@ Scene *DebugScene::createScene()
 
 bool DebugScene::init()
 {
-    if (!Scene::init())
+    // 使用物理引擎初始化场景
+    if (!Scene::initWithPhysics())
     {
         return false;
     }
+
+    // 设置物理世界属性
+    auto physicsWorld = this->getPhysicsWorld();
+    physicsWorld->setGravity(Vec2(0, -800.0f));                  // 设置重力
+    physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL); // 开启调试绘制（可选）
 
     initBackground();
     initPlatforms();
@@ -32,6 +38,7 @@ bool DebugScene::init()
     initTargetDummy();
     initDebugUI();
     initControlButtons();
+    initPhysicsContactListener(); // 初始化物理碰撞监听
 
     // 启用键盘事件
     auto keyboardListener = EventListenerKeyboard::create();
@@ -42,7 +49,7 @@ bool DebugScene::init()
     // 启用 update
     scheduleUpdate();
 
-    CCLOG("DebugScene initialized");
+    CCLOG("DebugScene initialized with Physics Engine");
     return true;
 }
 
@@ -86,54 +93,51 @@ void DebugScene::initPlatforms()
     auto platformDraw = DrawNode::create();
     platformDraw->setTag(200); // 平台绘制节点标签
 
+    // 物理材质：密度、弹性、摩擦力
+    PhysicsMaterial platformMaterial(1.0f, 0.0f, 0.8f);
+
+    // 辅助函数：创建平台节点并添加物理刚体
+    auto createPlatform = [&](const Rect &rect, const Color4F &color)
+    {
+        // 绘制可视化
+        platformDraw->drawSolidRect(
+            Vec2(rect.origin.x, rect.origin.y),
+            Vec2(rect.origin.x + rect.size.width, rect.origin.y + rect.size.height),
+            color);
+
+        // 创建一个节点作为平台
+        auto platformNode = Node::create();
+        platformNode->setPosition(Vec2(rect.origin.x + rect.size.width / 2,
+                                       rect.origin.y + rect.size.height / 2));
+
+        // 创建静态物理刚体（EdgeBox 用于边缘检测更稳定）
+        auto physicsBody = PhysicsBody::createBox(
+            Size(rect.size.width, rect.size.height),
+            platformMaterial);
+        physicsBody->setDynamic(false); // 静态刚体
+
+        // 设置碰撞掩码
+        physicsBody->setCategoryBitmask(CATEGORY_PLATFORM);
+        physicsBody->setCollisionBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
+        physicsBody->setContactTestBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
+
+        platformNode->addComponent(physicsBody);
+        this->addChild(platformNode, 1);
+
+        _platforms.push_back(rect);
+    };
+
     // 地面平台 (底部)
     Rect groundPlatform(origin.x, origin.y + GROUND_Y - 20, visibleSize.width, 20);
-    _platforms.push_back(groundPlatform);
-    platformDraw->drawSolidRect(
-        Vec2(groundPlatform.origin.x, groundPlatform.origin.y),
-        Vec2(groundPlatform.origin.x + groundPlatform.size.width,
-             groundPlatform.origin.y + groundPlatform.size.height),
-        Color4F(0.4f, 0.3f, 0.2f, 1.0f));
+    createPlatform(groundPlatform, Color4F(0.4f, 0.3f, 0.2f, 1.0f));
 
     // 左侧平台
     Rect leftPlatform(origin.x + 50, origin.y + 200, 200, 20);
-    _platforms.push_back(leftPlatform);
-    platformDraw->drawSolidRect(
-        Vec2(leftPlatform.origin.x, leftPlatform.origin.y),
-        Vec2(leftPlatform.origin.x + leftPlatform.size.width,
-             leftPlatform.origin.y + leftPlatform.size.height),
-        Color4F(0.5f, 0.4f, 0.3f, 1.0f));
-
-    // 中间平台
-    Rect middlePlatform(origin.x + visibleSize.width / 2 - 100, origin.y + 300, 200, 20);
-    _platforms.push_back(middlePlatform);
-    platformDraw->drawSolidRect(
-        Vec2(middlePlatform.origin.x, middlePlatform.origin.y),
-        Vec2(middlePlatform.origin.x + middlePlatform.size.width,
-             middlePlatform.origin.y + middlePlatform.size.height),
-        Color4F(0.5f, 0.4f, 0.3f, 1.0f));
-
-    // 右侧平台
-    Rect rightPlatform(origin.x + visibleSize.width - 250, origin.y + 200, 200, 20);
-    _platforms.push_back(rightPlatform);
-    platformDraw->drawSolidRect(
-        Vec2(rightPlatform.origin.x, rightPlatform.origin.y),
-        Vec2(rightPlatform.origin.x + rightPlatform.size.width,
-             rightPlatform.origin.y + rightPlatform.size.height),
-        Color4F(0.5f, 0.4f, 0.3f, 1.0f));
-
-    // 高层平台
-    Rect topPlatform(origin.x + visibleSize.width / 2 - 75, origin.y + 420, 150, 20);
-    _platforms.push_back(topPlatform);
-    platformDraw->drawSolidRect(
-        Vec2(topPlatform.origin.x, topPlatform.origin.y),
-        Vec2(topPlatform.origin.x + topPlatform.size.width,
-             topPlatform.origin.y + topPlatform.size.height),
-        Color4F(0.6f, 0.5f, 0.4f, 1.0f));
+    // createPlatform(leftPlatform, Color4F(0.5f, 0.4f, 0.3f, 1.0f));
 
     this->addChild(platformDraw, 1);
 
-    CCLOG("Platforms initialized: %zu platforms", _platforms.size());
+    CCLOG("Platforms initialized with physics: %zu platforms", _platforms.size());
 }
 
 void DebugScene::initPlayer()
@@ -142,10 +146,12 @@ void DebugScene::initPlayer()
     auto origin = Director::getInstance()->getVisibleOrigin();
 
     // 加载精灵帧缓存（如果需要的话）
-    auto cache = SpriteFrameCache::getInstance(); // 角色初始位置在地面上
-    Vec2 startPos(origin.x + visibleSize.width / 2 + getContentSize().width / 2, origin.y + GROUND_Y + getContentSize().height / 2);
+    auto cache = SpriteFrameCache::getInstance();
+
+    // 角色初始位置在地面上
+    Vec2 startPos(origin.x + visibleSize.width / 2, origin.y + GROUND_Y + getContentSize().height / 2);
+
     // 尝试创建玩家角色
-    // 先尝试用精灵帧，如果失败则用普通精灵创建
     _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/spr_klee_run.png");
 
     if (!_player)
@@ -168,21 +174,38 @@ void DebugScene::initPlayer()
     }
 
     _player->setPosition(startPos);
-    _player->setAnchorPoint(Vec2(0.5f, 0)); // 锚点设置在脚底中心
+    _player->setAnchorPoint(Vec2(0.5f, 0.5f)); // 物理引擎要求锚点在中心
     _player->setScale(1.0f);
-    _isGrounded = true; // 初始在地面上
+
+    // 创建玩家物理刚体
+    // 物理材质：密度、弹性、摩擦力
+    // 弹性设为0避免弹跳，摩擦力设为0避免与平台边缘卡住
+    PhysicsMaterial playerMaterial(1.0f, 0.0f, 0.0f);
+
+    // 使用简单的矩形碰撞体
+    Size playerSize = _player->getContentSize();
+    float scale = _player->getScale();
+    float boxWidth = playerSize.width * scale * 0.8f;    // 宽度缩小到80%更贴合角色
+    float boxHeight = playerSize.height * scale * 0.95f; // 高度缩小到95%
+
+    auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), playerMaterial);
+    physicsBody->setDynamic(true);         // 动态刚体
+    physicsBody->setRotationEnable(false); // 禁止旋转
+    physicsBody->setMass(1.0f);            // 设置质量
+    physicsBody->setLinearDamping(0.0f);   // 无线性阻尼，确保移动流畅
+
+    // 设置碰撞掩码
+    physicsBody->setCategoryBitmask(CATEGORY_PLAYER);
+    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);                   // 只与平台碰撞
+    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM | CATEGORY_BOMB); // 检测与平台和炸弹的接触
+
+    _player->addComponent(physicsBody);
     this->addChild(_player, 5);
 
-    // 初始化碰撞箱 (相对于角色位置，锚点在脚底)
-    // 碰撞箱：宽30，高60，从脚底向上
-    _collisionBox = Rect(-15, 0, 30, 60);
+    _isGrounded = true; // 初始在地面上
+    _groundContactCount = 1;
 
-    // 创建碰撞箱可视化（调试用）
-    _collisionBoxDebug = DrawNode::create();
-    _collisionBoxDebug->setTag(300);
-    this->addChild(_collisionBoxDebug, 10);
-
-    CCLOG("Player created at position (%.0f, %.0f)", startPos.x, startPos.y);
+    CCLOG("Player created with physics at position (%.0f, %.0f)", startPos.x, startPos.y);
 }
 
 void DebugScene::initTargetDummy()
@@ -368,8 +391,7 @@ void DebugScene::initControlButtons()
 void DebugScene::update(float dt)
 {
     Scene::update(dt);
-    updateGravity(dt);
-    updateBombs(dt);
+    // 物理引擎自动处理重力和碰撞，不需要手写更新
     updatePlayerMovement(dt);
     updateDebugInfo();
 }
@@ -507,11 +529,13 @@ void DebugScene::onTakeDamageClicked(Ref *sender)
     if (!_player || _player->isDead())
         return;
 
+    // 模拟敌人攻击：使用固定基础伤害
     DamageInfo info;
-    info.amount = 10.0f;
+    info.amount = 10.0f; // 敌人基础攻击力
     info.penetration = 0.0f;
     info.isCritical = false;
     info.attacker = nullptr;
+    // 注意：实际伤害会被 takeDamage 中的防御计算减少
 
     float hpBefore = _player->getCurrentHP();
     _player->takeDamage(info);
@@ -573,9 +597,19 @@ void DebugScene::onAttackClicked(Ref *sender)
 
     _player->attack();
     playAttackAnimation();
-    addDamageLog("执行攻击动作 (3连击)");
 
-    CCLOG("Player attack started");
+    // 显示角色的实际攻击力信息
+    float strength = 0.0f;
+    float critRate = 0.0f;
+    auto attr = _player->getAttributeComponent();
+    if (attr)
+    {
+        strength = attr->getAttributeValue(AttributeType::STRENGTH);
+        critRate = attr->getAttributeValue(AttributeType::CRITICAL_RATE);
+    }
+    addDamageLog(StringUtils::format("攻击! 力量:%.0f 暴击率:%.0f%%", strength, critRate * 100));
+
+    CCLOG("Player attack started with STR: %.0f, Crit: %.0f%%", strength, critRate * 100);
 }
 
 void DebugScene::onLevelUpClicked(Ref *sender)
@@ -696,27 +730,51 @@ void DebugScene::updatePlayerMovement(float dt)
     if (!_player || _player->isDead())
         return;
 
-    // 只处理水平移动，垂直由重力系统处理
-    float velocityX = 0;
+    auto physicsBody = _player->getPhysicsBody();
+    if (!physicsBody)
+        return;
 
-    if (_isMovingLeft)
-        velocityX -= 1;
-    if (_isMovingRight)
-        velocityX += 1;
-
-    if (velocityX != 0)
+    // 从角色属性组件获取移动速度
+    float currentMoveSpeed = _moveSpeed; // 默认值
+    auto attr = _player->getAttributeComponent();
+    if (attr)
     {
-        float moveX = velocityX * _moveSpeed * dt;
-        Vec2 newPos = _player->getPosition() + Vec2(moveX, 0);
+        currentMoveSpeed = attr->getAttributeValue(AttributeType::MOVE_SPEED);
+    }
 
-        // 限制在屏幕范围内
-        auto visibleSize = Director::getInstance()->getVisibleSize();
-        auto origin = Director::getInstance()->getVisibleOrigin();
-        float margin = 30.0f;
+    // 获取当前垂直速度（保持重力效果）
+    Vec2 currentVelocity = physicsBody->getVelocity();
 
-        newPos.x = std::max(origin.x + margin, std::min(newPos.x, origin.x + visibleSize.width - margin));
+    // 计算水平速度
+    float velocityX = 0.0f;
 
-        _player->setPosition(newPos);
+    if (_isMovingLeft && !_isMovingRight)
+    {
+        velocityX = -currentMoveSpeed;
+    }
+    else if (_isMovingRight && !_isMovingLeft)
+    {
+        velocityX = currentMoveSpeed;
+    }
+
+    // 设置物理刚体的速度（保持垂直速度不变）
+    physicsBody->setVelocity(Vec2(velocityX, currentVelocity.y));
+
+    // 限制在屏幕范围内
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
+    float margin = 30.0f;
+    Vec2 pos = _player->getPosition();
+
+    if (pos.x < origin.x + margin)
+    {
+        _player->setPositionX(origin.x + margin);
+        physicsBody->setVelocity(Vec2(0, currentVelocity.y));
+    }
+    else if (pos.x > origin.x + visibleSize.width - margin)
+    {
+        _player->setPositionX(origin.x + visibleSize.width - margin);
+        physicsBody->setVelocity(Vec2(0, currentVelocity.y));
     }
 }
 
@@ -893,120 +951,154 @@ void DebugScene::onAttackAnimationFinished()
     // 保存当前翻转状态
     bool wasFlippedX = _player ? _player->isFlippedX() : false;
 
-    // 恢复到默认静止图片
-    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_run.png");
-    if (defaultTexture && _player)
+    // 如果玩家仍在移动，恢复行走动画
+    if (_isMovingLeft || _isMovingRight)
     {
-        _player->setTexture(defaultTexture);
-        // 设置正确的纹理矩形
-        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
-                                     defaultTexture->getContentSize().height));
-        // 恢复翻转状态
-        _player->setFlippedX(wasFlippedX);
+        startWalkAnimation();
+    }
+    else
+    {
+        // 恢复到默认静止图片
+        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+            "Sprites/Characters/Player/Klee/spr_klee_run.png");
+        if (defaultTexture && _player)
+        {
+            _player->setTexture(defaultTexture);
+            // 设置正确的纹理矩形
+            _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                         defaultTexture->getContentSize().height));
+            // 恢复翻转状态
+            _player->setFlippedX(wasFlippedX);
+        }
     }
 
     CCLOG("Attack animation finished");
 }
 
-void DebugScene::updateGravity(float dt)
+// 初始化物理碰撞监听器
+void DebugScene::initPhysicsContactListener()
 {
-    if (!_player || _player->isDead())
-        return;
+    auto contactListener = EventListenerPhysicsContact::create();
 
-    // 应用重力
-    _velocityY += GRAVITY * dt;
+    // 碰撞开始回调
+    contactListener->onContactBegin = CC_CALLBACK_1(DebugScene::onContactBegin, this);
 
-    // 更新位置
-    Vec2 pos = _player->getPosition();
-    float previousY = pos.y;
-    pos.y += _velocityY * dt;
-
-    // 获取世界坐标下的碰撞箱
-    // 角色锚点在脚底中心 (0.5, 0)，所以碰撞箱直接加上角色位置
-    Rect worldCollisionBox(
-        pos.x + _collisionBox.origin.x,
-        pos.y + _collisionBox.origin.y,
-        _collisionBox.size.width,
-        _collisionBox.size.height);
-
-    _isGrounded = false;
-
-    for (const auto &platform : _platforms)
+    // 碰撞预处理回调 - 用于控制碰撞响应
+    contactListener->onContactPreSolve = [this](PhysicsContact &contact, PhysicsContactPreSolve &solve) -> bool
     {
-        // 只有向下移动时才检测地面碰撞
-        if (_velocityY <= 0)
+        auto nodeA = contact.getShapeA()->getBody()->getNode();
+        auto nodeB = contact.getShapeB()->getBody()->getNode();
+
+        if (!nodeA || !nodeB)
+            return true;
+
+        int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
+        int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
+
+        // 玩家与平台碰撞时，保持玩家的水平速度
+        if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
+            (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
         {
-            // 使用碰撞箱检测水平范围是否重叠
-            float playerLeft = worldCollisionBox.origin.x;
-            float playerRight = worldCollisionBox.origin.x + worldCollisionBox.size.width;
-            float platformLeft = platform.origin.x;
-            float platformRight = platform.origin.x + platform.size.width;
+            // 设置碰撞的弹性为0，避免弹跳
+            solve.setRestitution(0.0f);
+            // 设置摩擦力为0，避免水平方向受阻
+            solve.setFriction(0.0f);
+        }
 
-            bool horizontalOverlap = playerRight > platformLeft && playerLeft < platformRight;
+        return true;
+    };
 
-            if (horizontalOverlap)
+    // 碰撞分离回调
+    contactListener->onContactSeparate = CC_CALLBACK_1(DebugScene::onContactSeparate, this);
+
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(contactListener, this);
+
+    CCLOG("Physics contact listener initialized");
+}
+
+bool DebugScene::onContactBegin(PhysicsContact &contact)
+{
+    auto nodeA = contact.getShapeA()->getBody()->getNode();
+    auto nodeB = contact.getShapeB()->getBody()->getNode();
+
+    if (!nodeA || !nodeB)
+        return true;
+
+    // 获取碰撞双方的类别
+    int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
+    int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
+
+    // 玩家与平台碰撞 - 检测是否落地
+    if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
+        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+    {
+        // 获取碰撞法向量，判断是从上方落下还是侧面碰撞
+        auto contactData = contact.getContactData();
+        Vec2 normal = contactData->normal;
+
+        // 只有当碰撞法向量主要朝上时（从上方落下），才认为是落地
+        // normal.y > 0.7 表示法向量主要朝上
+        if (std::abs(normal.y) > 0.5f)
+        {
+            _groundContactCount++;
+            _isGrounded = true;
+            CCLOG("Player landed on platform, contact count: %d, normal: (%.2f, %.2f)",
+                  _groundContactCount, normal.x, normal.y);
+        }
+        else
+        {
+            // 侧面碰撞，不处理落地逻辑
+            CCLOG("Side collision detected, normal: (%.2f, %.2f)", normal.x, normal.y);
+        }
+    }
+
+    // 炸弹与平台碰撞 - 触发爆炸
+    if ((categoryA == CATEGORY_BOMB && categoryB == CATEGORY_PLATFORM) ||
+        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_BOMB))
+    {
+        Node *bombNode = (categoryA == CATEGORY_BOMB) ? nodeA : nodeB;
+
+        // 查找对应的炸弹并爆炸
+        for (auto &bomb : _bombs)
+        {
+            if (bomb.sprite == bombNode && !bomb.isExploded)
             {
-                float platformTop = platform.origin.y + platform.size.height;
-                float playerBottom = worldCollisionBox.origin.y; // 碰撞箱底部（脚底）
-
-                // 如果之前脚底在平台上方，现在穿过了平台顶部
-                if (previousY >= platformTop && playerBottom < platformTop)
-                {
-                    pos.y = platformTop; // 角色脚底对齐平台顶部
-                    _velocityY = 0;
-                    _isGrounded = true;
-                    break;
-                }
-                // 或者脚底正好在平台顶部附近
-                else if (playerBottom >= platformTop - 5 && playerBottom <= platformTop + 5 && _velocityY <= 0)
-                {
-                    pos.y = platformTop;
-                    _velocityY = 0;
-                    _isGrounded = true;
-                    break;
-                }
+                explodeBomb(bomb);
+                break;
             }
         }
     }
 
-    // 限制最低位置（防止掉出屏幕）
-    auto origin = Director::getInstance()->getVisibleOrigin();
-    if (pos.y < origin.y + 50)
-    {
-        pos.y = origin.y + 50;
-        _velocityY = 0;
-        _isGrounded = true;
-    }
-
-    _player->setPosition(pos);
-
-    // 更新碰撞箱可视化（调试用）
-    if (_collisionBoxDebug)
-    {
-        _collisionBoxDebug->clear();
-
-        // 绘制碰撞箱边框
-        Rect debugBox(
-            pos.x + _collisionBox.origin.x,
-            pos.y + _collisionBox.origin.y,
-            _collisionBox.size.width,
-            _collisionBox.size.height);
-
-        Color4F boxColor = _isGrounded ? Color4F(0, 1, 0, 0.5f) : Color4F(1, 0, 0, 0.5f);
-        _collisionBoxDebug->drawRect(
-            Vec2(debugBox.origin.x, debugBox.origin.y),
-            Vec2(debugBox.origin.x + debugBox.size.width, debugBox.origin.y + debugBox.size.height),
-            boxColor);
-
-        // 绘制脚底点
-        _collisionBoxDebug->drawDot(pos, 3, Color4F::YELLOW);
-    }
+    return true;
 }
 
-bool DebugScene::checkGrounded()
+void DebugScene::onContactSeparate(PhysicsContact &contact)
 {
-    return _isGrounded;
+    auto nodeA = contact.getShapeA()->getBody()->getNode();
+    auto nodeB = contact.getShapeB()->getBody()->getNode();
+
+    if (!nodeA || !nodeB)
+        return;
+
+    int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
+    int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
+
+    // 玩家离开平台
+    if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
+        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+    {
+        // 只有当接触计数大于0时才减少
+        if (_groundContactCount > 0)
+        {
+            _groundContactCount--;
+        }
+        if (_groundContactCount <= 0)
+        {
+            _groundContactCount = 0;
+            _isGrounded = false;
+            CCLOG("Player left platform, now airborne");
+        }
+    }
 }
 
 void DebugScene::jump()
@@ -1017,10 +1109,15 @@ void DebugScene::jump()
     // 只有在地面上才能跳跃
     if (_isGrounded)
     {
-        _velocityY = JUMP_FORCE;
+        auto physicsBody = _player->getPhysicsBody();
+        if (physicsBody)
+        {
+            // 使用物理引擎的冲量实现跳跃
+            physicsBody->applyImpulse(Vec2(0, JUMP_IMPULSE * physicsBody->getMass()));
+        }
         _isGrounded = false;
         addDamageLog("跳跃!");
-        CCLOG("Player jumped");
+        CCLOG("Player jumped with impulse");
     }
 }
 
@@ -1112,17 +1209,25 @@ void DebugScene::onSkillAnimationFinished()
     // 保存当前翻转状态
     bool wasFlippedX = _player ? _player->isFlippedX() : false;
 
-    // 恢复到默认静止图片
-    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_run.png");
-    if (defaultTexture && _player)
+    // 如果玩家仍在移动，恢复行走动画
+    if (_isMovingLeft || _isMovingRight)
     {
-        _player->setTexture(defaultTexture);
-        // 设置正确的纹理矩形
-        _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
-                                     defaultTexture->getContentSize().height));
-        // 恢复翻转状态
-        _player->setFlippedX(wasFlippedX);
+        startWalkAnimation();
+    }
+    else
+    {
+        // 恢复到默认静止图片
+        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+            "Sprites/Characters/Player/Klee/spr_klee_run.png");
+        if (defaultTexture && _player)
+        {
+            _player->setTexture(defaultTexture);
+            // 设置正确的纹理矩形
+            _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                         defaultTexture->getContentSize().height));
+            // 恢复翻转状态
+            _player->setFlippedX(wasFlippedX);
+        }
     }
 
     CCLOG("Skill animation finished");
@@ -1143,108 +1248,44 @@ void DebugScene::doThrowBomb()
 
     // 创建炸弹对象
     Bomb bomb;
+    bomb.isExploded = false;
+    bomb.sprite = bombSprite;
 
     // 根据角色朝向决定炸弹方向
     bool facingLeft = _player->isFlippedX();
-    auto BOMB_THROW_DETAT_X = facingLeft ? -getContentSize().width / 10 : getContentSize().width / 10; // 水平投掷速度
-    bomb.velocityX = facingLeft ? -BOMB_THROW_SPEED_X : BOMB_THROW_SPEED_X;
-    bomb.velocityY = BOMB_THROW_SPEED_Y;
-    bomb.isExploded = false;
-    // 设置炸弹初始位置（角色头顶上方）
+    float throwDirX = facingLeft ? -1.0f : 1.0f;
+
+    // 设置炸弹初始位置（角色上方）
     Vec2 playerPos = _player->getPosition();
-    float offsetY = getContentSize().height / 4; // 从角色脚底往上偏移
-    bombSprite->setPosition(playerPos + Vec2(BOMB_THROW_DETAT_X, offsetY));
-    bombSprite->setScale(0.5f); // 调整炸弹大小
+    float offsetX = throwDirX * bomb.sprite->getContentSize().width;
+    float offsetY = bomb.sprite->getContentSize().height;
+    bombSprite->setPosition(playerPos + Vec2(offsetX, offsetY));
+    bombSprite->setScale(0.5f);
+
+    // 创建炸弹物理刚体
+    PhysicsMaterial bombMaterial(0.5f, 0.3f, 0.2f);                    // 密度、弹性、摩擦
+    auto physicsBody = PhysicsBody::createCircle(15.0f, bombMaterial); // 圆形碰撞体
+    physicsBody->setDynamic(true);
+    physicsBody->setMass(0.5f);
+    physicsBody->setRotationEnable(true); // 允许旋转
+
+    // 设置碰撞掩码
+    physicsBody->setCategoryBitmask(CATEGORY_BOMB);
+    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);   // 只与平台碰撞
+    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM); // 检测与平台的接触
+
+    bombSprite->addComponent(physicsBody);
     this->addChild(bombSprite, 4);
 
-    bomb.sprite = bombSprite;
+    // 施加初始速度（冲量）
+    Vec2 impulse(throwDirX * BOMB_THROW_SPEED_X * physicsBody->getMass(),
+                 BOMB_THROW_SPEED_Y * physicsBody->getMass());
+    physicsBody->applyImpulse(impulse);
+
     _bombs.push_back(bomb);
 
     addDamageLog("丢出炸弹!");
-    CCLOG("Bomb thrown!");
-}
-
-void DebugScene::updateBombs(float dt)
-{
-    auto origin = Director::getInstance()->getVisibleOrigin();
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-
-    for (auto it = _bombs.begin(); it != _bombs.end();)
-    {
-        Bomb &bomb = *it;
-
-        if (bomb.isExploded || !bomb.sprite)
-        {
-            ++it;
-            continue;
-        }
-
-        // 应用重力
-        bomb.velocityY += BOMB_GRAVITY * dt;
-
-        // 更新位置
-        Vec2 pos = bomb.sprite->getPosition();
-        pos.x += bomb.velocityX * dt;
-        pos.y += bomb.velocityY * dt;
-
-        // 检测与平台的碰撞
-        bool hitPlatform = false;
-        float bombRadius = 10.0f; // 炸弹碰撞半径
-
-        for (const auto &platform : _platforms)
-        {
-            // 只有向下移动时才检测碰撞
-            if (bomb.velocityY <= 0)
-            {
-                float bombLeft = pos.x - bombRadius;
-                float bombRight = pos.x + bombRadius;
-                float platformLeft = platform.origin.x;
-                float platformRight = platform.origin.x + platform.size.width;
-
-                bool horizontalOverlap = bombRight > platformLeft && bombLeft < platformRight;
-
-                if (horizontalOverlap)
-                {
-                    float platformTop = platform.origin.y + platform.size.height;
-                    float bombBottom = pos.y - bombRadius;
-
-                    // 如果炸弹底部穿过平台顶部
-                    if (bombBottom <= platformTop && pos.y > platform.origin.y)
-                    {
-                        hitPlatform = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // 检测是否超出屏幕范围
-        bool outOfBounds = pos.x < origin.x - 50 ||
-                           pos.x > origin.x + visibleSize.width + 50 ||
-                           pos.y < origin.y - 50;
-
-        if (hitPlatform || outOfBounds)
-        {
-            // 爆炸
-            explodeBomb(bomb);
-            bomb.isExploded = true;
-        }
-        else
-        {
-            bomb.sprite->setPosition(pos);
-            // 炸弹旋转效果
-            bomb.sprite->setRotation(bomb.sprite->getRotation() + 360 * dt);
-        }
-
-        ++it;
-    }
-
-    // 清理已爆炸的炸弹
-    _bombs.erase(
-        std::remove_if(_bombs.begin(), _bombs.end(),
-                       [](const Bomb &b)
-                       { return b.isExploded && b.sprite == nullptr; }),
-        _bombs.end());
+    CCLOG("Bomb thrown with physics!");
 }
 
 void DebugScene::explodeBomb(Bomb &bomb)
@@ -1282,12 +1323,30 @@ void DebugScene::explodeBomb(Bomb &bomb)
 
         if (distance <= BOMB_EXPLOSION_RADIUS)
         {
-            // 随机暴击（30%概率）
-            bool isCrit = (rand() % 100) < 30;
-            float damage = BOMB_DAMAGE;
+            // 从角色属性组件获取暴击率和攻击力
+            float critRate = 0.3f;          // 默认暴击率 30%
+            float critMultiplier = 1.5f;    // 默认暴击倍率 1.5
+            float baseDamage = BOMB_DAMAGE; // 基础伤害
+
+            if (_player)
+            {
+                auto attr = _player->getAttributeComponent();
+                if (attr)
+                {
+                    // 从属性组件读取暴击率
+                    critRate = attr->getAttributeValue(AttributeType::CRITICAL_RATE);
+                    // 伤害 = 炸弹基础伤害 + 角色力量值 * 倍率
+                    float strength = attr->getAttributeValue(AttributeType::STRENGTH);
+                    baseDamage = BOMB_DAMAGE + strength * 5.0f; // 每点力量增加5点伤害
+                }
+            }
+
+            // 根据暴击率计算是否暴击
+            bool isCrit = (rand() % 100) < static_cast<int>(critRate * 100);
+            float damage = baseDamage;
             if (isCrit)
             {
-                damage *= 1.5f; // 暴击1.5倍伤害
+                damage *= critMultiplier;
             }
             dealDamageToTarget(damage, isCrit);
         }
