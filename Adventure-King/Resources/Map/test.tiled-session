@@ -1,0 +1,99 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "Map1.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "全部文件 (*)",
+    "fileStates": {
+        "111.tmx": {
+            "expandedObjectLayers": [
+                5
+            ],
+            "scale": 0.25,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 12368,
+                "y": 1858
+            }
+        },
+        "Bldg_House_Rustic_Thatch_01.tsx": {
+            "scaleInDock": 0.5,
+            "scaleInEditor": 1
+        },
+        "Env_Tree_Oak_Giant_Green.tsx": {
+            "scaleInDock": 0.0625,
+            "scaleInEditor": 1
+        },
+        "Int_Ladder_Wood_Old.tsx": {
+            "scaleInDock": 0.25,
+            "scaleInEditor": 1
+        },
+        "Map1.tmx": {
+            "scale": 0.5,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 714,
+                "y": 811
+            }
+        },
+        "Tile_Ground_Forest_Mid_Crystal.tsx": {
+            "scaleInDock": 0.33,
+            "scaleInEditor": 1
+        },
+        "aaa.tsx": {
+            "scaleInDock": 0.33,
+            "scaleInEditor": 1
+        },
+        "aaaa.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "env_platform_grass_01.tsx": {
+            "scaleInDock": 0.5,
+            "scaleInEditor": 1
+        },
+        "test.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 0.5,
+            "scaleInEditor": 1
+        },
+        "testmap.tmx": {
+            "scale": 0.1468505859375,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 11957.732335827099,
+                "y": 4916.561928512053
+            }
+        }
+    },
+    "last.imagePath": "E:/code/fansqim/Adventure-King/Resources/Map",
+    "map.height": 26,
+    "map.lastUsedFormat": "tmx",
+    "map.width": 150,
+    "openFiles": [
+        "Tile_Ground_Forest_Mid_Crystal.tsx",
+        "Map1.tmx",
+        "Env_Tree_Oak_Giant_Green.tsx",
+        "env_platform_grass_01.tsx",
+        "Bldg_House_Rustic_Thatch_01.tsx"
+    ],
+    "project": "test.tiled-project",
+    "recentFiles": [
+        "Tile_Ground_Forest_Mid_Crystal.tsx",
+        "Bldg_House_Rustic_Thatch_01.tsx",
+        "env_platform_grass_01.tsx",
+        "Env_Tree_Oak_Giant_Green.tsx",
+        "Map1.tmx",
+        "Int_Ladder_Wood_Old.tsx",
+        "testmap.tmx",
+        "111.tmx",
+        "aaaa.tsx",
+        "test.tsx",
+        "aaa.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx"
+}
