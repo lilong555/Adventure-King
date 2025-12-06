@@ -6,6 +6,7 @@
 #include "GameScene.h"
 #include "MapScene.h"
 #include "Character/PlayerCharacter.h"
+#include "GameUI.h"
 
 USING_NS_CC;
 
@@ -20,45 +21,32 @@ bool GameScene::init()
         return false;
     }
 
-    // 创建地图按钮（左上角）
-    createMapButton();
-
+    // 基类不初始化 UI，由子类调用 initGameUI()
     return true;
 }
 
-void GameScene::createMapButton()
+void GameScene::initGameUI()
 {
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    auto origin = Director::getInstance()->getVisibleOrigin();
-
-    // 创建地图按钮
-    auto mapButton = MenuItemImage::create(
-        "Scene/UI/MapInGame.png",
-        "Scene/UI/MapInGameSelected.png",
-        CC_CALLBACK_1(GameScene::onMapButtonClicked, this));
-
-    if (mapButton)
+    _gameUI = GameUI::create();
+    if (_gameUI)
     {
-        // 设置按钮缩放（根据需要调整）
-        mapButton->setScale(0.5f);
+        // 设置地图按钮回调
+        _gameUI->setMapButtonCallback([this]()
+                                      { returnToMapScene(); });
 
-        // 定位到左上角（留出边距）
-        float padding = 20.0f;
-        float buttonX = origin.x + mapButton->getContentSize().width * mapButton->getScale() / 2 + padding;
-        float buttonY = origin.y + visibleSize.height - mapButton->getContentSize().height * mapButton->getScale() / 2 - padding;
-        mapButton->setPosition(Vec2(buttonX, buttonY));
+        // 设置关卡名称
+        _gameUI->setLevelName(getLevelName());
 
-        // 创建菜单并添加到场景
-        auto menu = Menu::create(mapButton, nullptr);
-        menu->setPosition(Vec2::ZERO);
-        menu->setTag(TAG_MAP_BUTTON);
-        this->addChild(menu, 100); // 高 z-order 确保显示在最上层
+        // 添加到场景（高 z-order 确保显示在最上层）
+        this->addChild(_gameUI, 100);
+
+        CCLOG("GameUI initialized");
     }
 }
 
-void GameScene::onMapButtonClicked(cocos2d::Ref *pSender)
+void GameScene::returnToMapScene()
 {
-    CCLOG("Map button clicked, returning to map scene");
+    CCLOG("Returning to map scene");
 
     // 创建地图场景并切换
     auto mapScene = MapScene::createScene();
@@ -255,8 +243,8 @@ void GameScene::initPlayer(const Vec2 &startPos)
     }
 
     // 配置玩家位置和锚点
-    _player->setPosition(startPos);
-    _player->setAnchorPoint(Vec2(0.5f, 0.5f));
+    _player->setPosition(startPos + Vec2(0, _player->getContentSize().height / 2));
+    _player->setAnchorPoint(Vec2(0.5f, 0.0f));
     _player->setScale(1.0f);
 
     // 物理材质：密度=1.0, 弹性=0（不弹跳）, 摩擦=0（水平移动流畅）
@@ -473,6 +461,105 @@ void GameScene::createCollisionBodiesFromTMX(const std::string &groupName)
     }
 }
 
+Vec2 GameScene::getPlayerSpawnPoint()
+{
+    if (!_tileMap)
+    {
+        CCLOG("Warning: Cannot get spawn point - tilemap not loaded");
+        return Vec2(100, 200); // 默认出生点
+    }
+
+    auto bornGroup = _tileMap->getObjectGroup("born");
+    if (!bornGroup)
+    {
+        CCLOG("Warning: 'born' object group not found in tilemap, using default spawn");
+        return Vec2(100, 200);
+    }
+
+    auto objects = bornGroup->getObjects();
+    if (objects.empty())
+    {
+        CCLOG("Warning: No objects in 'born' group, using default spawn");
+        return Vec2(100, 200);
+    }
+
+    // 获取第一个出生点对象
+    auto dict = objects[0].asValueMap();
+    float x = dict["x"].asFloat();
+    float y = dict["y"].asFloat();
+
+    // cocos2d-x TMX 解析器已经将坐标转换为 cocos2d 坐标系
+    Vec2 spawnPoint(x, y);
+
+    CCLOG("Player spawn point found: (%.0f, %.0f)", spawnPoint.x, spawnPoint.y);
+    return spawnPoint;
+}
+
+void GameScene::loadGateAreas()
+{
+    _gateAreas.clear();
+
+    if (!_tileMap)
+    {
+        CCLOG("Warning: Cannot load gate areas - tilemap not loaded");
+        return;
+    }
+
+    auto gateGroup = _tileMap->getObjectGroup("gate");
+    if (!gateGroup)
+    {
+        CCLOG("Info: 'gate' object group not found in tilemap");
+        return;
+    }
+
+    auto objects = gateGroup->getObjects();
+    CCLOG("Loading gate areas: %zu objects found", objects.size());
+
+    for (const auto &obj : objects)
+    {
+        auto dict = obj.asValueMap();
+        std::string name = dict["name"].asString();
+        float x = dict["x"].asFloat();
+        float y = dict["y"].asFloat();
+        float width = dict["width"].asFloat();
+        float height = dict["height"].asFloat();
+
+        // 如果没有宽高，使用默认大小
+        if (width <= 0)
+            width = GATE_INTERACT_DISTANCE * 2;
+        if (height <= 0)
+            height = Director::getInstance()->getVisibleSize().height; // 让传送门区域覆盖屏幕高度
+        // 创建 gate 区域矩形
+        Rect gateRect(x, y, width, height);
+        _gateAreas.push_back(gateRect);
+
+        CCLOG("  Gate '%s': rect=(%.0f, %.0f, %.0f, %.0f)",
+              name.c_str(), x, y, width, height);
+    }
+}
+
+bool GameScene::isPlayerAtGate() const
+{
+    if (!_player || _gateAreas.empty())
+    {
+        return false;
+    }
+
+    Vec2 playerPos = _player->getPosition();
+
+    for (const auto &gateRect : _gateAreas)
+    {
+
+        if (gateRect.containsPoint(playerPos))
+        {
+            CCLOG("Player is at gate area: (%.0f, %.0f)", gateRect.origin.x, gateRect.origin.y);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool GameScene::onContactBegin(PhysicsContact &contact)
 {
     auto nodeA = contact.getShapeA()->getBody()->getNode();
@@ -485,20 +572,39 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
     // 玩家与碰撞体接触 - 检测是否落地
-    if ((categoryA == GAME_CATEGORY_PLAYER && (categoryB & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION))) ||
-        ((categoryA & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION)) && categoryB == GAME_CATEGORY_PLAYER))
+    bool playerIsA = (categoryA == GAME_CATEGORY_PLAYER);
+    bool playerIsB = (categoryB == GAME_CATEGORY_PLAYER);
+    bool collisionWithPlatform =
+        (playerIsA && (categoryB & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION))) ||
+        (playerIsB && (categoryA & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION)));
+
+    if (collisionWithPlatform)
     {
         // 获取碰撞法向量判断是否从上方落下
         auto contactData = contact.getContactData();
         if (contactData)
         {
             Vec2 normal = contactData->normal;
-            // 如果法向量向上，说明玩家从上方落下
-            if (normal.y > 0.5f || normal.y < -0.5f)
+
+            // 法向量的方向取决于碰撞顺序
+            // 如果玩家是 A，法向量指向 B（从 A 到 B）
+            // 如果玩家是 B，法向量需要反转
+            if (playerIsB)
+            {
+                normal = -normal;
+            }
+
+            // 现在 normal 是从玩家指向平台的向量
+            // 如果 normal.y < -0.3（向下），说明平台在玩家下方，玩家站在上面
+            if (normal.y < -0.3f)
             {
                 _groundContactCount++;
                 _isGrounded = true;
-                CCLOG("Player grounded, contact count: %d", _groundContactCount);
+                CCLOG("Player grounded (normal.y=%.2f), contact count: %d", normal.y, _groundContactCount);
+            }
+            else
+            {
+                CCLOG("Player touched platform but not grounded (normal.y=%.2f)", normal.y);
             }
         }
     }
@@ -518,15 +624,43 @@ void GameScene::onContactSeparate(PhysicsContact &contact)
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
     // 玩家与碰撞体分离
-    if ((categoryA == GAME_CATEGORY_PLAYER && (categoryB & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION))) ||
-        ((categoryA & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION)) && categoryB == GAME_CATEGORY_PLAYER))
+    bool playerIsA = (categoryA == GAME_CATEGORY_PLAYER);
+    bool playerIsB = (categoryB == GAME_CATEGORY_PLAYER);
+    bool collisionWithPlatform =
+        (playerIsA && (categoryB & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION))) ||
+        (playerIsB && (categoryA & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION)));
+
+    if (collisionWithPlatform && _groundContactCount > 0)
     {
-        _groundContactCount--;
-        if (_groundContactCount <= 0)
+        // 使用射线检测确认是否真的离开地面
+        // 简化处理：只在玩家有向上速度或接触计数为正时才减少计数
+        if (_player && _player->getPhysicsBody())
         {
-            _groundContactCount = 0;
-            _isGrounded = false;
-            CCLOG("Player left ground");
+            Vec2 velocity = _player->getPhysicsBody()->getVelocity();
+
+            // 如果玩家正在向上移动（跳跃），减少接触计数
+            // 或者如果玩家没有向下的速度，也减少计数
+            _groundContactCount--;
+
+            if (_groundContactCount <= 0)
+            {
+                _groundContactCount = 0;
+                // 只有当玩家真的在空中（有向上或向下的速度）时才设置为非着地
+                if (fabsf(velocity.y) > 10.0f)
+                {
+                    _isGrounded = false;
+                    CCLOG("Player left ground (velocity.y=%.2f)", velocity.y);
+                }
+                else
+                {
+                    // 可能是在平坦表面上移动，保持着地状态
+                    CCLOG("Player contact ended but staying grounded (velocity.y=%.2f)", velocity.y);
+                }
+            }
+            else
+            {
+                CCLOG("Player still has ground contacts: %d", _groundContactCount);
+            }
         }
     }
 }
@@ -551,8 +685,24 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
+        // 先检查是否在传送门区域，如果是则返回地图
+        if (isPlayerAtGate())
+        {
+            CCLOG("Player at gate, returning to map scene");
+            returnToMapScene();
+            return;
+        }
+        // 否则执行跳跃
+        if (_isGrounded && _player->getPhysicsBody())
+        {
+            _player->getPhysicsBody()->applyImpulse(Vec2(0, JUMP_IMPULSE));
+            _isGrounded = false;
+            CCLOG("Player jumped");
+        }
+        break;
+
     case EventKeyboard::KeyCode::KEY_SPACE:
-        // 跳跃
+        // 跳跃（空格键只跳跃，不触发传送门）
         if (_isGrounded && _player->getPhysicsBody())
         {
             _player->getPhysicsBody()->applyImpulse(Vec2(0, JUMP_IMPULSE));
@@ -562,7 +712,7 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         break;
 
     case EventKeyboard::KeyCode::KEY_ESCAPE:
-        onMapButtonClicked(nullptr);
+        returnToMapScene();
         break;
 
     default:
@@ -611,8 +761,49 @@ void GameScene::update(float dt)
     velocity.x = targetVelocityX;
     physicsBody->setVelocity(velocity);
 
+    // 辅助着地检测：如果玩家垂直速度很小且有接触计数，确保着地状态
+    // 这可以修复某些多边形边缘导致的误判
+    if (_groundContactCount > 0 && fabsf(velocity.y) < 5.0f)
+    {
+        _isGrounded = true;
+    }
+    // 如果玩家在下落且速度很大，确保非着地状态
+    else if (velocity.y < -100.0f && _groundContactCount <= 0)
+    {
+        _isGrounded = false;
+    }
+
     // 更新行走动画状态标记（动画功能可后续实现）
     _isWalkAnimationPlaying = (_isMovingLeft || _isMovingRight);
+
+    // 更新 UI 位置（跟随相机）
+    if (_gameUI)
+    {
+        // 获取场景当前位置（Follow 动作会改变场景位置）
+        Vec2 scenePos = this->getPosition();
+        // UI 需要反向偏移以保持在屏幕固定位置
+        _gameUI->updatePosition(-scenePos);
+    }
+
+    // 检查是否在传送门区域，更新交互提示
+    bool atGate = isPlayerAtGate();
+    if (atGate && !_wasAtGate)
+    {
+        // 刚进入传送门区域
+        if (_gameUI)
+        {
+            _gameUI->showInteractionHint("按 W 键进入传送门");
+        }
+    }
+    else if (!atGate && _wasAtGate)
+    {
+        // 刚离开传送门区域
+        if (_gameUI)
+        {
+            _gameUI->hideInteractionHint();
+        }
+    }
+    _wasAtGate = atGate;
 }
 
 // ============================================================
@@ -676,17 +867,18 @@ bool OriginMushroomScene::init()
     createCollisionBodiesFromTMX("collisions");
 
     //-------------------------------------------------------------------------
-    // 步骤5：初始化玩家角色
+    // 步骤5：加载传送门区域
     //-------------------------------------------------------------------------
-    // 根据 TMX 文件，地面在 Tiled y=662 位置
-    // 转换为 cocos2d 坐标：mapHeight - tiledY = 832 - 662 = 170
-    // 玩家初始位置在地面上方
-    float groundY = _mapSizeInPixels.height - 662; // 地面 Y 坐标（cocos2d 坐标系）
-    Vec2 playerStartPos(100, groundY + 50);        // 玩家在地面上方一点
+    loadGateAreas();
+
+    //-------------------------------------------------------------------------
+    // 步骤6：初始化玩家角色（从 born 图层获取出生点）
+    //-------------------------------------------------------------------------
+    Vec2 playerStartPos = getPlayerSpawnPoint();
     initPlayer(playerStartPos);
 
     //-------------------------------------------------------------------------
-    // 步骤6：初始化物理碰撞监听和输入
+    // 步骤7：初始化物理碰撞监听和输入
     //-------------------------------------------------------------------------
     initPhysicsContactListener();
 
@@ -697,7 +889,7 @@ bool OriginMushroomScene::init()
     _eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
 
     //-------------------------------------------------------------------------
-    // 步骤7：设置相机跟随
+    // 步骤8：设置相机跟随
     //-------------------------------------------------------------------------
     if (_player)
     {
@@ -714,26 +906,12 @@ bool OriginMushroomScene::init()
     }
 
     //-------------------------------------------------------------------------
-    // 步骤8：启用帧更新
+    // 步骤9：启用帧更新
     //-------------------------------------------------------------------------
     scheduleUpdate();
 
-    // 创建地图按钮（在相机跟随设置后创建，确保 UI 层级正确）
-    createMapButton();
-
-    // 添加场景标题标签（调试用）
-    auto titleLabel = Label::createWithTTF(
-        getLevelName(),
-        "fonts/ZCOOLKuaiLe-Regular.ttf",
-        36);
-
-    if (titleLabel)
-    {
-        titleLabel->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 60));
-        titleLabel->setColor(Color3B::WHITE);
-        titleLabel->setOpacity(180);
-        this->addChild(titleLabel, 10);
-    }
+    // 初始化游戏 UI（在相机跟随设置后创建，确保 UI 层级正确）
+    initGameUI();
 
     CCLOG("OriginMushroomScene initialized with Physics Engine and Player");
     return true;

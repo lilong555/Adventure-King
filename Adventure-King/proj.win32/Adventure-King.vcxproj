@@ -162,6 +162,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\components\StateMachineComponent.cpp" />
     <ClCompile Include="..\Classes\DebugScene.cpp" />
     <ClCompile Include="..\Classes\GameScene.cpp" />
+    <ClCompile Include="..\Classes\GameUI.cpp" />
     <ClCompile Include="..\Classes\HelloWorldScene.cpp" />
     <ClCompile Include="..\Classes\HomeScene.cpp" />
     <ClCompile Include="..\Classes\MapScene.cpp" />
@@ -181,6 +182,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\components\StateMachineComponent.h" />
     <ClInclude Include="..\Classes\DebugScene.h" />
     <ClInclude Include="..\Classes\GameScene.h" />
+    <ClInclude Include="..\Classes\GameUI.h" />
     <ClInclude Include="..\Classes\HelloWorldScene.h" />
     <ClInclude Include="..\Classes\HomeScene.h" />
     <ClInclude Include="..\Classes\MapScene.h" />

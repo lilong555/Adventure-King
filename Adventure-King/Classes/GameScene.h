@@ -17,6 +17,7 @@
 
 // 前向声明
 class PlayerCharacter;
+class GameUI;
 
 // 物理碰撞分类掩码
 enum GamePhysicsCategory
@@ -53,24 +54,30 @@ protected:
     // 移动状态
     bool _isMovingLeft = false;
     bool _isMovingRight = false;
-    float _moveSpeed = 200.0f;
+    float _moveSpeed = 350.0f;
     bool _isWalkAnimationPlaying = false;
     // 物理状态
     bool _isGrounded = false;
     int _groundContactCount = 0;
+    // Gate（传送门）位置列表
+    std::vector<cocos2d::Rect> _gateAreas;
+    // 游戏 UI
+    GameUI *_gameUI = nullptr;
+    // 上一帧是否在传送门区域（用于显示/隐藏提示）
+    bool _wasAtGate = false;
     // 常量
-    static constexpr float JUMP_IMPULSE = 800.0f;
-    /**
-     * @brief 创建地图按钮（左上角）
-     * 点击后返回地图选择界面
-     */
-    void createMapButton();
+    static constexpr float JUMP_IMPULSE = 650.0f;
+    static constexpr float GATE_INTERACT_DISTANCE = 100.0f; ///< 与传送门交互的距离
 
     /**
-     * @brief 地图按钮回调
-     * @param pSender 发送者
+     * @brief 初始化游戏 UI
      */
-    void onMapButtonClicked(cocos2d::Ref *pSender);
+    void initGameUI();
+
+    /**
+     * @brief 返回地图场景
+     */
+    void returnToMapScene();
 
     /**
      * @brief 设置场景背景（子类可重写）
@@ -128,6 +135,23 @@ protected:
      * @param groupName 对象组名称
      */
     virtual void createCollisionBodiesFromTMX(const std::string &groupName);
+
+    /**
+     * @brief 从 born 图层获取玩家出生点
+     * @return 出生点坐标，如果找不到则返回默认位置
+     */
+    virtual cocos2d::Vec2 getPlayerSpawnPoint();
+
+    /**
+     * @brief 加载 gate 图层的传送门区域
+     */
+    virtual void loadGateAreas();
+
+    /**
+     * @brief 检查玩家是否在传送门区域内
+     * @return 是否在传送门区域
+     */
+    virtual bool isPlayerAtGate() const;
 
     /**
      * @brief 物理碰撞开始回调
