@@ -34,10 +34,10 @@
         },
         "Map1.tmx": {
             "scale": 0.5,
-            "selectedLayer": 4,
+            "selectedLayer": 6,
             "viewCenter": {
-                "x": 714,
-                "y": 811
+                "x": 635,
+                "y": 453
             }
         },
         "Tile_Ground_Forest_Mid_Crystal.tsx": {

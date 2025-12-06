@@ -1,6 +1,8 @@
 ﻿/**
  * @file GameScene.cpp
  * @brief 游戏关卡场景实现
+ *
+ * 包含 GameScene 基类和各个关卡子类的实现
  */
 
 #include "GameScene.h"
@@ -9,6 +11,33 @@
 #include "GameUI.h"
 
 USING_NS_CC;
+
+// ============================================================
+// 常量定义
+// ============================================================
+namespace
+{
+    // 资源路径
+    const char *const DEFAULT_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
+    const char *const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/spr_klee_run.png";
+
+    // 默认值
+    const Vec2 DEFAULT_SPAWN_POINT(100.0f, 200.0f);
+
+    // 物理材质
+    const PhysicsMaterial PLAYER_PHYSICS_MATERIAL(1.0f, 0.0f, 0.0f);    // 密度, 弹性, 摩擦
+    const PhysicsMaterial COLLISION_PHYSICS_MATERIAL(1.0f, 0.0f, 0.8f); // 碰撞体材质
+
+    // UI 文本
+    const char *const GATE_INTERACTION_HINT = "Press W to enter gate";
+    const char *const MAP_LOAD_FAILED_TEXT = " - Map Load Failed";
+
+    // 辅助函数：获取物理类别位掩码
+    inline int getCategoryBitmask(GamePhysicsCategory category)
+    {
+        return static_cast<int>(category);
+    }
+}
 
 // ============================================================
 // GameScene 基类实现
@@ -25,6 +54,10 @@ bool GameScene::init()
     return true;
 }
 
+// ===================================================================
+// 初始化方法
+// ===================================================================
+
 void GameScene::initGameUI()
 {
     _gameUI = GameUI::create();
@@ -38,25 +71,251 @@ void GameScene::initGameUI()
         _gameUI->setLevelName(getLevelName());
 
         // 添加到场景（高 z-order 确保显示在最上层）
-        this->addChild(_gameUI, 100);
+        this->addChild(_gameUI, UI_Z_ORDER);
 
-        CCLOG("GameUI initialized");
+        CCLOG("GameUI initialized for level: %s", getLevelName().c_str());
+    }
+    else
+    {
+        CCLOG("Warning: Failed to create GameUI");
     }
 }
 
+bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
+{
+    //-------------------------------------------------------------------------
+    // 步骤1：物理引擎初始化
+    //-------------------------------------------------------------------------
+    if (!Scene::initWithPhysics())
+    {
+        CCLOG("Error: Failed to initialize physics scene");
+        return false;
+    }
+
+    // 配置物理世界参数
+    auto physicsWorld = this->getPhysicsWorld();
+    physicsWorld->setGravity(Vec2(0, config.gravity));
+
+    // 开启/关闭物理调试绘制
+    if (config.enablePhysicsDebug)
+    {
+        physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
+    }
+
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
+
+    //-------------------------------------------------------------------------
+    // 步骤2：加载 TMX 瓦片地图
+    //-------------------------------------------------------------------------
+    if (!loadTileMap(config.tmxMapPath))
+    {
+        CCLOG("Warning: Failed to load TMX map: %s", config.tmxMapPath.c_str());
+        showMapLoadFailedUI();
+        return true; // 返回 true 让场景仍然显示，只是没有地图
+    }
+
+    //-------------------------------------------------------------------------
+    // 步骤3：设置横向重复背景
+    //-------------------------------------------------------------------------
+    if (!config.backgroundPath.empty())
+    {
+        setupRepeatingBackground(config.backgroundPath, _mapSizeInPixels.width);
+    }
+
+    //-------------------------------------------------------------------------
+    // 步骤4：从碰撞图层创建物理碰撞体
+    //-------------------------------------------------------------------------
+    createCollisionBodiesFromTMX(config.collisionLayerName);
+
+    //-------------------------------------------------------------------------
+    // 步骤5：加载传送门区域
+    //-------------------------------------------------------------------------
+    loadGateAreas();
+
+    //-------------------------------------------------------------------------
+    // 步骤6：初始化玩家角色（从 born 图层获取出生点）
+    //-------------------------------------------------------------------------
+    Vec2 playerStartPos = getPlayerSpawnPoint();
+    initPlayer(playerStartPos);
+
+    //-------------------------------------------------------------------------
+    // 步骤7：初始化物理碰撞监听和输入
+    //-------------------------------------------------------------------------
+    initPhysicsContactListener();
+    initKeyboardListener();
+
+    //-------------------------------------------------------------------------
+    // 步骤8：设置相机跟随
+    //-------------------------------------------------------------------------
+    initCameraFollow();
+
+    //-------------------------------------------------------------------------
+    // 步骤9：启用帧更新和初始化 UI
+    //-------------------------------------------------------------------------
+    scheduleUpdate();
+    initGameUI();
+
+    CCLOG("Scene initialized with physics config: %s", getLevelName().c_str());
+    return true;
+}
+
+void GameScene::initPlayer(const Vec2 &startPos)
+{
+    // 创建玩家角色（战士职业）
+    auto playerSprite = PlayerCharacter::create(CharacterRole::WARRIOR, DEFAULT_PLAYER_SPRITE);
+
+    if (!playerSprite)
+    {
+        CCLOG("Error: Failed to create player character");
+        return;
+    }
+
+    // 获取原始尺寸并设置缩放
+    Size originalSize = playerSprite->getContentSize();
+    playerSprite->setScale(_playerConfig.scale);
+
+    // 计算缩放后的实际显示尺寸
+    float scaledWidth = originalSize.width;
+    float scaledHeight = originalSize.height;
+
+    // 锚点设置为中心
+    playerSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
+
+    // 设置位置：startPos 是地面位置，需要将玩家中心抬高半个身高
+    Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
+    playerSprite->setPosition(playerPos);
+
+    // 计算碰撞体尺寸（基于配置的比例）
+    float boxWidth = scaledWidth * _playerConfig.collisionBoxWidthRatio;
+    float boxHeight = scaledHeight * _playerConfig.collisionBoxHeightRatio;
+
+    // 创建物理体
+    auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), PLAYER_PHYSICS_MATERIAL);
+    physicsBody->setDynamic(true);
+    physicsBody->setRotationEnable(false);
+    physicsBody->setMass(1.0f);
+    physicsBody->setLinearDamping(0.0f);
+
+    // 配置碰撞掩码
+    physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+
+    // 添加物理体到精灵
+    playerSprite->addComponent(physicsBody);
+
+    // 保存引用并添加到场景
+    _player = playerSprite;
+    _player->setTag(TAG_PLAYER);
+    this->addChild(_player, PLAYER_Z_ORDER);
+
+    // 设置死亡时不自动移除
+    _player->setAutoRemoveOnDeath(false);
+
+    // 初始化地面状态
+    _isGrounded = true;
+    _groundContactCount = 1;
+
+    CCLOG("Player created: pos=(%.0f, %.0f), boxSize=(%.0f, %.0f)",
+          playerPos.x, playerPos.y, boxWidth, boxHeight);
+}
+
+void GameScene::initPhysicsContactListener()
+{
+    auto contactListener = EventListenerPhysicsContact::create();
+
+    // 碰撞开始回调
+    contactListener->onContactBegin = CC_CALLBACK_1(GameScene::onContactBegin, this);
+
+    // 碰撞预处理回调 - 设置碰撞参数
+    contactListener->onContactPreSolve = [](PhysicsContact &contact, PhysicsContactPreSolve &solve) -> bool
+    {
+        auto nodeA = contact.getShapeA()->getBody()->getNode();
+        auto nodeB = contact.getShapeB()->getBody()->getNode();
+
+        if (!nodeA || !nodeB)
+            return true;
+
+        int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
+        int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
+
+        // 玩家与碰撞体碰撞时，禁用弹性和摩擦
+        bool playerInvolved = (categoryA & GamePhysicsCategory::PLAYER) || (categoryB & GamePhysicsCategory::PLAYER);
+        bool platformInvolved = (categoryA & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::PLATFORM) ||
+                                (categoryA & GamePhysicsCategory::COLLISION) || (categoryB & GamePhysicsCategory::COLLISION);
+
+        if (playerInvolved && platformInvolved)
+        {
+            solve.setRestitution(0.0f);
+            solve.setFriction(0.0f);
+        }
+
+        return true;
+    };
+
+    // 碰撞分离回调
+    contactListener->onContactSeparate = CC_CALLBACK_1(GameScene::onContactSeparate, this);
+
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(contactListener, this);
+
+    CCLOG("Physics contact listener initialized");
+}
+
+void GameScene::initKeyboardListener()
+{
+    auto keyboardListener = EventListenerKeyboard::create();
+    keyboardListener->onKeyPressed = CC_CALLBACK_2(GameScene::onKeyPressed, this);
+    keyboardListener->onKeyReleased = CC_CALLBACK_2(GameScene::onKeyReleased, this);
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
+
+    CCLOG("Keyboard listener initialized");
+}
+
+void GameScene::initCameraFollow()
+{
+    if (!_player)
+    {
+        CCLOG("Warning: Cannot init camera follow - player not created");
+        return;
+    }
+
+    // 定义地图边界（世界坐标）
+    Rect worldBound(0, 0, _mapSizeInPixels.width, _mapSizeInPixels.height);
+
+    // 让场景跟随玩家移动
+    auto followAction = Follow::create(_player, worldBound);
+    this->runAction(followAction);
+
+    CCLOG("Camera follow enabled, world bound: (%.0f, %.0f, %.0f, %.0f)",
+          worldBound.origin.x, worldBound.origin.y,
+          worldBound.size.width, worldBound.size.height);
+}
+
+// ===================================================================
+// 场景导航
+// ===================================================================
+
 void GameScene::returnToMapScene()
 {
-    CCLOG("Returning to map scene");
+    CCLOG("Returning to map scene from: %s", getLevelName().c_str());
 
     // 创建地图场景并切换
     auto mapScene = MapScene::createScene();
     if (mapScene)
     {
-        const float TRANSITION_DURATION = 0.5f;
-        auto transition = TransitionFade::create(TRANSITION_DURATION, mapScene, Color3B::BLACK);
+        auto transition = TransitionFade::create(SCENE_TRANSITION_DURATION, mapScene, Color3B::BLACK);
         Director::getInstance()->pushScene(transition);
     }
+    else
+    {
+        CCLOG("Error: Failed to create map scene");
+    }
 }
+
+// ===================================================================
+// 资源加载方法
+// ===================================================================
 
 void GameScene::setupBackground(const std::string &backgroundPath)
 {
@@ -77,7 +336,13 @@ void GameScene::setupBackground(const std::string &backgroundPath)
         background->setScale(scaleFactor);
 
         background->setTag(TAG_BACKGROUND);
-        this->addChild(background, -1); // Ensure background is behind everything
+        this->addChild(background, BACKGROUND_Z_ORDER);
+
+        CCLOG("Background loaded: %s", backgroundPath.c_str());
+    }
+    else
+    {
+        CCLOG("Warning: Failed to load background: %s", backgroundPath.c_str());
     }
 }
 
@@ -90,7 +355,6 @@ bool GameScene::loadTileMap(const std::string &mapPath)
         return false;
     }
 
-    auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
     // 计算地图像素尺寸
@@ -99,14 +363,12 @@ bool GameScene::loadTileMap(const std::string &mapPath)
     _mapSizeInPixels = Size(mapTileSize.width * tileSize.width,
                             mapTileSize.height * tileSize.height);
 
-    CCLOG("Map loaded: %s, size=%.0fx%.0f tiles, pixel size=%.0fx%.0f",
+    CCLOG("Map loaded: %s, tiles=%.0fx%.0f, pixels=%.0fx%.0f",
           mapPath.c_str(), mapTileSize.width, mapTileSize.height,
           _mapSizeInPixels.width, _mapSizeInPixels.height);
 
-    // 设置地图锚点为左下角
+    // 设置地图锚点为左下角，与屏幕左下角对齐
     _tileMap->setAnchorPoint(Vec2(0, 0));
-
-    // 地图左下角与屏幕左下角对齐
     _tileMap->setPosition(Vec2(origin.x, origin.y));
 
     _tileMap->setTag(TAG_TILEMAP);
@@ -131,21 +393,21 @@ bool GameScene::loadCollisionGroup(const std::string &groupName)
 
     // 打印碰撞对象信息（调试用）
     auto objects = _collisionGroup->getObjects();
-    CCLOG("Collision group '%s' contains %d objects", groupName.c_str(), (int)objects.size());
+    CCLOG("Collision group '%s' contains %zu objects", groupName.c_str(), objects.size());
 
+#if COCOS2D_DEBUG > 0
     for (const auto &obj : objects)
     {
         auto dict = obj.asValueMap();
-        std::string name = dict["name"].asString();
-        std::string type = dict["type"].asString();
-        float x = dict["x"].asFloat();
-        float y = dict["y"].asFloat();
-        float width = dict["width"].asFloat();
-        float height = dict["height"].asFloat();
-
         CCLOG("  Object: name='%s', type='%s', pos=(%.0f,%.0f), size=(%.0f,%.0f)",
-              name.c_str(), type.c_str(), x, y, width, height);
+              dict["name"].asString().c_str(),
+              dict["type"].asString().c_str(),
+              dict["x"].asFloat(),
+              dict["y"].asFloat(),
+              dict["width"].asFloat(),
+              dict["height"].asFloat());
     }
+#endif
 
     return true;
 }
@@ -203,11 +465,11 @@ void GameScene::setupRepeatingBackground(const std::string &backgroundPath, floa
 
     Size bgSize = tempSprite->getContentSize();
 
-    // 计算需要多少张图片来覆盖地图宽度
-    int repeatCount = static_cast<int>(ceil(mapWidth / bgSize.width)) + 1;
-
     // 计算背景高度缩放（让背景高度填满屏幕）
     float scaleY = visibleSize.height / bgSize.height;
+
+    // 计算需要多少张图片来覆盖地图宽度
+    int repeatCount = static_cast<int>(ceil(mapWidth / (bgSize.width * scaleY))) + 1;
 
     // 创建背景容器节点
     auto bgContainer = Node::create();
@@ -226,96 +488,8 @@ void GameScene::setupRepeatingBackground(const std::string &backgroundPath, floa
         }
     }
 
-    this->addChild(bgContainer, -1);
-    CCLOG("Created repeating background with %d tiles, mapWidth=%.0f, bgWidth=%.0f",
-          repeatCount, mapWidth, bgSize.width);
-}
-
-void GameScene::initPlayer(const Vec2 &startPos)
-{
-    // 创建玩家角色（战士职业）
-    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/spr_klee_run.png");
-
-    if (!_player)
-    {
-        CCLOG("Failed to create player with sprite");
-        return;
-    }
-
-    // 配置玩家位置和锚点
-    _player->setPosition(startPos + Vec2(0, _player->getContentSize().height / 2));
-    _player->setAnchorPoint(Vec2(0.5f, 0.0f));
-    _player->setScale(1.0f);
-
-    // 物理材质：密度=1.0, 弹性=0（不弹跳）, 摩擦=0（水平移动流畅）
-    PhysicsMaterial playerMaterial(1.0f, 0.0f, 0.0f);
-
-    // 计算碰撞体尺寸（略小于精灵以获得更好的游戏体验）
-    Size playerSize = _player->getContentSize();
-    float scale = _player->getScale();
-    float boxWidth = playerSize.width * scale * 0.8f;
-    float boxHeight = playerSize.height * scale * 0.95f;
-
-    auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), playerMaterial);
-    physicsBody->setDynamic(true);
-    physicsBody->setRotationEnable(false);
-    physicsBody->setMass(1.0f);
-    physicsBody->setLinearDamping(0.0f);
-
-    // 配置碰撞掩码
-    physicsBody->setCategoryBitmask(GAME_CATEGORY_PLAYER);
-    physicsBody->setCollisionBitmask(GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION);
-    physicsBody->setContactTestBitmask(GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION);
-
-    _player->addComponent(physicsBody);
-    this->addChild(_player, 5);
-
-    // 设置死亡时不自动移除
-    _player->setAutoRemoveOnDeath(false);
-
-    // 初始化地面状态
-    _isGrounded = true;
-    _groundContactCount = 1;
-
-    CCLOG("Player created with physics at position (%.0f, %.0f)", startPos.x, startPos.y);
-}
-
-void GameScene::initPhysicsContactListener()
-{
-    auto contactListener = EventListenerPhysicsContact::create();
-
-    // 碰撞开始回调
-    contactListener->onContactBegin = CC_CALLBACK_1(GameScene::onContactBegin, this);
-
-    // 碰撞预处理回调
-    contactListener->onContactPreSolve = [this](PhysicsContact &contact, PhysicsContactPreSolve &solve) -> bool
-    {
-        auto nodeA = contact.getShapeA()->getBody()->getNode();
-        auto nodeB = contact.getShapeB()->getBody()->getNode();
-
-        if (!nodeA || !nodeB)
-            return true;
-
-        int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
-        int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
-
-        // 玩家与碰撞体碰撞时
-        if ((categoryA == GAME_CATEGORY_PLAYER && (categoryB & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION))) ||
-            ((categoryA & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION)) && categoryB == GAME_CATEGORY_PLAYER))
-        {
-            solve.setRestitution(0.0f);
-            solve.setFriction(0.0f);
-        }
-
-        return true;
-    };
-
-    // 碰撞分离回调
-    contactListener->onContactSeparate = CC_CALLBACK_1(GameScene::onContactSeparate, this);
-
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(contactListener, this);
-
-    CCLOG("Physics contact listener initialized");
+    this->addChild(bgContainer, BACKGROUND_Z_ORDER);
+    CCLOG("Created repeating background: %d tiles, mapWidth=%.0f", repeatCount, mapWidth);
 }
 
 void GameScene::createCollisionBodiesFromTMX(const std::string &groupName)
@@ -334,164 +508,193 @@ void GameScene::createCollisionBodiesFromTMX(const std::string &groupName)
     }
 
     auto objects = objectGroup->getObjects();
-    CCLOG("Creating collision bodies from '%s', %d objects found", groupName.c_str(), (int)objects.size());
-
-    PhysicsMaterial collisionMaterial(1.0f, 0.0f, 0.8f);
-
-    // 获取地图像素高度（用于 Y 坐标转换）
-    Size mapSize = _tileMap->getMapSize();
-    Size tileSize = _tileMap->getTileSize();
-    float mapHeightInPixels = mapSize.height * tileSize.height;
+    CCLOG("Creating collision bodies from '%s': %zu objects", groupName.c_str(), objects.size());
 
     for (const auto &obj : objects)
     {
         auto dict = obj.asValueMap();
         std::string name = dict["name"].asString();
-        float x = dict["x"].asFloat();
-        float y = dict["y"].asFloat();
-        float width = dict["width"].asFloat();
-        float height = dict["height"].asFloat();
+        const double x = dict["x"].asDouble();
+        const double y = dict["y"].asDouble();
+        const double width = dict["width"].asDouble();
+        const double height = dict["height"].asDouble();
 
-        // 调试：打印所有键值对
-        CCLOG("  Object '%s': x=%.0f, y=%.0f, w=%.0f, h=%.0f", name.c_str(), x, y, width, height);
-        for (const auto &kv : dict)
+        // 尝试解析多边形/折线顶点
+        std::vector<Vec2> vertices;
+        bool isPolygon = parseTMXObjectVertices(dict, x, y, vertices);
+
+        if (!vertices.empty())
         {
-            CCLOG("    Key: '%s', Type: %d", kv.first.c_str(), (int)kv.second.getType());
-        }
-
-        // cocos2d-x TMX 解析器将 polygon 存储为 "points"，polyline 存储为 "polylinePoints"
-        bool hasPolygon = (dict.find("points") != dict.end());
-        bool hasPolyline = (dict.find("polylinePoints") != dict.end());
-
-        CCLOG("    hasPolygon(points)=%d, hasPolyline(polylinePoints)=%d", hasPolygon, hasPolyline);
-
-        if (hasPolygon || hasPolyline)
-        {
-            // 解析多边形/折线点
-            ValueVector points;
-            bool isPolygon = hasPolygon;
-            if (isPolygon)
-            {
-                points = dict["points"].asValueVector();
-            }
-            else
-            {
-                points = dict["polylinePoints"].asValueVector();
-            }
-            CCLOG("    Points count: %zu", points.size());
-
-            if (points.size() >= 2)
-            {
-                std::vector<Vec2> vertices;
-                for (const auto &pt : points)
-                {
-                    auto ptDict = pt.asValueMap();
-                    float px = ptDict["x"].asFloat();
-                    // cocos2d-x TMX解析器已经处理了相对坐标，但Y轴仍需翻转（相对于对象原点）
-                    float py = -ptDict["y"].asFloat();
-                    vertices.push_back(Vec2(px, py));
-                    CCLOG("      Vertex: (%.0f, %.0f) -> (%.0f, %.0f)", ptDict["x"].asFloat(), ptDict["y"].asFloat(), px, py);
-                }
-
-                auto collisionNode = Node::create();
-                // cocos2d-x 解析器已经将对象坐标转换为 cocos2d 坐标系
-                // x, y 现在就是 cocos2d 坐标
-                collisionNode->setPosition(Vec2(x, y) + _tileMap->getPosition());
-
-                PhysicsBody *physicsBody = nullptr;
-
-                if (isPolygon && vertices.size() >= 3)
-                {
-                    // 尝试创建多边形物理体
-                    physicsBody = PhysicsBody::createPolygon(vertices.data(), (int)vertices.size(), collisionMaterial);
-
-                    if (!physicsBody)
-                    {
-                        // 如果多边形创建失败（非凸或顺序问题），使用边链
-                        CCLOG("    Polygon creation failed, trying edge chain for '%s'", name.c_str());
-                        physicsBody = PhysicsBody::createEdgeChain(vertices.data(), (int)vertices.size(), collisionMaterial);
-                    }
-                }
-                else
-                {
-                    // 折线使用边链
-                    physicsBody = PhysicsBody::createEdgeChain(vertices.data(), (int)vertices.size(), collisionMaterial);
-                }
-
-                if (physicsBody)
-                {
-                    physicsBody->setDynamic(false);
-                    physicsBody->setCategoryBitmask(GAME_CATEGORY_COLLISION);
-                    physicsBody->setCollisionBitmask(GAME_CATEGORY_PLAYER);
-                    physicsBody->setContactTestBitmask(GAME_CATEGORY_PLAYER);
-
-                    collisionNode->addComponent(physicsBody);
-                    this->addChild(collisionNode, 1);
-                    CCLOG("  Created %s collision: name='%s', %zu vertices at (%.0f, %.0f)",
-                          isPolygon ? "polygon" : "polyline", name.c_str(), vertices.size(), x, y);
-                }
-                else
-                {
-                    CCLOG("  Failed to create collision body for '%s'", name.c_str());
-                }
-            }
+            // 多边形或折线碰撞体
+            createPolygonCollisionBody(vertices, name, isPolygon);
         }
         else if (width > 0 && height > 0)
         {
             // 矩形碰撞体
-            // cocos2d-x 解析器已经将坐标转换为 cocos2d 坐标系
-            // x, y 现在是矩形左下角的坐标
-            float rectCenterX = x + width / 2;
-            float rectCenterY = y + height / 2;
-
-            auto collisionNode = Node::create();
-            collisionNode->setPosition(Vec2(rectCenterX, rectCenterY) + _tileMap->getPosition());
-
-            auto physicsBody = PhysicsBody::createBox(Size(width, height), collisionMaterial);
-            physicsBody->setDynamic(false);
-            physicsBody->setCategoryBitmask(GAME_CATEGORY_COLLISION);
-            physicsBody->setCollisionBitmask(GAME_CATEGORY_PLAYER);
-            physicsBody->setContactTestBitmask(GAME_CATEGORY_PLAYER);
-
-            collisionNode->addComponent(physicsBody);
-            this->addChild(collisionNode, 1);
-            CCLOG("  Created rect collision: name='%s', size=(%.0f, %.0f) at (%.0f, %.0f)",
-                  name.c_str(), width, height, rectCenterX, rectCenterY);
+            Rect rect(x, y, width, height);
+            createRectCollisionBody(rect, name);
         }
     }
 }
+
+bool GameScene::parseTMXObjectVertices(const ValueMap &dict, double objectX, double objectY,
+                                       std::vector<Vec2> &outVertices)
+{
+    outVertices.clear();
+
+    // cocos2d-x TMX 解析器将 polygon 存储为 "points"，polyline 存储为 "polylinePoints"
+    bool hasPolygon = (dict.find("points") != dict.end());
+    bool hasPolyline = (dict.find("polylinePoints") != dict.end());
+
+    if (!hasPolygon && !hasPolyline)
+    {
+        return false;
+    }
+
+    ValueVector points;
+    bool isPolygon = hasPolygon;
+
+    if (isPolygon)
+    {
+        points = dict.at("points").asValueVector();
+    }
+    else
+    {
+        points = dict.at("polylinePoints").asValueVector();
+    }
+
+    if (points.size() < 2)
+    {
+        return isPolygon;
+    }
+
+    // 转换顶点坐标
+    for (const auto &pt : points)
+    {
+        auto ptDict = pt.asValueMap();
+        const double px = ptDict["x"].asDouble();
+        const double py = ptDict["y"].asDouble();
+
+        // 转换到 Cocos2d 坐标系 (相对于 _tileMap)
+        // X 轴方向一致：直接相加
+        // Y 轴方向相反：原点 Y 减去偏移 Y
+        outVertices.push_back(Vec2(objectX + px, objectY - py));
+    }
+
+    // 如果是多边形，确保首尾相连以闭合
+    if (isPolygon && outVertices.size() >= 3)
+    {
+        if (outVertices.front() != outVertices.back())
+        {
+            outVertices.push_back(outVertices.front());
+        }
+    }
+
+    return isPolygon;
+}
+
+void GameScene::createPolygonCollisionBody(const std::vector<Vec2> &vertices,
+                                           const std::string &name, bool isPolygon)
+{
+    if (vertices.size() < 2)
+    {
+        CCLOG("Warning: Not enough vertices for collision body '%s'", name.c_str());
+        return;
+    }
+
+    // 创建碰撞节点，直接添加到 _tileMap
+    auto collisionNode = Node::create();
+    collisionNode->setPosition(Vec2::ZERO);
+
+#if COCOS2D_DEBUG > 0
+    // 添加调试绘制
+    auto drawNode = DrawNode::create();
+    drawNode->setPosition(Vec2::ZERO);
+    drawNode->drawPoly(vertices.data(), static_cast<unsigned int>(vertices.size()),
+                       true, Color4F(0, 1, 0, 0.5f));
+    collisionNode->addChild(drawNode, COLLISION_DEBUG_Z_ORDER);
+#endif
+
+    // 使用 EdgeChain 创建静态边缘碰撞体
+    auto physicsBody = PhysicsBody::createEdgeChain(vertices.data(),
+                                                    static_cast<int>(vertices.size()),
+                                                    COLLISION_PHYSICS_MATERIAL);
+
+    if (physicsBody)
+    {
+        physicsBody->setDynamic(false);
+        physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
+        physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+        physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+
+        collisionNode->addComponent(physicsBody);
+        _tileMap->addChild(collisionNode, 1);
+
+        CCLOG("  Created %s collision: name='%s', %zu vertices",
+              isPolygon ? "polygon" : "polyline", name.c_str(), vertices.size());
+    }
+    else
+    {
+        CCLOG("  Error: Failed to create collision body for '%s'", name.c_str());
+    }
+}
+
+void GameScene::createRectCollisionBody(const Rect &rect, const std::string &name)
+{
+    // cocos2d-x 解析器已经将坐标转换为 cocos2d 坐标系
+    // x, y 是矩形左下角的坐标
+    double rectCenterX = rect.origin.x + rect.size.width / 2;
+    double rectCenterY = rect.origin.y + rect.size.height / 2;
+
+    auto collisionNode = Node::create();
+    collisionNode->setPosition(Vec2(rectCenterX, rectCenterY) + _tileMap->getPosition());
+
+    auto physicsBody = PhysicsBody::createBox(rect.size, COLLISION_PHYSICS_MATERIAL);
+    physicsBody->setDynamic(false);
+    physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
+    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+
+    collisionNode->addComponent(physicsBody);
+    this->addChild(collisionNode, 1);
+
+    CCLOG("  Created rect collision: name='%s', size=(%.0f, %.0f) at (%.0f, %.0f)",
+          name.c_str(), rect.size.width, rect.size.height, rectCenterX, rectCenterY);
+}
+
+// ===================================================================
+// 传送门与出生点
+// ===================================================================
 
 Vec2 GameScene::getPlayerSpawnPoint()
 {
     if (!_tileMap)
     {
         CCLOG("Warning: Cannot get spawn point - tilemap not loaded");
-        return Vec2(100, 200); // 默认出生点
+        return DEFAULT_SPAWN_POINT;
     }
 
     auto bornGroup = _tileMap->getObjectGroup("born");
     if (!bornGroup)
     {
-        CCLOG("Warning: 'born' object group not found in tilemap, using default spawn");
-        return Vec2(100, 200);
+        CCLOG("Warning: 'born' object group not found, using default spawn");
+        return DEFAULT_SPAWN_POINT;
     }
 
     auto objects = bornGroup->getObjects();
     if (objects.empty())
     {
         CCLOG("Warning: No objects in 'born' group, using default spawn");
-        return Vec2(100, 200);
+        return DEFAULT_SPAWN_POINT;
     }
 
     // 获取第一个出生点对象
     auto dict = objects[0].asValueMap();
-    float x = dict["x"].asFloat();
-    float y = dict["y"].asFloat();
+    double x = dict["x"].asDouble();
+    double y = dict["y"].asDouble();
 
-    // cocos2d-x TMX 解析器已经将坐标转换为 cocos2d 坐标系
     Vec2 spawnPoint(x, y);
-
-    CCLOG("Player spawn point found: (%.0f, %.0f)", spawnPoint.x, spawnPoint.y);
+    CCLOG("Player spawn point: (%.0f, %.0f)", spawnPoint.x, spawnPoint.y);
     return spawnPoint;
 }
 
@@ -513,23 +716,25 @@ void GameScene::loadGateAreas()
     }
 
     auto objects = gateGroup->getObjects();
-    CCLOG("Loading gate areas: %zu objects found", objects.size());
+    CCLOG("Loading gate areas: %zu objects", objects.size());
+
+    auto visibleSize = Director::getInstance()->getVisibleSize();
 
     for (const auto &obj : objects)
     {
         auto dict = obj.asValueMap();
         std::string name = dict["name"].asString();
-        float x = dict["x"].asFloat();
-        float y = dict["y"].asFloat();
-        float width = dict["width"].asFloat();
-        float height = dict["height"].asFloat();
+        double x = dict["x"].asDouble();
+        double y = dict["y"].asDouble();
+        double width = dict["width"].asDouble();
+        double height = dict["height"].asDouble();
 
         // 如果没有宽高，使用默认大小
         if (width <= 0)
-            width = GATE_INTERACT_DISTANCE * 2;
+            width = DEFAULT_GATE_INTERACT_DISTANCE * 2;
         if (height <= 0)
-            height = Director::getInstance()->getVisibleSize().height; // 让传送门区域覆盖屏幕高度
-        // 创建 gate 区域矩形
+            height = visibleSize.height;
+
         Rect gateRect(x, y, width, height);
         _gateAreas.push_back(gateRect);
 
@@ -549,16 +754,18 @@ bool GameScene::isPlayerAtGate() const
 
     for (const auto &gateRect : _gateAreas)
     {
-
         if (gateRect.containsPoint(playerPos))
         {
-            CCLOG("Player is at gate area: (%.0f, %.0f)", gateRect.origin.x, gateRect.origin.y);
             return true;
         }
     }
 
     return false;
 }
+
+// ===================================================================
+// 碰撞检测回调
+// ===================================================================
 
 bool GameScene::onContactBegin(PhysicsContact &contact)
 {
@@ -571,14 +778,14 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
     int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
-    // 玩家与碰撞体接触 - 检测是否落地
-    bool playerIsA = (categoryA == GAME_CATEGORY_PLAYER);
-    bool playerIsB = (categoryB == GAME_CATEGORY_PLAYER);
-    bool collisionWithPlatform =
-        (playerIsA && (categoryB & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION))) ||
-        (playerIsB && (categoryA & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION)));
+    // 检测玩家与平台/碰撞体的接触
+    bool playerIsA = (categoryA & GamePhysicsCategory::PLAYER);
+    bool playerIsB = (categoryB & GamePhysicsCategory::PLAYER);
+    bool platformContact =
+        (playerIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
+        (playerIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
 
-    if (collisionWithPlatform)
+    if (platformContact)
     {
         // 获取碰撞法向量判断是否从上方落下
         auto contactData = contact.getContactData();
@@ -586,25 +793,19 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
         {
             Vec2 normal = contactData->normal;
 
-            // 法向量的方向取决于碰撞顺序
-            // 如果玩家是 A，法向量指向 B（从 A 到 B）
             // 如果玩家是 B，法向量需要反转
             if (playerIsB)
             {
                 normal = -normal;
             }
 
-            // 现在 normal 是从玩家指向平台的向量
-            // 如果 normal.y < -0.3（向下），说明平台在玩家下方，玩家站在上面
-            if (normal.y < -0.3f)
+            // normal 是从玩家指向平台的向量
+            // 如果 normal.y < GROUND_NORMAL_THRESHOLD，说明平台在玩家下方
+            if (normal.y < GROUND_NORMAL_THRESHOLD)
             {
                 _groundContactCount++;
                 _isGrounded = true;
-                CCLOG("Player grounded (normal.y=%.2f), contact count: %d", normal.y, _groundContactCount);
-            }
-            else
-            {
-                CCLOG("Player touched platform but not grounded (normal.y=%.2f)", normal.y);
+                CCLOG("Player grounded (normal.y=%.2f), contacts: %d", normal.y, _groundContactCount);
             }
         }
     }
@@ -623,47 +824,38 @@ void GameScene::onContactSeparate(PhysicsContact &contact)
     int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
-    // 玩家与碰撞体分离
-    bool playerIsA = (categoryA == GAME_CATEGORY_PLAYER);
-    bool playerIsB = (categoryB == GAME_CATEGORY_PLAYER);
-    bool collisionWithPlatform =
-        (playerIsA && (categoryB & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION))) ||
-        (playerIsB && (categoryA & (GAME_CATEGORY_PLATFORM | GAME_CATEGORY_COLLISION)));
+    // 检测玩家与平台分离
+    bool playerIsA = (categoryA & GamePhysicsCategory::PLAYER);
+    bool playerIsB = (categoryB & GamePhysicsCategory::PLAYER);
+    bool platformContact =
+        (playerIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
+        (playerIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
 
-    if (collisionWithPlatform && _groundContactCount > 0)
+    if (platformContact && _groundContactCount > 0)
     {
-        // 使用射线检测确认是否真的离开地面
-        // 简化处理：只在玩家有向上速度或接触计数为正时才减少计数
-        if (_player && _player->getPhysicsBody())
+        _groundContactCount--;
+
+        if (_groundContactCount <= 0)
         {
-            Vec2 velocity = _player->getPhysicsBody()->getVelocity();
+            _groundContactCount = 0;
 
-            // 如果玩家正在向上移动（跳跃），减少接触计数
-            // 或者如果玩家没有向下的速度，也减少计数
-            _groundContactCount--;
-
-            if (_groundContactCount <= 0)
+            // 检查玩家速度确定是否真的离地
+            if (_player && _player->getPhysicsBody())
             {
-                _groundContactCount = 0;
-                // 只有当玩家真的在空中（有向上或向下的速度）时才设置为非着地
+                Vec2 velocity = _player->getPhysicsBody()->getVelocity();
                 if (fabsf(velocity.y) > 10.0f)
                 {
                     _isGrounded = false;
                     CCLOG("Player left ground (velocity.y=%.2f)", velocity.y);
                 }
-                else
-                {
-                    // 可能是在平坦表面上移动，保持着地状态
-                    CCLOG("Player contact ended but staying grounded (velocity.y=%.2f)", velocity.y);
-                }
-            }
-            else
-            {
-                CCLOG("Player still has ground contacts: %d", _groundContactCount);
             }
         }
     }
 }
+
+// ===================================================================
+// 输入处理
+// ===================================================================
 
 void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
 {
@@ -685,30 +877,17 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
-        // 先检查是否在传送门区域，如果是则返回地图
-        if (isPlayerAtGate())
+        // 先检查传送门交互
+        if (!handleGateInteraction())
         {
-            CCLOG("Player at gate, returning to map scene");
-            returnToMapScene();
-            return;
-        }
-        // 否则执行跳跃
-        if (_isGrounded && _player->getPhysicsBody())
-        {
-            _player->getPhysicsBody()->applyImpulse(Vec2(0, JUMP_IMPULSE));
-            _isGrounded = false;
-            CCLOG("Player jumped");
+            // 没有传送门交互则执行跳跃
+            handleJump();
         }
         break;
 
     case EventKeyboard::KeyCode::KEY_SPACE:
-        // 跳跃（空格键只跳跃，不触发传送门）
-        if (_isGrounded && _player->getPhysicsBody())
-        {
-            _player->getPhysicsBody()->applyImpulse(Vec2(0, JUMP_IMPULSE));
-            _isGrounded = false;
-            CCLOG("Player jumped");
-        }
+        // 空格键只跳跃，不触发传送门
+        handleJump();
         break;
 
     case EventKeyboard::KeyCode::KEY_ESCAPE:
@@ -739,71 +918,115 @@ void GameScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
     }
 }
 
+void GameScene::handleJump()
+{
+    if (_isGrounded && _player && _player->getPhysicsBody())
+    {
+        _player->getPhysicsBody()->applyImpulse(Vec2(0, _playerConfig.jumpImpulse));
+        _isGrounded = false;
+        CCLOG("Player jumped");
+    }
+}
+
+bool GameScene::handleGateInteraction()
+{
+    if (isPlayerAtGate())
+    {
+        CCLOG("Player at gate, returning to map scene");
+        returnToMapScene();
+        return true;
+    }
+    return false;
+}
+
+// ===================================================================
+// 更新循环
+// ===================================================================
+
 void GameScene::update(float dt)
 {
     if (!_player || !_player->getPhysicsBody())
         return;
 
+    updatePlayerMovement(dt);
+    updateGroundedState(_player->getPhysicsBody()->getVelocity());
+    updateUI();
+}
+
+void GameScene::updatePlayerMovement(float dt)
+{
     auto physicsBody = _player->getPhysicsBody();
     Vec2 velocity = physicsBody->getVelocity();
 
-    // 水平移动
+    // 计算目标水平速度
     float targetVelocityX = 0.0f;
     if (_isMovingLeft)
     {
-        targetVelocityX = -_moveSpeed;
+        targetVelocityX = -_playerConfig.moveSpeed;
     }
     else if (_isMovingRight)
     {
-        targetVelocityX = _moveSpeed;
+        targetVelocityX = _playerConfig.moveSpeed;
     }
 
     velocity.x = targetVelocityX;
     physicsBody->setVelocity(velocity);
 
+    // 更新行走动画状态标记
+    _isWalkAnimationPlaying = (_isMovingLeft || _isMovingRight);
+}
+
+void GameScene::updateGroundedState(const Vec2 &velocity)
+{
     // 辅助着地检测：如果玩家垂直速度很小且有接触计数，确保着地状态
-    // 这可以修复某些多边形边缘导致的误判
-    if (_groundContactCount > 0 && fabsf(velocity.y) < 5.0f)
+    if (_groundContactCount > 0 && fabsf(velocity.y) < GROUND_VELOCITY_THRESHOLD)
     {
         _isGrounded = true;
     }
     // 如果玩家在下落且速度很大，确保非着地状态
-    else if (velocity.y < -100.0f && _groundContactCount <= 0)
+    else if (velocity.y < FALLING_VELOCITY_THRESHOLD && _groundContactCount <= 0)
     {
         _isGrounded = false;
     }
+}
 
-    // 更新行走动画状态标记（动画功能可后续实现）
-    _isWalkAnimationPlaying = (_isMovingLeft || _isMovingRight);
+void GameScene::updateUI()
+{
+    if (!_gameUI)
+        return;
 
     // 更新 UI 位置（跟随相机）
-    if (_gameUI)
-    {
-        // 获取场景当前位置（Follow 动作会改变场景位置）
-        Vec2 scenePos = this->getPosition();
-        // UI 需要反向偏移以保持在屏幕固定位置
-        _gameUI->updatePosition(-scenePos);
-    }
+    Vec2 scenePos = this->getPosition();
+    _gameUI->updatePosition(-scenePos);
 
     // 检查是否在传送门区域，更新交互提示
     bool atGate = isPlayerAtGate();
     if (atGate && !_wasAtGate)
     {
-        // 刚进入传送门区域
-        if (_gameUI)
-        {
-            _gameUI->showInteractionHint("按 W 键进入传送门");
-        }
+        _gameUI->showInteractionHint(GATE_INTERACTION_HINT);
     }
     else if (!atGate && _wasAtGate)
     {
-        // 刚离开传送门区域
-        if (_gameUI)
-        {
-            _gameUI->hideInteractionHint();
-        }
+        _gameUI->hideInteractionHint();
     }
     _wasAtGate = atGate;
+}
+
+// 辅助方法：显示地图加载失败 UI
+void GameScene::showMapLoadFailedUI()
+{
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
+    Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
+
+    std::string errorText = getLevelName() + MAP_LOAD_FAILED_TEXT;
+    auto titleLabel = Label::createWithTTF(errorText, DEFAULT_FONT_PATH, 48);
+    if (titleLabel)
+    {
+        titleLabel->setPosition(center);
+        titleLabel->setColor(Color3B::RED);
+        this->addChild(titleLabel, 1);
+    }
 }
 
 // ============================================================
@@ -815,105 +1038,29 @@ Scene *OriginMushroomScene::createScene()
     return OriginMushroomScene::create();
 }
 
+LevelConfig OriginMushroomScene::getLevelConfig() const
+{
+    LevelConfig config;
+    config.tmxMapPath = "Map/Origin_Mushroom/Mushroom.tmx";
+    config.backgroundPath = "Map/Origin_Mushroom/map_background.png";
+    config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
+    config.collisionLayerName = "collisions";
+    config.bornLayerName = "born";
+    config.gateLayerName = "gate";
+    config.gravity = -800.0f;
+    config.enablePhysicsDebug = true; // 开发阶段开启调试
+    return config;
+}
+
 bool OriginMushroomScene::init()
 {
-    //-------------------------------------------------------------------------
-    // 步骤1：物理引擎初始化
-    //-------------------------------------------------------------------------
-    if (!Scene::initWithPhysics())
+    LevelConfig config = getLevelConfig();
+    if (!initWithPhysicsConfig(config))
     {
         return false;
     }
 
-    // 配置物理世界参数
-    auto physicsWorld = this->getPhysicsWorld();
-    physicsWorld->setGravity(Vec2(0, -800.0f));
-
-    // 开启物理调试绘制（开发时可视化碰撞体，发布时应关闭）
-    physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
-
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    auto origin = Director::getInstance()->getVisibleOrigin();
-
-    //-------------------------------------------------------------------------
-    // 步骤2：加载 TMX 瓦片地图
-    //-------------------------------------------------------------------------
-    if (!loadTileMap("Map/Map1.tmx"))
-    {
-        CCLOG("Warning: Failed to load Map1.tmx, using fallback UI");
-
-        Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
-        auto titleLabel = Label::createWithTTF(
-            "起源之菇 - 地图加载失败",
-            "fonts/ZCOOLKuaiLe-Regular.ttf",
-            48);
-        if (titleLabel)
-        {
-            titleLabel->setPosition(center);
-            titleLabel->setColor(Color3B::RED);
-            this->addChild(titleLabel, 1);
-        }
-        return true;
-    }
-
-    //-------------------------------------------------------------------------
-    // 步骤3：设置横向重复背景
-    //-------------------------------------------------------------------------
-    setupRepeatingBackground("Map/map_background.png", _mapSizeInPixels.width);
-
-    //-------------------------------------------------------------------------
-    // 步骤4：从碰撞图层创建物理碰撞体
-    //-------------------------------------------------------------------------
-    createCollisionBodiesFromTMX("collisions");
-
-    //-------------------------------------------------------------------------
-    // 步骤5：加载传送门区域
-    //-------------------------------------------------------------------------
-    loadGateAreas();
-
-    //-------------------------------------------------------------------------
-    // 步骤6：初始化玩家角色（从 born 图层获取出生点）
-    //-------------------------------------------------------------------------
-    Vec2 playerStartPos = getPlayerSpawnPoint();
-    initPlayer(playerStartPos);
-
-    //-------------------------------------------------------------------------
-    // 步骤7：初始化物理碰撞监听和输入
-    //-------------------------------------------------------------------------
-    initPhysicsContactListener();
-
-    // 键盘输入监听
-    auto keyboardListener = EventListenerKeyboard::create();
-    keyboardListener->onKeyPressed = CC_CALLBACK_2(OriginMushroomScene::onKeyPressed, this);
-    keyboardListener->onKeyReleased = CC_CALLBACK_2(OriginMushroomScene::onKeyReleased, this);
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
-
-    //-------------------------------------------------------------------------
-    // 步骤8：设置相机跟随
-    //-------------------------------------------------------------------------
-    if (_player)
-    {
-        // 定义地图边界（世界坐标）
-        Rect worldBound(0, 0, _mapSizeInPixels.width, _mapSizeInPixels.height);
-
-        // 让场景跟随玩家移动
-        auto followAction = Follow::create(_player, worldBound);
-        this->runAction(followAction);
-
-        CCLOG("Camera follow enabled, world bound: (%.0f, %.0f, %.0f, %.0f)",
-              worldBound.origin.x, worldBound.origin.y,
-              worldBound.size.width, worldBound.size.height);
-    }
-
-    //-------------------------------------------------------------------------
-    // 步骤9：启用帧更新
-    //-------------------------------------------------------------------------
-    scheduleUpdate();
-
-    // 初始化游戏 UI（在相机跟随设置后创建，确保 UI 层级正确）
-    initGameUI();
-
-    CCLOG("OriginMushroomScene initialized with Physics Engine and Player");
+    CCLOG("OriginMushroomScene initialized");
     return true;
 }
 
@@ -924,6 +1071,17 @@ bool OriginMushroomScene::init()
 Scene *MysteryForestScene::createScene()
 {
     return MysteryForestScene::create();
+}
+
+LevelConfig MysteryForestScene::getLevelConfig() const
+{
+    LevelConfig config;
+    // TODO: 配置神秘之森的资源路径
+    config.tmxMapPath = "";
+    config.backgroundPath = "";
+    config.gravity = -800.0f;
+    config.enablePhysicsDebug = false;
+    return config;
 }
 
 bool MysteryForestScene::init()
@@ -937,13 +1095,10 @@ bool MysteryForestScene::init()
     auto origin = Director::getInstance()->getVisibleOrigin();
     Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
-    // TODO: 设置神秘之森场景的背景
-    // setupBackground("Scene/Backgrounds/MysteryForest.png");
-
-    // 临时：添加场景标题标签
+    // 临时：添加场景标题标签（等待资源配置）
     auto titleLabel = Label::createWithTTF(
-        "神秘之森",
-        "fonts/ZCOOLKuaiLe-Regular.ttf",
+        getLevelName(),
+        DEFAULT_FONT_PATH,
         72);
 
     if (titleLabel)
@@ -955,8 +1110,8 @@ bool MysteryForestScene::init()
 
     // 添加提示文字
     auto hintLabel = Label::createWithTTF(
-        "点击左上角地图进入选择界面",
-        "fonts/ZCOOLKuaiLe-Regular.ttf",
+        "Click map button to return",
+        DEFAULT_FONT_PATH,
         32);
 
     if (hintLabel)
@@ -966,6 +1121,9 @@ bool MysteryForestScene::init()
         this->addChild(hintLabel, 1);
     }
 
-    CCLOG("MysteryForestScene initialized");
+    // 初始化 UI（虽然没有地图但仍需要返回按钮）
+    initGameUI();
+
+    CCLOG("MysteryForestScene initialized (placeholder)");
     return true;
 }

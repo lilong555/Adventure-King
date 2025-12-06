@@ -1,0 +1,29 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "Bldg_House_Rustic_Thatch_01.tsx": {
+            "scaleInEditor": 1
+        },
+        "Env_Tree_Oak_Giant_Green.tsx": {
+            "scaleInEditor": 1
+        }
+    },
+    "last.imagePath": "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom",
+    "map.height": 30,
+    "map.lastUsedFormat": "tmx",
+    "map.width": 230,
+    "openFiles": [
+    ],
+    "project": "Origin_Mushroom.tiled-project",
+    "recentFiles": [
+        "Env_Tree_Oak_Giant_Green.tsx",
+        "Bldg_House_Rustic_Thatch_01.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx"
+}
