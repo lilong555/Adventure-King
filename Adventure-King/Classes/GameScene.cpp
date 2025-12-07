@@ -120,7 +120,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     //-------------------------------------------------------------------------
     if (!config.backgroundPath.empty())
     {
-        setupRepeatingBackground(config.backgroundPath, _mapSizeInPixels.width);
+        // setupRepeatingBackground(config.backgroundPath, _mapSizeInPixels.width);
     }
 
     //-------------------------------------------------------------------------
@@ -1041,13 +1041,13 @@ Scene *OriginMushroomScene::createScene()
 LevelConfig OriginMushroomScene::getLevelConfig() const
 {
     LevelConfig config;
-    config.tmxMapPath = "Map/Origin_Mushroom/Mushroom.tmx";
+    config.tmxMapPath = "/Map/Origin_Mushroom/Origin_Mushroom.tmx";
     config.backgroundPath = "Map/Origin_Mushroom/map_background.png";
     config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";
     config.bornLayerName = "born";
     config.gateLayerName = "gate";
-    config.gravity = -800.0f;
+    config.gravity = -1000.0f;
     config.enablePhysicsDebug = true; // 开发阶段开启调试
     return config;
 }
