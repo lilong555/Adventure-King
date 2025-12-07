@@ -72,7 +72,7 @@ struct LevelConfig
     std::string gateLayerName = "gate";            ///< 传送门图层名称
 
     // 物理参数
-    float gravity = -800.0f;         ///< 重力加速度
+    float gravity = -1000.0f;        ///< 重力加速度
     bool enablePhysicsDebug = false; ///< 是否开启物理调试绘制
 
     // 默认构造函数
