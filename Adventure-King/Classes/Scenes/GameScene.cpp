@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file GameScene.cpp
  * @brief 游戏关卡场景实现
  *
@@ -7,7 +7,7 @@
 
 #include "GameScene.h"
 #include "MapScene.h"
-#include "Character/PlayerCharacter.h"
+#include "Character/Player/PlayerCharacter.h"
 #include "GameUI.h"
 
 USING_NS_CC;

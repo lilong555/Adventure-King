@@ -57,11 +57,14 @@
     <ClCompile Include="..\Classes\Character\components\StateMachineComponent.cpp">
       <Filter>src\Character\components</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Managers\MusicManager.cpp">
-      <Filter>src\Managers</Filter>
+    <ClCompile Include="..\Classes\Character\Base\CharacterBase.cpp">
+      <Filter>src\Character\Base</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp">
-      <Filter>src\Managers</Filter>
+    <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp">
+      <Filter>src\Character\Monster\Monsters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp">
+      <Filter>src\Character\Monster</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp">
       <Filter>src\Scenes</Filter>
@@ -84,17 +87,14 @@
     <ClCompile Include="..\Classes\Scenes\Layers\SetMenuLayer.cpp">
       <Filter>src\Scenes\Layers</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Character\Base\CharacterBase.cpp">
-      <Filter>src\Character\Base</Filter>
+    <ClCompile Include="..\Classes\Managers\MusicManager.cpp">
+      <Filter>src\Managers</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp">
-      <Filter>src\Character\Monster</Filter>
+    <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp">
+      <Filter>src\Managers</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp">
       <Filter>src\Character\Player</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp">
-      <Filter>src\Character\Monster\Monsters</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -113,11 +113,17 @@
     <ClInclude Include="..\Classes\Character\components\StateMachineComponent.h">
       <Filter>src\Character\components</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Managers\MusicManager.h">
-      <Filter>src\Managers</Filter>
+    <ClInclude Include="..\Classes\Character\Base\CharacterBase.h">
+      <Filter>src\Character\Base</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h">
-      <Filter>src\Managers</Filter>
+    <ClInclude Include="..\Classes\Character\Base\CharacterData.h">
+      <Filter>src\Character\Base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h">
+      <Filter>src\Character\Monster\Monsters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h">
+      <Filter>src\Character\Monster</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\DebugScene.h">
       <Filter>src\Scenes</Filter>
@@ -140,20 +146,14 @@
     <ClInclude Include="..\Classes\Scenes\Layers\SetMenuLayer.h">
       <Filter>src\Scenes\Layers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\Base\CharacterBase.h">
-      <Filter>src\Character\Base</Filter>
+    <ClInclude Include="..\Classes\Managers\MusicManager.h">
+      <Filter>src\Managers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\Base\CharacterData.h">
-      <Filter>src\Character\Base</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h">
-      <Filter>src\Character\Monster</Filter>
+    <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h">
+      <Filter>src\Managers</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
       <Filter>src\Character\Player</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h">
-      <Filter>src\Character\Monster\Monsters</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
