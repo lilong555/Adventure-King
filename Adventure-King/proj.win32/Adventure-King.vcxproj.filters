@@ -96,6 +96,9 @@
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp">
       <Filter>src\Character\Player</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\GameUI.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -154,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
       <Filter>src\Character\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\GameUI.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

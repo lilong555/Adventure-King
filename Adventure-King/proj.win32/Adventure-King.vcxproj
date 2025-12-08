@@ -162,6 +162,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
+    <ClCompile Include="..\Classes\GameUI.cpp" />
     <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
     <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
@@ -183,6 +184,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h" />
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
+    <ClInclude Include="..\Classes\GameUI.h" />
     <ClInclude Include="..\Classes\Managers\MusicManager.h" />
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h" />
     <ClInclude Include="..\Classes\Scenes\DebugScene.h" />
