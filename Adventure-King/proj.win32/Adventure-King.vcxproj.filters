@@ -25,6 +25,21 @@
     <Filter Include="src\Scenes\Layers">
       <UniqueIdentifier>{62b910af-8692-426d-9c85-6dd3d3e84bf2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Character\Base">
+      <UniqueIdentifier>{bbe101f0-88f7-464a-8545-a493ef25f648}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Character\Monster">
+      <UniqueIdentifier>{aa177691-d7f2-4f7e-b4a3-abe5cba67b8d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Character\Player">
+      <UniqueIdentifier>{e39619ed-c186-46fa-9ec5-661d31333c7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Character\Monster\Monsters">
+      <UniqueIdentifier>{847e8903-7169-4413-8bc2-e8babac76bf4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Character\Monster\Ai">
+      <UniqueIdentifier>{b6fdf8c8-a16f-4867-a54f-c47a109f9a0b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -32,15 +47,6 @@
     </ClCompile>
     <ClCompile Include="..\Classes\AppDelegate.cpp">
       <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\DebugScene.cpp">
-      <Filter>src\Scenes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Character\CharacterBase.cpp">
-      <Filter>src\Character</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Character\PlayerCharacter.cpp">
-      <Filter>src\Character</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp">
       <Filter>src\Character\components</Filter>
@@ -51,29 +57,44 @@
     <ClCompile Include="..\Classes\Character\components\StateMachineComponent.cpp">
       <Filter>src\Character\components</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\GameScene.cpp">
-      <Filter>src\Scenes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\HelloWorldScene.cpp">
-      <Filter>src\Scenes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\HomeScene.cpp">
-      <Filter>src\Scenes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\MapScene.cpp">
-      <Filter>src\Scenes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\MusicManager.cpp">
+    <ClCompile Include="..\Classes\Managers\MusicManager.cpp">
       <Filter>src\Managers</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\SceneTransitionManager.cpp">
+    <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp">
       <Filter>src\Managers</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\SaveMenuLayer.cpp">
+    <ClCompile Include="..\Classes\Scenes\DebugScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\GameScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\HelloWorldScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\HomeScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\MapScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\Layers\SaveMenuLayer.cpp">
       <Filter>src\Scenes\Layers</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\SetMenuLayer.cpp">
+    <ClCompile Include="..\Classes\Scenes\Layers\SetMenuLayer.cpp">
       <Filter>src\Scenes\Layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Base\CharacterBase.cpp">
+      <Filter>src\Character\Base</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp">
+      <Filter>src\Character\Monster</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp">
+      <Filter>src\Character\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp">
+      <Filter>src\Character\Monster\Monsters</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -82,18 +103,6 @@
     </ClInclude>
     <ClInclude Include="..\Classes\AppDelegate.h">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\DebugScene.h">
-      <Filter>src\Scenes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\CharacterBase.h">
-      <Filter>src\Character</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\CharacterData.h">
-      <Filter>src\Character</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\PlayerCharacter.h">
-      <Filter>src\Character</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\components\AttributeComponent.h">
       <Filter>src\Character\components</Filter>
@@ -104,30 +113,46 @@
     <ClInclude Include="..\Classes\Character\components\StateMachineComponent.h">
       <Filter>src\Character\components</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\GameScene.h">
-      <Filter>src\Scenes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\HelloWorldScene.h">
-      <Filter>src\Scenes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\HomeScene.h">
-      <Filter>src\Scenes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\MapScene.h">
-      <Filter>src\Scenes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\MusicManager.h">
+    <ClInclude Include="..\Classes\Managers\MusicManager.h">
       <Filter>src\Managers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\SceneTransitionManager.h">
+    <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h">
       <Filter>src\Managers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\SaveMenuLayer.h">
+    <ClInclude Include="..\Classes\Scenes\DebugScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\GameScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\HomeScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\MapScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\Layers\SaveMenuLayer.h">
       <Filter>src\Scenes\Layers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\SetMenuLayer.h">
+    <ClInclude Include="..\Classes\Scenes\Layers\SetMenuLayer.h">
       <Filter>src\Scenes\Layers</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Character\Base\CharacterBase.h">
+      <Filter>src\Character\Base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Base\CharacterData.h">
+      <Filter>src\Character\Base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h">
+      <Filter>src\Character\Monster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
+      <Filter>src\Character\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="game.rc">

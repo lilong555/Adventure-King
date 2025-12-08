@@ -1,5 +1,5 @@
 #include "Character/components/StateMachineComponent.h"
-#include "Character/CharacterBase.h"
+#include "Character/Base/CharacterBase.h"
 #include "cocos2d.h"
 
 USING_NS_CC;

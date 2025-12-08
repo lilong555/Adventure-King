@@ -1,10 +1,10 @@
 #include "HelloWorldScene.h"
 #include "HomeScene.h"
 #include "MapScene.h"
-#include "SaveMenuLayer.h"
-#include "SetMenuLayer.h"
-#include "SceneTransitionManager.h"
-#include "MusicManager.h"
+#include "Scenes/Layers/SaveMenuLayer.h"
+#include "Scenes/Layers/SetMenuLayer.h"
+#include "Managers/SceneTransitionManager.h"
+#include "Managers/MusicManager.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;

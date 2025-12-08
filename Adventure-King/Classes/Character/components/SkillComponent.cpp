@@ -1,5 +1,5 @@
 #include "Character/components/SkillComponent.h"
-#include "Character/CharacterBase.h"
+#include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
 
 SkillComponent::SkillComponent(CharacterBase *owner)

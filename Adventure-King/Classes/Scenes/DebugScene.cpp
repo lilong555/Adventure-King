@@ -23,8 +23,8 @@
  */
 
 #include "DebugScene.h"
-#include "Character/PlayerCharacter.h"
-#include "Character/CharacterBase.h"
+#include "Character/Player/PlayerCharacter.h"
+#include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
