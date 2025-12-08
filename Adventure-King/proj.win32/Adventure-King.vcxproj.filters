@@ -152,7 +152,9 @@
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
       <Filter>src\Character\Player</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
+    <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h">
+      <Filter>src\Character\Monster\Monsters</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="game.rc">
