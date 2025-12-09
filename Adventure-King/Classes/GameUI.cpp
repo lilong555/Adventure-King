@@ -4,6 +4,12 @@
  */
 
 #include "GameUI.h"
+#include "UI/PlayerStatusBar.h"
+#include "UI/SkillBar.h"
+#include "UI/BossHealthBar.h"
+#include "UI/PauseMenu.h"
+#include "Character/Player/PlayerCharacter.h"
+#include "Character/Base/CharacterBase.h"
 
 USING_NS_CC;
 
@@ -32,22 +38,81 @@ bool GameUI::init()
     // 计算 UI 元素相对于屏幕的位置
     float padding = 20.0f;
 
-    // 地图按钮位置：左上角
-    _mapButtonPos = Vec2(origin.x + padding + 40, origin.y + visibleSize.height - padding - 40);
+    // 玩家状态栏位置：左上角
+    _statusBarPos = Vec2(origin.x + padding + 50, origin.y + visibleSize.height - padding);
+
+    // 技能栏位置：屏幕底部中央偏右
+    _skillBarPos = Vec2(origin.x + visibleSize.width - 150, origin.y + 80);
+
+    // Boss血条位置：屏幕顶部中央
+    _bossHealthBarPos = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - 60);
+
+    // 地图按钮位置：右上角
+    _mapButtonPos = Vec2(origin.x + visibleSize.width - padding - 40, origin.y + visibleSize.height - padding - 40);
 
     // 交互提示位置：屏幕底部中央
     _interactionHintPos = Vec2(origin.x + visibleSize.width / 2, origin.y + 80);
 
-    // 关卡名称位置：右上角
-    _levelNamePos = Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 60);
+    // 关卡名称位置：右上角（地图按钮下方）
+    _levelNamePos = Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 100);
 
     // 创建 UI 元素
+    createPlayerStatusBar();
+    createSkillBar();
+    createBossHealthBar();
     createMapButton();
     createInteractionHint();
     createLevelNameLabel();
+    createPauseMenu();
 
-    CCLOG("GameUI initialized");
+    CCLOG("GameUI initialized with all components");
     return true;
+}
+
+void GameUI::createPlayerStatusBar()
+{
+    _playerStatusBar = PlayerStatusBar::create();
+    if (_playerStatusBar)
+    {
+        _playerStatusBar->setPosition(_statusBarPos);
+        this->addChild(_playerStatusBar, 10);
+    }
+}
+
+void GameUI::createSkillBar()
+{
+    _skillBar = SkillBar::create(4); // 4个技能槽位
+    if (_skillBar)
+    {
+        _skillBar->setPosition(_skillBarPos);
+
+        // 设置默认快捷键提示
+        _skillBar->setSlotHotkey(0, "E");
+        _skillBar->setSlotHotkey(1, "Q");
+        _skillBar->setSlotHotkey(2, "R");
+        _skillBar->setSlotHotkey(3, "F");
+
+        this->addChild(_skillBar, 10);
+    }
+}
+
+void GameUI::createBossHealthBar()
+{
+    _bossHealthBar = BossHealthBar::create();
+    if (_bossHealthBar)
+    {
+        _bossHealthBar->setPosition(_bossHealthBarPos);
+        this->addChild(_bossHealthBar, 10);
+    }
+}
+
+void GameUI::createPauseMenu()
+{
+    _pauseMenu = PauseMenu::create();
+    if (_pauseMenu)
+    {
+        this->addChild(_pauseMenu, 100); // 最高层级
+    }
 }
 
 void GameUI::createMapButton()
@@ -102,6 +167,62 @@ void GameUI::createLevelNameLabel()
     }
 }
 
+void GameUI::bindPlayer(PlayerCharacter *player)
+{
+    _player = player;
+
+    if (_playerStatusBar)
+    {
+        _playerStatusBar->bindPlayer(player);
+    }
+
+    if (_skillBar)
+    {
+        _skillBar->bindPlayer(player);
+
+        // 设置炸弹技能图标（如果有）
+        _skillBar->setSlotIcon(0, "Sprites/Characters/Player/Klee/TNT.png");
+    }
+}
+
+void GameUI::bindBoss(CharacterBase *boss, const std::string &bossName, int phaseCount)
+{
+    if (_bossHealthBar)
+    {
+        _bossHealthBar->bindBoss(boss, bossName, phaseCount);
+        _bossHealthBar->show();
+    }
+}
+
+void GameUI::unbindBoss()
+{
+    if (_bossHealthBar)
+    {
+        _bossHealthBar->unbindBoss();
+    }
+}
+
+void GameUI::showPauseMenu()
+{
+    if (_pauseMenu)
+    {
+        _pauseMenu->show();
+    }
+}
+
+void GameUI::hidePauseMenu()
+{
+    if (_pauseMenu)
+    {
+        _pauseMenu->hide();
+    }
+}
+
+bool GameUI::isPauseMenuShowing() const
+{
+    return _pauseMenu && _pauseMenu->isShowing();
+}
+
 void GameUI::setMapButtonCallback(const std::function<void()> &callback)
 {
     _mapButtonCallback = callback;
@@ -150,23 +271,30 @@ void GameUI::setLevelName(const std::string &name)
     }
 }
 
+void GameUI::updateDisplay()
+{
+    // 更新玩家状态栏
+    if (_playerStatusBar)
+    {
+        _playerStatusBar->updateDisplay();
+    }
+
+    // 更新技能栏
+    if (_skillBar)
+    {
+        _skillBar->updateDisplay();
+    }
+
+    // 更新Boss血条
+    if (_bossHealthBar)
+    {
+        _bossHealthBar->updateDisplay();
+    }
+}
+
 void GameUI::updatePosition(const Vec2 &cameraOffset)
 {
-    // 更新所有 UI 元素的位置，使其相对于相机保持固定
-    // cameraOffset 是场景位置的负值（即相机的偏移量）
-
-    if (_mapMenu)
-    {
-        _mapButton->setPosition(_mapButtonPos + cameraOffset);
-    }
-
-    if (_interactionHint)
-    {
-        _interactionHint->setPosition(_interactionHintPos + cameraOffset);
-    }
-
-    if (_levelNameLabel)
-    {
-        _levelNameLabel->setPosition(_levelNamePos + cameraOffset);
-    }
+    // 现在 GameUI 直接添加到场景中，而场景不再移动
+    // Follow 动作只作用于 _gameLayer，所以 UI 位置不需要更新
+    // 保留此方法以保持接口兼容性
 }
