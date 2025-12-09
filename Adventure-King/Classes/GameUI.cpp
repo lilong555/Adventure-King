@@ -294,36 +294,7 @@ void GameUI::updateDisplay()
 
 void GameUI::updatePosition(const Vec2 &cameraOffset)
 {
-    // 更新所有 UI 元素的位置，使其相对于相机保持固定
-    // cameraOffset 是场景位置的负值（即相机的偏移量）
-
-    if (_mapMenu)
-    {
-        _mapButton->setPosition(_mapButtonPos + cameraOffset);
-    }
-
-    if (_interactionHint)
-    {
-        _interactionHint->setPosition(_interactionHintPos + cameraOffset);
-    }
-
-    if (_levelNameLabel)
-    {
-        _levelNameLabel->setPosition(_levelNamePos + cameraOffset);
-    }
-
-    if (_playerStatusBar)
-    {
-        _playerStatusBar->setPosition(_statusBarPos + cameraOffset);
-    }
-
-    if (_skillBar)
-    {
-        _skillBar->setPosition(_skillBarPos + cameraOffset);
-    }
-
-    if (_bossHealthBar)
-    {
-        _bossHealthBar->setPosition(_bossHealthBarPos + cameraOffset);
-    }
+    // 现在 GameUI 直接添加到场景中，而场景不再移动
+    // Follow 动作只作用于 _gameLayer，所以 UI 位置不需要更新
+    // 保留此方法以保持接口兼容性
 }

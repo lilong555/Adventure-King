@@ -39,13 +39,14 @@ bool PauseMenu::init()
     _isShowing = false;
 
     // 阻止触摸事件穿透
-    auto touchListener = EventListenerTouchOneByOne::create();
-    touchListener->setSwallowTouches(true);
-    touchListener->onTouchBegan = [this](Touch *touch, Event *event) -> bool
+    _touchListener = EventListenerTouchOneByOne::create();
+    _touchListener->setSwallowTouches(true);
+    _touchListener->onTouchBegan = [this](Touch *touch, Event *event) -> bool
     {
         return _isShowing; // 只有显示时才拦截触摸
     };
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, this);
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(_touchListener, this);
+    _touchListener->setEnabled(false); // 初始禁用
 
     return true;
 }
@@ -130,17 +131,6 @@ MenuItemLabel *PauseMenu::createButton(const std::string &text, const ccMenuCall
 
     auto button = MenuItemLabel::create(label, callback);
 
-    // 添加悬停效果
-    button->setCallback([callback, button](Ref *sender)
-                        {
-        // 点击缩放效果
-        auto scaleDown = ScaleTo::create(0.05f, 0.9f);
-        auto scaleUp = ScaleTo::create(0.05f, 1.0f);
-        auto callFunc = CallFunc::create([callback, sender]() {
-            if (callback) callback(sender);
-        });
-        button->runAction(Sequence::create(scaleDown, scaleUp, callFunc, nullptr)); });
-
     return button;
 }
 
@@ -151,6 +141,12 @@ void PauseMenu::show()
 
     _isShowing = true;
     this->setVisible(true);
+
+    // 启用触摸监听器
+    if (_touchListener)
+    {
+        _touchListener->setEnabled(true);
+    }
 
     // 淡入动画
     _container->setOpacity(0);
@@ -168,6 +164,12 @@ void PauseMenu::hide()
         return;
 
     _isShowing = false;
+
+    // 禁用触摸监听器
+    if (_touchListener)
+    {
+        _touchListener->setEnabled(false);
+    }
 
     // 淡出动画
     auto fadeOut = FadeOut::create(0.2f);
@@ -213,4 +215,11 @@ void PauseMenu::onQuitClicked(Ref *sender)
     {
         Director::getInstance()->end();
     }
+}
+
+void PauseMenu::updatePosition(const Vec2 &cameraOffset)
+{
+    // GameUI 已经设置了位置偏移，PauseMenu 作为子节点会自动跟随
+    // 不需要额外的位置更新
+    // _container 的位置保持在 (0, 0)
 }

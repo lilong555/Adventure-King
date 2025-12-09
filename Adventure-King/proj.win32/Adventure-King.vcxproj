@@ -163,10 +163,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
     <ClCompile Include="..\Classes\GameUI.cpp" />
-    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
-    <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
-    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
-    <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
+<<<<<<< HEAD
     <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
     <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
@@ -176,6 +173,19 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Scenes\Layers\SaveMenuLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\SetMenuLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\MapScene.cpp" />
+=======
+    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
+    <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
+    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
+    <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
+    <ClCompile Include="..\Classes\HelloWorldScene.cpp" />
+    <ClCompile Include="..\Classes\HomeScene.cpp" />
+    <ClCompile Include="..\Classes\MapScene.cpp" />
+    <ClCompile Include="..\Classes\MusicManager.cpp" />
+    <ClCompile Include="..\Classes\SaveMenuLayer.cpp" />
+    <ClCompile Include="..\Classes\SceneTransitionManager.cpp" />
+    <ClCompile Include="..\Classes\SetMenuLayer.cpp" />
+>>>>>>> efe10b1 (实现完整的游戏内UI系统)
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -189,10 +199,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
     <ClInclude Include="..\Classes\GameUI.h" />
-    <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
-    <ClInclude Include="..\Classes\UI\SkillBar.h" />
-    <ClInclude Include="..\Classes\UI\BossHealthBar.h" />
-    <ClInclude Include="..\Classes\UI\PauseMenu.h" />
+<<<<<<< HEAD
     <ClInclude Include="..\Classes\Managers\MusicManager.h" />
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h" />
     <ClInclude Include="..\Classes\Scenes\DebugScene.h" />
@@ -202,6 +209,19 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Scenes\Layers\SaveMenuLayer.h" />
     <ClInclude Include="..\Classes\Scenes\Layers\SetMenuLayer.h" />
     <ClInclude Include="..\Classes\Scenes\MapScene.h" />
+=======
+    <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
+    <ClInclude Include="..\Classes\UI\SkillBar.h" />
+    <ClInclude Include="..\Classes\UI\BossHealthBar.h" />
+    <ClInclude Include="..\Classes\UI\PauseMenu.h" />
+    <ClInclude Include="..\Classes\HelloWorldScene.h" />
+    <ClInclude Include="..\Classes\HomeScene.h" />
+    <ClInclude Include="..\Classes\MapScene.h" />
+    <ClInclude Include="..\Classes\MusicManager.h" />
+    <ClInclude Include="..\Classes\SaveMenuLayer.h" />
+    <ClInclude Include="..\Classes\SceneTransitionManager.h" />
+    <ClInclude Include="..\Classes\SetMenuLayer.h" />
+>>>>>>> efe10b1 (实现完整的游戏内UI系统)
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>

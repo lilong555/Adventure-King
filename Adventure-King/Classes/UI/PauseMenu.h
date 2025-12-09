@@ -40,6 +40,12 @@ public:
      */
     bool isShowing() const { return _isShowing; }
 
+    /**
+     * @brief 更新位置（跟随相机）
+     * @param cameraOffset 相机偏移量
+     */
+    void updatePosition(const cocos2d::Vec2 &cameraOffset);
+
     // 回调设置
     void setResumeCallback(const std::function<void()> &callback) { _resumeCallback = callback; }
     void setSettingsCallback(const std::function<void()> &callback) { _settingsCallback = callback; }
@@ -59,13 +65,14 @@ protected:
 
     // 创建菜单按钮
     cocos2d::MenuItemLabel *createButton(const std::string &text,
-                                          const cocos2d::ccMenuCallback &callback);
+                                         const cocos2d::ccMenuCallback &callback);
 
 protected:
     cocos2d::Node *_container = nullptr;
     cocos2d::DrawNode *_background = nullptr;
     cocos2d::Label *_titleLabel = nullptr;
     cocos2d::Menu *_menu = nullptr;
+    cocos2d::EventListenerTouchOneByOne *_touchListener = nullptr;
 
     bool _isShowing = false;
 
