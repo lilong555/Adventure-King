@@ -1,8 +1,8 @@
-﻿#include "HelloWorldScene.h" // 包含主菜单场景，以便返回
+#include "HelloWorldScene.h" // 包含主菜单场景，以便返回
 #include "HomeScene.h"
 #include "GameScene.h"
-#include "SceneTransitionManager.h"
-#include "MusicManager.h"
+#include "Managers/SceneTransitionManager.h"
+#include "Managers/MusicManager.h"
 
 USING_NS_CC;
 

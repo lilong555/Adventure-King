@@ -19,7 +19,7 @@
 
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
-#include "Character/CharacterData.h"
+#include "Character/Base/CharacterData.h"
 #include <memory>
 
 // 前向声明

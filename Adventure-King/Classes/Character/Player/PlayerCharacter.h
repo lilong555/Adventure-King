@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Character/CharacterBase.h"
+#include "Character/Base/CharacterBase.h"
 #include <map>
 #include <memory>
 

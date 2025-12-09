@@ -1,7 +1,7 @@
 #pragma once
 
 #include "cocos2d.h"
-#include "Character/CharacterData.h"
+#include "Character/Base/CharacterData.h"
 #include <memory>
 
 class AttributeComponent;
