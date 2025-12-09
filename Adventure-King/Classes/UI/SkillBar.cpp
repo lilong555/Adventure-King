@@ -4,9 +4,9 @@
  */
 
 #include "SkillBar.h"
-#include "Character/PlayerCharacter.h"
+#include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
-#include "Character/CharacterData.h"
+#include "Character/Base/CharacterData.h"
 
 USING_NS_CC;
 

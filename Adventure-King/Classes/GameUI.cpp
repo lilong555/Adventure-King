@@ -8,8 +8,8 @@
 #include "UI/SkillBar.h"
 #include "UI/BossHealthBar.h"
 #include "UI/PauseMenu.h"
-#include "Character/PlayerCharacter.h"
-#include "Character/CharacterBase.h"
+#include "Character/Player/PlayerCharacter.h"
+#include "Character/Base/CharacterBase.h"
 
 USING_NS_CC;
 

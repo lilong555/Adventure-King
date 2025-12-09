@@ -4,7 +4,7 @@
  */
 
 #include "BossHealthBar.h"
-#include "Character/CharacterBase.h"
+#include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
 
 USING_NS_CC;

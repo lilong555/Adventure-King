@@ -4,7 +4,7 @@
  */
 
 #include "PlayerStatusBar.h"
-#include "Character/PlayerCharacter.h"
+#include "Character/Player/PlayerCharacter.h"
 #include "Character/components/AttributeComponent.h"
 
 USING_NS_CC;
