@@ -2,10 +2,13 @@
  * @file GameUI.h
  * @brief 游戏内 UI 层
  *
- * 管理游戏过程中的 UI 元素，包括：
+ * 管理游戏过程中的所有 UI 元素，包括：
+ * - 玩家状态栏（HP/MP/经验）
+ * - 技能栏
+ * - Boss血条
  * - 地图按钮
  * - 交互提示
- * - 其他 HUD 元素
+ * - 暂停菜单
  *
  * UI 层不受相机跟随影响，始终显示在屏幕固定位置
  */
@@ -14,6 +17,14 @@
 #define __GAME_UI_H__
 
 #include "cocos2d.h"
+
+// 前向声明
+class PlayerCharacter;
+class CharacterBase;
+class PlayerStatusBar;
+class SkillBar;
+class BossHealthBar;
+class PauseMenu;
 
 class GameUI : public cocos2d::Node
 {
@@ -28,6 +39,76 @@ public:
      * @brief 初始化
      */
     virtual bool init() override;
+
+    //=========================================================================
+    // 玩家相关
+    //=========================================================================
+
+    /**
+     * @brief 绑定玩家角色
+     * @param player 玩家角色指针
+     */
+    void bindPlayer(PlayerCharacter *player);
+
+    /**
+     * @brief 获取玩家状态栏
+     */
+    PlayerStatusBar *getPlayerStatusBar() const { return _playerStatusBar; }
+
+    /**
+     * @brief 获取技能栏
+     */
+    SkillBar *getSkillBar() const { return _skillBar; }
+
+    //=========================================================================
+    // Boss相关
+    //=========================================================================
+
+    /**
+     * @brief 绑定Boss角色
+     * @param boss Boss角色指针
+     * @param bossName Boss名称
+     * @param phaseCount 阶段数量
+     */
+    void bindBoss(CharacterBase *boss, const std::string &bossName, int phaseCount = 1);
+
+    /**
+     * @brief 解绑Boss
+     */
+    void unbindBoss();
+
+    /**
+     * @brief 获取Boss血条
+     */
+    BossHealthBar *getBossHealthBar() const { return _bossHealthBar; }
+
+    //=========================================================================
+    // 暂停菜单
+    //=========================================================================
+
+    /**
+     * @brief 显示暂停菜单
+     */
+    void showPauseMenu();
+
+    /**
+     * @brief 隐藏暂停菜单
+     */
+    void hidePauseMenu();
+
+    /**
+     * @brief 暂停菜单是否显示中
+     */
+    bool isPauseMenuShowing() const;
+
+    /**
+     * @brief 获取暂停菜单
+     */
+    PauseMenu *getPauseMenu() const { return _pauseMenu; }
+
+    //=========================================================================
+    // 原有功能
+    //=========================================================================
 
     /**
      * @brief 设置地图按钮回调
@@ -58,7 +139,37 @@ public:
      */
     void updatePosition(const cocos2d::Vec2 &cameraOffset);
 
+    /**
+     * @brief 更新所有UI显示
+     * 应在每帧调用
+     */
+    void updateDisplay();
+
 protected:
+    // 创建UI组件
+    void createPlayerStatusBar();
+    void createSkillBar();
+    void createBossHealthBar();
+    void createPauseMenu();
+    void createMapButton();
+    void createInteractionHint();
+    void createLevelNameLabel();
+
+    // 地图按钮点击回调
+    void onMapButtonClicked(cocos2d::Ref *sender);
+
+protected:
+    // 玩家相关UI
+    PlayerStatusBar *_playerStatusBar = nullptr;
+    SkillBar *_skillBar = nullptr;
+    PlayerCharacter *_player = nullptr;
+
+    // Boss相关UI
+    BossHealthBar *_bossHealthBar = nullptr;
+
+    // 暂停菜单
+    PauseMenu *_pauseMenu = nullptr;
+
     // 地图按钮
     cocos2d::MenuItemImage *_mapButton = nullptr;
     cocos2d::Menu *_mapMenu = nullptr;
@@ -76,26 +187,9 @@ protected:
     cocos2d::Vec2 _mapButtonPos;
     cocos2d::Vec2 _interactionHintPos;
     cocos2d::Vec2 _levelNamePos;
-
-    /**
-     * @brief 创建地图按钮
-     */
-    void createMapButton();
-
-    /**
-     * @brief 创建交互提示
-     */
-    void createInteractionHint();
-
-    /**
-     * @brief 创建关卡名称标签
-     */
-    void createLevelNameLabel();
-
-    /**
-     * @brief 地图按钮点击回调
-     */
-    void onMapButtonClicked(cocos2d::Ref *sender);
+    cocos2d::Vec2 _statusBarPos;
+    cocos2d::Vec2 _skillBarPos;
+    cocos2d::Vec2 _bossHealthBarPos;
 };
 
 #endif // __GAME_UI_H__
