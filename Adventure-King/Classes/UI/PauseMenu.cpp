@@ -66,7 +66,7 @@ void PauseMenu::createBackground()
 
     // 中央面板
     float panelWidth = 300;
-    float panelHeight = 350;
+    float panelHeight = 450;
     Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
     auto panel = DrawNode::create();
@@ -105,21 +105,25 @@ void PauseMenu::createMenuButtons()
 
     // 创建菜单按钮
     auto resumeBtn = createButton("继续游戏", CC_CALLBACK_1(PauseMenu::onResumeClicked, this));
+    auto saveBtn = createButton("保存游戏", CC_CALLBACK_1(PauseMenu::onSaveClicked, this));
+    auto loadBtn = createButton("加载游戏", CC_CALLBACK_1(PauseMenu::onLoadClicked, this));
     auto settingsBtn = createButton("设置", CC_CALLBACK_1(PauseMenu::onSettingsClicked, this));
     auto mainMenuBtn = createButton("返回主菜单", CC_CALLBACK_1(PauseMenu::onMainMenuClicked, this));
     auto quitBtn = createButton("退出游戏", CC_CALLBACK_1(PauseMenu::onQuitClicked, this));
 
     // 设置按钮位置
-    float buttonSpacing = 55;
-    float startY = center.y + 50;
+    float buttonSpacing = 50;
+    float startY = center.y + 100;
 
     resumeBtn->setPosition(Vec2(center.x, startY));
-    settingsBtn->setPosition(Vec2(center.x, startY - buttonSpacing));
-    mainMenuBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 2));
-    quitBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 3));
+    saveBtn->setPosition(Vec2(center.x, startY - buttonSpacing));
+    loadBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 2));
+    settingsBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 3));
+    mainMenuBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 4));
+    quitBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 5));
 
     // 创建菜单
-    _menu = Menu::create(resumeBtn, settingsBtn, mainMenuBtn, quitBtn, nullptr);
+    _menu = Menu::create(resumeBtn, saveBtn, loadBtn, settingsBtn, mainMenuBtn, quitBtn, nullptr);
     _menu->setPosition(Vec2::ZERO);
     _container->addChild(_menu, 2);
 }
@@ -185,6 +189,22 @@ void PauseMenu::onResumeClicked(Ref *sender)
     if (_resumeCallback)
     {
         _resumeCallback();
+    }
+}
+
+void PauseMenu::onSaveClicked(Ref *sender)
+{
+    if (_saveCallback)
+    {
+        _saveCallback();
+    }
+}
+
+void PauseMenu::onLoadClicked(Ref *sender)
+{
+    if (_loadCallback)
+    {
+        _loadCallback();
     }
 }
 

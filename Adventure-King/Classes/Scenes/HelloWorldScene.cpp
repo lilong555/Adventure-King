@@ -5,6 +5,7 @@
 #include "Scenes/Layers/SetMenuLayer.h"
 #include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
+#include "Save/SaveData.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;
@@ -197,7 +198,15 @@ void HelloWorld::menuStartCallback(Ref* pSender)
 
 void HelloWorld::menuSaveCallback(Ref* pSender)
 {
-    auto saveMenu = SaveMenuLayer::create();
+    // 主菜单中只能加载游戏，不能保存
+    auto saveMenu = SaveMenuLayer::create(SaveMenuLayer::Mode::LOAD);
+
+    // 设置加载成功回调
+    saveMenu->setLoadSuccessCallback([this](const SaveSlotData& saveData) {
+        // TODO: 根据存档数据切换到相应的场景
+        // 这里需要在后续实现中处理场景切换和玩家数据恢复
+        CCLOG("HelloWorld - 加载存档成功，场景: %s", saveData.progressData.currentSceneName.c_str());
+    });
 
     auto contentContainer = this->getChildByTag(TAG_CONTENT_CONTAINER);
     if (!contentContainer)

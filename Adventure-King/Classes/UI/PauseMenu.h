@@ -48,6 +48,8 @@ public:
 
     // 回调设置
     void setResumeCallback(const std::function<void()> &callback) { _resumeCallback = callback; }
+    void setSaveCallback(const std::function<void()> &callback) { _saveCallback = callback; }
+    void setLoadCallback(const std::function<void()> &callback) { _loadCallback = callback; }
     void setSettingsCallback(const std::function<void()> &callback) { _settingsCallback = callback; }
     void setMainMenuCallback(const std::function<void()> &callback) { _mainMenuCallback = callback; }
     void setQuitCallback(const std::function<void()> &callback) { _quitCallback = callback; }
@@ -59,6 +61,8 @@ protected:
 
     // 按钮回调
     void onResumeClicked(cocos2d::Ref *sender);
+    void onSaveClicked(cocos2d::Ref *sender);
+    void onLoadClicked(cocos2d::Ref *sender);
     void onSettingsClicked(cocos2d::Ref *sender);
     void onMainMenuClicked(cocos2d::Ref *sender);
     void onQuitClicked(cocos2d::Ref *sender);
@@ -78,6 +82,8 @@ protected:
 
     // 回调函数
     std::function<void()> _resumeCallback;
+    std::function<void()> _saveCallback;
+    std::function<void()> _loadCallback;
     std::function<void()> _settingsCallback;
     std::function<void()> _mainMenuCallback;
     std::function<void()> _quitCallback;

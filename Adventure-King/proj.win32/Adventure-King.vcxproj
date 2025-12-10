@@ -165,6 +165,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\GameUI.cpp" />
     <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
     <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp" />
+    <ClCompile Include="..\Classes\Save\SaveData.cpp" />
+    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
+    <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\HelloWorldScene.cpp" />
@@ -191,6 +194,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\GameUI.h" />
     <ClInclude Include="..\Classes\Managers\MusicManager.h" />
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h" />
+    <ClInclude Include="..\Classes\Save\SaveData.h" />
+    <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
+    <ClInclude Include="..\Classes\Save\SaveManager.h" />
     <ClInclude Include="..\Classes\Scenes\DebugScene.h" />
     <ClInclude Include="..\Classes\Scenes\GameScene.h" />
     <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h" />
