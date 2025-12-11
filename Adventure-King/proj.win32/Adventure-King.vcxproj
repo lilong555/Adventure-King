@@ -191,6 +191,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\GameUI.h" />
     <ClInclude Include="..\Classes\Managers\MusicManager.h" />
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h" />
+    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h" />
     <ClInclude Include="..\Classes\Scenes\DebugScene.h" />
     <ClInclude Include="..\Classes\Scenes\GameScene.h" />
     <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h" />

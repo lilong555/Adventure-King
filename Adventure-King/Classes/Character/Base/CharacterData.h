@@ -27,13 +27,15 @@ enum class CharacterState : uint8_t
     ATTACKING,      // 攻击
     CLIMBING,       // 爬墙
     HURT,           // 受伤
-    DEAD            // 死亡
+    DEAD,           // 死亡
+    STATE_PATROL    //巡逻
 };
 
 // 基础属性类型
 enum class AttributeType : uint8_t
 {
     STRENGTH,      // 力量
+	ATTACKINTERVAL,// 敏捷
     DEFENSE,       // 防御
     CRITICAL_RATE, // 暴击率
     MOVE_SPEED,    // 移动速度
