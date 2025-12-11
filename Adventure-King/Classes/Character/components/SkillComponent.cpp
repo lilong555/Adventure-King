@@ -156,3 +156,11 @@ void SkillComponent::clearAndSetPassiveSlots(const std::vector<std::shared_ptr<P
         }
     }
 }
+
+void SkillComponent::resetSkills()
+{
+    // 先清空被动技能以移除属性加成
+    clearAndSetPassiveSlots({});
+    _activeSlots.clear();
+    _learnedSkills.clear();
+}

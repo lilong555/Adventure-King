@@ -2,6 +2,7 @@
 
 #include "SaveData.h"
 #include "cocos2d.h"
+#include <chrono>
 #include <functional>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@ public:
 
     // 存档槽位数量
     static constexpr int MAX_SAVE_SLOTS = 5;
+    static constexpr int AUTO_SAVE_SLOT = MAX_SAVE_SLOTS - 1; // 预留自动存档槽
 
     //================== 核心存档操作 ==================
 
@@ -140,4 +142,6 @@ private:
     std::string getSettingsFilePath() const;
     bool writeToFile(const std::string &filePath, const std::string &content);
     bool readFromFile(const std::string &filePath, std::string &outContent) const;
+
+    std::chrono::steady_clock::time_point _sessionStartTime;
 };

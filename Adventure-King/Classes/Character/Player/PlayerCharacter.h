@@ -47,6 +47,7 @@ public:
 
     // 获取角色职业
     CharacterRole getRole() const { return _role; }
+    void setRole(CharacterRole role) { _role = role; }
 
     // 技能点管理
     int getSkillPoints() const { return _skillPoints; }

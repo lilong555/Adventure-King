@@ -21,10 +21,24 @@ static void serializeAttributes(rapidjson::Value &jsonObj, const AttributesSaveD
 static void deserializeAttributes(const rapidjson::Value &jsonObj, AttributesSaveData &attrs)
 {
     attrs.values.clear();
+    if (!jsonObj.IsObject())
+        return;
+
     for (auto it = jsonObj.MemberBegin(); it != jsonObj.MemberEnd(); ++it)
     {
-        int key = std::stoi(it->name.GetString());
-        float value = it->value.GetFloat();
+        if (!it->value.IsNumber())
+            continue;
+
+        int key = 0;
+        try
+        {
+            key = std::stoi(it->name.GetString());
+        }
+        catch (...)
+        {
+            continue;
+        }
+        float value = static_cast<float>(it->value.GetDouble());
         attrs.values[key] = value;
     }
 }
@@ -61,12 +75,32 @@ static rapidjson::Value serializeEquipment(const EquipmentSaveData &equip,
 // 辅助函数：反序列化 EquipmentSaveData
 static void deserializeEquipment(const rapidjson::Value &jsonObj, EquipmentSaveData &equip)
 {
-    equip.id = jsonObj["id"].GetInt();
-    equip.name = jsonObj["name"].GetString();
-    equip.description = jsonObj["description"].GetString();
-    equip.slot = jsonObj["slot"].GetInt();
-    equip.spritePath = jsonObj["spritePath"].GetString();
-    equip.isWeapon = jsonObj["isWeapon"].GetBool();
+    if (!jsonObj.IsObject())
+        return;
+
+    auto getInt = [&](const char *key, int def) -> int
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsInt()) ? jsonObj[key].GetInt() : def;
+    };
+    auto getFloat = [&](const char *key, float def) -> float
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsNumber()) ? static_cast<float>(jsonObj[key].GetDouble()) : def;
+    };
+    auto getString = [&](const char *key, const std::string &def) -> std::string
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsString()) ? jsonObj[key].GetString() : def;
+    };
+    auto getBool = [&](const char *key, bool def) -> bool
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsBool()) ? jsonObj[key].GetBool() : def;
+    };
+
+    equip.id = getInt("id", 0);
+    equip.name = getString("name", "");
+    equip.description = getString("description", "");
+    equip.slot = getInt("slot", 0);
+    equip.spritePath = getString("spritePath", "");
+    equip.isWeapon = getBool("isWeapon", false);
 
     if (jsonObj.HasMember("attributeBonus"))
     {
@@ -75,12 +109,12 @@ static void deserializeEquipment(const rapidjson::Value &jsonObj, EquipmentSaveD
 
     if (equip.isWeapon)
     {
-        equip.weaponType = jsonObj["weaponType"].GetInt();
-        equip.attackDamage = jsonObj["attackDamage"].GetFloat();
-        equip.attackRange = jsonObj["attackRange"].GetFloat();
-        equip.attackSpeed = jsonObj["attackSpeed"].GetFloat();
-        equip.attackAnimationPrefix = jsonObj["attackAnimationPrefix"].GetString();
-        equip.attackFrameCount = jsonObj["attackFrameCount"].GetInt();
+        equip.weaponType = getInt("weaponType", 0);
+        equip.attackDamage = getFloat("attackDamage", 0.0f);
+        equip.attackRange = getFloat("attackRange", 0.0f);
+        equip.attackSpeed = getFloat("attackSpeed", 1.0f);
+        equip.attackAnimationPrefix = getString("attackAnimationPrefix", "");
+        equip.attackFrameCount = getInt("attackFrameCount", 3);
     }
 }
 
@@ -107,13 +141,33 @@ static rapidjson::Value serializeSkill(const SkillSaveData &skill,
 // 辅助函数：反序列化 SkillSaveData
 static void deserializeSkill(const rapidjson::Value &jsonObj, SkillSaveData &skill)
 {
-    skill.id = jsonObj["id"].GetInt();
-    skill.name = jsonObj["name"].GetString();
-    skill.description = jsonObj["description"].GetString();
-    skill.isPassive = jsonObj["isPassive"].GetBool();
-    skill.cooldown = jsonObj["cooldown"].GetFloat();
-    skill.manaCost = jsonObj["manaCost"].GetFloat();
-    skill.currentCooldown = jsonObj["currentCooldown"].GetFloat();
+    if (!jsonObj.IsObject())
+        return;
+
+    auto getInt = [&](const char *key, int def) -> int
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsInt()) ? jsonObj[key].GetInt() : def;
+    };
+    auto getFloat = [&](const char *key, float def) -> float
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsNumber()) ? static_cast<float>(jsonObj[key].GetDouble()) : def;
+    };
+    auto getString = [&](const char *key, const std::string &def) -> std::string
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsString()) ? jsonObj[key].GetString() : def;
+    };
+    auto getBool = [&](const char *key, bool def) -> bool
+    {
+        return (jsonObj.HasMember(key) && jsonObj[key].IsBool()) ? jsonObj[key].GetBool() : def;
+    };
+
+    skill.id = getInt("id", 0);
+    skill.name = getString("name", "");
+    skill.description = getString("description", "");
+    skill.isPassive = getBool("isPassive", false);
+    skill.cooldown = getFloat("cooldown", 0.0f);
+    skill.manaCost = getFloat("manaCost", 0.0f);
+    skill.currentCooldown = getFloat("currentCooldown", 0.0f);
 
     if (jsonObj.HasMember("attributeBonus"))
     {
@@ -234,25 +288,42 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
 
     try
     {
+        auto getInt = [&](const rapidjson::Value &obj, const char *key, int def) -> int
+        {
+            return (obj.HasMember(key) && obj[key].IsInt()) ? obj[key].GetInt() : def;
+        };
+        auto getInt64 = [&](const rapidjson::Value &obj, const char *key, int64_t def) -> int64_t
+        {
+            return (obj.HasMember(key) && obj[key].IsInt64()) ? obj[key].GetInt64() : def;
+        };
+        auto getFloat = [&](const rapidjson::Value &obj, const char *key, float def) -> float
+        {
+            return (obj.HasMember(key) && obj[key].IsNumber()) ? static_cast<float>(obj[key].GetDouble()) : def;
+        };
+        auto getString = [&](const rapidjson::Value &obj, const char *key, const std::string &def) -> std::string
+        {
+            return (obj.HasMember(key) && obj[key].IsString()) ? obj[key].GetString() : def;
+        };
+
         // 元数据
-        if (doc.HasMember("meta"))
+        if (doc.HasMember("meta") && doc["meta"].IsObject())
         {
             const auto &meta = doc["meta"];
-            outData.slotIndex = meta["slotIndex"].GetInt();
-            outData.saveTimestamp = meta["saveTimestamp"].GetInt64();
-            outData.gameVersion = meta["gameVersion"].GetString();
+            outData.slotIndex = getInt(meta, "slotIndex", 0);
+            outData.saveTimestamp = getInt64(meta, "saveTimestamp", 0);
+            outData.gameVersion = getString(meta, "gameVersion", outData.gameVersion);
         }
 
         // 玩家数据
-        if (doc.HasMember("player"))
+        if (doc.HasMember("player") && doc["player"].IsObject())
         {
             const auto &player = doc["player"];
-            outData.playerData.role = player["role"].GetInt();
-            outData.playerData.level = player["level"].GetInt();
-            outData.playerData.experience = player["experience"].GetInt();
-            outData.playerData.skillPoints = player["skillPoints"].GetInt();
-            outData.playerData.currentHP = player["currentHP"].GetFloat();
-            outData.playerData.currentMP = player["currentMP"].GetFloat();
+            outData.playerData.role = getInt(player, "role", outData.playerData.role);
+            outData.playerData.level = getInt(player, "level", outData.playerData.level);
+            outData.playerData.experience = getInt(player, "experience", outData.playerData.experience);
+            outData.playerData.skillPoints = getInt(player, "skillPoints", outData.playerData.skillPoints);
+            outData.playerData.currentHP = getFloat(player, "currentHP", outData.playerData.currentHP);
+            outData.playerData.currentMP = getFloat(player, "currentMP", outData.playerData.currentMP);
 
             // 基础属性
             if (player.HasMember("baseAttributes"))
@@ -261,24 +332,37 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
             }
 
             // 装备
-            if (player.HasMember("equippedItems"))
+            if (player.HasMember("equippedItems") && player["equippedItems"].IsObject())
             {
                 const auto &equippedItems = player["equippedItems"];
                 for (auto it = equippedItems.MemberBegin(); it != equippedItems.MemberEnd(); ++it)
                 {
-                    int slot = std::stoi(it->name.GetString());
+                    int slot = 0;
+                    try
+                    {
+                        slot = std::stoi(it->name.GetString());
+                    }
+                    catch (...)
+                    {
+                        continue;
+                    }
                     EquipmentSaveData equip;
-                    deserializeEquipment(it->value, equip);
-                    outData.playerData.equippedItems[slot] = equip;
+                    if (it->value.IsObject())
+                    {
+                        deserializeEquipment(it->value, equip);
+                        outData.playerData.equippedItems[slot] = equip;
+                    }
                 }
             }
 
             // 技能
-            if (player.HasMember("learnedSkills"))
+            if (player.HasMember("learnedSkills") && player["learnedSkills"].IsArray())
             {
                 const auto &learnedSkills = player["learnedSkills"];
                 for (rapidjson::SizeType i = 0; i < learnedSkills.Size(); ++i)
                 {
+                    if (!learnedSkills[i].IsObject())
+                        continue;
                     SkillSaveData skill;
                     deserializeSkill(learnedSkills[i], skill);
                     outData.playerData.learnedSkills.push_back(skill);
@@ -286,31 +370,37 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
             }
 
             // 主动技能槽位
-            if (player.HasMember("activeSlotSkillIds"))
+            if (player.HasMember("activeSlotSkillIds") && player["activeSlotSkillIds"].IsArray())
             {
                 const auto &activeSlotSkillIds = player["activeSlotSkillIds"];
                 for (rapidjson::SizeType i = 0; i < activeSlotSkillIds.Size(); ++i)
                 {
-                    outData.playerData.activeSlotSkillIds.push_back(activeSlotSkillIds[i].GetInt());
+                    if (activeSlotSkillIds[i].IsInt())
+                    {
+                        outData.playerData.activeSlotSkillIds.push_back(activeSlotSkillIds[i].GetInt());
+                    }
                 }
             }
         }
 
         // 游戏进度
-        if (doc.HasMember("progress"))
+        if (doc.HasMember("progress") && doc["progress"].IsObject())
         {
             const auto &progress = doc["progress"];
-            outData.progressData.currentSceneName = progress["currentSceneName"].GetString();
-            outData.progressData.playerPosX = progress["playerPosX"].GetFloat();
-            outData.progressData.playerPosY = progress["playerPosY"].GetFloat();
-            outData.progressData.playTimeSeconds = progress["playTimeSeconds"].GetInt64();
+            outData.progressData.currentSceneName = getString(progress, "currentSceneName", outData.progressData.currentSceneName);
+            outData.progressData.playerPosX = getFloat(progress, "playerPosX", outData.progressData.playerPosX);
+            outData.progressData.playerPosY = getFloat(progress, "playerPosY", outData.progressData.playerPosY);
+            outData.progressData.playTimeSeconds = getInt64(progress, "playTimeSeconds", outData.progressData.playTimeSeconds);
 
-            if (progress.HasMember("unlockedLevels"))
+            if (progress.HasMember("unlockedLevels") && progress["unlockedLevels"].IsArray())
             {
                 const auto &unlockedLevels = progress["unlockedLevels"];
                 for (rapidjson::SizeType i = 0; i < unlockedLevels.Size(); ++i)
                 {
-                    outData.progressData.unlockedLevels.push_back(unlockedLevels[i].GetString());
+                    if (unlockedLevels[i].IsString())
+                    {
+                        outData.progressData.unlockedLevels.push_back(unlockedLevels[i].GetString());
+                    }
                 }
             }
         }

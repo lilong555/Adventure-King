@@ -30,6 +30,8 @@ void SaveManager::destroyInstance()
 
 SaveManager::SaveManager()
 {
+    _sessionStartTime = std::chrono::steady_clock::now();
+
     // 确保存档目录存在
     std::string savesDir = FileUtils::getInstance()->getWritablePath() + "saves/";
     if (!FileUtils::getInstance()->isDirectoryExist(savesDir))
@@ -57,10 +59,13 @@ std::string SaveManager::getSettingsFilePath() const
 
 bool SaveManager::writeToFile(const std::string &filePath, const std::string &content)
 {
-    FILE *file = fopen(filePath.c_str(), "w");
+    // 先写入临时文件，再原子重命名，避免中途崩溃损坏存档
+    std::string tempPath = filePath + ".tmp";
+
+    FILE *file = fopen(tempPath.c_str(), "w");
     if (file == nullptr)
     {
-        CCLOG("SaveManager::writeToFile - 无法打开文件: %s", filePath.c_str());
+        CCLOG("SaveManager::writeToFile - 无法打开文件: %s", tempPath.c_str());
         return false;
     }
 
@@ -69,7 +74,16 @@ bool SaveManager::writeToFile(const std::string &filePath, const std::string &co
 
     if (written != content.size())
     {
-        CCLOG("SaveManager::writeToFile - 写入文件失败: %s", filePath.c_str());
+        CCLOG("SaveManager::writeToFile - 写入文件失败: %s", tempPath.c_str());
+        FileUtils::getInstance()->removeFile(tempPath);
+        return false;
+    }
+
+    // 覆盖目标前先删除旧文件，再重命名
+    FileUtils::getInstance()->removeFile(filePath);
+    if (!FileUtils::getInstance()->renameFile(tempPath, filePath))
+    {
+        CCLOG("SaveManager::writeToFile - 重命名临时文件失败: %s -> %s", tempPath.c_str(), filePath.c_str());
         return false;
     }
 
@@ -129,8 +143,11 @@ bool SaveManager::saveGame(int slotIndex, PlayerCharacter *player,
     saveData.progressData.currentSceneName = sceneName;
     saveData.progressData.playerPosX = playerPos.x;
     saveData.progressData.playerPosY = playerPos.y;
-    // TODO: 实现解锁关卡和游戏时长的跟踪
-    saveData.progressData.playTimeSeconds = 0;
+
+    // 游戏时长（当前会话累计）
+    auto now = std::chrono::steady_clock::now();
+    saveData.progressData.playTimeSeconds =
+        std::chrono::duration_cast<std::chrono::seconds>(now - _sessionStartTime).count();
 
     // 序列化为 JSON
     std::string json = JsonSerializer::serialize(saveData);
@@ -269,11 +286,11 @@ void SaveManager::performAutoSave(PlayerCharacter *player,
 
     if (_autoSaveTimer >= _autoSaveInterval)
     {
-        // 执行自动存档（使用槽位 0）
-        int autoSaveSlot = 0;
+        // 预留最后一个槽位用于自动存档，避免覆盖手动存档
+        int autoSaveSlot = AUTO_SAVE_SLOT;
         if (saveGame(autoSaveSlot, player, sceneName, playerPos))
         {
-            CCLOG("SaveManager::performAutoSave - 自动存档成功");
+            CCLOG("SaveManager::performAutoSave - 自动存档成功 (slot %d)", autoSaveSlot);
             _lastAutoSaveSlot = autoSaveSlot;
         }
         else
@@ -475,14 +492,15 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         return;
     }
 
+    // 记录要恢复的当前值，等属性/装备完整恢复后再夹取
+    float savedHP = data.currentHP;
+    float savedMP = data.currentMP;
+
     // 基础信息
+    player->setRole(static_cast<CharacterRole>(data.role));
     player->setLevel(data.level);
     player->setExperience(data.experience);
     player->setSkillPoints(data.skillPoints);
-
-    // 当前状态
-    player->setCurrentHP(data.currentHP);
-    player->setCurrentMP(data.currentMP);
 
     // 基础属性
     AttributeComponent *attrComp = player->getAttributeComponent();
@@ -498,12 +516,23 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         attrComp->recalculateFinalAttributes();
     }
 
+    // 清空当前装备（移除已有加成）
+    std::vector<EquipmentSlot> slotsToClear;
+    for (const auto &kv : player->getEquippedItems())
+    {
+        slotsToClear.push_back(kv.first);
+    }
+    for (auto slot : slotsToClear)
+    {
+        player->unequip(slot);
+    }
+
     // 装备
-    std::map<EquipmentSlot, std::shared_ptr<Equipment>> equippedItems;
     for (std::map<int, EquipmentSaveData>::const_iterator it = data.equippedItems.begin();
          it != data.equippedItems.end(); ++it)
     {
         const EquipmentSaveData &equipData = it->second;
+        std::shared_ptr<Equipment> equipment;
 
         if (equipData.isWeapon)
         {
@@ -528,12 +557,12 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
                 weapon->attributeBonus.values[static_cast<AttributeType>(attrIt->first)] = attrIt->second;
             }
 
-            equippedItems[static_cast<EquipmentSlot>(it->first)] = weapon;
+            equipment = weapon;
         }
         else
         {
             // 创建普通装备
-            std::shared_ptr<Equipment> equipment = std::make_shared<Equipment>();
+            equipment = std::make_shared<Equipment>();
             equipment->id = equipData.id;
             equipment->name = equipData.name;
             equipment->description = equipData.description;
@@ -546,16 +575,21 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
             {
                 equipment->attributeBonus.values[static_cast<AttributeType>(attrIt->first)] = attrIt->second;
             }
+        }
 
-            equippedItems[static_cast<EquipmentSlot>(it->first)] = equipment;
+        if (equipment)
+        {
+            player->equip(equipment);
         }
     }
-    player->setEquippedItems(equippedItems);
 
     // 技能
     SkillComponent *skillComp = player->getSkillComponent();
     if (skillComp)
     {
+        // 清空已有技能/槽位，防止重复和冷却污染
+        skillComp->resetSkills();
+
         // 重建已学习的技能
         for (size_t i = 0; i < data.learnedSkills.size(); ++i)
         {
@@ -612,6 +646,10 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         }
         skillComp->clearAndSetActiveSlots(activeSlots);
     }
+
+    // 根据最终上限夹取 HP/MP
+    player->setCurrentHP(savedHP);
+    player->setCurrentMP(savedMP);
 
     CCLOG("SaveManager::applyPlayerData - 成功应用玩家数据");
 }
