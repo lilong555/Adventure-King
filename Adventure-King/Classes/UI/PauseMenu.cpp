@@ -218,9 +218,16 @@ void PauseMenu::onSettingsClicked(Ref *sender)
 
 void PauseMenu::onMainMenuClicked(Ref *sender)
 {
+    CCLOG("PauseMenu: Main menu button clicked");
+    hide();
     if (_mainMenuCallback)
     {
+        CCLOG("PauseMenu: Calling main menu callback");
         _mainMenuCallback();
+    }
+    else
+    {
+        CCLOG("PauseMenu: Warning - no main menu callback set");
     }
 }
 

@@ -7,9 +7,14 @@
 
 #include "GameScene.h"
 #include "MapScene.h"
+#include "HelloWorldScene.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Character/components/SkillComponent.h"
 #include "GameUI.h"
 #include "UI/PauseMenu.h"
+#include "Scenes/Layers/SaveMenuLayer.h"
+#include "Save/SaveManager.h"
+#include "Save/SaveData.h"
 
 USING_NS_CC;
 
@@ -82,10 +87,120 @@ void GameScene::initGameUI()
                 CCLOG("Game resumed from pause menu"); });
 
             // 返回主菜单
-            pauseMenu->setMainMenuCallback([this]()
+            pauseMenu->setMainMenuCallback([]()
                                            {
+                CCLOG("=== Main menu callback START ===");
+
+                auto director = Director::getInstance();
+                CCLOG("Step 1: Director obtained");
+
+                // 先清空场景栈到根场景
+                director->popToRootScene();
+                CCLOG("Step 2: popToRootScene completed");
+
+                // 跳转到主菜单场景
+                auto mainMenuScene = HelloWorld::createScene();
+                CCLOG("Step 3: MainMenuScene created: %p", mainMenuScene);
+
+                if (mainMenuScene)
+                {
+                    auto transition = TransitionFade::create(0.5f, mainMenuScene, Color3B::BLACK);
+                    CCLOG("Step 4: Transition created, calling replaceScene");
+                    director->replaceScene(transition);
+                    CCLOG("Step 5: replaceScene completed");
+                }
+                else
+                {
+                    CCLOG("Error: Failed to create main menu scene!");
+                }
+
+                CCLOG("=== Main menu callback END ==="); });
+
+            // 保存游戏
+            pauseMenu->setSaveCallback([this]()
+                                       {
+                // 隐藏暂停菜单
+                _gameUI->hidePauseMenu();
                 _isPaused = false;
-                returnToMapScene(); });
+
+                // 创建保存模式的存档菜单
+                auto saveMenu = SaveMenuLayer::create(
+                    SaveMenuLayer::Mode::SAVE,
+                    _player,
+                    getLevelName(),
+                    _player ? _player->getPosition() : Vec2::ZERO
+                );
+                if (saveMenu)
+                {
+                    this->addChild(saveMenu, UI_Z_ORDER + 1);
+                }
+                CCLOG("GameScene - 打开保存游戏菜单"); });
+
+            // 加载游戏
+            pauseMenu->setLoadCallback([this]()
+                                       {
+                // 隐藏暂停菜单
+                _gameUI->hidePauseMenu();
+                _isPaused = false;
+
+                // 创建加载模式的存档菜单
+                auto saveMenu = SaveMenuLayer::create(SaveMenuLayer::Mode::LOAD);
+                if (saveMenu)
+                {
+                    saveMenu->setLoadSuccessCallback([](const SaveSlotData& saveData)
+                    {
+                        CCLOG("GameScene - 加载存档成功，场景: %s", saveData.progressData.currentSceneName.c_str());
+
+                        // 根据存档的场景名称创建对应的场景
+                        Scene* targetScene = nullptr;
+                        const std::string& sceneName = saveData.progressData.currentSceneName;
+
+                        if (sceneName == "起源之菇")
+                        {
+                            targetScene = OriginMushroomScene::createScene();
+                        }
+                        else if (sceneName == "神秘之森")
+                        {
+                            targetScene = MysteryForestScene::createScene();
+                        }
+                        else
+                        {
+                            CCLOG("GameScene - 未知的场景名称: %s", sceneName.c_str());
+                            return;
+                        }
+
+                        if (targetScene)
+                        {
+                            auto gameScene = dynamic_cast<GameScene*>(targetScene);
+                            if (gameScene)
+                            {
+                                auto saveManager = SaveManager::getInstance();
+                                auto playerData = saveData.playerData;
+                                auto playerPos = Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
+
+                                gameScene->scheduleOnce([saveManager, playerData, playerPos](float dt) {
+                                    auto currentScene = Director::getInstance()->getRunningScene();
+                                    auto currentGameScene = dynamic_cast<GameScene*>(currentScene);
+                                    if (currentGameScene)
+                                    {
+                                        auto player = currentGameScene->getPlayer();
+                                        if (player)
+                                        {
+                                            saveManager->applyPlayerData(player, playerData);
+                                            player->setPosition(playerPos);
+                                            CCLOG("GameScene - 玩家数据已恢复，位置: (%.1f, %.1f)", playerPos.x, playerPos.y);
+                                        }
+                                    }
+                                }, 0.1f, "apply_save_data");
+                            }
+
+                            auto transition = TransitionFade::create(0.5f, targetScene, Color3B::BLACK);
+                            Director::getInstance()->replaceScene(transition);
+                        }
+                    });
+                    this->addChild(saveMenu, UI_Z_ORDER + 1);
+                }
+                CCLOG("GameScene - 打开加载游戏菜单"); });
         }
 
         // 绑定玩家到 UI
@@ -247,8 +362,45 @@ void GameScene::initPlayer(const Vec2 &startPos)
     _isGrounded = true;
     _groundContactCount = 1;
 
+    // 初始化玩家技能
+    initPlayerSkills();
+
     CCLOG("Player created: pos=(%.0f, %.0f), boxSize=(%.0f, %.0f)",
           playerPos.x, playerPos.y, boxWidth, boxHeight);
+}
+
+/**
+ * @brief 初始化玩家技能
+ *
+ * 通过 SkillComponent 创建并装备主动技能。
+ * 当前实现了炸弹技能作为示例。
+ */
+void GameScene::initPlayerSkills()
+{
+    if (!_player)
+        return;
+
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+    {
+        CCLOG("Failed to get skill component");
+        return;
+    }
+
+    // 创建炸弹技能
+    auto bombSkill = std::make_shared<ActiveSkill>();
+    bombSkill->id = BOMB_SKILL_ID;
+    bombSkill->name = "炸弹";
+    bombSkill->description = "丢出一个炸弹，造成范围伤害";
+    bombSkill->manaCost = BOMB_SKILL_MP_COST;
+    bombSkill->cooldown = BOMB_SKILL_COOLDOWN;
+    bombSkill->currentCooldown = 0.0f;
+
+    // 学习并装备技能
+    skillComp->learnSkill(bombSkill);
+    skillComp->equipActiveSkill(bombSkill, BOMB_SKILL_SLOT);
+
+    CCLOG("Player skills initialized: Bomb skill equipped to slot %zu", BOMB_SKILL_SLOT);
 }
 
 void GameScene::initPhysicsContactListener()
@@ -864,6 +1016,29 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
         }
     }
 
+    // 炸弹与平台碰撞 - 触发爆炸
+    bool bombIsA = (categoryA & GamePhysicsCategory::BOMB);
+    bool bombIsB = (categoryB & GamePhysicsCategory::BOMB);
+    bool bombPlatformContact =
+        (bombIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
+        (bombIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
+
+    if (bombPlatformContact)
+    {
+        Node *bombNode = bombIsA ? nodeA : nodeB;
+
+        // 查找对应的炸弹并爆炸
+        for (auto &bomb : _bombs)
+        {
+            if (bomb.sprite == bombNode && !bomb.isExploded)
+            {
+                bomb.isExploded = true;
+                explodeBomb(bomb);
+                break;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -930,12 +1105,16 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
         _isMovingLeft = true;
         _player->setFlippedX(true);
+        if (!_isAttacking && !_isCastingSkill)
+            startWalkAnimation();
         break;
 
     case EventKeyboard::KeyCode::KEY_D:
     case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
         _isMovingRight = true;
         _player->setFlippedX(false);
+        if (!_isAttacking && !_isCastingSkill)
+            startWalkAnimation();
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
@@ -950,6 +1129,22 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_SPACE:
         // 空格键只跳跃，不触发传送门
         handleJump();
+        break;
+
+    // 攻击按键
+    case EventKeyboard::KeyCode::KEY_J:
+    case EventKeyboard::KeyCode::KEY_4:
+        if (!_isAttacking && !_isCastingSkill && _player)
+        {
+            _player->attack();
+            playAttackAnimation();
+        }
+        break;
+
+    // 技能按键
+    case EventKeyboard::KeyCode::KEY_E:
+    case EventKeyboard::KeyCode::KEY_K:
+        throwBomb();
         break;
 
     default:
@@ -973,6 +1168,12 @@ void GameScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
 
     default:
         break;
+    }
+
+    // 所有方向键释放时停止动画
+    if (!_isMovingLeft && !_isMovingRight && !_isAttacking && !_isCastingSkill)
+    {
+        stopWalkAnimation();
     }
 }
 
@@ -1036,9 +1237,6 @@ void GameScene::updatePlayerMovement(float dt)
 
     velocity.x = targetVelocityX;
     physicsBody->setVelocity(velocity);
-
-    // 更新行走动画状态标记
-    _isWalkAnimationPlaying = (_isMovingLeft || _isMovingRight);
 }
 
 void GameScene::updateGroundedState(const Vec2 &velocity)
@@ -1091,6 +1289,417 @@ void GameScene::showMapLoadFailedUI()
         titleLabel->setColor(Color3B::RED);
         this->addChild(titleLabel, 1);
     }
+}
+
+// ============================================================
+// 动画系统实现
+// ============================================================
+
+/**
+ * @brief 开始播放行走动画
+ */
+void GameScene::startWalkAnimation()
+{
+    if (!_player || _isWalkAnimationPlaying)
+        return;
+
+    _isWalkAnimationPlaying = true;
+
+    // 加载行走动画纹理
+    auto textureCache = Director::getInstance()->getTextureCache();
+    auto texture1 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_1.png");
+    auto texture2 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_2.png");
+    auto texture3 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run.png");
+
+    if (texture1 && texture2 && texture3)
+    {
+        // 从纹理创建精灵帧
+        Vector<SpriteFrame *> frames;
+        frames.pushBack(SpriteFrame::createWithTexture(texture1,
+                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture2,
+                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture3,
+                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
+
+        // 创建并运行循环动画
+        auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
+        auto animate = Animate::create(animation);
+        auto repeatAnimate = RepeatForever::create(animate);
+        repeatAnimate->setTag(999);
+
+        _player->runAction(repeatAnimate);
+        CCLOG("Walk animation started");
+    }
+    else
+    {
+        CCLOG("Failed to load walk animation textures");
+        _isWalkAnimationPlaying = false;
+    }
+}
+
+/**
+ * @brief 停止行走动画
+ */
+void GameScene::stopWalkAnimation()
+{
+    if (!_player || !_isWalkAnimationPlaying)
+        return;
+
+    _isWalkAnimationPlaying = false;
+
+    // 保存翻转状态
+    bool wasFlippedX = _player->isFlippedX();
+
+    // 停止动画
+    _player->stopActionByTag(999);
+
+    // 恢复默认纹理
+    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    if (defaultTexture)
+    {
+        _player->setTexture(defaultTexture);
+        _player->setTextureRect(Rect(0, 0,
+                                     defaultTexture->getContentSize().width,
+                                     defaultTexture->getContentSize().height));
+        _player->setFlippedX(wasFlippedX); // 恢复翻转状态
+    }
+
+    CCLOG("Walk animation stopped");
+}
+
+// ============================================================
+// 战斗系统实现
+// ============================================================
+
+/**
+ * @brief 播放攻击动画
+ */
+void GameScene::playAttackAnimation()
+{
+    if (!_player)
+        return;
+
+    // 停止行走动画
+    if (_isWalkAnimationPlaying)
+        stopWalkAnimation();
+
+    _isAttacking = true;
+
+    // 获取武器信息
+    auto equippedWeapon = _player->getEquippedWeapon();
+
+    // 计算动画速度（攻击速度越高越快）
+    float animSpeed = 0.15f;
+    if (equippedWeapon)
+    {
+        animSpeed = 0.15f / equippedWeapon->attackSpeed;
+    }
+
+    // 加载攻击动画纹理
+    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
+    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
+    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
+
+    if (texture1 && texture2 && texture3)
+    {
+        // 创建动画帧
+        Vector<SpriteFrame *> frames;
+        frames.pushBack(SpriteFrame::createWithTexture(texture1,
+                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture2,
+                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
+        frames.pushBack(SpriteFrame::createWithTexture(texture3,
+                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
+
+        auto animation = Animation::createWithSpriteFrames(frames, animSpeed);
+        auto animate = Animate::create(animation);
+
+        // 停止之前的攻击动画
+        _player->stopActionByTag(1000);
+
+        // 创建动画序列：播放 -> 回调
+        auto callbackAction = CallFunc::create([this]()
+                                               { this->onAttackAnimationFinished(); });
+        auto sequence = Sequence::create(animate, callbackAction, nullptr);
+        sequence->setTag(1000);
+
+        _player->runAction(sequence);
+
+        CCLOG("Attack animation started");
+    }
+    else
+    {
+        CCLOG("Failed to load attack sprites");
+        _isAttacking = false;
+    }
+}
+
+/**
+ * @brief 攻击动画结束回调
+ */
+void GameScene::onAttackAnimationFinished()
+{
+    _isAttacking = false;
+
+    // 保存翻转状态
+    bool wasFlippedX = _player ? _player->isFlippedX() : false;
+
+    // 恢复角色状态
+    if (_isMovingLeft || _isMovingRight)
+    {
+        startWalkAnimation();
+    }
+    else
+    {
+        // 恢复默认纹理
+        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+            "Sprites/Characters/Player/Klee/spr_klee_run.png");
+        if (defaultTexture && _player)
+        {
+            _player->setTexture(defaultTexture);
+            _player->setTextureRect(Rect(0, 0,
+                                         defaultTexture->getContentSize().width,
+                                         defaultTexture->getContentSize().height));
+            _player->setFlippedX(wasFlippedX);
+        }
+    }
+
+    CCLOG("Attack animation finished");
+}
+
+// ============================================================
+// 技能系统实现
+// ============================================================
+
+/**
+ * @brief 播放技能施放动画
+ */
+void GameScene::playSkillAnimation()
+{
+    if (!_player)
+        return;
+
+    // 停止行走动画（如果在播放）
+    if (_isWalkAnimationPlaying)
+    {
+        stopWalkAnimation();
+    }
+
+    _isCastingSkill = true;
+
+    // 加载3张攻击图片（技能动画暂时使用攻击动画）
+    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
+    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
+    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
+
+    if (texture1 && texture2 && texture3)
+    {
+        // 创建精灵帧
+        auto frame1 = SpriteFrame::createWithTexture(texture1,
+                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
+        auto frame2 = SpriteFrame::createWithTexture(texture2,
+                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
+        auto frame3 = SpriteFrame::createWithTexture(texture3,
+                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
+
+        // 创建动画帧序列
+        Vector<SpriteFrame *> frames;
+        frames.pushBack(frame1);
+        frames.pushBack(frame2);
+        frames.pushBack(frame3);
+
+        // 每帧0.13秒
+        auto animation = Animation::createWithSpriteFrames(frames, 0.13f);
+        auto animate = Animate::create(animation);
+
+        // 停止之前的技能动画
+        _player->stopActionByTag(1001);
+
+        // 创建动画序列：播放动画 -> 回调结束
+        auto callbackAction = CallFunc::create([this]()
+                                               { this->onSkillAnimationFinished(); });
+        auto sequence = Sequence::create(animate, callbackAction, nullptr);
+        sequence->setTag(1001);
+
+        _player->runAction(sequence);
+
+        CCLOG("Skill animation started");
+    }
+    else
+    {
+        CCLOG("Failed to load skill sprites");
+        _isCastingSkill = false;
+    }
+}
+
+/**
+ * @brief 技能动画播放完成回调
+ */
+void GameScene::onSkillAnimationFinished()
+{
+    _isCastingSkill = false;
+
+    // 动画结束后实际丢出炸弹
+    doThrowBomb();
+
+    // 保存当前翻转状态
+    bool wasFlippedX = _player ? _player->isFlippedX() : false;
+
+    // 如果玩家仍在移动，恢复行走动画
+    if (_isMovingLeft || _isMovingRight)
+    {
+        startWalkAnimation();
+    }
+    else
+    {
+        // 恢复到默认静止图片
+        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+            "Sprites/Characters/Player/Klee/spr_klee_run.png");
+        if (defaultTexture && _player)
+        {
+            _player->setTexture(defaultTexture);
+            _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
+                                         defaultTexture->getContentSize().height));
+            _player->setFlippedX(wasFlippedX);
+        }
+    }
+
+    CCLOG("Skill animation finished");
+}
+
+/**
+ * @brief 释放炸弹技能
+ */
+void GameScene::throwBomb()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 如果正在施放技能或攻击中，禁用技能
+    if (_isCastingSkill || _isAttacking)
+    {
+        return;
+    }
+
+    // 通过技能组件释放技能（会自动检查 MP、冷却，并扣除 MP）
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+    {
+        CCLOG("Skill component not found");
+        return;
+    }
+
+    // 尝试使用槽位 0 的技能（炸弹技能）
+    if (!skillComp->useActiveSkill(BOMB_SKILL_SLOT))
+    {
+        // 技能释放失败（可能是 MP 不足或冷却中）
+        CCLOG("Skill cast failed - MP insufficient or on cooldown");
+        return;
+    }
+
+    // 技能释放成功，播放技能动画
+    playSkillAnimation();
+    CCLOG("Skill started: Throw Bomb");
+}
+
+/**
+ * @brief 实际创建并投掷炸弹
+ */
+void GameScene::doThrowBomb()
+{
+    if (!_player || _player->isDead())
+        return;
+
+    // 创建炸弹精灵
+    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/TNT.png");
+    if (!bombSprite)
+    {
+        CCLOG("Failed to create bomb sprite");
+        return;
+    }
+
+    // 创建炸弹对象
+    GameBomb bomb;
+    bomb.isExploded = false;
+    bomb.sprite = bombSprite;
+
+    // 根据角色朝向决定炸弹方向
+    bool facingLeft = _player->isFlippedX();
+    float throwDirX = facingLeft ? -1.0f : 1.0f;
+
+    // 设置炸弹初始位置（角色上方）
+    Vec2 playerPos = _player->getPosition();
+    float offsetX = throwDirX * bomb.sprite->getContentSize().width;
+    float offsetY = bomb.sprite->getContentSize().height;
+    bombSprite->setPosition(playerPos + Vec2(offsetX, offsetY));
+    bombSprite->setScale(0.5f);
+
+    // 创建炸弹物理刚体
+    PhysicsMaterial bombMaterial(0.5f, 0.3f, 0.2f);                    // 密度、弹性、摩擦
+    auto physicsBody = PhysicsBody::createCircle(15.0f, bombMaterial); // 圆形碰撞体
+    physicsBody->setDynamic(true);
+    physicsBody->setMass(0.5f);
+    physicsBody->setRotationEnable(true); // 允许旋转
+
+    // 设置碰撞掩码
+    physicsBody->setCategoryBitmask(static_cast<int>(GamePhysicsCategory::BOMB));
+    physicsBody->setCollisionBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+    physicsBody->setContactTestBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+
+    bombSprite->addComponent(physicsBody);
+    _gameLayer->addChild(bombSprite, 4);
+
+    // 施加初始速度（冲量）
+    Vec2 impulse(throwDirX * BOMB_THROW_SPEED_X * physicsBody->getMass(),
+                 BOMB_THROW_SPEED_Y * physicsBody->getMass());
+    physicsBody->applyImpulse(impulse);
+
+    _bombs.push_back(bomb);
+
+    CCLOG("Bomb thrown with physics!");
+}
+
+/**
+ * @brief 处理炸弹爆炸
+ */
+void GameScene::explodeBomb(GameBomb &bomb)
+{
+    if (!bomb.sprite)
+        return;
+
+    Vec2 explodePos = bomb.sprite->getPosition();
+
+    // 移除炸弹精灵
+    bomb.sprite->removeFromParent();
+
+    // 创建爆炸效果
+    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
+    if (boomSprite)
+    {
+        boomSprite->setPosition(explodePos);
+        boomSprite->setScale(0.8f);
+        _gameLayer->addChild(boomSprite, 6);
+
+        // 爆炸动画：放大 + 淡出
+        auto scaleUp = ScaleTo::create(0.2f, 1.2f);
+        auto fadeOut = FadeOut::create(0.3f);
+        auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
+        auto remove = RemoveSelf::create();
+        auto sequence = Sequence::create(spawn, remove, nullptr);
+        boomSprite->runAction(sequence);
+    }
+
+    bomb.sprite = nullptr;
+
+    CCLOG("Bomb exploded at (%.0f, %.0f)", explodePos.x, explodePos.y);
 }
 
 // ============================================================

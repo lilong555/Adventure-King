@@ -27,6 +27,7 @@ build/
 # OS generated files
 .DS_Store
 Thumbs.db
-#cc
-CLAUDE.md
 
+# 临时的 AI 对话记录（但保留根目录的项目文档 CLAUDE.md）
+**/Debug.win32/**/.CLAUDE.md
+**/Release.win32/**/.CLAUDE.md

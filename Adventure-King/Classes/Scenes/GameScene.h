@@ -22,6 +22,19 @@ class PlayerCharacter;
 class GameUI;
 
 // ============================================================
+// 游戏对象结构体定义
+// ============================================================
+
+/**
+ * @brief 炸弹数据结构（游戏场景专用）
+ */
+struct GameBomb
+{
+    cocos2d::Sprite *sprite = nullptr; ///< 炸弹精灵节点
+    bool isExploded = false;           ///< 是否已爆炸
+};
+
+// ============================================================
 // 物理碰撞类型枚举
 // ============================================================
 
@@ -30,13 +43,14 @@ class GameUI;
  * @note 使用位掩码实现多类型碰撞检测
  *       命名为 GamePhysicsCategory 以避免与 DebugScene 中的定义冲突
  */
-enum class GamePhysicsCategory : int
+enum class GamePhysicsCategory : unsigned int
 {
     NONE = 0,
     PLAYER = 1 << 0,    ///< 玩家
     PLATFORM = 1 << 1,  ///< 平台/地面
     COLLISION = 1 << 2, ///< 碰撞体（多边形）
     TRIGGER = 1 << 3,   ///< 触发器（不产生物理碰撞）
+    BOMB = 1 << 4,      ///< 炸弹/投掷物
     ALL = 0xFFFFFFFF
 };
 
@@ -101,6 +115,12 @@ public:
     virtual bool init() override;
     static cocos2d::Scene *createScene();
 
+    /**
+     * @brief 获取玩家角色指针
+     * @return 玩家角色指针，如果不存在则返回 nullptr
+     */
+    PlayerCharacter *getPlayer() const { return _player; }
+
     // -------------------------------
     // 节点标签枚举
     // -------------------------------
@@ -146,6 +166,12 @@ protected:
     int _groundContactCount = 0; ///< 地面接触计数
 
     // -------------------------------
+    // 战斗状态
+    // -------------------------------
+    bool _isAttacking = false;    ///< 是否正在执行攻击动画
+    bool _isCastingSkill = false; ///< 是否正在施放技能
+
+    // -------------------------------
     // 游戏状态
     // -------------------------------
     bool _isPaused = false; ///< 游戏是否暂停
@@ -162,6 +188,11 @@ protected:
     GameUI *_gameUI = nullptr; ///< 游戏 UI
 
     // -------------------------------
+    // 炸弹系统
+    // -------------------------------
+    std::vector<GameBomb> _bombs; ///< 当前场景中的炸弹列表
+
+    // -------------------------------
     // 常量定义
     // -------------------------------
     static constexpr float DEFAULT_GATE_INTERACT_DISTANCE = 100.0f; ///< 默认传送门交互距离
@@ -173,6 +204,18 @@ protected:
     static constexpr int BACKGROUND_Z_ORDER = -1;                   ///< 背景层级
     static constexpr int PLAYER_Z_ORDER = 5;                        ///< 玩家层级
     static constexpr int COLLISION_DEBUG_Z_ORDER = 100;             ///< 碰撞调试层级
+
+    // 炸弹系统常量
+    static constexpr float BOMB_THROW_SPEED_X = 300.0f;   ///< 炸弹水平初速度
+    static constexpr float BOMB_THROW_SPEED_Y = 350.0f;   ///< 炸弹垂直初速度
+    static constexpr float BOMB_DAMAGE = 150.0f;          ///< 炸弹基础伤害
+    static constexpr float BOMB_EXPLOSION_RADIUS = 80.0f; ///< 爆炸范围半径
+
+    // 技能配置常量
+    static constexpr size_t BOMB_SKILL_SLOT = 0;       ///< 炸弹技能所在槽位索引
+    static constexpr int BOMB_SKILL_ID = 1001;         ///< 炸弹技能唯一ID
+    static constexpr float BOMB_SKILL_MP_COST = 10.0f; ///< 炸弹技能MP消耗
+    static constexpr float BOMB_SKILL_COOLDOWN = 1.0f; ///< 炸弹技能冷却时间（秒）
 
     // ===================================================================
     // 初始化方法
@@ -210,6 +253,11 @@ protected:
      * @brief 初始化相机跟随
      */
     virtual void initCameraFollow();
+
+    /**
+     * @brief 初始化玩家技能
+     */
+    virtual void initPlayerSkills();
 
     // ===================================================================
     // 资源加载方法
@@ -314,6 +362,64 @@ protected:
      * @return 是否触发了传送
      */
     virtual bool handleGateInteraction();
+
+    // ===================================================================
+    // 战斗系统
+    // ===================================================================
+
+    /**
+     * @brief 播放攻击动画
+     */
+    virtual void playAttackAnimation();
+
+    /**
+     * @brief 攻击动画结束回调
+     */
+    virtual void onAttackAnimationFinished();
+
+    // ===================================================================
+    // 技能系统
+    // ===================================================================
+
+    /**
+     * @brief 播放技能施放动画
+     */
+    virtual void playSkillAnimation();
+
+    /**
+     * @brief 技能动画结束回调
+     */
+    virtual void onSkillAnimationFinished();
+
+    /**
+     * @brief 释放炸弹技能（入口）
+     */
+    virtual void throwBomb();
+
+    /**
+     * @brief 实际创建并投掷炸弹
+     */
+    virtual void doThrowBomb();
+
+    /**
+     * @brief 炸弹爆炸处理
+     * @param bomb 要爆炸的炸弹对象引用
+     */
+    virtual void explodeBomb(GameBomb &bomb);
+
+    // ===================================================================
+    // 动画系统
+    // ===================================================================
+
+    /**
+     * @brief 开始播放行走动画
+     */
+    virtual void startWalkAnimation();
+
+    /**
+     * @brief 停止行走动画
+     */
+    virtual void stopWalkAnimation();
 
     // ===================================================================
     // 场景导航

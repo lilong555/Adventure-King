@@ -153,6 +153,7 @@ bool SaveMenuLayer::initCloseButton()
 void SaveMenuLayer::layoutUI()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
 
     const float TARGET_WIDTH_RATIO = 0.7f;
     float targetHeight = visibleSize.height * TARGET_WIDTH_RATIO;
@@ -160,7 +161,10 @@ void SaveMenuLayer::layoutUI()
     float scaleY = targetHeight / _background->getContentSize().height;
     _background->setScale(scaleY);
 
-    _background->setPosition(Vec2::ZERO);
+    // 将背景居中显示
+    _background->setPosition(Vec2(
+        origin.x + visibleSize.width / 2,
+        origin.y + visibleSize.height / 2));
 
     // 布局存档槽位
     float slotStartY = _background->getContentSize().height / 12 * 9.5f;
@@ -343,11 +347,13 @@ void SaveMenuLayer::showConfirmDialog(const std::string &message, const std::fun
     dialogBox->addChild(messageLabel);
 
     // 确认按钮
+    // 注意：必须先移除 dialogBg，再调用 onConfirm()
+    // 因为 onConfirm() 可能会调用 this->removeFromParent() 销毁整个 SaveMenuLayer
     auto confirmItem = MenuItemLabel::create(
         Label::createWithTTF("确认", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
         [dialogBg, onConfirm](Ref *) {
-            onConfirm();
             dialogBg->removeFromParent();
+            onConfirm();
         });
     confirmItem->setPosition(Vec2(120, 50));
 
