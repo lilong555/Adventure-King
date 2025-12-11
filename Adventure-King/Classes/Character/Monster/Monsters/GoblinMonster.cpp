@@ -63,6 +63,9 @@ void GoblinMonster::initAttributes()
 
     attr->setBaseAttributes(base);
     attr->recalculateFinalAttributes();
+
+    // 同步移动速度到基类移动逻辑
+    _moveSpeed = attr->getAttributeValue(AttributeType::MOVE_SPEED);
 }
 #pragma endregion
 

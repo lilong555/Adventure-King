@@ -8,6 +8,7 @@
 #include "GameScene.h"
 #include "MapScene.h"
 #include "HelloWorldScene.h"
+#include "Character/Base/CharacterBase.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
 #include "GameUI.h"
@@ -15,6 +16,7 @@
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Save/SaveManager.h"
 #include "Save/SaveData.h"
+#include <functional>
 
 USING_NS_CC;
 
@@ -829,8 +831,8 @@ void GameScene::createPolygonCollisionBody(const std::vector<Vec2> &vertices,
     {
         physicsBody->setDynamic(false);
         physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
-        physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
-        physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+        physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::BOMB));
+        physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::BOMB));
 
         collisionNode->addComponent(physicsBody);
         _tileMap->addChild(collisionNode, 1);
@@ -857,8 +859,8 @@ void GameScene::createRectCollisionBody(const Rect &rect, const std::string &nam
     auto physicsBody = PhysicsBody::createBox(rect.size, COLLISION_PHYSICS_MATERIAL);
     physicsBody->setDynamic(false);
     physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
-    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
-    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::BOMB));
+    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::BOMB));
 
     collisionNode->addComponent(physicsBody);
     // 将碰撞体添加到游戏内容层，而不是场景
@@ -1016,25 +1018,27 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
         }
     }
 
-    // 炸弹与平台碰撞 - 触发爆炸
+    // 炸弹命中非玩家目标时触发爆炸（平台/碰撞体/敌人等）
     bool bombIsA = (categoryA & GamePhysicsCategory::BOMB);
     bool bombIsB = (categoryB & GamePhysicsCategory::BOMB);
-    bool bombPlatformContact =
-        (bombIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
-        (bombIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
 
-    if (bombPlatformContact)
+    if (bombIsA || bombIsB)
     {
         Node *bombNode = bombIsA ? nodeA : nodeB;
+        int otherCategory = bombIsA ? categoryB : categoryA;
+        bool hitPlayer = (otherCategory & static_cast<int>(GamePhysicsCategory::PLAYER));
+        bool hitBomb = (otherCategory & static_cast<int>(GamePhysicsCategory::BOMB));
 
-        // 查找对应的炸弹并爆炸
-        for (auto &bomb : _bombs)
+        if (!hitPlayer && !hitBomb)
         {
-            if (bomb.sprite == bombNode && !bomb.isExploded)
+            for (auto &bomb : _bombs)
             {
-                bomb.isExploded = true;
-                explodeBomb(bomb);
-                break;
+                if (bomb.sprite == bombNode && !bomb.isExploded)
+                {
+                    bomb.isExploded = true;
+                    explodeBomb(bomb);
+                    break;
+                }
             }
         }
     }
@@ -1258,9 +1262,6 @@ void GameScene::updateUI()
     if (!_gameUI)
         return;
 
-    // UI 位置不需要更新，因为 Follow 动作现在只作用于 _gameLayer
-    // GameUI 直接添加到场景中，场景位置不变
-
     // 检查是否在传送门区域，更新交互提示
     bool atGate = isPlayerAtGate();
     if (atGate && !_wasAtGate)
@@ -1272,6 +1273,9 @@ void GameScene::updateUI()
         _gameUI->hideInteractionHint();
     }
     _wasAtGate = atGate;
+
+    // 刷新数值显示（HP/MP/技能冷却等）
+    _gameUI->updateDisplay();
 }
 
 // 辅助方法：显示地图加载失败 UI
@@ -1676,9 +1680,53 @@ void GameScene::explodeBomb(GameBomb &bomb)
         return;
 
     Vec2 explodePos = bomb.sprite->getPosition();
+    Vec2 explosionWorld = explodePos;
+    if (bomb.sprite->getParent())
+    {
+        explosionWorld = bomb.sprite->getParent()->convertToWorldSpace(explodePos);
+    }
 
     // 移除炸弹精灵
     bomb.sprite->removeFromParent();
+
+    // 对范围内角色造成伤害（排除玩家自身）
+    if (_gameLayer)
+    {
+        DamageInfo dmg;
+        dmg.amount = BOMB_DAMAGE;
+        dmg.attacker = _player;
+
+        std::function<void(Node *)> applyAoE = [&](Node *node)
+        {
+            if (!node)
+                return;
+
+            if (auto character = dynamic_cast<CharacterBase *>(node))
+            {
+                if (character != _player)
+                {
+                    Vec2 worldPos = character->getPosition();
+                    if (character->getParent())
+                    {
+                        worldPos = character->getParent()->convertToWorldSpace(character->getPosition());
+                    }
+
+                    if (worldPos.distance(explosionWorld) <= BOMB_EXPLOSION_RADIUS)
+                    {
+                        character->takeDamage(dmg);
+                    }
+                }
+            }
+
+            const auto &children = node->getChildren();
+            for (auto child : children)
+            {
+                applyAoE(child);
+            }
+        };
+
+        applyAoE(_gameLayer);
+    }
 
     // 创建爆炸效果
     auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
@@ -1714,7 +1762,7 @@ Scene *OriginMushroomScene::createScene()
 LevelConfig OriginMushroomScene::getLevelConfig() const
 {
     LevelConfig config;
-    config.tmxMapPath = "/Map/Origin_Mushroom/Origin_Mushroom.tmx";
+    config.tmxMapPath = "Map/Origin_Mushroom/Origin_Mushroom.tmx";
     config.backgroundPath = "Map/Origin_Mushroom/jimeng-2025-12-07-8064-Game concept art for a 2D side-scrolling...._0.png";
     config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";
