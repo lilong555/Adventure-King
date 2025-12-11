@@ -112,3 +112,47 @@ void SkillComponent::update(float dt)
         }
     }
 }
+
+//================== 存档系统支持 ==================
+
+std::shared_ptr<Skill> SkillComponent::findLearnedSkillById(int skillId) const
+{
+    for (const auto &skill : _learnedSkills)
+    {
+        if (skill && skill->id == skillId)
+        {
+            return skill;
+        }
+    }
+    return nullptr;
+}
+
+void SkillComponent::clearAndSetActiveSlots(const std::vector<std::shared_ptr<ActiveSkill>> &slots)
+{
+    _activeSlots.clear();
+    _activeSlots = slots;
+}
+
+void SkillComponent::clearAndSetPassiveSlots(const std::vector<std::shared_ptr<PassiveSkill>> &slots)
+{
+    // 先移除所有旧的被动技能加成
+    for (const auto &skill : _passiveSlots)
+    {
+        if (skill)
+        {
+            removePassiveSkill(skill);
+        }
+    }
+
+    _passiveSlots.clear();
+    _passiveSlots = slots;
+
+    // 应用所有新的被动技能加成
+    for (const auto &skill : _passiveSlots)
+    {
+        if (skill)
+        {
+            applyPassiveSkill(skill);
+        }
+    }
+}
