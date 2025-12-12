@@ -3,8 +3,55 @@
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "cocos2d.h"
+#include <vector>
 
 USING_NS_CC;
+
+namespace
+{
+Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
+{
+    auto textureCache = Director::getInstance()->getTextureCache();
+    Vector<SpriteFrame *> frames;
+
+    for (const auto &path : paths)
+    {
+        auto texture = textureCache->addImage(path);
+        if (!texture)
+        {
+            CCLOG("PlayerCharacter: failed to load texture %s", path.c_str());
+            continue;
+        }
+
+        frames.pushBack(SpriteFrame::createWithTexture(
+            texture, Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height)));
+    }
+
+    if (frames.empty())
+        return nullptr;
+
+    return Animation::createWithSpriteFrames(frames, delayPerUnit);
+}
+
+void ensureDefaultRunAnimation()
+{
+    auto cache = AnimationCache::getInstance();
+    if (cache->getAnimation("hero_run"))
+        return;
+
+    std::vector<std::string> runPaths = {
+        "Sprites/Characters/Player/Klee/spr_klee_run_1.png",
+        "Sprites/Characters/Player/Klee/spr_klee_run_2.png",
+        "Sprites/Characters/Player/Klee/spr_klee_run.png",
+    };
+
+    auto runAnim = createAnimationFromPaths(runPaths, 0.15f);
+    if (runAnim)
+    {
+        cache->addAnimation(runAnim, "hero_run");
+    }
+}
+} // namespace
 
 PlayerCharacter *PlayerCharacter::create(CharacterRole role,
                                          const std::string &spriteFrameName)
@@ -54,6 +101,9 @@ bool PlayerCharacter::init(CharacterRole role,
         sm->registerStateAnimation(CharacterState::HURT, "hero_hurt");
         sm->registerStateAnimation(CharacterState::DEAD, "hero_dead");
     }
+
+    // 确保默认跑动动画存在（由 StateMachineComponent 播放）
+    ensureDefaultRunAnimation();
 
     return true;
 }
@@ -275,6 +325,40 @@ void PlayerCharacter::useSkill(size_t slotIndex)
     {
         skillComp->useActiveSkill(slotIndex);
     }
+}
+
+void PlayerCharacter::setMoving(bool moving)
+{
+    if (isDead())
+        return;
+
+    auto sm = getStateMachineComponent();
+    if (!sm)
+        return;
+
+    if (moving)
+    {
+        ensureDefaultRunAnimation();
+        sm->changeState(CharacterState::RUNNING);
+        return;
+    }
+
+    // 停止跑动动作并恢复默认静止帧（保持朝向）
+    bool wasFlippedX = isFlippedX();
+    stopAllActions();
+
+    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    if (defaultTexture)
+    {
+        setTexture(defaultTexture);
+        setTextureRect(Rect(0, 0,
+                             defaultTexture->getContentSize().width,
+                             defaultTexture->getContentSize().height));
+        setFlippedX(wasFlippedX);
+    }
+
+    sm->changeState(CharacterState::IDLE);
 }
 
 void PlayerCharacter::attack()

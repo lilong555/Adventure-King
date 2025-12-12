@@ -157,7 +157,6 @@ protected:
     // -------------------------------
     bool _isMovingLeft = false;           ///< 是否正在向左移动
     bool _isMovingRight = false;          ///< 是否正在向右移动
-    bool _isWalkAnimationPlaying = false; ///< 是否正在播放行走动画
 
     // -------------------------------
     // 物理状态
@@ -406,20 +405,6 @@ protected:
      * @param bomb 要爆炸的炸弹对象引用
      */
     virtual void explodeBomb(GameBomb &bomb);
-
-    // ===================================================================
-    // 动画系统
-    // ===================================================================
-
-    /**
-     * @brief 开始播放行走动画
-     */
-    virtual void startWalkAnimation();
-
-    /**
-     * @brief 停止行走动画
-     */
-    virtual void stopWalkAnimation();
 
     // ===================================================================
     // 场景导航

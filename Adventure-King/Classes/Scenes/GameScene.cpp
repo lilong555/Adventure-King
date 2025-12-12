@@ -1112,7 +1112,7 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingLeft = true;
         _player->setFlippedX(true);
         if (!_isAttacking && !_isCastingSkill)
-            startWalkAnimation();
+            _player->setMoving(true);
         break;
 
     case EventKeyboard::KeyCode::KEY_D:
@@ -1120,7 +1120,7 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingRight = true;
         _player->setFlippedX(false);
         if (!_isAttacking && !_isCastingSkill)
-            startWalkAnimation();
+            _player->setMoving(true);
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
@@ -1179,7 +1179,7 @@ void GameScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
     // 所有方向键释放时停止动画
     if (!_isMovingLeft && !_isMovingRight && !_isAttacking && !_isCastingSkill)
     {
-        stopWalkAnimation();
+        _player->setMoving(false);
     }
 }
 
@@ -1298,84 +1298,6 @@ void GameScene::showMapLoadFailedUI()
 }
 
 // ============================================================
-// 动画系统实现
-// ============================================================
-
-/**
- * @brief 开始播放行走动画
- */
-void GameScene::startWalkAnimation()
-{
-    if (!_player || _isWalkAnimationPlaying)
-        return;
-
-    _isWalkAnimationPlaying = true;
-
-    // 加载行走动画纹理
-    auto textureCache = Director::getInstance()->getTextureCache();
-    auto texture1 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_1.png");
-    auto texture2 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_2.png");
-    auto texture3 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 从纹理创建精灵帧
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(SpriteFrame::createWithTexture(texture1,
-                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture2,
-                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture3,
-                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
-
-        // 创建并运行循环动画
-        auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
-        auto animate = Animate::create(animation);
-        auto repeatAnimate = RepeatForever::create(animate);
-        repeatAnimate->setTag(999);
-
-        _player->runAction(repeatAnimate);
-        CCLOG("Walk animation started");
-    }
-    else
-    {
-        CCLOG("Failed to load walk animation textures");
-        _isWalkAnimationPlaying = false;
-    }
-}
-
-/**
- * @brief 停止行走动画
- */
-void GameScene::stopWalkAnimation()
-{
-    if (!_player || !_isWalkAnimationPlaying)
-        return;
-
-    _isWalkAnimationPlaying = false;
-
-    // 保存翻转状态
-    bool wasFlippedX = _player->isFlippedX();
-
-    // 停止动画
-    _player->stopActionByTag(999);
-
-    // 恢复默认纹理
-    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_run.png");
-    if (defaultTexture)
-    {
-        _player->setTexture(defaultTexture);
-        _player->setTextureRect(Rect(0, 0,
-                                     defaultTexture->getContentSize().width,
-                                     defaultTexture->getContentSize().height));
-        _player->setFlippedX(wasFlippedX); // 恢复翻转状态
-    }
-
-    CCLOG("Walk animation stopped");
-}
-
-// ============================================================
 // 战斗系统实现
 // ============================================================
 
@@ -1387,9 +1309,8 @@ void GameScene::playAttackAnimation()
     if (!_player)
         return;
 
-    // 停止行走动画
-    if (_isWalkAnimationPlaying)
-        stopWalkAnimation();
+    // 停止当前动作（例如跑动动画），避免与攻击动画冲突
+    _player->stopAllActions();
 
     _isAttacking = true;
 
@@ -1452,27 +1373,10 @@ void GameScene::onAttackAnimationFinished()
 {
     _isAttacking = false;
 
-    // 保存翻转状态
-    bool wasFlippedX = _player ? _player->isFlippedX() : false;
-
-    // 恢复角色状态
-    if (_isMovingLeft || _isMovingRight)
+    if (_player)
     {
-        startWalkAnimation();
-    }
-    else
-    {
-        // 恢复默认纹理
-        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-            "Sprites/Characters/Player/Klee/spr_klee_run.png");
-        if (defaultTexture && _player)
-        {
-            _player->setTexture(defaultTexture);
-            _player->setTextureRect(Rect(0, 0,
-                                         defaultTexture->getContentSize().width,
-                                         defaultTexture->getContentSize().height));
-            _player->setFlippedX(wasFlippedX);
-        }
+        // 根据当前输入恢复跑动/待机状态
+        _player->setMoving(_isMovingLeft || _isMovingRight);
     }
 
     CCLOG("Attack animation finished");
@@ -1490,11 +1394,8 @@ void GameScene::playSkillAnimation()
     if (!_player)
         return;
 
-    // 停止行走动画（如果在播放）
-    if (_isWalkAnimationPlaying)
-    {
-        stopWalkAnimation();
-    }
+    // 停止当前动作，避免与技能动画冲突
+    _player->stopAllActions();
 
     _isCastingSkill = true;
 
@@ -1556,26 +1457,9 @@ void GameScene::onSkillAnimationFinished()
     // 动画结束后实际丢出炸弹
     doThrowBomb();
 
-    // 保存当前翻转状态
-    bool wasFlippedX = _player ? _player->isFlippedX() : false;
-
-    // 如果玩家仍在移动，恢复行走动画
-    if (_isMovingLeft || _isMovingRight)
+    if (_player)
     {
-        startWalkAnimation();
-    }
-    else
-    {
-        // 恢复到默认静止图片
-        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-            "Sprites/Characters/Player/Klee/spr_klee_run.png");
-        if (defaultTexture && _player)
-        {
-            _player->setTexture(defaultTexture);
-            _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
-                                         defaultTexture->getContentSize().height));
-            _player->setFlippedX(wasFlippedX);
-        }
+        _player->setMoving(_isMovingLeft || _isMovingRight);
     }
 
     CCLOG("Skill animation finished");

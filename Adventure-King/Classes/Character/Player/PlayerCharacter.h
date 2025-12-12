@@ -26,6 +26,10 @@ public:
     // 技能管理（外层接口，内部转发给 SkillComponent）
     void useSkill(size_t slotIndex);
 
+    // ================== 动作/状态驱动 ==================
+    // 由场景输入层调用，用于切换跑动/待机动画状态
+    void setMoving(bool moving);
+
     // 实现角色基础攻击
     virtual void attack() override;
 
