@@ -51,6 +51,25 @@ void ensureDefaultRunAnimation()
         cache->addAnimation(runAnim, "hero_run");
     }
 }
+
+void ensureDefaultWalkAnimation()
+{
+    auto cache = AnimationCache::getInstance();
+    if (cache->getAnimation("hero_walk"))
+        return;
+
+    std::vector<std::string> walkPaths = {
+        "Sprites/Characters/Player/Klee/spr_klee_run_1.png",
+        "Sprites/Characters/Player/Klee/spr_klee_run_2.png",
+        "Sprites/Characters/Player/Klee/spr_klee_run.png",
+    };
+
+    auto walkAnim = createAnimationFromPaths(walkPaths, 0.25f);
+    if (walkAnim)
+    {
+        cache->addAnimation(walkAnim, "hero_walk");
+    }
+}
 } // namespace
 
 PlayerCharacter *PlayerCharacter::create(CharacterRole role,
@@ -96,6 +115,7 @@ bool PlayerCharacter::init(CharacterRole role,
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, "hero_idle");
+        sm->registerStateAnimation(CharacterState::WALKING, "hero_walk");
         sm->registerStateAnimation(CharacterState::RUNNING, "hero_run");
         sm->registerStateAnimation(CharacterState::ATTACKING, "hero_attack");
         sm->registerStateAnimation(CharacterState::HURT, "hero_hurt");
@@ -104,6 +124,7 @@ bool PlayerCharacter::init(CharacterRole role,
 
     // 确保默认跑动动画存在（由 StateMachineComponent 播放）
     ensureDefaultRunAnimation();
+    ensureDefaultWalkAnimation();
 
     return true;
 }
@@ -329,6 +350,11 @@ void PlayerCharacter::useSkill(size_t slotIndex)
 
 void PlayerCharacter::setMoving(bool moving)
 {
+    setMoving(moving, true);
+}
+
+void PlayerCharacter::setMoving(bool moving, bool running)
+{
     if (isDead())
         return;
 
@@ -338,8 +364,16 @@ void PlayerCharacter::setMoving(bool moving)
 
     if (moving)
     {
-        ensureDefaultRunAnimation();
-        sm->changeState(CharacterState::RUNNING);
+        if (running)
+        {
+            ensureDefaultRunAnimation();
+            sm->changeState(CharacterState::RUNNING);
+        }
+        else
+        {
+            ensureDefaultWalkAnimation();
+            sm->changeState(CharacterState::WALKING);
+        }
         return;
     }
 

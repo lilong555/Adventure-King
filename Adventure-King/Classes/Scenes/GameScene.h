@@ -64,8 +64,10 @@ struct LevelConfig
 struct PlayerConfig
 {
     float scale = 0.5f;                   ///< 玩家缩放比例
-    float moveSpeed = 350.0f;             ///< 移动速度
+    float walkSpeed = 220.0f;             ///< 行走速度
+    float runSpeed = 350.0f;              ///< 跑步速度
     float jumpImpulse = 650.0f;           ///< 跳跃冲量
+    int maxJumpCount = 2;                 ///< 最大跳跃次数（1=单跳，2=二段跳）
     float collisionBoxWidthRatio = 0.8f;  ///< 碰撞盒宽度比例
     float collisionBoxHeightRatio = 0.9f; ///< 碰撞盒高度比例
 };
@@ -131,12 +133,14 @@ protected:
     // -------------------------------
     bool _isMovingLeft = false;           ///< 是否正在向左移动
     bool _isMovingRight = false;          ///< 是否正在向右移动
+    bool _isRunPressed = false;           ///< 是否按下跑步键（Shift）
 
     // -------------------------------
     // 物理状态
     // -------------------------------
     bool _isGrounded = false;    ///< 是否站在地面上
     int _groundContactCount = 0; ///< 地面接触计数
+    int _jumpCount = 0;          ///< 当前空中已跳次数（落地重置）
 
     // -------------------------------
     // 战斗状态
