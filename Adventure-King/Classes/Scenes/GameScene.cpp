@@ -18,6 +18,8 @@
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Save/SaveManager.h"
 #include "Save/SaveData.h"
+#include <algorithm>
+#include <cmath>
 #include <functional>
 
 USING_NS_CC;
@@ -1101,7 +1103,24 @@ bool GameScene::onContactBegin(cocos2d::PhysicsContact& contact)
                 if (bomb.sprite == bombNode && !bomb.isExploded)
                 {
                     bomb.isExploded = true;
-                    explodeBomb(bomb);
+
+                    // Avoid modifying physics bodies inside the contact callback.
+                    // Defer the actual explosion to the next tick.
+                    this->runAction(Sequence::create(
+                        DelayTime::create(0.0f),
+                        CallFunc::create([this, bombNode]()
+                                         {
+                                             for (auto &pendingBomb : _bombs)
+                                             {
+                                                 if (pendingBomb.sprite == bombNode && pendingBomb.isExploded)
+                                                 {
+                                                     explodeBomb(pendingBomb);
+                                                     break;
+                                                 }
+                                             }
+                                         }),
+                        nullptr));
+
                     break;
                 }
             }
@@ -1487,8 +1506,8 @@ void GameScene::doThrowBomb()
 
     // 设置碰撞掩码
     physicsBody->setCategoryBitmask(static_cast<int>(GamePhysicsCategory::BOMB));
-    physicsBody->setCollisionBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
-    physicsBody->setContactTestBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+    physicsBody->setCollisionBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
+    physicsBody->setContactTestBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
 
     bombSprite->addComponent(physicsBody);
     _gameLayer->addChild(bombSprite, 4);
@@ -1537,13 +1556,75 @@ void GameScene::explodeBomb(GameBomb &bomb)
             {
                 if (character != _player)
                 {
-                    Vec2 worldPos = character->getPosition();
-                    if (character->getParent())
+                    // Check circle (explosion) vs character AABB overlap.
+                    // Prefer physics collider AABB (world-centered), fall back to visual bounds.
+                    Rect hitRectWorld;
+                    bool hasHitRectWorld = false;
+
+                    if (auto body = character->getPhysicsBody())
                     {
-                        worldPos = character->getParent()->convertToWorldSpace(character->getPosition());
+                        auto shape = body->getFirstShape();
+                        if (shape)
+                        {
+                            Size shapeSizeWorld;
+                            switch (shape->getType())
+                            {
+                            case PhysicsShape::Type::BOX:
+                                shapeSizeWorld = static_cast<PhysicsShapeBox *>(shape)->getSize();
+                                break;
+                            case PhysicsShape::Type::CIRCLE:
+                            {
+                                float r = static_cast<PhysicsShapeCircle *>(shape)->getRadius();
+                                shapeSizeWorld = Size(r * 2.0f, r * 2.0f);
+                                break;
+                            }
+                            default:
+                                break;
+                            }
+
+                            if (shapeSizeWorld.width > 0.0f && shapeSizeWorld.height > 0.0f)
+                            {
+                                Vec2 centerLocal(character->getContentSize().width * 0.5f,
+                                                 character->getContentSize().height * 0.5f);
+                                Vec2 bodyCenterWorld = character->convertToWorldSpace(centerLocal);
+                                Vec2 rectCenterWorld = bodyCenterWorld + shape->getCenter();
+
+                                hitRectWorld = Rect(rectCenterWorld.x - shapeSizeWorld.width / 2.0f,
+                                                    rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
+                                                    shapeSizeWorld.width,
+                                                    shapeSizeWorld.height);
+                                hasHitRectWorld = true;
+                            }
+                        }
                     }
 
-                    if (worldPos.distance(explosionWorld) <= BOMB_EXPLOSION_RADIUS)
+                    if (!hasHitRectWorld)
+                    {
+                        Rect bboxParent = character->getBoundingBox();
+                        Vec2 originWorld = bboxParent.origin;
+                        Vec2 topRightWorld = bboxParent.origin + bboxParent.size;
+                        if (character->getParent())
+                        {
+                            originWorld = character->getParent()->convertToWorldSpace(bboxParent.origin);
+                            topRightWorld = character->getParent()->convertToWorldSpace(bboxParent.origin + bboxParent.size);
+                        }
+
+                        hitRectWorld = Rect(
+                            std::min(originWorld.x, topRightWorld.x),
+                            std::min(originWorld.y, topRightWorld.y),
+                            std::fabs(topRightWorld.x - originWorld.x),
+                            std::fabs(topRightWorld.y - originWorld.y));
+                    }
+
+                    float dx = 0.0f;
+                    if (explosionWorld.x < hitRectWorld.getMinX()) dx = hitRectWorld.getMinX() - explosionWorld.x;
+                    else if (explosionWorld.x > hitRectWorld.getMaxX()) dx = explosionWorld.x - hitRectWorld.getMaxX();
+
+                    float dy = 0.0f;
+                    if (explosionWorld.y < hitRectWorld.getMinY()) dy = hitRectWorld.getMinY() - explosionWorld.y;
+                    else if (explosionWorld.y > hitRectWorld.getMaxY()) dy = explosionWorld.y - hitRectWorld.getMaxY();
+
+                    if ((dx * dx + dy * dy) <= (BOMB_EXPLOSION_RADIUS * BOMB_EXPLOSION_RADIUS))
                     {
                         character->takeDamage(dmg);
                     }

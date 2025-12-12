@@ -45,8 +45,9 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
     initAttributes();
 
     // === 刷新 HP / MP ===
-    _currentHP = _maxHP;
+    setCurrentHP(_maxHP);
     _currentMP = 0;
+    updateHpBar();
 
     // === 注册状态动画（需要动画名已加入 AnimationCache）===
     initStateAnimations();
@@ -56,10 +57,10 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
     {
         _physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER));
         _physicsBody->setCollisionBitmask(
-            ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::PLAYER)
+            ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::PLAYER | GamePhysicsCategory::BOMB)
         );
         _physicsBody->setContactTestBitmask(
-            ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK)
+            ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB)
         );
     }
     this->setAnchorPoint(Vec2(0.5f, 0.0f));

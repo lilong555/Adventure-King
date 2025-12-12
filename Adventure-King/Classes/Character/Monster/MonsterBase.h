@@ -5,6 +5,7 @@
 #include "Character/Base/CharacterBase.h"
 #include "Physics/GamePhysicsCategory.h"
 
+namespace cocos2d { class DrawNode; }
 
 class MonsterBase : public CharacterBase
 {
@@ -36,6 +37,10 @@ protected:
 
     void setupCharacterStats(const Attributes& stats);
     void refreshCacheAttributes();
+
+    // 血条
+    void ensureHpBar();
+    void updateHpBar();
     // AI 行为
     virtual void updateAI(float dt);
     virtual void updateMovement(float dt);
@@ -70,5 +75,7 @@ protected:
 
     //碰撞盒
     cocos2d::PhysicsBody* _physicsBody = nullptr;
+
+    cocos2d::DrawNode *_hpBar = nullptr;
 
 };

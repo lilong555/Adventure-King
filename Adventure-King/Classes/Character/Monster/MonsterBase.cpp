@@ -53,6 +53,9 @@ void MonsterBase::setupCharacterStats(const Attributes& stats)
     // 3. 同步到成员变量 (这一步绝对是通用的！)
     // 这样你就不用在每个怪物里都写一遍 _moveSpeed = ... 了
     refreshCacheAttributes();
+
+    ensureHpBar();
+    updateHpBar();
 }
 
 void MonsterBase::refreshCacheAttributes()
@@ -274,6 +277,7 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     hp -= dmg;
 
     setCurrentHP(hp);
+    updateHpBar();
 
     if (hp <= 0)
     {
@@ -286,19 +290,97 @@ void MonsterBase::takeDamage(const DamageInfo& info)
 
 void MonsterBase::die()
 {
-    getStateMachineComponent()->changeState(CharacterState::DEAD);
-
-    if (getAutoRemoveOnDeath())
+    // 禁用物理与移动
+    if (_physicsBody)
     {
-        runAction(Sequence::create(
-            DelayTime::create(0.5f),
-            RemoveSelf::create(),
-            nullptr
-        ));
+        _physicsBody->setVelocity(Vec2::ZERO);
+        _physicsBody->setDynamic(false);
+        _physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::NONE));
+        _physicsBody->setCollisionBitmask(0);
+        _physicsBody->setContactTestBitmask(0);
     }
+
+    if (_hpBar)
+    {
+        _hpBar->setVisible(false);
+    }
+
+    stopAllActions();
+    CharacterBase::die();
 }
 
 #pragma endregion
+
+// ===================================================================
+// HP Bar
+// ===================================================================
+
+void MonsterBase::ensureHpBar()
+{
+    if (_hpBar)
+        return;
+
+    _hpBar = DrawNode::create();
+    if (_hpBar)
+    {
+        addChild(_hpBar, 10);
+    }
+}
+
+void MonsterBase::updateHpBar()
+{
+    if (!_hpBar)
+        return;
+
+    _hpBar->clear();
+
+    float maxHp = _maxHP;
+    if (auto attr = getAttributeComponent())
+    {
+        maxHp = attr->getAttributeValue(AttributeType::MAX_HP);
+    }
+    if (maxHp <= 0.0f)
+        return;
+
+    float barWidth = 60.0f;
+    float barHeight = 8.0f;
+    float yOffset = getContentSize().height + 10.0f;
+
+    Vec2 barPos(getContentSize().width / 2 - barWidth / 2, yOffset);
+
+    // 背景
+    _hpBar->drawSolidRect(
+        barPos,
+        barPos + Vec2(barWidth, barHeight),
+        Color4F(0.2f, 0.2f, 0.2f, 1.0f));
+
+    float hpRatio = clampf(getCurrentHP() / maxHp, 0.0f, 1.0f);
+    float currentWidth = barWidth * hpRatio;
+
+    Color4F hpColor;
+    if (hpRatio > 0.5f)
+    {
+        hpColor = Color4F(0.2f, 0.8f, 0.2f, 1.0f);
+    }
+    else if (hpRatio > 0.25f)
+    {
+        hpColor = Color4F(1.0f, 0.8f, 0.0f, 1.0f);
+    }
+    else
+    {
+        hpColor = Color4F(1.0f, 0.2f, 0.2f, 1.0f);
+    }
+
+    _hpBar->drawSolidRect(
+        barPos,
+        barPos + Vec2(currentWidth, barHeight),
+        hpColor);
+
+    _hpBar->drawRect(
+        barPos,
+        barPos + Vec2(barWidth, barHeight),
+        Color4F::WHITE);
+}
 
 
 #pragma region 工具函数
