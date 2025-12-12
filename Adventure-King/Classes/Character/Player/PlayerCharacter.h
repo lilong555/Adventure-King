@@ -43,6 +43,19 @@ public:
     using EquipmentChangeCallback = std::function<void(EquipmentSlot, const std::shared_ptr<Equipment> &)>;
     void setEquipmentChangeCallback(const EquipmentChangeCallback &callback) { _equipmentChangeCallback = callback; }
 
+    //================== 存档系统支持 ==================
+
+    // 获取角色职业
+    CharacterRole getRole() const { return _role; }
+
+    // 技能点管理
+    int getSkillPoints() const { return _skillPoints; }
+    void setSkillPoints(int points) { _skillPoints = points; }
+
+    // 装备管理（用于存档）
+    const std::map<EquipmentSlot, std::shared_ptr<Equipment>> &getEquippedItems() const { return _equippedItems; }
+    void setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>> &items) { _equippedItems = items; }
+
 private:
     PlayerCharacter() = default;
 

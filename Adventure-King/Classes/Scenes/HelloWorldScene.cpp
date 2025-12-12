@@ -1,10 +1,14 @@
 #include "HelloWorldScene.h"
 #include "HomeScene.h"
 #include "MapScene.h"
+#include "GameScene.h"
+#include "Character/Player/PlayerCharacter.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Scenes/Layers/SetMenuLayer.h"
 #include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
+#include "Save/SaveData.h"
+#include "Save/SaveManager.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;
@@ -102,7 +106,7 @@ bool HelloWorld::init()
     // ==========================================================
     // 3. 统一设置按钮位置
     // ==========================================================
-    
+
     // StartItem 定位到屏幕中心
     if (StartItem)
     {
@@ -162,14 +166,14 @@ bool HelloWorld::init()
         contentContainer->setScale(scaleFactor);
     }
     std::string musicFile = "Scene/MusicOfScene/Music_HelloWorldScene.mp3";
-	float musicVolume = 0.5f;
+    float musicVolume = 0.5f;
     this->scheduleOnce(
-        [musicFile, musicVolume](float dt) {
+        [musicFile, musicVolume](float dt)
+        {
             MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
         },
-        0.1f, //必须加一定延迟否则会被场景切换截断
-        "PlayMusicAfterSceneChange"
-    );
+        0.1f, // 必须加一定延迟否则会被场景切换截断
+        "PlayMusicAfterSceneChange");
     return true;
 }
 
@@ -184,31 +188,86 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
     //_eventDispatcher->dispatchEvent(&customEndEvent);
 }
 
-void HelloWorld::menuStartCallback(Ref* pSender)
+void HelloWorld::menuStartCallback(Ref *pSender)
 {
     auto newScene = HomeScene::createScene();
     SceneTransitionManager::transitionToScene(
-        this,                       // 当前场景
+        this, // 当前场景
         newScene,
-        "进入冒险王之家..."         // 文字
+        "进入冒险王之家..." // 文字
     );
 }
 
-
-void HelloWorld::menuSaveCallback(Ref* pSender)
+void HelloWorld::menuSaveCallback(Ref *pSender)
 {
-    auto saveMenu = SaveMenuLayer::create();
+    // 主菜单中只能加载游戏，不能保存
+    auto saveMenu = SaveMenuLayer::create(SaveMenuLayer::Mode::LOAD);
 
-    auto contentContainer = this->getChildByTag(TAG_CONTENT_CONTAINER);
-    if (!contentContainer)
-    {
-        CCLOG("Error: contentContainer with tag 5 not found!");
-        return;
-    }
+    // 设置加载成功回调
+    saveMenu->setLoadSuccessCallback([this](const SaveSlotData &saveData)
+                                     {
+        CCLOG("HelloWorld - 加载存档成功，场景: %s", saveData.progressData.currentSceneName.c_str());
 
-    contentContainer->addChild(saveMenu, 1);
+        // 根据存档的场景名称创建对应的场景
+        Scene* targetScene = nullptr;
+        const std::string& sceneName = saveData.progressData.currentSceneName;
+
+        if (sceneName == "起源之菇")
+        {
+            targetScene = OriginMushroomScene::createScene();
+        }
+        else if (sceneName == "神秘之森")
+        {
+            targetScene = MysteryForestScene::createScene();
+        }
+        else
+        {
+            CCLOG("HelloWorld - 未知的场景名称: %s，跳转到地图选择", sceneName.c_str());
+            targetScene = MapScene::createScene();
+        }
+
+        if (targetScene)
+        {
+            // 获取 GameScene 并应用存档数据
+            auto gameScene = dynamic_cast<GameScene*>(targetScene);
+            if (gameScene)
+            {
+                // 在场景初始化后应用玩家数据
+                // 使用 scheduleOnce 延迟执行，确保场景完全初始化
+                auto saveManager = SaveManager::getInstance();
+                auto playerData = saveData.playerData;
+                auto playerPos = Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
+
+                gameScene->scheduleOnce([saveManager, playerData, playerPos](float dt) {
+                    auto currentScene = Director::getInstance()->getRunningScene();
+                    auto currentGameScene = dynamic_cast<GameScene*>(currentScene);
+                    if (currentGameScene)
+                    {
+                        auto player = currentGameScene->getPlayer();
+                        if (player)
+                        {
+                            // 应用玩家数据
+                            saveManager->applyPlayerData(player, playerData);
+                            // 设置玩家位置
+                            player->setPosition(playerPos);
+                            CCLOG("HelloWorld - 玩家数据已恢复，位置: (%.1f, %.1f)", playerPos.x, playerPos.y);
+                        }
+                    }
+                }, 0.1f, "apply_save_data");
+            }
+
+            // 切换到目标场景
+            auto transition = TransitionFade::create(0.5f, targetScene, Color3B::BLACK);
+            Director::getInstance()->replaceScene(transition);
+        }
+        else
+        {
+            CCLOG("HelloWorld - 创建目标场景失败");
+        } });
+
+    // 直接添加到场景而不是 contentContainer，避免受容器缩放影响
+    this->addChild(saveMenu, 100);
 }
-
 
 void HelloWorld::menuMapCallback(Ref *pSender)
 {
@@ -227,12 +286,6 @@ void HelloWorld::menuSetCallback(Ref *pSender)
 {
     auto setMenu = SettingMenuLayer::create();
 
-    auto contentContainer = this->getChildByTag(TAG_CONTENT_CONTAINER);
-    if (!contentContainer)
-    {
-        CCLOG("Error: contentContainer with tag 5 not found!");
-        return;
-    }
-
-    contentContainer->addChild(setMenu, 1);
+    // 直接添加到场景而不是 contentContainer，避免受容器缩放影响
+    this->addChild(setMenu, 100);
 }

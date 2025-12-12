@@ -27,6 +27,20 @@ public:
     const std::vector<std::shared_ptr<ActiveSkill>> &getActiveSlots() const { return _activeSlots; }
     const std::vector<std::shared_ptr<PassiveSkill>> &getPassiveSlots() const { return _passiveSlots; }
 
+    //================== 存档系统支持 ==================
+
+    // 获取已学习的技能列表
+    const std::vector<std::shared_ptr<Skill>> &getLearnedSkills() const { return _learnedSkills; }
+
+    // 根据 ID 查找已学习的技能
+    std::shared_ptr<Skill> findLearnedSkillById(int skillId) const;
+
+    // 清空并设置主动技能槽位（用于读档）
+    void clearAndSetActiveSlots(const std::vector<std::shared_ptr<ActiveSkill>> &slots);
+
+    // 清空并设置被动技能槽位（用于读档）
+    void clearAndSetPassiveSlots(const std::vector<std::shared_ptr<PassiveSkill>> &slots);
+
 private:
     CharacterBase *_owner = nullptr;
 
