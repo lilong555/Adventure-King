@@ -68,6 +68,7 @@ protected:
     float _leashRadius = 0.0f;     // 牵引半径（超过就返回出生点）
 	float _attackInterval = 1.5f; // 攻击间隔（秒）
 	float _moveSpeed = 150.0f;     // 移动速度
+    float _baseScaleX = 1.0f;     // 记录基础水平缩放，用于翻转朝向
     cocos2d::Vec2  _homePosition;  // 出生点位置
     bool _patrolEnabled = false;   // 是否允许巡逻
     cocos2d::Vec2 _currentTargetPos;// 追击目标位置

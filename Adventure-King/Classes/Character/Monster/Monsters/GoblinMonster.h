@@ -20,6 +20,9 @@ public:
     virtual void updateAI(float dt) override;
 
 protected:
-    void initAttributes();            // 初始化属性
+    void initAnimations();            // 初始化攻击动画
+
+    cocos2d::Animate *_attackAnimate = nullptr;
     void initStateAnimations();       // 初始化状态机动画
+    void initAttributes();            // 初始化属性
 };

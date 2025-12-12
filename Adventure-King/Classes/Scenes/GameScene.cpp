@@ -1062,6 +1062,9 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
 
                     break;
                 }
+            }
+        }
+    }
 
     return true;
 }
