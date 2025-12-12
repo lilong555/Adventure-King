@@ -15,12 +15,24 @@
 
 #include "cocos2d.h"
 #include "2d/CCTMXTiledMap.h"
-#include "Physics/GamePhysicsCategory.h"
 #include "2d/CCTMXObjectGroup.h"
+#include "Physics/GamePhysicsCategory.h"
 
 // 前向声明
 class PlayerCharacter;
 class GameUI;
+
+// ============================================================
+// 游戏对象结构体定义
+// ============================================================
+
+/**
+ * @brief 炸弹数据结构（游戏场景专用）
+ */
+
+// ============================================================
+// 场景配置结构体
+// ============================================================
 
 /**
  * @brief 关卡场景配置

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Character/Monster/MonsterBase.h"
-
 #include <string>
 
 class GoblinMonster : public MonsterBase
@@ -10,7 +9,7 @@ public:
     GoblinMonster();
     virtual ~GoblinMonster();
 
-    static GoblinMonster* create(const std::string& spriteFrameName = "Sprites/Enemies/Goblin/Goblin_idle.png");
+    static GoblinMonster* create(const std::string& spriteFrameName = "goblin_idle_01.png");
 
     virtual bool init(const std::string& spriteFrameName);
 
@@ -23,6 +22,4 @@ public:
 protected:
     void initAttributes();            // 初始化属性
     void initStateAnimations();       // 初始化状态机动画
-    void initAnimations();
-    cocos2d::Animate* _attackAnimate = nullptr;
 };

@@ -68,3 +68,9 @@ inline int ToMask(GamePhysicsCategory c)
 {
     return static_cast<int>(c);
 }
+
+// Allow checking bitmasks returned by Cocos2d-x APIs (int) against categories.
+inline int operator&(int a, GamePhysicsCategory b)
+{
+    return a & ToMask(b);
+}
