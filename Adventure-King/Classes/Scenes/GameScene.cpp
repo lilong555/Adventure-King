@@ -10,6 +10,7 @@
 #include "HelloWorldScene.h"
 #include "Character/Base/CharacterBase.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/components/SkillComponent.h"
 #include "GameUI.h"
 #include "UI/PauseMenu.h"
@@ -1628,6 +1629,24 @@ bool OriginMushroomScene::init()
     if (!initWithPhysicsConfig(config))
     {
         return false;
+    }
+
+    // 生成一个测试哥布林
+    if (_gameLayer && _player)
+    {
+        Vec2 goblinPos = getPlayerSpawnPoint() + Vec2(400.0f, 0.0f);
+        auto goblin = GoblinMonster::create();
+        if (goblin)
+        {
+            goblin->setPosition(goblinPos);
+            goblin->setTarget(_player);
+            _gameLayer->addChild(goblin, PLAYER_Z_ORDER);
+            CCLOG("Spawned Goblin at (%.0f, %.0f)", goblinPos.x, goblinPos.y);
+        }
+        else
+        {
+            CCLOG("Error: Failed to create GoblinMonster");
+        }
     }
 
     CCLOG("OriginMushroomScene initialized");
