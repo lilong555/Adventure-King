@@ -12,6 +12,7 @@ GoblinMonster::GoblinMonster()
 
 GoblinMonster::~GoblinMonster()
 {
+	CC_SAFE_RELEASE(_attackAnimate);
 }
 
 GoblinMonster* GoblinMonster::create(const std::string& spriteFrameName)
@@ -61,6 +62,7 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
             ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK)
         );
     }
+    this->setAnchorPoint(Vec2(0.5f, 0.0f));
     initAnimations();
     return true;
 }
@@ -76,7 +78,7 @@ void GoblinMonster::initAttributes()
     base.set(AttributeType::CRITICAL_RATE, 0.05f);
     base.set(AttributeType::MAX_HP, 60.0f);
     base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
-    base.set(AttributeType::ATTACK_RANGE, 450.0f);
+    base.set(AttributeType::ATTACK_RANGE, 300.0f); // 发动攻击的距离
 
     // 2. 交给基类处理 (一行代码搞定逻辑！)
     setupCharacterStats(base);
@@ -106,48 +108,47 @@ void GoblinMonster::initStateAnimations()
 #pragma region 攻击动画初始化
 void GoblinMonster::initAnimations()
 {
-    // 1. 获取精灵帧缓存
-    auto cache = cocos2d::SpriteFrameCache::getInstance();
+    cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+    char str[200] = { 0 };
 
-    // 如果还没加载过 plist，先加载 (假设叫 goblin.plist)
-    // cache->addSpriteFramesWithFile("sprites/goblin.plist");
-
-    // 2. 创建动画帧数组
-    cocos2d::Vector<cocos2d::SpriteFrame*> attackFrames;
-    char str[100] = { 0 };
-
-    // 假设你有 6 张攻击图：goblin_attack_01.png 到 goblin_attack_06.png
+    // 假设你有 6 帧攻击动作
+    // 注意：你的文件名是 Goblin_attack_1.png (没有补0)，所以要用 %d，而不是 %02d
     for (int i = 1; i <= 6; i++)
     {
-        // 格式化文件名
-        sprintf(str, "goblin_attack_%2d.png", i);
+        // 1. 拼接路径
+        // 你的资源根目录是 Resources，所以路径从 Sprites/... 开始
+        std::sprintf(str, "Sprites/Enemies/Goblin/Goblin_attack_%d.png", i);
 
-        // 从缓存中获取帧
-        auto frame = cache->getSpriteFrameByName(str);
-        if (frame)
+        // 2. ★ 核心修改：使用 TextureCache 直接加载硬盘上的图片 ★
+        auto texture = cocos2d::Director::getInstance()->getTextureCache()->addImage(str);
+
+        if (texture)
         {
-            attackFrames.pushBack(frame);
+            // 3. 如果加载成功，用这张纹理创建一个 SpriteFrame
+            auto size = texture->getContentSize();
+            auto frame = cocos2d::SpriteFrame::createWithTexture(texture, cocos2d::Rect(0, 0, size.width, size.height));
+            frames.pushBack(frame);
+
+            // CCLOG("Loaded: %s", str); // 调试成功日志
         }
         else
         {
-            CCLOG("Error: SpriteFrame %s not found!", str);
+            // 如果还是找不到，说明路径拼写还有细微差别
+            CCLOG("ERROR: Cannot load file from disk: '%s'", str);
         }
     }
 
-    // 3. 创建 Animation 对象
-    // 0.1f 是每一帧的间隔时间 (每秒10帧)
-    auto animation = cocos2d::Animation::createWithSpriteFrames(attackFrames, 0.1f);
+    if (frames.empty())
+    {
+        CCLOG("ERROR: No frames loaded!");
+        return;
+    }
 
-    // 4. 创建 Animate 动作 (这是最终能被 runAction 执行的对象)
+    // 4. 创建动画
+    auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.1f);
     _attackAnimate = cocos2d::Animate::create(animation);
-    _attackAnimate->retain(); // ★关键：必须 retain，否则函数结束它就被自动释放了
+    _attackAnimate->retain();
 }
-
-//// 别忘了在析构函数里释放
-//GoblinMonster::~GoblinMonster()
-//{
-//    CC_SAFE_RELEASE(_attackAnimate);
-//}
 #pragma endregion
 
 #pragma region AI
@@ -274,51 +275,124 @@ void GoblinMonster::updateAI(float dt)
 
 void GoblinMonster::attack()
 {
-    // 1. 重置计时器 & 停止移动
+    CCLOG("Goblin Attack Triggered!");
+
+    // 1. 重置计时器
     _attackTimer = 0.0f;
-    if (_physicsBody) _physicsBody->setVelocity(cocos2d::Vec2::ZERO);
 
     // -----------------------------------------------------------
-    // 2. 准备动画动作
+    // 2. 物理速度处理 (关键修复)
     // -----------------------------------------------------------
-    if (!_attackAnimate) return; // 安全检查
-
-    // 创建一个新的动作实例 (Animate 不能重复使用同一个实例，需要 clone)
-    auto animateAction = _attackAnimate->clone();
+    // 只停止 X 轴移动，保留 Y 轴速度 (让怪物受重力影响自然下落)
+    if (_physicsBody)
+    {
+        cocos2d::Vec2 v = _physicsBody->getVelocity();
+        v.x = 0;
+        _physicsBody->setVelocity(v);
+    }
 
     // -----------------------------------------------------------
-    // 3. 准备逻辑动作 (生成判定框) - 这是你原来的代码
+    // 3. 准备动画动作
     // -----------------------------------------------------------
-    // 假设第 4 帧出刀 (0.1秒/帧 * 4 = 0.4秒)
-    float delayTime = 0.4f;
+    // ★ 安全保险：如果没有动画，创建一个 1秒的延时动作代替
+    // 否则如果 _attackAnimate 为空，函数直接 return，状态机永远卡在 ATTACKING
+    cocos2d::FiniteTimeAction* animateAction = nullptr;
 
+    if (_attackAnimate)
+    {
+        animateAction = _attackAnimate->clone();
+    }
+    else
+    {
+        animateAction = cocos2d::DelayTime::create(1.0f); // 假动作
+    }
+
+    // -----------------------------------------------------------
+    // 4. 计算出刀时间
+    // -----------------------------------------------------------
+    float hitTime = 0.4f; // 默认值
+    if (_attackAnimate)
+    {
+        int frameCount = _attackAnimate->getAnimation()->getFrames().size();
+        if (frameCount > 0)
+        {
+            float frameTime = _attackAnimate->getDuration() / frameCount;
+            float hitFrame = 3; // 第4帧 (索引3)
+            hitTime = frameTime * hitFrame;
+        }
+    }
+
+    // -----------------------------------------------------------
+    // 5. 判定框逻辑 (Hitbox)
+    // -----------------------------------------------------------
     auto logicSequence = cocos2d::Sequence::create(
-        cocos2d::DelayTime::create(delayTime),
+        cocos2d::DelayTime::create(hitTime),
         cocos2d::CallFunc::create([this]() {
-            // ... 这里是你原来生成 Hitbox 的代码 (粘贴过来) ...
-            // this->addChild(attackNode);
-            // ...
-            CCLOG("Hitbox Spawned!");
+
+            // 安全检查
+            if (!this || !this->getParent()) return;
+
+            auto parent = this->getParent();
+
+            // 计算朝向
+            float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
+
+            // 计算偏移
+            cocos2d::Vec2 offset(100.f * direction, 170.f);
+
+            // ★ 核心：计算世界/父节点坐标 ★
+            cocos2d::Vec2 worldPos = this->getPosition() + offset;
+
+            auto attackNode = cocos2d::Node::create();
+            attackNode->setPosition(worldPos);
+            attackNode->setContentSize(cocos2d::Size(300, 20));
+            attackNode->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+
+            // ★ 核心：加到父节点，避免物理质心偏移 ★
+            parent->addChild(attackNode);
+
+            // 物理属性
+            auto body = cocos2d::PhysicsBody::createBox(cocos2d::Size(300, 20));
+            body->setDynamic(false);
+            body->setGravityEnable(false);
+            body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
+            body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
+            body->setCollisionBitmask(0);
+            body->setTag(10); // 伤害值
+
+            attackNode->setPhysicsBody(body);
+
+            // 0.1秒后销毁
+            attackNode->runAction(
+                cocos2d::Sequence::create(
+                    cocos2d::DelayTime::create(0.1f),
+                    cocos2d::RemoveSelf::create(),
+                    nullptr
+                )
+            );
+
+            // 调试日志
+            // CCLOG("Hitbox spawned at: %.1f, %.1f", worldPos.x, worldPos.y);
             }),
         nullptr
     );
 
     // -----------------------------------------------------------
-    // 4. 组合并运行 (Spawn = 并行)
+    // 6. 组合并运行 (Spawn = 并行)
     // -----------------------------------------------------------
-    // 让动画和逻辑同时跑
+    // 动画 和 逻辑 同时跑
     auto spawn = cocos2d::Spawn::create(animateAction, logicSequence, nullptr);
 
-    // 5. 动作结束后切回 IDLE
+    // -----------------------------------------------------------
+    // 7. 结束回调 (恢复 IDLE)
+    // -----------------------------------------------------------
     auto finalSequence = cocos2d::Sequence::create(
         spawn,
         cocos2d::CallFunc::create([this]() {
             auto sm = getStateMachineComponent();
-            // 如果还没死，切回 IDLE
-            if (sm && sm->getCurrentState() != CharacterState::DEAD) {
+            if (sm && sm->getCurrentState() != CharacterState::DEAD)
+            {
                 sm->changeState(CharacterState::IDLE);
-                // 此时可以恢复默认站立图
-                // this->setSpriteFrame("goblin_idle_01.png"); 
             }
             }),
         nullptr

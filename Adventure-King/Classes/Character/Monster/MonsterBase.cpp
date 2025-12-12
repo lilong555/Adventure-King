@@ -86,8 +86,17 @@ void MonsterBase::update(float dt)
     }
     else if (state == CharacterState::IDLE)
     {
-        // ★ 在原地待机（攻击冷却中）也要盯着玩家 ★
-        _physicsBody->setVelocity(Vec2::ZERO);
+            if (_physicsBody)
+            {
+                // 1. 获取当前速度 (包含重力产生的向下速度)
+                cocos2d::Vec2 v = _physicsBody->getVelocity();
+
+                // 2. 只把 X 轴归零 (停止左右走)
+                v.x = 0;
+
+                // 3. 重新设置回去 (Y 轴保持不变，怪就能掉下去了)
+                _physicsBody->setVelocity(v);
+            }
         if (_target) faceTarget(_target);
     }
 

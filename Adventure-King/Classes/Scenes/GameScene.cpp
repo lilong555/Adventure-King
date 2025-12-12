@@ -1195,7 +1195,7 @@ bool OriginMushroomScene::init()
     {
         cocos2d::Vec2 p = getPlayerSpawnPoint();
 
-        goblin->setPosition(p + cocos2d::Vec2(300.0f, 0.0f));
+        goblin->setPosition(p + cocos2d::Vec2(600.0f, 0.0f));
         goblin->setHome(goblin->getPosition());
         if (_player)
         {
