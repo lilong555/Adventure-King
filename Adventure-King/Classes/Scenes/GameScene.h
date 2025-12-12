@@ -369,8 +369,6 @@ protected:
     /**
      * @brief 播放攻击动画
      */
-    virtual void playAttackAnimation();
-
     /**
      * @brief 攻击动画结束回调
      */

@@ -361,15 +361,72 @@ void PlayerCharacter::setMoving(bool moving)
     sm->changeState(CharacterState::IDLE);
 }
 
-void PlayerCharacter::attack()
+void PlayerCharacter::attackAnimated(const std::function<void()> &onFinished)
 {
-    // 最基础普通攻击：切换至 ATTACKING 状态
+    if (isDead())
+        return;
+
+    // 切换至 ATTACKING 状态（不依赖 StateMachine 的动画播放）
     if (auto sm = getStateMachineComponent())
     {
         sm->changeState(CharacterState::ATTACKING);
     }
 
-    // TODO: 在这里加入普通攻击的伤害判定逻辑
+    // 计算动画速度（攻击速度越高越快）
+    float animSpeed = 0.15f;
+    auto equippedWeapon = getEquippedWeapon();
+    if (equippedWeapon && equippedWeapon->attackSpeed > 0.0f)
+    {
+        animSpeed = 0.15f / equippedWeapon->attackSpeed;
+    }
+
+    // 构建攻击帧路径
+    std::string prefix = _attackAnimationPrefix.empty() ? "spr_klee_attack" : _attackAnimationPrefix;
+    int frameCount = (_attackFrameCount > 0) ? _attackFrameCount : 3;
+    std::vector<std::string> paths;
+    paths.reserve(static_cast<size_t>(frameCount));
+
+    for (int i = 1; i <= frameCount; ++i)
+    {
+        std::string path;
+        if (prefix.find('/') != std::string::npos)
+        {
+            path = StringUtils::format("%s_%d.png", prefix.c_str(), i);
+        }
+        else
+        {
+            path = StringUtils::format("Sprites/Characters/Player/Klee/%s_%d.png", prefix.c_str(), i);
+        }
+        paths.push_back(path);
+    }
+
+    auto animation = createAnimationFromPaths(paths, animSpeed);
+    if (!animation)
+    {
+        CCLOG("PlayerCharacter: failed to create attack animation (prefix=%s)", prefix.c_str());
+        if (onFinished)
+            onFinished();
+        return;
+    }
+
+    // 停止当前动作，避免与跑动等动画冲突
+    stopActionByTag(1000);
+    stopAllActions();
+
+    auto animate = Animate::create(animation);
+    auto callbackAction = CallFunc::create([onFinished]()
+                                           {
+                                               if (onFinished)
+                                                   onFinished();
+                                           });
+    auto sequence = Sequence::create(animate, callbackAction, nullptr);
+    sequence->setTag(1000);
+    runAction(sequence);
+}
+
+void PlayerCharacter::attack()
+{
+    attackAnimated(nullptr);
 }
 
 void PlayerCharacter::onUseActiveSkill(const ActiveSkill &skill)

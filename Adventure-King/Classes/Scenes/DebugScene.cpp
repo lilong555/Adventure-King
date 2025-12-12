@@ -1001,8 +1001,9 @@ void DebugScene::onAttackClicked(Ref *sender)
     if (_isAttacking || _isCastingSkill)
         return;
 
-    _player->attack();
-    playAttackAnimation();
+    _isAttacking = true;
+    _player->attackAnimated([this]()
+                            { this->onAttackAnimationFinished(); });
 
     // 显示攻击信息
     float strength = 0.0f;
@@ -1861,91 +1862,6 @@ void DebugScene::addDamageLog(const std::string &log)
 //=============================================================================
 // 第9部分：攻击与技能系统
 //=============================================================================
-
-/**
- * @brief 播放攻击动画
- *
- * 根据当前装备的武器类型播放对应的攻击动画。
- * 攻击速度受武器属性影响。
- * 动画使用 Tag=1000 标识。
- */
-void DebugScene::playAttackAnimation()
-{
-    if (!_player)
-        return;
-
-    // 停止行走动画
-    if (_isWalkAnimationPlaying)
-        stopWalkAnimation();
-
-    _isAttacking = true;
-
-    // 获取武器信息
-    WeaponType currentWeaponType = _player->getCurrentWeaponType();
-    auto equippedWeapon = _player->getEquippedWeapon();
-
-    // 计算动画速度（攻击速度越高越快）
-    float animSpeed = 0.15f;
-    if (equippedWeapon)
-    {
-        animSpeed = 0.15f / equippedWeapon->attackSpeed;
-    }
-
-    // 加载攻击动画纹理
-    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
-    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
-    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 创建动画帧
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(SpriteFrame::createWithTexture(texture1,
-                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture2,
-                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture3,
-                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
-
-        auto animation = Animation::createWithSpriteFrames(frames, animSpeed);
-        auto animate = Animate::create(animation);
-
-        // 停止之前的攻击动画
-        _player->stopActionByTag(1000);
-
-        // 创建动画序列：播放 -> 回调
-        auto callbackAction = CallFunc::create([this]()
-                                               { this->onAttackAnimationFinished(); });
-        auto sequence = Sequence::create(animate, callbackAction, nullptr);
-        sequence->setTag(1000);
-
-        _player->runAction(sequence);
-
-        // 输出攻击类型日志
-        std::string attackTypeStr;
-        switch (currentWeaponType)
-        {
-        case WeaponType::SWORD:
-            attackTypeStr = "挥剑攻击";
-            break;
-        case WeaponType::STAFF:
-            attackTypeStr = "法杖施法";
-            break;
-        case WeaponType::DAGGER:
-            attackTypeStr = "匕首突刺";
-            break;
-        }
-        CCLOG("Attack animation started: %s (speed: %.2f)", attackTypeStr.c_str(), animSpeed);
-    }
-    else
-    {
-        CCLOG("Failed to load attack sprites");
-        _isAttacking = false;
-    }
-}
 
 /**
  * @brief 攻击动画结束回调

@@ -1142,8 +1142,9 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_4:
         if (!_isAttacking && !_isCastingSkill && _player)
         {
-            _player->attack();
-            playAttackAnimation();
+            _isAttacking = true;
+            _player->attackAnimated([this]()
+                                    { this->onAttackAnimationFinished(); });
         }
         break;
 
@@ -1300,71 +1301,6 @@ void GameScene::showMapLoadFailedUI()
 // ============================================================
 // 战斗系统实现
 // ============================================================
-
-/**
- * @brief 播放攻击动画
- */
-void GameScene::playAttackAnimation()
-{
-    if (!_player)
-        return;
-
-    // 停止当前动作（例如跑动动画），避免与攻击动画冲突
-    _player->stopAllActions();
-
-    _isAttacking = true;
-
-    // 获取武器信息
-    auto equippedWeapon = _player->getEquippedWeapon();
-
-    // 计算动画速度（攻击速度越高越快）
-    float animSpeed = 0.15f;
-    if (equippedWeapon)
-    {
-        animSpeed = 0.15f / equippedWeapon->attackSpeed;
-    }
-
-    // 加载攻击动画纹理
-    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
-    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
-    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 创建动画帧
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(SpriteFrame::createWithTexture(texture1,
-                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture2,
-                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture3,
-                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
-
-        auto animation = Animation::createWithSpriteFrames(frames, animSpeed);
-        auto animate = Animate::create(animation);
-
-        // 停止之前的攻击动画
-        _player->stopActionByTag(1000);
-
-        // 创建动画序列：播放 -> 回调
-        auto callbackAction = CallFunc::create([this]()
-                                               { this->onAttackAnimationFinished(); });
-        auto sequence = Sequence::create(animate, callbackAction, nullptr);
-        sequence->setTag(1000);
-
-        _player->runAction(sequence);
-
-        CCLOG("Attack animation started");
-    }
-    else
-    {
-        CCLOG("Failed to load attack sprites");
-        _isAttacking = false;
-    }
-}
 
 /**
  * @brief 攻击动画结束回调
