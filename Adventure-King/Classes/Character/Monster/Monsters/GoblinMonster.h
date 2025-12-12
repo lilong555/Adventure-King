@@ -9,7 +9,7 @@ public:
     GoblinMonster();
     virtual ~GoblinMonster();
 
-    static GoblinMonster* create(const std::string& spriteFrameName = "goblin_idle_01.png");
+    static GoblinMonster* create(const std::string& spriteFrameName = "Sprites/Enemies/Goblin/Goblin_idle.png");
 
     virtual bool init(const std::string& spriteFrameName);
 
