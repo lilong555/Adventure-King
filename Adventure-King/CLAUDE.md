@@ -9,6 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 最新进展
 - GameScene 已接入战斗/技能：炸弹技能绑定默认槽位，设定能量消耗与冷却，行走/攻击/技能动画用不同 Tag，输入包含移动、跳跃、普攻与技能；炸弹带物理体，碰平台即爆炸，详见 `GAMESCENE_COMPLETION_SUMMARY.md` 与 `Classes/Scenes/GameScene.*`。
 - 怪物系统落地：新增 `MonsterBase` 驱动 AI/移动/攻击/受击（持有 Attribute/StateMachine/Skill 组件，依赖外部设置 `_target`），首个敌人 `GoblinMonster`（`Classes/Character/Monster/Monsters`）设置基础生命、防御、力量、暴击和移动速度，较远感知、默认近战攻距，动画名 goblin_idle/walk/attack/hurt/dead，攻击优先技能槽否则普攻。
+- 修复 TMX 多边形/折线碰撞在高分屏下的缩放偏差：parseTMXObjectVertices 解析 points/polylinePoints 时按 CC_CONTENT_SCALE_FACTOR() 做同样缩放，保证碰撞与地图一致。
+- 动画体系统一：人物走路/攻击/技能动画已迁移到 PlayerCharacter（setMoving/attackAnimated/castSkillAnimated），GameScene 与 DebugScene 仅负责输入/状态与回调。
+- 代码行尾标准化：仓库源码/资源统一使用 LF（.bat/.cmd 例外为 CRLF），通过 .gitattributes/.editorconfig 固定提交行尾，避免 CRLF 抖动。
 
 ## 构建与运行
 
@@ -213,3 +216,10 @@ this->addChild(saveMenu);
 ### 怪物框架与哥布林落地
 - 新增组件化怪物基类 `MonsterBase`：AI/移动/攻击分离，默认攻击走技能槽，`takeDamage` 会切换 HURT/DEAD 并可延迟移除，需外部设置 `_target`。
 - 首个敌人 `GoblinMonster`：配置基础属性与感知/攻距；注册动画 goblin_idle/walk/attack/hurt/dead；攻击优先用技能槽，否则对目标造成基础伤害。
+
+
+### TMX 碰撞缩放修复
+- parseTMXObjectVertices 解析 points/polylinePoints 时按 CC_CONTENT_SCALE_FACTOR() 缩放，解决高分屏多边形/折线碰撞偏移问题。
+
+### 动画逻辑迁移
+- 行走/攻击/技能动画迁移到 PlayerCharacter；Scene 侧调用 setMoving/attackAnimated/castSkillAnimated，避免手写动作逻辑。

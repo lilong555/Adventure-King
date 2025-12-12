@@ -20,8 +20,10 @@
 
 ## Coding Style & Naming Conventions
 - Follow `Adventure-King/.editorconfig`: 4-space indents in `.cpp/.h`, spaces not tabs.
+- Line endings: repository enforces LF for code/docs/assets; keep editors set to LF. Only `.bat`/`.cmd` scripts use CRLF.
 - Classes and files use `PascalCase` (`PlayerCharacter.h/.cpp`); methods/vars use `camelCase`; private members use leading `_`.
 - Keep new logic inside `Adventure-King/Classes/` and reuse existing components (Attribute/StateMachine/Skill) where possible.
+- Player animations are managed by `PlayerCharacter`; scenes should call `setMoving`, `attackAnimated`, and `castSkillAnimated` instead of running actions directly.
 
 ## Testing Guidelines
 - No dedicated unit test suite. Validate changes by building and playtesting relevant scenes.
