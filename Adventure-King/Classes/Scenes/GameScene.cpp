@@ -776,11 +776,13 @@ bool GameScene::parseTMXObjectVertices(const ValueMap &dict, double objectX, dou
     }
 
     // 转换顶点坐标
+    const double scaleFactor = Director::getInstance()->getContentScaleFactor();
     for (const auto &pt : points)
     {
         auto ptDict = pt.asValueMap();
-        const double px = ptDict["x"].asDouble();
-        const double py = ptDict["y"].asDouble();
+        // TMX 解析器对 polygon/polyline points 不会做像素->点缩放，这里需要补上
+        double px = ptDict["x"].asDouble() / scaleFactor;
+        double py = ptDict["y"].asDouble() / scaleFactor;
 
         // 转换到 Cocos2d 坐标系 (相对于 _tileMap)
         // X 轴方向一致：直接相加
