@@ -1325,64 +1325,6 @@ void GameScene::onAttackAnimationFinished()
 /**
  * @brief 播放技能施放动画
  */
-void GameScene::playSkillAnimation()
-{
-    if (!_player)
-        return;
-
-    // 停止当前动作，避免与技能动画冲突
-    _player->stopAllActions();
-
-    _isCastingSkill = true;
-
-    // 加载3张攻击图片（技能动画暂时使用攻击动画）
-    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
-    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
-    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 创建精灵帧
-        auto frame1 = SpriteFrame::createWithTexture(texture1,
-                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
-        auto frame2 = SpriteFrame::createWithTexture(texture2,
-                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
-        auto frame3 = SpriteFrame::createWithTexture(texture3,
-                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
-
-        // 创建动画帧序列
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(frame1);
-        frames.pushBack(frame2);
-        frames.pushBack(frame3);
-
-        // 每帧0.13秒
-        auto animation = Animation::createWithSpriteFrames(frames, 0.13f);
-        auto animate = Animate::create(animation);
-
-        // 停止之前的技能动画
-        _player->stopActionByTag(1001);
-
-        // 创建动画序列：播放动画 -> 回调结束
-        auto callbackAction = CallFunc::create([this]()
-                                               { this->onSkillAnimationFinished(); });
-        auto sequence = Sequence::create(animate, callbackAction, nullptr);
-        sequence->setTag(1001);
-
-        _player->runAction(sequence);
-
-        CCLOG("Skill animation started");
-    }
-    else
-    {
-        CCLOG("Failed to load skill sprites");
-        _isCastingSkill = false;
-    }
-}
-
 /**
  * @brief 技能动画播放完成回调
  */
@@ -1432,7 +1374,9 @@ void GameScene::throwBomb()
     }
 
     // 技能释放成功，播放技能动画
-    playSkillAnimation();
+    _isCastingSkill = true;
+    _player->castSkillAnimated([this]()
+                               { this->onSkillAnimationFinished(); });
     CCLOG("Skill started: Throw Bomb");
 }
 

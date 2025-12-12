@@ -379,11 +379,6 @@ protected:
     // ===================================================================
 
     /**
-     * @brief 播放技能施放动画
-     */
-    virtual void playSkillAnimation();
-
-    /**
      * @brief 技能动画结束回调
      */
     virtual void onSkillAnimationFinished();

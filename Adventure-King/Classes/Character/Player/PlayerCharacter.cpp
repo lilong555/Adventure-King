@@ -424,6 +424,47 @@ void PlayerCharacter::attackAnimated(const std::function<void()> &onFinished)
     runAction(sequence);
 }
 
+void PlayerCharacter::castSkillAnimated(const std::function<void()> &onFinished)
+{
+    if (isDead())
+        return;
+
+    // 切换至 ATTACKING 状态（技能施放暂复用攻击状态）
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::ATTACKING);
+    }
+
+    std::vector<std::string> paths = {
+        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png",
+        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png",
+        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png",
+    };
+
+    auto animation = createAnimationFromPaths(paths, 0.13f);
+    if (!animation)
+    {
+        CCLOG("PlayerCharacter: failed to create skill cast animation");
+        if (onFinished)
+            onFinished();
+        return;
+    }
+
+    // 停止当前动作，避免与跑动/攻击动画冲突
+    stopActionByTag(1001);
+    stopAllActions();
+
+    auto animate = Animate::create(animation);
+    auto callbackAction = CallFunc::create([onFinished]()
+                                           {
+                                               if (onFinished)
+                                                   onFinished();
+                                           });
+    auto sequence = Sequence::create(animate, callbackAction, nullptr);
+    sequence->setTag(1001);
+    runAction(sequence);
+}
+
 void PlayerCharacter::attack()
 {
     attackAnimated(nullptr);
