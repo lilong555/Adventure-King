@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="win32">
-      <UniqueIdentifier>{84a8ebd7-7cf0-47f6-b75e-d441df67da40}</UniqueIdentifier>
-    </Filter>
     <Filter Include="resource">
       <UniqueIdentifier>{715254bc-d70b-4ec5-bf29-467dd3ace079}</UniqueIdentifier>
     </Filter>
@@ -37,8 +34,11 @@
     <Filter Include="src\Character\Monster\Monsters">
       <UniqueIdentifier>{847e8903-7169-4413-8bc2-e8babac76bf4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Character\Monster\Ai">
-      <UniqueIdentifier>{b6fdf8c8-a16f-4867-a54f-c47a109f9a0b}</UniqueIdentifier>
+    <Filter Include="win32">
+      <UniqueIdentifier>{84a8ebd7-7cf0-47f6-b75e-d441df67da40}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Physics">
+      <UniqueIdentifier>{172affa1-574d-45bd-b359-f8e6fd525685}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -99,6 +99,10 @@
     <ClCompile Include="..\Classes\GameUI.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
+    <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
+    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
+    <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -160,6 +164,13 @@
     </ClInclude>
     <ClInclude Include="..\Classes\GameUI.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
+    <ClInclude Include="..\Classes\UI\SkillBar.h" />
+    <ClInclude Include="..\Classes\UI\BossHealthBar.h" />
+    <ClInclude Include="..\Classes\UI\PauseMenu.h" />
+    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
+      <Filter>src\Physics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
