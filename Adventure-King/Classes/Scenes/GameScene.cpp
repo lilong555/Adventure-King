@@ -1084,15 +1084,15 @@ bool GameScene::onContactBegin(cocos2d::PhysicsContact& contact)
     }
 
     // 炸弹命中非玩家目标时触发爆炸（平台/碰撞体/敌人等）
-    bool bombIsA = (categoryA & GamePhysicsCategory::BOMB);
-    bool bombIsB = (categoryB & GamePhysicsCategory::BOMB);
+    bool bombIsA = (maskA & static_cast<int>(GamePhysicsCategory::BOMB)) != 0;
+    bool bombIsB = (maskB & static_cast<int>(GamePhysicsCategory::BOMB)) != 0;
 
     if (bombIsA || bombIsB)
     {
         Node *bombNode = bombIsA ? nodeA : nodeB;
-        int otherCategory = bombIsA ? categoryB : categoryA;
-        bool hitPlayer = (otherCategory & static_cast<int>(GamePhysicsCategory::PLAYER));
-        bool hitBomb = (otherCategory & static_cast<int>(GamePhysicsCategory::BOMB));
+        int otherMask = bombIsA ? maskB : maskA;
+        bool hitPlayer = (otherMask & static_cast<int>(GamePhysicsCategory::PLAYER)) != 0;
+        bool hitBomb = (otherMask & static_cast<int>(GamePhysicsCategory::BOMB)) != 0;
 
         if (!hitPlayer && !hitBomb)
         {

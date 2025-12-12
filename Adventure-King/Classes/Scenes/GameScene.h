@@ -58,6 +58,15 @@ struct PlayerConfig
     float collisionBoxHeightRatio = 0.9f; ///< 碰撞盒高度比例
 };
 
+/**
+ * @brief 炸弹对象（用于场景内管理）
+ */
+struct GameBomb
+{
+    bool isExploded = false;           ///< 是否已爆炸
+    cocos2d::Sprite *sprite = nullptr; ///< 炸弹精灵
+};
+
 // ============================================================
 // GameScene 基类
 // ============================================================

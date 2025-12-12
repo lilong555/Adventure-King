@@ -29,7 +29,7 @@ enum class GamePhysicsCategory : int
     COLLISION = 1 << 8,       // 通用碰撞阻挡
     SENSOR = 1 << 9,       // 传感器（只检测不碰撞）
 
-    ALL = 0xFFFFFFFF    // 所有类别
+    ALL = -1    // 所有类别
 };
 
 // ============================================================
