@@ -34,9 +34,6 @@
     <Filter Include="src\Character\Monster\Monsters">
       <UniqueIdentifier>{847e8903-7169-4413-8bc2-e8babac76bf4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Character\Monster\Ai">
-      <UniqueIdentifier>{b6fdf8c8-a16f-4867-a54f-c47a109f9a0b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="win32">
       <UniqueIdentifier>{84a8ebd7-7cf0-47f6-b75e-d441df67da40}</UniqueIdentifier>
     </Filter>

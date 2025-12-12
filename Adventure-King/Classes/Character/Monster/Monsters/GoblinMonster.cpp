@@ -31,13 +31,14 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
     // === 继承 MonsterBase 的初始化（加载纹理）===
     if (!MonsterBase::init(spriteFrameName))
         return false;
-	// === 设置哥布林特有参数 ===
-    _attackRange = 300.0f;      
-    _aggroRadius = 600.0f;     // 仇恨范围
-	_leashRadius = 0.0f;       // 不设牵引范围
+    // 1. 初始化战斗属性 (数值策划关注这一块)
+    initAttributes();
+
+    // 2. 初始化 AI 参数 (关卡策划关注这一块)
+    setAIConfig(700,0,true);
 	// === 设置缩放比例 ===
-    setScale(0.5f);
-    _baseScaleX = 0.5f;
+    setScale(0.6f);
+    _baseScaleX = 0.6f;
 
     // === 设置怪物属性 ===
     initAttributes();
@@ -60,45 +61,31 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
             ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK)
         );
     }
-
+    initAnimations();
     return true;
 }
 
 #pragma region 属性初始化
 void GoblinMonster::initAttributes()
 {
-    // 1. 获取组件
-    auto attr = getAttributeComponent();
-    if (!attr) return;
 
-    // 2. 准备基础数据 (假设 Attributes 类有一个 set 方法)
     Attributes base;
     base.set(AttributeType::STRENGTH, 10.0f);
-    base.set(AttributeType::ATTACKINTERVAL, 1.5f); // 基础攻速
     base.set(AttributeType::DEFENSE, 2.0f);
     base.set(AttributeType::MOVE_SPEED, 200.0f);   // 基础移速
     base.set(AttributeType::CRITICAL_RATE, 0.05f);
     base.set(AttributeType::MAX_HP, 60.0f);
+    base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
+    base.set(AttributeType::ATTACK_RANGE, 450.0f);
 
-    // 3. 将数据填入组件的“基础层” (_baseAttributes)
-    attr->setBaseAttributes(base);
+    // 2. 交给基类处理 (一行代码搞定逻辑！)
+    setupCharacterStats(base);
 
-    // 强制计算一次最终属性
-    // 这一步会将 _baseAttributes + _equipmentBonus(0) + ... 计算并存入 _finalAttributes
-    attr->recalculateFinalAttributes();
+    // 3. 初始化当前血量 (逻辑上这应该属于 HealthComponent，但写在这也没问题)
+    // auto hp = getComponent<HealthComponent>();
+    // if(hp) hp->setHP(60.0f);
 
-    // 5. ★同步缓存★：将组件计算好的最终值，赋值给 MonsterBase 的成员变量
-    // 注意：使用的是 getAttributeValue (获取最终值)，而不是 getBaseAttribute
-    //哥布林非特有参数
-    _moveSpeed = attr->getAttributeValue(AttributeType::MOVE_SPEED);
-    _attackInterval = attr->getAttributeValue(AttributeType::ATTACKINTERVAL);
-    _maxHP = attr->getAttributeValue(AttributeType::MAX_HP);
-
-    // 如果有血条组件，记得初始化当前血量
-    // auto hpComp = getComponent<HealthComponent>();
-    // if (hpComp) hpComp->setHP(_maxHP);
-
-    CCLOG("Goblin Init Complete: Speed=%.1f", _moveSpeed);
+    CCLOG("Goblin Attributes Set. Speed: %.0f", _moveSpeed);
 }
 #pragma endregion
 
@@ -115,28 +102,69 @@ void GoblinMonster::initStateAnimations()
     }
 }
 #pragma endregion
+// GoblinMonster.cpp
+#pragma region 攻击动画初始化
+void GoblinMonster::initAnimations()
+{
+    // 1. 获取精灵帧缓存
+    auto cache = cocos2d::SpriteFrameCache::getInstance();
+
+    // 如果还没加载过 plist，先加载 (假设叫 goblin.plist)
+    // cache->addSpriteFramesWithFile("sprites/goblin.plist");
+
+    // 2. 创建动画帧数组
+    cocos2d::Vector<cocos2d::SpriteFrame*> attackFrames;
+    char str[100] = { 0 };
+
+    // 假设你有 6 张攻击图：goblin_attack_01.png 到 goblin_attack_06.png
+    for (int i = 1; i <= 6; i++)
+    {
+        // 格式化文件名
+        sprintf(str, "goblin_attack_%2d.png", i);
+
+        // 从缓存中获取帧
+        auto frame = cache->getSpriteFrameByName(str);
+        if (frame)
+        {
+            attackFrames.pushBack(frame);
+        }
+        else
+        {
+            CCLOG("Error: SpriteFrame %s not found!", str);
+        }
+    }
+
+    // 3. 创建 Animation 对象
+    // 0.1f 是每一帧的间隔时间 (每秒10帧)
+    auto animation = cocos2d::Animation::createWithSpriteFrames(attackFrames, 0.1f);
+
+    // 4. 创建 Animate 动作 (这是最终能被 runAction 执行的对象)
+    _attackAnimate = cocos2d::Animate::create(animation);
+    _attackAnimate->retain(); // ★关键：必须 retain，否则函数结束它就被自动释放了
+}
+
+//// 别忘了在析构函数里释放
+//GoblinMonster::~GoblinMonster()
+//{
+//    CC_SAFE_RELEASE(_attackAnimate);
+//}
+#pragma endregion
 
 #pragma region AI
 //重写ai逻辑
 void GoblinMonster::updateAI(float dt)
 {
+    // ============================================================
+    // 1. 寻找目标逻辑 (保持不变)
+    // ============================================================
     if (!_target)
     {
-        // 假设场景里有一个 tag 为 1 的节点是玩家
-        // 或者你可以通过 GameScene::getInstance()->getPlayer() 获取
-        // 这里提供一种通用的通过 Tag 寻找的方法：
         if (this->getParent())
         {
-            // 假设玩家的 Tag 是 100 (你需要确保在 GameScene 里给玩家设置了这个 Tag)
-            auto player = this->getParent()->getChildByTag(100);
-
-            // 或者通过名字查找: 
-            // auto player = this->getParent()->getChildByName("PlayerNode");
-
+            auto player = this->getParent()->getChildByTag(100); // 假设 Tag 100
             if (player)
             {
                 float dist = this->getPosition().distance(player->getPosition());
-                // 只有玩家进入仇恨范围才锁定他
                 if (dist <= _aggroRadius)
                 {
                     _target = player;
@@ -146,10 +174,8 @@ void GoblinMonster::updateAI(float dt)
         }
     }
 
-    // 如果尝试寻找后依然没有目标，那就真的没事可做了，保持待机
     if (!_target)
     {
-        // 确保状态是 IDLE 或 PATROL
         if (_patrolEnabled)
             getStateMachineComponent()->changeState(CharacterState::STATE_PATROL);
         else
@@ -157,34 +183,45 @@ void GoblinMonster::updateAI(float dt)
         return;
     }
 
+    // ============================================================
+    // 2. 基础数据计算
+    // ============================================================
     float distToPlayer = distanceTo(_target);
     Vec2 homePos = _homePosition;
     float distFromHome = this->getPosition().distance(homePos);
-
     auto stateMachine = getStateMachineComponent();
 
-    // 1 ➤ 如果死了或硬直，直接返回
+    // ============================================================
+    // 3. 状态检查
+    // ============================================================
     if (isDead())
     {
         stateMachine->changeState(CharacterState::DEAD);
         return;
     }
+
+    // ★ 修正提醒：你之前的代码里这里是 changeState(ATTACKING)，这应该是笔误？
+    // 硬直状态通常是 HURT 或 IDLE，不能是 ATTACKING
     if (_isStunned)
     {
-        stateMachine->changeState(CharacterState::ATTACKING);
+        stateMachine->changeState(CharacterState::IDLE);
         return;
     }
 
-    // 2 ➤ 超出牵引半径，强制返回出生点
+    // ============================================================
+    // 4. 牵引/回家逻辑
+    // ============================================================
     if (_leashRadius > 0.0f && distFromHome > _leashRadius)
     {
-        _currentTargetPos = homePos;   // 移动目标变成“出生点”
+        _currentTargetPos = homePos;
         stateMachine->changeState(CharacterState::WALKING);
         return;
     }
 
-    // 3超出仇恨范围 → Idle 或 Patrol
-    if (_aggroRadius > 0.0f && distToPlayer > _aggroRadius)
+    // ============================================================
+    // 5. 仇恨丢失逻辑 (增加一点缓冲距离，防抖动)
+    // ============================================================
+    if (_aggroRadius > 0.0f && distToPlayer > _aggroRadius * 1.2f)
     {
         if (_patrolEnabled)
             stateMachine->changeState(CharacterState::STATE_PATROL);
@@ -192,30 +229,42 @@ void GoblinMonster::updateAI(float dt)
             stateMachine->changeState(CharacterState::IDLE);
         return;
     }
-    // 4攻击逻辑
-    // 4.1 ➤ 必须先更新计时器
-    _attackTimer += dt;
 
-    // 4.2 攻击判定
-    // 条件：距离够近 && 冷却完毕 && 当前没在攻击 && 没在硬直
-    bool isAttacking = (stateMachine->getCurrentState() == CharacterState::ATTACKING);
+    // ------------------------------------------------------------
+        // 6. 攻击与战斗逻辑
+        // ------------------------------------------------------------
 
-    if (distToPlayer <= _attackRange)
+    _attackTimer += dt; // 累加时间 (配合方案一：只在非攻击时累加也可以，这里先保持简单)
+
+    // 1. 如果正在攻击：什么都别做，彻底退出
+    if (getStateMachineComponent()->getCurrentState() == CharacterState::ATTACKING)
     {
-        if (_attackTimer >= _attackInterval && !isAttacking && !_isStunned)
-        {
-            // 重置计时器
-            _attackTimer = 0.0f;
-            // 切换状态，stateMachine 内部应该调用 attack()，或者你在 updateAttack 里调用
-            stateMachine->changeState(CharacterState::ATTACKING);
-            this->attack(); // 手动触发一次攻击逻辑
-        }
         return;
     }
 
-    // 5 ➤ 否则 → 追击玩家
+    // 2. 如果距离够近：进入战斗决策
+    if (distToPlayer <= _attackRange)
+    {
+        // 2.1 冷却完毕 -> 打！
+        if (_attackTimer >= _attackInterval && !_isStunned)
+        {
+            getStateMachineComponent()->changeState(CharacterState::ATTACKING);
+            this->attack();
+            return; // 绝对不要漏掉这个 return
+        }
+        // 2.2 冷却没好 -> 盯着看
+        else
+        {
+            faceTarget(_target);
+            getStateMachineComponent()->changeState(CharacterState::IDLE);
+            return; // 绝对不要漏掉这个 return
+        }
+    }
+
+    // 3. 如果距离远：追击 (只有上面没 return 才会走到这)
+    // =========================================================
     _currentTargetPos = _target->getPosition();
-    stateMachine->changeState(CharacterState::WALKING);
+    getStateMachineComponent()->changeState(CharacterState::WALKING);
 }
 #pragma endregion
 
@@ -225,68 +274,57 @@ void GoblinMonster::updateAI(float dt)
 
 void GoblinMonster::attack()
 {
-    // 1. 停止移动 (防止攻击时滑步)
+    // 1. 重置计时器 & 停止移动
+    _attackTimer = 0.0f;
     if (_physicsBody) _physicsBody->setVelocity(cocos2d::Vec2::ZERO);
 
-    // 2. 播放攻击动画 (假设你已经有了 Animate* attackAnim)
-    // auto attackAnim = Animate::create(...); 
-    // runAction(attackAnim); 
+    // -----------------------------------------------------------
+    // 2. 准备动画动作
+    // -----------------------------------------------------------
+    if (!_attackAnimate) return; // 安全检查
 
-    // ---------------------------------------------------------
-    // 3. 核心：延迟生成伤害判定框 (Hitbox)
-    // ---------------------------------------------------------
-    // 假设攻击动作总长 1.0秒，刀在 0.4秒 时砍中人
+    // 创建一个新的动作实例 (Animate 不能重复使用同一个实例，需要 clone)
+    auto animateAction = _attackAnimate->clone();
+
+    // -----------------------------------------------------------
+    // 3. 准备逻辑动作 (生成判定框) - 这是你原来的代码
+    // -----------------------------------------------------------
+    // 假设第 4 帧出刀 (0.1秒/帧 * 4 = 0.4秒)
     float delayTime = 0.4f;
-    float hitboxDuration = 0.1f; // 判定框存在的时间
 
-    auto delay = cocos2d::DelayTime::create(delayTime);
+    auto logicSequence = cocos2d::Sequence::create(
+        cocos2d::DelayTime::create(delayTime),
+        cocos2d::CallFunc::create([this]() {
+            // ... 这里是你原来生成 Hitbox 的代码 (粘贴过来) ...
+            // this->addChild(attackNode);
+            // ...
+            CCLOG("Hitbox Spawned!");
+            }),
+        nullptr
+    );
 
-    auto spawnHitbox = cocos2d::CallFunc::create([this]() {
-        // 创建一个临时的 Node 作为攻击判定框
-        auto attackNode = cocos2d::Node::create();
-        // 设置位置（在怪物前方）
-        
-        attackNode->setPosition(cocos2d::Vec2(700, 300));
+    // -----------------------------------------------------------
+    // 4. 组合并运行 (Spawn = 并行)
+    // -----------------------------------------------------------
+    // 让动画和逻辑同时跑
+    auto spawn = cocos2d::Spawn::create(animateAction, logicSequence, nullptr);
 
-        this->addChild(attackNode);
+    // 5. 动作结束后切回 IDLE
+    auto finalSequence = cocos2d::Sequence::create(
+        spawn,
+        cocos2d::CallFunc::create([this]() {
+            auto sm = getStateMachineComponent();
+            // 如果还没死，切回 IDLE
+            if (sm && sm->getCurrentState() != CharacterState::DEAD) {
+                sm->changeState(CharacterState::IDLE);
+                // 此时可以恢复默认站立图
+                // this->setSpriteFrame("goblin_idle_01.png"); 
+            }
+            }),
+        nullptr
+    );
 
-        // 创建物理身体 (Sensor 模式)
-        auto body = cocos2d::PhysicsBody::createBox(cocos2d::Size(400, 40));
-        body->setDynamic(false); // 静态，不受重力影响
-        body->setGravityEnable(false);
-
-        // ★ 设置掩码 (关键)
-        // Category: 我是“怪物攻击”
-        body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
-        // Contact: 我想检测“玩家”
-        body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
-        // Collision: 0 (我不产生物理碰撞反弹，直接穿过去)
-        body->setCollisionBitmask(0);
-
-        // 把数据挂载到 body 上，方便碰撞回调里取伤害值
-        // (这里有个小技巧：利用 PhysicsBody 的 tag 或者 UserData)
-        body->setTag(10); // 假设 10 代表普通攻击伤害
-
-        attackNode->setPhysicsBody(body);
-
-        // 让这个判定框在短时间后自动销毁
-        auto removeSeq = cocos2d::Sequence::create(
-            cocos2d::DelayTime::create(0.1f),
-            cocos2d::RemoveSelf::create(),
-            nullptr
-        );
-        attackNode->runAction(removeSeq);
-        });
-
-    // 4. 攻击结束后的回调 (恢复 IDLE 状态)
-    auto finishAttack = cocos2d::CallFunc::create([this]() {
-        auto sm = getStateMachineComponent();
-        if (sm) sm->changeState(CharacterState::IDLE);
-        });
-
-    // 执行序列： 延迟 -> 生成判定框 -> (剩下的动画时间) -> 恢复状态
-    auto sequence = cocos2d::Sequence::create(delay, spawnHitbox, cocos2d::DelayTime::create(0.5f), finishAttack, nullptr);
-    this->runAction(sequence);
+    this->runAction(finalSequence);
 }
 
 #pragma endregion

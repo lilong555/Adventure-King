@@ -28,7 +28,7 @@ enum class CharacterState : uint8_t
     CLIMBING,       // 爬墙
     HURT,           // 受伤
     DEAD,           // 死亡
-    STATE_PATROL    //巡逻
+    STATE_PATROL    // 巡逻
 };
 
 // 基础属性类型
@@ -40,7 +40,11 @@ enum class AttributeType : uint8_t
     CRITICAL_RATE, // 暴击率
     MOVE_SPEED,    // 移动速度
     MAX_HP,        // 最大生命值
-    MAX_MP         // 最大能量值
+    MAX_MP,        // 最大能量值
+
+    //敌人特有属性
+    ATTACK_INTERVAL, // 攻击间隔
+    ATTACK_RANGE,    // 发动攻击的距离
 };
 
 // 武器类型

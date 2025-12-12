@@ -23,4 +23,6 @@ public:
 protected:
     void initAttributes();            // 初始化属性
     void initStateAnimations();       // 初始化状态机动画
+    void initAnimations();
+    cocos2d::Animate* _attackAnimate = nullptr;
 };

@@ -24,15 +24,18 @@ public:
 
     // 死亡重写
     virtual void die() override;
-
+    void initAttributes();
     void setTarget(cocos2d::Node* target);
     void setHome(const cocos2d::Vec2& pos);
     void setAggroRadius(float r);
     void setLeashRadius(float r);
     void enablePatrol(const cocos2d::Vec2& left, const cocos2d::Vec2& right);
     bool hasAggro() const;
-
+	void setAIConfig(float AR, float LR, bool PTL);//设置索敌、追击、巡逻
 protected:
+
+    void setupCharacterStats(const Attributes& stats);
+    void refreshCacheAttributes();
     // AI 行为
     virtual void updateAI(float dt);
     virtual void updateMovement(float dt);

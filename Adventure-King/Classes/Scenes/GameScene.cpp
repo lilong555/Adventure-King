@@ -46,7 +46,13 @@ bool GameScene::init()
     {
         return false;
     }
-
+    auto world = this->getPhysicsWorld();
+    if (world) {
+        // 强制开启调试绘制，0xFFFF 表示绘制所有细节
+        world->setDebugDrawMask(cocos2d::PhysicsWorld::DEBUGDRAW_ALL);
+        // 降低一点步长，提高精度
+        world->setSubsteps(4);
+    }
     // 基类不初始化 UI，由子类调用 initGameUI()
     return true;
 }
@@ -667,14 +673,19 @@ void GameScene::createPolygonCollisionBody(const std::vector<cocos2d::Vec2>& ver
 }
 
 
-void GameScene::createRectCollisionBody(const cocos2d::Rect& rect,
-    const std::string& name)
+void GameScene::createRectCollisionBody(const cocos2d::Rect& rect, const std::string& name)
 {
     auto node = Node::create();
+    // 坐标计算是完美的，保持不变
     node->setPosition(rect.origin + Vec2(rect.size.width / 2, rect.size.height / 2));
 
-    auto body = PhysicsBody::createBox(rect.size, PhysicsMaterial(0.0f, 0.0f, 1.0f));
+    // 核心修改：把摩擦力从 1.0 改成 0.0
+    // 参数：密度(0), 弹性(0), 摩擦(0)
+    auto material = PhysicsMaterial(0.0f, 0.0f, 0.0f);
+
+    auto body = PhysicsBody::createBox(rect.size, material);
     body->setDynamic(false);
+    // 静态物体本身就不会动，但这句也没坏处
     body->setRotationEnable(false);
 
     body->setCategoryBitmask(ToMask(GamePhysicsCategory::PLATFORM));
@@ -1183,10 +1194,9 @@ bool OriginMushroomScene::init()
     if (goblin)
     {
         cocos2d::Vec2 p = getPlayerSpawnPoint();
+
         goblin->setPosition(p + cocos2d::Vec2(300.0f, 0.0f));
         goblin->setHome(goblin->getPosition());
-        goblin->setAggroRadius(220.0f);
-        goblin->setLeashRadius(300.0f);
         if (_player)
         {
             goblin->setTarget(_player);
