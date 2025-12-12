@@ -81,5 +81,4 @@ protected:
     float _currentMP = 0.0f;        // 当前能量值
     float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断）
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
-	float _baseScaleX = 1.0f;	    // 基础水平缩放（用于翻转角色方向）
 };

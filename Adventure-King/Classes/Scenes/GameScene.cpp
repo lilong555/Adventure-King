@@ -9,9 +9,7 @@
 #include "MapScene.h"
 #include "HelloWorldScene.h"
 #include "Character/Player/PlayerCharacter.h"
-#include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/components/SkillComponent.h"
-
 #include "GameUI.h"
 #include "UI/PauseMenu.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
@@ -40,6 +38,11 @@ namespace
     const char *const GATE_INTERACTION_HINT = "Press W to enter gate";
     const char *const MAP_LOAD_FAILED_TEXT = " - Map Load Failed";
 
+    // 辅助函数：获取物理类别位掩码
+    inline int getCategoryBitmask(GamePhysicsCategory category)
+    {
+        return static_cast<int>(category);
+    }
 }
 
 // ============================================================
@@ -52,13 +55,7 @@ bool GameScene::init()
     {
         return false;
     }
-    auto world = this->getPhysicsWorld();
-    if (world) {
-        // 强制开启调试绘制，0xFFFF 表示绘制所有细节
-        world->setDebugDrawMask(cocos2d::PhysicsWorld::DEBUGDRAW_ALL);
-        // 降低一点步长，提高精度
-        world->setSubsteps(4);
-    }
+
     // 基类不初始化 UI，由子类调用 initGameUI()
     return true;
 }
@@ -346,9 +343,9 @@ void GameScene::initPlayer(const Vec2 &startPos)
     physicsBody->setLinearDamping(0.0f);
 
     // 配置碰撞掩码
-    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
-    physicsBody->setCollisionBitmask(ToMask((GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION)));
-    physicsBody->setContactTestBitmask(ToMask((GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION)));
+    physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
 
     // 添加物理体到精灵
     playerSprite->addComponent(physicsBody);
@@ -426,9 +423,9 @@ void GameScene::initPhysicsContactListener()
         int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
         // 玩家与碰撞体碰撞时，禁用弹性和摩擦
-        bool playerInvolved = (categoryA & static_cast<int>(GamePhysicsCategory::PLAYER)) || (categoryB & static_cast<int>(GamePhysicsCategory::PLAYER));
-        bool platformInvolved = (categoryA & static_cast<int>(GamePhysicsCategory::PLATFORM)) || (categoryB & static_cast<int>(GamePhysicsCategory::PLATFORM)) ||
-                                (categoryA & static_cast<int>(GamePhysicsCategory::COLLISION)) || (categoryB & static_cast<int>(GamePhysicsCategory::COLLISION));
+        bool playerInvolved = (categoryA & GamePhysicsCategory::PLAYER) || (categoryB & GamePhysicsCategory::PLAYER);
+        bool platformInvolved = (categoryA & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::PLATFORM) ||
+                                (categoryA & GamePhysicsCategory::COLLISION) || (categoryB & GamePhysicsCategory::COLLISION);
 
         if (playerInvolved && platformInvolved)
         {
@@ -801,54 +798,75 @@ bool GameScene::parseTMXObjectVertices(const ValueMap &dict, double objectX, dou
     return isPolygon;
 }
 
-void GameScene::createPolygonCollisionBody(const std::vector<cocos2d::Vec2>& vertices,
-    const std::string& name,
-    bool isPolygon)
+void GameScene::createPolygonCollisionBody(const std::vector<Vec2> &vertices,
+                                           const std::string &name, bool isPolygon)
 {
-    if (vertices.empty())
+    if (vertices.size() < 2)
+    {
+        CCLOG("Warning: Not enough vertices for collision body '%s'", name.c_str());
         return;
+    }
 
-    auto node = Node::create();
+    // 创建碰撞节点，直接添加到 _tileMap
+    auto collisionNode = Node::create();
+    collisionNode->setPosition(Vec2::ZERO);
 
-    auto body = isPolygon ?
-        PhysicsBody::createPolygon(vertices.data(), vertices.size(), PhysicsMaterial(0.0f, 0.0f, 1.0f)) :
-        PhysicsBody::createEdgeChain(vertices.data(), vertices.size(), PhysicsMaterial(0.0f, 0.0f, 1.0f));
+#if COCOS2D_DEBUG > 0
+    // 添加调试绘制
+    auto drawNode = DrawNode::create();
+    drawNode->setPosition(Vec2::ZERO);
+    drawNode->drawPoly(vertices.data(), static_cast<unsigned int>(vertices.size()),
+                       true, Color4F(0, 1, 0, 0.5f));
+    collisionNode->addChild(drawNode, COLLISION_DEBUG_Z_ORDER);
+#endif
 
-    body->setDynamic(false);
-    body->setRotationEnable(false);
+    // 使用 EdgeChain 创建静态边缘碰撞体
+    auto physicsBody = PhysicsBody::createEdgeChain(vertices.data(),
+                                                    static_cast<int>(vertices.size()),
+                                                    COLLISION_PHYSICS_MATERIAL);
 
-    body->setCategoryBitmask(ToMask(GamePhysicsCategory::PLATFORM));
-    body->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER));
-    body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER));
+    if (physicsBody)
+    {
+        physicsBody->setDynamic(false);
+        physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
+        physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+        physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
 
-    node->addComponent(body);
-    _gameLayer->addChild(node);
+        collisionNode->addComponent(physicsBody);
+        _tileMap->addChild(collisionNode, 1);
+
+        CCLOG("  Created %s collision: name='%s', %zu vertices",
+              isPolygon ? "polygon" : "polyline", name.c_str(), vertices.size());
+    }
+    else
+    {
+        CCLOG("  Error: Failed to create collision body for '%s'", name.c_str());
+    }
 }
 
-
-void GameScene::createRectCollisionBody(const cocos2d::Rect& rect, const std::string& name)
+void GameScene::createRectCollisionBody(const Rect &rect, const std::string &name)
 {
-    auto node = Node::create();
-    // 坐标计算是完美的，保持不变
-    node->setPosition(rect.origin + Vec2(rect.size.width / 2, rect.size.height / 2));
+    // cocos2d-x 解析器已经将坐标转换为 cocos2d 坐标系
+    // x, y 是矩形左下角的坐标
+    double rectCenterX = rect.origin.x + rect.size.width / 2;
+    double rectCenterY = rect.origin.y + rect.size.height / 2;
 
-    // 核心修改：把摩擦力从 1.0 改成 0.0
-    // 参数：密度(0), 弹性(0), 摩擦(0)
-    auto material = PhysicsMaterial(0.0f, 0.0f, 0.0f);
+    auto collisionNode = Node::create();
+    collisionNode->setPosition(Vec2(rectCenterX, rectCenterY) + _tileMap->getPosition());
 
-    auto body = PhysicsBody::createBox(rect.size, material);
-    body->setDynamic(false);
-    // 静态物体本身就不会动，但这句也没坏处
-    body->setRotationEnable(false);
+    auto physicsBody = PhysicsBody::createBox(rect.size, COLLISION_PHYSICS_MATERIAL);
+    physicsBody->setDynamic(false);
+    physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
+    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
 
-    body->setCategoryBitmask(ToMask(GamePhysicsCategory::PLATFORM));
-    body->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER));
-    body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER));
+    collisionNode->addComponent(physicsBody);
+    // 将碰撞体添加到游戏内容层，而不是场景
+    _gameLayer->addChild(collisionNode, 1);
 
-    node->addComponent(body);
-    _gameLayer->addChild(node);
+    CCLOG("  Created rect collision: name='%s', size=(%.0f, %.0f) at (%.0f, %.0f)",
+          name.c_str(), rect.size.width, rect.size.height, rectCenterX, rectCenterY);
 }
-
 
 // ===================================================================
 // 传送门与出生点
@@ -955,134 +973,72 @@ bool GameScene::isPlayerAtGate() const
 // 碰撞检测回调
 // ===================================================================
 
-bool GameScene::onContactBegin(cocos2d::PhysicsContact& contact)
+bool GameScene::onContactBegin(PhysicsContact &contact)
 {
-    // 1. 通用安全检查
-    auto shapeA = contact.getShapeA();
-    auto shapeB = contact.getShapeB();
-    auto bodyA = shapeA->getBody();
-    auto bodyB = shapeB->getBody();
+    auto nodeA = contact.getShapeA()->getBody()->getNode();
+    auto nodeB = contact.getShapeB()->getBody()->getNode();
 
-    if (!bodyA || !bodyB) return true;
+    if (!nodeA || !nodeB)
+        return true;
 
-    auto nodeA = bodyA->getNode();
-    auto nodeB = bodyB->getNode();
+    int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
+    int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
-    // 防止空指针（节点可能刚被移除）
-    if (!nodeA || !nodeB) return true;
+    // 检测玩家与平台/碰撞体的接触
+    bool playerIsA = (categoryA & GamePhysicsCategory::PLAYER);
+    bool playerIsB = (categoryB & GamePhysicsCategory::PLAYER);
+    bool platformContact =
+        (playerIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
+        (playerIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
 
-    // 2. 获取分类掩码
-    int maskA = bodyA->getCategoryBitmask();
-    int maskB = bodyB->getCategoryBitmask();
-
-    // 预定义掩码，方便后续判断
-    int maskPlayer = static_cast<int>(GamePhysicsCategory::PLAYER);
-    int maskPlatform = static_cast<int>(GamePhysicsCategory::PLATFORM);
-    int maskAttack = static_cast<int>(GamePhysicsCategory::MONSTER_ATTACK);
-    int maskSolid = static_cast<int>(GamePhysicsCategory::COLLISION);
-
-    // ============================================================
-    // ⚔️ 第一部分：战斗判定 (怪物攻击判定框 vs 玩家)
-    // ============================================================
-
-    // 辅助 Lambda：处理攻击
-    auto handleAttack = [&](cocos2d::PhysicsBody* attackerBody, cocos2d::PhysicsBody* victimBody) -> bool
-        {
-            // 获取受害者（玩家）
-            auto player = dynamic_cast<CharacterBase*>(victimBody->getNode());
-
-            if (player)
-            {
-                // 1. 组装伤害信息
-                DamageInfo info;
-
-                // 获取伤害数值 (从 Tag 取)
-                info.amount = (float)attackerBody->getTag();
-                if (info.amount <= 0) info.amount = 10.0f;
-
-                // ---------------------------------------------------
-                // 获取真正的攻击者 怪物的本体
-                // ---------------------------------------------------
-                auto hitboxNode = attackerBody->getNode();
-                if (hitboxNode)
-                {
-                    // 判定框的父节点才是怪物
-                    info.attacker = dynamic_cast<CharacterBase*>(hitboxNode->getParent());
-                }
-                else
-                {
-                    info.attacker = nullptr;
-                }
-                // ---------------------------------------------------
-
-                // 2. 扣血
-                player->takeDamage(info);
-                CCLOG("COMBAT: Player hit for %.1f damage", info.amount);
-
-                // 3. 销毁判定框 (防止多重判定)
-                if (hitboxNode) hitboxNode->removeFromParent();
-
-                // 4. 返回 false (表示 Sensor 碰撞，不产生物理反弹)
-                return true;
-            }
-            return false;
-        };
-
-    // 判定组合
-    if ((maskA & maskAttack) && (maskB & maskPlayer))
+    if (platformContact)
     {
-        handleAttack(bodyA, bodyB);
-        return false; // 攻击框不需要物理反弹
-    }
-    else if ((maskB & maskAttack) && (maskA & maskPlayer))
-    {
-        handleAttack(bodyB, bodyA);
-        return false;
-    }
-
-    // ============================================================
-    // 🦶 第二部分：落地检测
-    // ============================================================
-
-    // 只有当涉及到玩家时才计算
-    bool playerIsA = (maskA & maskPlayer) != 0;
-    bool playerIsB = (maskB & maskPlayer) != 0;
-
-    // 检查是否撞到了平台或墙壁
-    bool hitSolid = (playerIsA && ((maskB & maskPlatform) || (maskB & maskSolid))) ||
-        (playerIsB && ((maskA & maskPlatform) || (maskA & maskSolid)));
-
-    if (hitSolid)
-    {
-        // 获取法线
+        // 获取碰撞法向量判断是否从上方落下
         auto contactData = contact.getContactData();
         if (contactData)
         {
-            cocos2d::Vec2 normal = contactData->normal;
+            Vec2 normal = contactData->normal;
 
-            // 统一法线方向：让 normal 始终表示 "从玩家指向物体" 的方向
-            // 如果玩家是 B，法线默认是 A->B，所以不需要反转？
-            // ⚠️注意：这里取决于你的物理引擎版本逻辑，你的原逻辑是 playerIsB 则反转
-            // 我们保留你的原逻辑：假设 normal 默认指向 B
+            // 如果玩家是 B，法向量需要反转
             if (playerIsB)
             {
                 normal = -normal;
             }
 
-            // 阈值判断 (假设 GROUND_NORMAL_THRESHOLD 是一个类似 -0.7f 的值)
-            // normal.y < 0 说明方向向下（脚底下有东西）
-            if (normal.y < -0.7f) // 假设阈值是 -0.7，表示脚下的碰撞
+            // normal 是从玩家指向平台的向量
+            // 如果 normal.y < GROUND_NORMAL_THRESHOLD，说明平台在玩家下方
+            if (normal.y < GROUND_NORMAL_THRESHOLD)
             {
                 _groundContactCount++;
                 _isGrounded = true;
-                // CCLOG("LANDED: Contacts: %d", _groundContactCount);
+                CCLOG("Player grounded (normal.y=%.2f), contacts: %d", normal.y, _groundContactCount);
             }
         }
     }
 
-    // ============================================================
-    // 🏁 结束：返回 true 允许物理引擎处理剩下的碰撞 (阻挡、反弹)
-    // ============================================================
+    // 炸弹与平台碰撞 - 触发爆炸
+    bool bombIsA = (categoryA & GamePhysicsCategory::BOMB);
+    bool bombIsB = (categoryB & GamePhysicsCategory::BOMB);
+    bool bombPlatformContact =
+        (bombIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
+        (bombIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
+
+    if (bombPlatformContact)
+    {
+        Node *bombNode = bombIsA ? nodeA : nodeB;
+
+        // 查找对应的炸弹并爆炸
+        for (auto &bomb : _bombs)
+        {
+            if (bomb.sprite == bombNode && !bomb.isExploded)
+            {
+                bomb.isExploded = true;
+                explodeBomb(bomb);
+                break;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -1098,11 +1054,11 @@ void GameScene::onContactSeparate(PhysicsContact &contact)
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
     // 检测玩家与平台分离
-    bool playerIsA = (categoryA & static_cast<int>(GamePhysicsCategory::PLAYER));
-    bool playerIsB = (categoryB & static_cast<int>(GamePhysicsCategory::PLAYER));
+    bool playerIsA = (categoryA & GamePhysicsCategory::PLAYER);
+    bool playerIsB = (categoryB & GamePhysicsCategory::PLAYER);
     bool platformContact =
-        (playerIsA && ((categoryB & static_cast<int>(GamePhysicsCategory::PLATFORM)) || (categoryB & static_cast<int>(GamePhysicsCategory::COLLISION))) ||
-        (playerIsB && ((categoryA & static_cast<int>(GamePhysicsCategory::PLATFORM)) || (categoryA & static_cast<int>(GamePhysicsCategory::COLLISION)))));
+        (playerIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
+        (playerIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
 
     if (platformContact && _groundContactCount > 0)
     {
@@ -1775,20 +1731,6 @@ bool OriginMushroomScene::init()
     if (!initWithPhysicsConfig(config))
     {
         return false;
-    }
-	// 添加一只哥布林怪物作为示例
-    auto goblin = GoblinMonster::create();
-    if (goblin)
-    {
-        cocos2d::Vec2 p = getPlayerSpawnPoint();
-
-        goblin->setPosition(p + cocos2d::Vec2(600.0f, 0.0f));
-        goblin->setHome(goblin->getPosition());
-        if (_player)
-        {
-            goblin->setTarget(_player);
-        }
-        _gameLayer->addChild(goblin, PLAYER_Z_ORDER - 1);
     }
 
     CCLOG("OriginMushroomScene initialized");

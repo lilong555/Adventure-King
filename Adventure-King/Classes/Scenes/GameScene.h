@@ -15,12 +15,59 @@
 
 #include "cocos2d.h"
 #include "2d/CCTMXTiledMap.h"
-#include "Physics/GamePhysicsCategory.h"
 #include "2d/CCTMXObjectGroup.h"
 
 // 前向声明
 class PlayerCharacter;
 class GameUI;
+
+// ============================================================
+// 游戏对象结构体定义
+// ============================================================
+
+/**
+ * @brief 炸弹数据结构（游戏场景专用）
+ */
+struct GameBomb
+{
+    cocos2d::Sprite *sprite = nullptr; ///< 炸弹精灵节点
+    bool isExploded = false;           ///< 是否已爆炸
+};
+
+// ============================================================
+// 物理碰撞类型枚举
+// ============================================================
+
+/**
+ * @brief 游戏场景物理碰撞分类掩码
+ * @note 使用位掩码实现多类型碰撞检测
+ *       命名为 GamePhysicsCategory 以避免与 DebugScene 中的定义冲突
+ */
+enum class GamePhysicsCategory : unsigned int
+{
+    NONE = 0,
+    PLAYER = 1 << 0,    ///< 玩家
+    PLATFORM = 1 << 1,  ///< 平台/地面
+    COLLISION = 1 << 2, ///< 碰撞体（多边形）
+    TRIGGER = 1 << 3,   ///< 触发器（不产生物理碰撞）
+    BOMB = 1 << 4,      ///< 炸弹/投掷物
+    ALL = 0xFFFFFFFF
+};
+
+// 位运算操作符重载，方便组合使用
+inline GamePhysicsCategory operator|(GamePhysicsCategory a, GamePhysicsCategory b)
+{
+    return static_cast<GamePhysicsCategory>(static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline int operator&(int a, GamePhysicsCategory b)
+{
+    return a & static_cast<int>(b);
+}
+
+// ============================================================
+// 场景配置结构体
+// ============================================================
 
 /**
  * @brief 关卡场景配置
