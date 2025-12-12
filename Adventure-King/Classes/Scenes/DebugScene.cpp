@@ -1001,8 +1001,9 @@ void DebugScene::onAttackClicked(Ref *sender)
     if (_isAttacking || _isCastingSkill)
         return;
 
-    _player->attack();
-    playAttackAnimation();
+    _isAttacking = true;
+    _player->attackAnimated([this]()
+                            { this->onAttackAnimationFinished(); });
 
     // 显示攻击信息
     float strength = 0.0f;
@@ -1060,7 +1061,6 @@ void DebugScene::onResetClicked(Ref *sender)
     _isMovingRight = false;
     _isAttacking = false;
     _isCastingSkill = false;
-    _isWalkAnimationPlaying = false;
 
     initPlayer();
     _damageLog.clear();
@@ -1252,7 +1252,8 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingLeft = true;
         if (_player)
             _player->setFlippedX(true); // 朝左
-        startWalkAnimation();
+        if (!_isAttacking && !_isCastingSkill && _player)
+            _player->setMoving(true);
         break;
 
     case EventKeyboard::KeyCode::KEY_D:
@@ -1260,7 +1261,8 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingRight = true;
         if (_player)
             _player->setFlippedX(false); // 朝右
-        startWalkAnimation();
+        if (!_isAttacking && !_isCastingSkill && _player)
+            _player->setMoving(true);
         break;
 
     //-------------------------------------------------------------------------
@@ -1336,10 +1338,10 @@ void DebugScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
         break;
     }
 
-    // 所有方向键释放时停止动画
-    if (!_isMovingLeft && !_isMovingRight)
+    // 所有方向键释放时停止动画（避免打断攻击/技能）
+    if (!_isMovingLeft && !_isMovingRight && !_isAttacking && !_isCastingSkill && _player)
     {
-        stopWalkAnimation();
+        _player->setMoving(false);
     }
 }
 
@@ -1403,85 +1405,6 @@ void DebugScene::updatePlayerMovement(float dt)
         _player->setPositionX(origin.x + visibleSize.width - margin);
         physicsBody->setVelocity(Vec2(0, currentVelocity.y));
     }
-}
-
-/**
- * @brief 开始播放行走动画
- *
- * 加载行走帧序列并创建循环动画。
- * 动画使用 Tag=999 标识，便于后续停止。
- */
-void DebugScene::startWalkAnimation()
-{
-    if (!_player || _isWalkAnimationPlaying)
-        return;
-
-    _isWalkAnimationPlaying = true;
-
-    // 加载行走动画纹理
-    auto textureCache = Director::getInstance()->getTextureCache();
-    auto texture1 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_1.png");
-    auto texture2 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_2.png");
-    auto texture3 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 从纹理创建精灵帧
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(SpriteFrame::createWithTexture(texture1,
-                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture2,
-                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture3,
-                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
-
-        // 创建并运行循环动画
-        auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
-        auto animate = Animate::create(animation);
-        auto repeatAnimate = RepeatForever::create(animate);
-        repeatAnimate->setTag(999);
-
-        _player->runAction(repeatAnimate);
-        CCLOG("Walk animation started");
-    }
-    else
-    {
-        CCLOG("Failed to load walk animation textures");
-        _isWalkAnimationPlaying = false;
-    }
-}
-
-/**
- * @brief 停止行走动画
- *
- * 停止动画并恢复到默认静止帧，同时保持角色朝向。
- */
-void DebugScene::stopWalkAnimation()
-{
-    if (!_player || !_isWalkAnimationPlaying)
-        return;
-
-    _isWalkAnimationPlaying = false;
-
-    // 保存翻转状态
-    bool wasFlippedX = _player->isFlippedX();
-
-    // 停止动画
-    _player->stopActionByTag(999);
-
-    // 恢复默认纹理
-    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_run.png");
-    if (defaultTexture)
-    {
-        _player->setTexture(defaultTexture);
-        _player->setTextureRect(Rect(0, 0,
-                                     defaultTexture->getContentSize().width,
-                                     defaultTexture->getContentSize().height));
-        _player->setFlippedX(wasFlippedX); // 恢复翻转状态
-    }
-
-    CCLOG("Walk animation stopped");
 }
 
 //=============================================================================
@@ -1863,91 +1786,6 @@ void DebugScene::addDamageLog(const std::string &log)
 //=============================================================================
 
 /**
- * @brief 播放攻击动画
- *
- * 根据当前装备的武器类型播放对应的攻击动画。
- * 攻击速度受武器属性影响。
- * 动画使用 Tag=1000 标识。
- */
-void DebugScene::playAttackAnimation()
-{
-    if (!_player)
-        return;
-
-    // 停止行走动画
-    if (_isWalkAnimationPlaying)
-        stopWalkAnimation();
-
-    _isAttacking = true;
-
-    // 获取武器信息
-    WeaponType currentWeaponType = _player->getCurrentWeaponType();
-    auto equippedWeapon = _player->getEquippedWeapon();
-
-    // 计算动画速度（攻击速度越高越快）
-    float animSpeed = 0.15f;
-    if (equippedWeapon)
-    {
-        animSpeed = 0.15f / equippedWeapon->attackSpeed;
-    }
-
-    // 加载攻击动画纹理
-    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
-    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
-    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 创建动画帧
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(SpriteFrame::createWithTexture(texture1,
-                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture2,
-                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture3,
-                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
-
-        auto animation = Animation::createWithSpriteFrames(frames, animSpeed);
-        auto animate = Animate::create(animation);
-
-        // 停止之前的攻击动画
-        _player->stopActionByTag(1000);
-
-        // 创建动画序列：播放 -> 回调
-        auto callbackAction = CallFunc::create([this]()
-                                               { this->onAttackAnimationFinished(); });
-        auto sequence = Sequence::create(animate, callbackAction, nullptr);
-        sequence->setTag(1000);
-
-        _player->runAction(sequence);
-
-        // 输出攻击类型日志
-        std::string attackTypeStr;
-        switch (currentWeaponType)
-        {
-        case WeaponType::SWORD:
-            attackTypeStr = "挥剑攻击";
-            break;
-        case WeaponType::STAFF:
-            attackTypeStr = "法杖施法";
-            break;
-        case WeaponType::DAGGER:
-            attackTypeStr = "匕首突刺";
-            break;
-        }
-        CCLOG("Attack animation started: %s (speed: %.2f)", attackTypeStr.c_str(), animSpeed);
-    }
-    else
-    {
-        CCLOG("Failed to load attack sprites");
-        _isAttacking = false;
-    }
-}
-
-/**
  * @brief 攻击动画结束回调
  *
  * 执行伤害判定逻辑，包括：
@@ -1959,9 +1797,6 @@ void DebugScene::playAttackAnimation()
 void DebugScene::onAttackAnimationFinished()
 {
     _isAttacking = false;
-
-    // 保存翻转状态
-    bool wasFlippedX = _player ? _player->isFlippedX() : false;
 
     //-------------------------------------------------------------------------
     // 伤害判定
@@ -2034,23 +1869,9 @@ void DebugScene::onAttackAnimationFinished()
     //-------------------------------------------------------------------------
     // 恢复角色状态
     //-------------------------------------------------------------------------
-    if (_isMovingLeft || _isMovingRight)
+    if (_player)
     {
-        startWalkAnimation();
-    }
-    else
-    {
-        // 恢复默认纹理
-        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-            "Sprites/Characters/Player/Klee/spr_klee_run.png");
-        if (defaultTexture && _player)
-        {
-            _player->setTexture(defaultTexture);
-            _player->setTextureRect(Rect(0, 0,
-                                         defaultTexture->getContentSize().width,
-                                         defaultTexture->getContentSize().height));
-            _player->setFlippedX(wasFlippedX);
-        }
+        _player->setMoving(_isMovingLeft || _isMovingRight);
     }
 
     CCLOG("Attack animation finished");
@@ -2324,81 +2145,11 @@ void DebugScene::throwBomb()
     }
 
     // 技能释放成功，播放技能动画
-    playSkillAnimation();
+    _isCastingSkill = true;
+    _player->castSkillAnimated([this]()
+                               { this->onSkillAnimationFinished(); });
     addDamageLog(StringUtils::format("施放技能: 丢炸弹! (消耗 %.0f MP)", BOMB_SKILL_MP_COST));
     CCLOG("Skill started: Throw Bomb");
-}
-
-/**
- * @brief 播放技能施法动画
- *
- * 加载并播放3帧攻击/施法动画。动画结束后调用 onSkillAnimationFinished()
- * 执行实际的技能效果（丢出炸弹）。
- *
- * 动画配置：
- * - 使用 spr_klee_attack_1/2/3.png 作为帧
- * - 每帧 0.13 秒，总时长约 0.4 秒
- * - 动画标签(Tag): 1001，用于停止/识别
- */
-void DebugScene::playSkillAnimation()
-{
-    if (!_player)
-        return;
-
-    // 停止行走动画（如果在播放）
-    if (_isWalkAnimationPlaying)
-    {
-        stopWalkAnimation();
-    }
-
-    _isCastingSkill = true;
-
-    // 加载3张攻击图片（技能动画暂时使用攻击动画，后期可改）
-    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
-    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
-    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 创建精灵帧
-        auto frame1 = SpriteFrame::createWithTexture(texture1,
-                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
-        auto frame2 = SpriteFrame::createWithTexture(texture2,
-                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
-        auto frame3 = SpriteFrame::createWithTexture(texture3,
-                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
-
-        // 创建动画帧序列
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(frame1);
-        frames.pushBack(frame2);
-        frames.pushBack(frame3);
-
-        // 每帧0.15秒，共0.45秒
-        auto animation = Animation::createWithSpriteFrames(frames, 0.13f);
-        auto animate = Animate::create(animation);
-
-        // 停止之前的技能动画
-        _player->stopActionByTag(1001);
-
-        // 创建动画序列：播放动画 -> 回调结束
-        auto callbackAction = CallFunc::create([this]()
-                                               { this->onSkillAnimationFinished(); });
-        auto sequence = Sequence::create(animate, callbackAction, nullptr);
-        sequence->setTag(1001);
-
-        _player->runAction(sequence);
-
-        CCLOG("Skill animation started (3-hit combo)");
-    }
-    else
-    {
-        CCLOG("Failed to load skill sprites");
-        _isCastingSkill = false;
-    }
 }
 
 /**
@@ -2418,28 +2169,9 @@ void DebugScene::onSkillAnimationFinished()
     // 动画结束后实际丢出炸弹
     doThrowBomb();
 
-    // 保存当前翻转状态
-    bool wasFlippedX = _player ? _player->isFlippedX() : false;
-
-    // 如果玩家仍在移动，恢复行走动画
-    if (_isMovingLeft || _isMovingRight)
+    if (_player)
     {
-        startWalkAnimation();
-    }
-    else
-    {
-        // 恢复到默认静止图片
-        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-            "Sprites/Characters/Player/Klee/spr_klee_run.png");
-        if (defaultTexture && _player)
-        {
-            _player->setTexture(defaultTexture);
-            // 设置正确的纹理矩形
-            _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
-                                         defaultTexture->getContentSize().height));
-            // 恢复翻转状态
-            _player->setFlippedX(wasFlippedX);
-        }
+        _player->setMoving(_isMovingLeft || _isMovingRight);
     }
 
     CCLOG("Skill animation finished");

@@ -3,8 +3,55 @@
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "cocos2d.h"
+#include <vector>
 
 USING_NS_CC;
+
+namespace
+{
+Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
+{
+    auto textureCache = Director::getInstance()->getTextureCache();
+    Vector<SpriteFrame *> frames;
+
+    for (const auto &path : paths)
+    {
+        auto texture = textureCache->addImage(path);
+        if (!texture)
+        {
+            CCLOG("PlayerCharacter: failed to load texture %s", path.c_str());
+            continue;
+        }
+
+        frames.pushBack(SpriteFrame::createWithTexture(
+            texture, Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height)));
+    }
+
+    if (frames.empty())
+        return nullptr;
+
+    return Animation::createWithSpriteFrames(frames, delayPerUnit);
+}
+
+void ensureDefaultRunAnimation()
+{
+    auto cache = AnimationCache::getInstance();
+    if (cache->getAnimation("hero_run"))
+        return;
+
+    std::vector<std::string> runPaths = {
+        "Sprites/Characters/Player/Klee/spr_klee_run_1.png",
+        "Sprites/Characters/Player/Klee/spr_klee_run_2.png",
+        "Sprites/Characters/Player/Klee/spr_klee_run.png",
+    };
+
+    auto runAnim = createAnimationFromPaths(runPaths, 0.15f);
+    if (runAnim)
+    {
+        cache->addAnimation(runAnim, "hero_run");
+    }
+}
+} // namespace
 
 PlayerCharacter *PlayerCharacter::create(CharacterRole role,
                                          const std::string &spriteFrameName)
@@ -54,6 +101,9 @@ bool PlayerCharacter::init(CharacterRole role,
         sm->registerStateAnimation(CharacterState::HURT, "hero_hurt");
         sm->registerStateAnimation(CharacterState::DEAD, "hero_dead");
     }
+
+    // 确保默认跑动动画存在（由 StateMachineComponent 播放）
+    ensureDefaultRunAnimation();
 
     return true;
 }
@@ -277,15 +327,147 @@ void PlayerCharacter::useSkill(size_t slotIndex)
     }
 }
 
-void PlayerCharacter::attack()
+void PlayerCharacter::setMoving(bool moving)
 {
-    // 最基础普通攻击：切换至 ATTACKING 状态
+    if (isDead())
+        return;
+
+    auto sm = getStateMachineComponent();
+    if (!sm)
+        return;
+
+    if (moving)
+    {
+        ensureDefaultRunAnimation();
+        sm->changeState(CharacterState::RUNNING);
+        return;
+    }
+
+    // 停止跑动动作并恢复默认静止帧（保持朝向）
+    bool wasFlippedX = isFlippedX();
+    stopAllActions();
+
+    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    if (defaultTexture)
+    {
+        setTexture(defaultTexture);
+        setTextureRect(Rect(0, 0,
+                             defaultTexture->getContentSize().width,
+                             defaultTexture->getContentSize().height));
+        setFlippedX(wasFlippedX);
+    }
+
+    sm->changeState(CharacterState::IDLE);
+}
+
+void PlayerCharacter::attackAnimated(const std::function<void()> &onFinished)
+{
+    if (isDead())
+        return;
+
+    // 切换至 ATTACKING 状态（不依赖 StateMachine 的动画播放）
     if (auto sm = getStateMachineComponent())
     {
         sm->changeState(CharacterState::ATTACKING);
     }
 
-    // TODO: 在这里加入普通攻击的伤害判定逻辑
+    // 计算动画速度（攻击速度越高越快）
+    float animSpeed = 0.15f;
+    auto equippedWeapon = getEquippedWeapon();
+    if (equippedWeapon && equippedWeapon->attackSpeed > 0.0f)
+    {
+        animSpeed = 0.15f / equippedWeapon->attackSpeed;
+    }
+
+    // 构建攻击帧路径
+    std::string prefix = _attackAnimationPrefix.empty() ? "spr_klee_attack" : _attackAnimationPrefix;
+    int frameCount = (_attackFrameCount > 0) ? _attackFrameCount : 3;
+    std::vector<std::string> paths;
+    paths.reserve(static_cast<size_t>(frameCount));
+
+    for (int i = 1; i <= frameCount; ++i)
+    {
+        std::string path;
+        if (prefix.find('/') != std::string::npos)
+        {
+            path = StringUtils::format("%s_%d.png", prefix.c_str(), i);
+        }
+        else
+        {
+            path = StringUtils::format("Sprites/Characters/Player/Klee/%s_%d.png", prefix.c_str(), i);
+        }
+        paths.push_back(path);
+    }
+
+    auto animation = createAnimationFromPaths(paths, animSpeed);
+    if (!animation)
+    {
+        CCLOG("PlayerCharacter: failed to create attack animation (prefix=%s)", prefix.c_str());
+        if (onFinished)
+            onFinished();
+        return;
+    }
+
+    // 停止当前动作，避免与跑动等动画冲突
+    stopActionByTag(1000);
+    stopAllActions();
+
+    auto animate = Animate::create(animation);
+    auto callbackAction = CallFunc::create([onFinished]()
+                                           {
+                                               if (onFinished)
+                                                   onFinished();
+                                           });
+    auto sequence = Sequence::create(animate, callbackAction, nullptr);
+    sequence->setTag(1000);
+    runAction(sequence);
+}
+
+void PlayerCharacter::castSkillAnimated(const std::function<void()> &onFinished)
+{
+    if (isDead())
+        return;
+
+    // 切换至 ATTACKING 状态（技能施放暂复用攻击状态）
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::ATTACKING);
+    }
+
+    std::vector<std::string> paths = {
+        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png",
+        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png",
+        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png",
+    };
+
+    auto animation = createAnimationFromPaths(paths, 0.13f);
+    if (!animation)
+    {
+        CCLOG("PlayerCharacter: failed to create skill cast animation");
+        if (onFinished)
+            onFinished();
+        return;
+    }
+
+    // 停止当前动作，避免与跑动/攻击动画冲突
+    stopActionByTag(1001);
+    stopAllActions();
+
+    auto animate = Animate::create(animation);
+    auto callbackAction = CallFunc::create([onFinished]()
+                                           {
+                                               if (onFinished)
+                                                   onFinished();
+                                           });
+    auto sequence = Sequence::create(animate, callbackAction, nullptr);
+    sequence->setTag(1001);
+    runAction(sequence);
+}
+
+void PlayerCharacter::attack()
+{
+    attackAnimated(nullptr);
 }
 
 void PlayerCharacter::onUseActiveSkill(const ActiveSkill &skill)

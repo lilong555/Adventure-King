@@ -8,3 +8,14 @@
 *.py    text eol=lf
 *.mk    text eol=lf
 *.sh    text eol=lf
+*.cmake          text eol=lf
+CMakeLists.txt   text eol=lf
+*.md             text eol=lf
+*.json           text eol=lf
+*.tmx            text eol=lf
+*.tsx            text eol=lf
+*.tiled-session  text eol=lf
+
+# Windows scripts
+*.bat            text eol=crlf
+*.cmd            text eol=crlf

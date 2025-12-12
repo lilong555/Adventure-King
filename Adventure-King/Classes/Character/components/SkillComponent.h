@@ -41,6 +41,9 @@ public:
     // 清空并设置被动技能槽位（用于读档）
     void clearAndSetPassiveSlots(const std::vector<std::shared_ptr<PassiveSkill>> &slots);
 
+    // 清空所有技能与槽位（用于读档前重置状态）
+    void resetSkills();
+
 private:
     CharacterBase *_owner = nullptr;
 

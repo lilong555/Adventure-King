@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 本项目是一款基于 C++ 和 Cocos2d-x 引擎开发的横版动作冒险游戏，名为《冒险王之神兵传奇》。游戏的核心是扮演一名冒险者，通过探索世界、击败怪物和收集装备来提升实力。
 
+## 最新进展
+- GameScene 已接入战斗/技能：炸弹技能绑定默认槽位，设定能量消耗与冷却，行走/攻击/技能动画用不同 Tag，输入包含移动、跳跃、普攻与技能；炸弹带物理体，碰平台即爆炸，详见 `GAMESCENE_COMPLETION_SUMMARY.md` 与 `Classes/Scenes/GameScene.*`。
+- 怪物系统落地：新增 `MonsterBase` 驱动 AI/移动/攻击/受击（持有 Attribute/StateMachine/Skill 组件，依赖外部设置 `_target`），首个敌人 `GoblinMonster`（`Classes/Character/Monster/Monsters`）设置基础生命、防御、力量、暴击和移动速度，较远感知、默认近战攻距，动画名 goblin_idle/walk/attack/hurt/dead，攻击优先技能槽否则普攻。
+- 修复 TMX 多边形/折线碰撞在高分屏下的缩放偏差：parseTMXObjectVertices 解析 points/polylinePoints 时按 CC_CONTENT_SCALE_FACTOR() 做同样缩放，保证碰撞与地图一致。
+- 动画体系统一：人物走路/攻击/技能动画已迁移到 PlayerCharacter（setMoving/attackAnimated/castSkillAnimated），GameScene 与 DebugScene 仅负责输入/状态与回调。
+- 代码行尾标准化：仓库源码/资源统一使用 LF（.bat/.cmd 例外为 CRLF），通过 .gitattributes/.editorconfig 固定提交行尾，避免 CRLF 抖动。
+
 ## 构建与运行
 
 ### 环境要求
@@ -62,6 +69,11 @@ Adventure-King/proj.win32/Debug.win32/Adventure-King.exe
 - **`StateMachineComponent`** - 状态机组件，管理角色状态和动画播放
 - **`SkillComponent`** - 技能组件，管理技能学习、装备、使用和冷却
 
+### 怪物系统
+- **`MonsterBase`** (`Classes/Character/Monster/MonsterBase.{h,cpp}`) - 组件化怪物基类，内置 `_target`、攻击计时与移动/攻击距离；`update()` 调用 `updateAI`/`updateMovement`/`updateAttack`，默认攻击走技能槽，`takeDamage`/`die` 会切换 HURT/DEAD 状态并可延迟移除；工具函数 `faceTarget`/`distanceTo`/`inAttackRange`。
+- **`GoblinMonster`** (`Classes/Character/Monster/Monsters/GoblinMonster.{h,cpp}`) - 设置基础生命、防御、力量、暴击与感知/攻距；注册动画名 goblin_idle/walk/attack/hurt/dead（需预先加载到 AnimationCache）；`attack()` 优先用技能组件槽，失败则对目标造成基础伤害。
+- AI 依赖外部把玩家节点传入 `_target`，未找到目标则停留 Idle；移动使用 MonsterBase 的移动速度（如需匹配属性移速需手动同步）。
+
 ### 场景系统
 
 场景流程：`AppDelegate` → `HelloWorldScene` (主菜单) → `MapScene` (地图选择) → 关卡场景
@@ -87,6 +99,13 @@ Adventure-King/proj.win32/Debug.win32/Adventure-King.exe
 其他场景：
 - **`HomeScene`** - 主页场景
 - **`DebugScene`** - 调试场景，用于测试角色功能，包含实时属性查看和修改面板
+
+### 战斗与技能（GameScene）
+- 关卡已接入 DebugScene 的战斗/技能逻辑：炸弹技能绑定默认槽位，配置能量消耗与冷却，命中/落地即爆炸。
+- 动画：行走/攻击/技能分别用不同 Action Tag，`_isAttacking`/`_isCastingSkill` 防止动画冲突，行走动画自动随左右移动启停。
+- 输入映射：移动、跳跃、攻击、技能释放与暂停；炸弹技能走独立按键。
+- 碰撞：新增 `GamePhysicsCategory::BOMB`，炸弹带圆形刚体，碰平台触发爆炸特效；与场景碰撞/传送门逻辑并行。
+- 参考：`GAMESCENE_COMPLETION_SUMMARY.md`、`GAMESCENE_IMPLEMENTATION_GUIDE.md`、`Classes/Scenes/GameScene.*`。
 
 ### 物理系统
 
@@ -173,13 +192,18 @@ this->addChild(saveMenu);
 
 ## 项目维护记录
 
-### 2025-12-11 文件结构清理
+### GameScene 战斗/技能完善
+- 将 DebugScene 的战斗/技能移植到 GameScene：炸弹技能绑定默认槽位，配置能量消耗与冷却；行走/攻击/技能动画用独立 Tag，新增 `_isAttacking`、`_isCastingSkill` 状态。
+- 输入映射覆盖移动/跳跃/攻击/技能/暂停；行走动画随按键自动播放/停止。
+- 物理与碰撞：新增 `GamePhysicsCategory::BOMB`，炸弹带刚体，落地/撞平台即爆炸并播放特效；详见 `GAMESCENE_COMPLETION_SUMMARY.md` 与 `Classes/Scenes/GameScene.*`。
+
+### 文件结构清理
 - **问题**：发现 `Classes/GameScene.cpp` 和 `Classes/Scenes/GameScene.cpp` 重复
 - **原因**：旧文件使用了错误的 include 路径 `Character/PlayerCharacter.h`
 - **解决**：删除 `Classes/GameScene.cpp`，保留 `Classes/Scenes/GameScene.cpp`
 - **验证**：所有 vcxproj 引用的文件都存在，所有 cpp 文件都被正确引用
 
-### 2025-12-11 存档系统修复
+### 存档系统修复
 - **问题1**：暂停菜单"返回主菜单"跳转到 `MapScene` 而非 `HelloWorldScene`
 - **解决**：修改 `GameScene.cpp` 中的 `setMainMenuCallback` 回调
 - **问题2**：主菜单加载存档功能未实现
@@ -188,3 +212,14 @@ this->addChild(saveMenu);
   - 延迟应用玩家数据
   - 恢复玩家位置
 - **新增**：`GameScene::getPlayer()` 公共方法用于访问玩家角色
+
+### 怪物框架与哥布林落地
+- 新增组件化怪物基类 `MonsterBase`：AI/移动/攻击分离，默认攻击走技能槽，`takeDamage` 会切换 HURT/DEAD 并可延迟移除，需外部设置 `_target`。
+- 首个敌人 `GoblinMonster`：配置基础属性与感知/攻距；注册动画 goblin_idle/walk/attack/hurt/dead；攻击优先用技能槽，否则对目标造成基础伤害。
+
+
+### TMX 碰撞缩放修复
+- parseTMXObjectVertices 解析 points/polylinePoints 时按 CC_CONTENT_SCALE_FACTOR() 缩放，解决高分屏多边形/折线碰撞偏移问题。
+
+### 动画逻辑迁移
+- 行走/攻击/技能动画迁移到 PlayerCharacter；Scene 侧调用 setMoving/attackAnimated/castSkillAnimated，避免手写动作逻辑。

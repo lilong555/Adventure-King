@@ -225,8 +225,6 @@ private:
     //=========================================================================
 
     void updatePlayerMovement(float dt); ///< 更新玩家移动（物理驱动）
-    void startWalkAnimation();           ///< 开始播放行走动画
-    void stopWalkAnimation();            ///< 停止行走动画
 
     //=========================================================================
     // 物理系统
@@ -254,7 +252,6 @@ private:
     // 攻击系统
     //=========================================================================
 
-    void playAttackAnimation();       ///< 播放攻击动画
     void onAttackAnimationFinished(); ///< 攻击动画结束回调
 
     //=========================================================================
@@ -262,7 +259,6 @@ private:
     //=========================================================================
 
     void initPlayerSkills();         ///< 初始化玩家技能
-    void playSkillAnimation();       ///< 播放技能施放动画
     void onSkillAnimationFinished(); ///< 技能动画结束回调
     void throwBomb();                ///< 释放炸弹技能（入口）
     void doThrowBomb();              ///< 实际创建并投掷炸弹
@@ -311,7 +307,6 @@ private:
     bool _isMovingLeft = false;           ///< 是否正在向左移动
     bool _isMovingRight = false;          ///< 是否正在向右移动
     float _moveSpeed = 200.0f;            ///< 基础移动速度（像素/秒）
-    bool _isWalkAnimationPlaying = false; ///< 行走动画是否正在播放
 
     //=========================================================================
     // 成员变量 - 战斗状态

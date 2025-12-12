@@ -8,6 +8,7 @@
 #include "GameScene.h"
 #include "MapScene.h"
 #include "HelloWorldScene.h"
+#include "Character/Base/CharacterBase.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
 #include "GameUI.h"
@@ -15,6 +16,9 @@
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Save/SaveManager.h"
 #include "Save/SaveData.h"
+#include <algorithm>
+#include <cmath>
+#include <functional>
 
 USING_NS_CC;
 
@@ -774,11 +778,13 @@ bool GameScene::parseTMXObjectVertices(const ValueMap &dict, double objectX, dou
     }
 
     // 转换顶点坐标
+    const double scaleFactor = Director::getInstance()->getContentScaleFactor();
     for (const auto &pt : points)
     {
         auto ptDict = pt.asValueMap();
-        const double px = ptDict["x"].asDouble();
-        const double py = ptDict["y"].asDouble();
+        // TMX 解析器对 polygon/polyline points 不会做像素->点缩放，这里需要补上
+        double px = ptDict["x"].asDouble() / scaleFactor;
+        double py = ptDict["y"].asDouble() / scaleFactor;
 
         // 转换到 Cocos2d 坐标系 (相对于 _tileMap)
         // X 轴方向一致：直接相加
@@ -828,9 +834,9 @@ void GameScene::createPolygonCollisionBody(const std::vector<Vec2> &vertices,
     if (physicsBody)
     {
         physicsBody->setDynamic(false);
-        physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
-        physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
-        physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+        physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLATFORM));
+        physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER | GamePhysicsCategory::BOMB));
+        physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER | GamePhysicsCategory::BOMB));
 
         collisionNode->addComponent(physicsBody);
         _tileMap->addChild(collisionNode, 1);
@@ -856,9 +862,11 @@ void GameScene::createRectCollisionBody(const Rect &rect, const std::string &nam
 
     auto physicsBody = PhysicsBody::createBox(rect.size, COLLISION_PHYSICS_MATERIAL);
     physicsBody->setDynamic(false);
-    physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::COLLISION));
-    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
-    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
+    physicsBody->setRotationEnable(false);
+
+    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLATFORM));
+    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER | GamePhysicsCategory::BOMB));
+    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER | GamePhysicsCategory::BOMB));
 
     collisionNode->addComponent(physicsBody);
     // 将碰撞体添加到游戏内容层，而不是场景
@@ -1016,25 +1024,44 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
         }
     }
 
-    // 炸弹与平台碰撞 - 触发爆炸
-    bool bombIsA = (categoryA & GamePhysicsCategory::BOMB);
-    bool bombIsB = (categoryB & GamePhysicsCategory::BOMB);
-    bool bombPlatformContact =
-        (bombIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
-        (bombIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
+    // 炸弹命中非玩家目标时触发爆炸（平台/碰撞体/敌人等）
+    bool bombIsA = (categoryA & ToMask(GamePhysicsCategory::BOMB)) != 0;
+    bool bombIsB = (categoryB & ToMask(GamePhysicsCategory::BOMB)) != 0;
 
-    if (bombPlatformContact)
+    if (bombIsA || bombIsB)
     {
         Node *bombNode = bombIsA ? nodeA : nodeB;
+        int otherMask = bombIsA ? categoryB : categoryA;
+        bool hitPlayer = (otherMask & ToMask(GamePhysicsCategory::PLAYER)) != 0;
+        bool hitBomb = (otherMask & ToMask(GamePhysicsCategory::BOMB)) != 0;
 
-        // 查找对应的炸弹并爆炸
-        for (auto &bomb : _bombs)
+        if (!hitPlayer && !hitBomb)
         {
-            if (bomb.sprite == bombNode && !bomb.isExploded)
+            for (auto &bomb : _bombs)
             {
-                bomb.isExploded = true;
-                explodeBomb(bomb);
-                break;
+                if (bomb.sprite == bombNode && !bomb.isExploded)
+                {
+                    bomb.isExploded = true;
+
+                    // Avoid modifying physics bodies inside the contact callback.
+                    // Defer the actual explosion to the next tick.
+                    this->runAction(Sequence::create(
+                        DelayTime::create(0.0f),
+                        CallFunc::create([this, bombNode]()
+                                         {
+                                             for (auto &pendingBomb : _bombs)
+                                             {
+                                                 if (pendingBomb.sprite == bombNode && pendingBomb.isExploded)
+                                                 {
+                                                     explodeBomb(pendingBomb);
+                                                     break;
+                                                 }
+                                             }
+                                         }),
+                        nullptr));
+
+                    break;
+                }
             }
         }
     }
@@ -1106,7 +1133,7 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingLeft = true;
         _player->setFlippedX(true);
         if (!_isAttacking && !_isCastingSkill)
-            startWalkAnimation();
+            _player->setMoving(true);
         break;
 
     case EventKeyboard::KeyCode::KEY_D:
@@ -1114,7 +1141,7 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingRight = true;
         _player->setFlippedX(false);
         if (!_isAttacking && !_isCastingSkill)
-            startWalkAnimation();
+            _player->setMoving(true);
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
@@ -1136,8 +1163,9 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     case EventKeyboard::KeyCode::KEY_4:
         if (!_isAttacking && !_isCastingSkill && _player)
         {
-            _player->attack();
-            playAttackAnimation();
+            _isAttacking = true;
+            _player->attackAnimated([this]()
+                                    { this->onAttackAnimationFinished(); });
         }
         break;
 
@@ -1173,7 +1201,7 @@ void GameScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
     // 所有方向键释放时停止动画
     if (!_isMovingLeft && !_isMovingRight && !_isAttacking && !_isCastingSkill)
     {
-        stopWalkAnimation();
+        _player->setMoving(false);
     }
 }
 
@@ -1258,9 +1286,6 @@ void GameScene::updateUI()
     if (!_gameUI)
         return;
 
-    // UI 位置不需要更新，因为 Follow 动作现在只作用于 _gameLayer
-    // GameUI 直接添加到场景中，场景位置不变
-
     // 检查是否在传送门区域，更新交互提示
     bool atGate = isPlayerAtGate();
     if (atGate && !_wasAtGate)
@@ -1272,6 +1297,9 @@ void GameScene::updateUI()
         _gameUI->hideInteractionHint();
     }
     _wasAtGate = atGate;
+
+    // 刷新数值显示（HP/MP/技能冷却等）
+    _gameUI->updateDisplay();
 }
 
 // 辅助方法：显示地图加载失败 UI
@@ -1292,152 +1320,8 @@ void GameScene::showMapLoadFailedUI()
 }
 
 // ============================================================
-// 动画系统实现
-// ============================================================
-
-/**
- * @brief 开始播放行走动画
- */
-void GameScene::startWalkAnimation()
-{
-    if (!_player || _isWalkAnimationPlaying)
-        return;
-
-    _isWalkAnimationPlaying = true;
-
-    // 加载行走动画纹理
-    auto textureCache = Director::getInstance()->getTextureCache();
-    auto texture1 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_1.png");
-    auto texture2 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run_2.png");
-    auto texture3 = textureCache->addImage("Sprites/Characters/Player/Klee/spr_klee_run.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 从纹理创建精灵帧
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(SpriteFrame::createWithTexture(texture1,
-                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture2,
-                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture3,
-                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
-
-        // 创建并运行循环动画
-        auto animation = Animation::createWithSpriteFrames(frames, 0.15f);
-        auto animate = Animate::create(animation);
-        auto repeatAnimate = RepeatForever::create(animate);
-        repeatAnimate->setTag(999);
-
-        _player->runAction(repeatAnimate);
-        CCLOG("Walk animation started");
-    }
-    else
-    {
-        CCLOG("Failed to load walk animation textures");
-        _isWalkAnimationPlaying = false;
-    }
-}
-
-/**
- * @brief 停止行走动画
- */
-void GameScene::stopWalkAnimation()
-{
-    if (!_player || !_isWalkAnimationPlaying)
-        return;
-
-    _isWalkAnimationPlaying = false;
-
-    // 保存翻转状态
-    bool wasFlippedX = _player->isFlippedX();
-
-    // 停止动画
-    _player->stopActionByTag(999);
-
-    // 恢复默认纹理
-    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_run.png");
-    if (defaultTexture)
-    {
-        _player->setTexture(defaultTexture);
-        _player->setTextureRect(Rect(0, 0,
-                                     defaultTexture->getContentSize().width,
-                                     defaultTexture->getContentSize().height));
-        _player->setFlippedX(wasFlippedX); // 恢复翻转状态
-    }
-
-    CCLOG("Walk animation stopped");
-}
-
-// ============================================================
 // 战斗系统实现
 // ============================================================
-
-/**
- * @brief 播放攻击动画
- */
-void GameScene::playAttackAnimation()
-{
-    if (!_player)
-        return;
-
-    // 停止行走动画
-    if (_isWalkAnimationPlaying)
-        stopWalkAnimation();
-
-    _isAttacking = true;
-
-    // 获取武器信息
-    auto equippedWeapon = _player->getEquippedWeapon();
-
-    // 计算动画速度（攻击速度越高越快）
-    float animSpeed = 0.15f;
-    if (equippedWeapon)
-    {
-        animSpeed = 0.15f / equippedWeapon->attackSpeed;
-    }
-
-    // 加载攻击动画纹理
-    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
-    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
-    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 创建动画帧
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(SpriteFrame::createWithTexture(texture1,
-                                                       Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture2,
-                                                       Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height)));
-        frames.pushBack(SpriteFrame::createWithTexture(texture3,
-                                                       Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height)));
-
-        auto animation = Animation::createWithSpriteFrames(frames, animSpeed);
-        auto animate = Animate::create(animation);
-
-        // 停止之前的攻击动画
-        _player->stopActionByTag(1000);
-
-        // 创建动画序列：播放 -> 回调
-        auto callbackAction = CallFunc::create([this]()
-                                               { this->onAttackAnimationFinished(); });
-        auto sequence = Sequence::create(animate, callbackAction, nullptr);
-        sequence->setTag(1000);
-
-        _player->runAction(sequence);
-
-        CCLOG("Attack animation started");
-    }
-    else
-    {
-        CCLOG("Failed to load attack sprites");
-        _isAttacking = false;
-    }
-}
 
 /**
  * @brief 攻击动画结束回调
@@ -1446,27 +1330,10 @@ void GameScene::onAttackAnimationFinished()
 {
     _isAttacking = false;
 
-    // 保存翻转状态
-    bool wasFlippedX = _player ? _player->isFlippedX() : false;
-
-    // 恢复角色状态
-    if (_isMovingLeft || _isMovingRight)
+    if (_player)
     {
-        startWalkAnimation();
-    }
-    else
-    {
-        // 恢复默认纹理
-        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-            "Sprites/Characters/Player/Klee/spr_klee_run.png");
-        if (defaultTexture && _player)
-        {
-            _player->setTexture(defaultTexture);
-            _player->setTextureRect(Rect(0, 0,
-                                         defaultTexture->getContentSize().width,
-                                         defaultTexture->getContentSize().height));
-            _player->setFlippedX(wasFlippedX);
-        }
+        // 根据当前输入恢复跑动/待机状态
+        _player->setMoving(_isMovingLeft || _isMovingRight);
     }
 
     CCLOG("Attack animation finished");
@@ -1479,67 +1346,6 @@ void GameScene::onAttackAnimationFinished()
 /**
  * @brief 播放技能施放动画
  */
-void GameScene::playSkillAnimation()
-{
-    if (!_player)
-        return;
-
-    // 停止行走动画（如果在播放）
-    if (_isWalkAnimationPlaying)
-    {
-        stopWalkAnimation();
-    }
-
-    _isCastingSkill = true;
-
-    // 加载3张攻击图片（技能动画暂时使用攻击动画）
-    auto texture1 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png");
-    auto texture2 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png");
-    auto texture3 = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png");
-
-    if (texture1 && texture2 && texture3)
-    {
-        // 创建精灵帧
-        auto frame1 = SpriteFrame::createWithTexture(texture1,
-                                                     Rect(0, 0, texture1->getContentSize().width, texture1->getContentSize().height));
-        auto frame2 = SpriteFrame::createWithTexture(texture2,
-                                                     Rect(0, 0, texture2->getContentSize().width, texture2->getContentSize().height));
-        auto frame3 = SpriteFrame::createWithTexture(texture3,
-                                                     Rect(0, 0, texture3->getContentSize().width, texture3->getContentSize().height));
-
-        // 创建动画帧序列
-        Vector<SpriteFrame *> frames;
-        frames.pushBack(frame1);
-        frames.pushBack(frame2);
-        frames.pushBack(frame3);
-
-        // 每帧0.13秒
-        auto animation = Animation::createWithSpriteFrames(frames, 0.13f);
-        auto animate = Animate::create(animation);
-
-        // 停止之前的技能动画
-        _player->stopActionByTag(1001);
-
-        // 创建动画序列：播放动画 -> 回调结束
-        auto callbackAction = CallFunc::create([this]()
-                                               { this->onSkillAnimationFinished(); });
-        auto sequence = Sequence::create(animate, callbackAction, nullptr);
-        sequence->setTag(1001);
-
-        _player->runAction(sequence);
-
-        CCLOG("Skill animation started");
-    }
-    else
-    {
-        CCLOG("Failed to load skill sprites");
-        _isCastingSkill = false;
-    }
-}
-
 /**
  * @brief 技能动画播放完成回调
  */
@@ -1550,26 +1356,9 @@ void GameScene::onSkillAnimationFinished()
     // 动画结束后实际丢出炸弹
     doThrowBomb();
 
-    // 保存当前翻转状态
-    bool wasFlippedX = _player ? _player->isFlippedX() : false;
-
-    // 如果玩家仍在移动，恢复行走动画
-    if (_isMovingLeft || _isMovingRight)
+    if (_player)
     {
-        startWalkAnimation();
-    }
-    else
-    {
-        // 恢复到默认静止图片
-        auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-            "Sprites/Characters/Player/Klee/spr_klee_run.png");
-        if (defaultTexture && _player)
-        {
-            _player->setTexture(defaultTexture);
-            _player->setTextureRect(Rect(0, 0, defaultTexture->getContentSize().width,
-                                         defaultTexture->getContentSize().height));
-            _player->setFlippedX(wasFlippedX);
-        }
+        _player->setMoving(_isMovingLeft || _isMovingRight);
     }
 
     CCLOG("Skill animation finished");
@@ -1606,7 +1395,9 @@ void GameScene::throwBomb()
     }
 
     // 技能释放成功，播放技能动画
-    playSkillAnimation();
+    _isCastingSkill = true;
+    _player->castSkillAnimated([this]()
+                               { this->onSkillAnimationFinished(); });
     CCLOG("Skill started: Throw Bomb");
 }
 
@@ -1651,8 +1442,8 @@ void GameScene::doThrowBomb()
 
     // 设置碰撞掩码
     physicsBody->setCategoryBitmask(static_cast<int>(GamePhysicsCategory::BOMB));
-    physicsBody->setCollisionBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
-    physicsBody->setContactTestBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+    physicsBody->setCollisionBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
+    physicsBody->setContactTestBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
 
     bombSprite->addComponent(physicsBody);
     _gameLayer->addChild(bombSprite, 4);
@@ -1676,9 +1467,115 @@ void GameScene::explodeBomb(GameBomb &bomb)
         return;
 
     Vec2 explodePos = bomb.sprite->getPosition();
+    Vec2 explosionWorld = explodePos;
+    if (bomb.sprite->getParent())
+    {
+        explosionWorld = bomb.sprite->getParent()->convertToWorldSpace(explodePos);
+    }
 
     // 移除炸弹精灵
     bomb.sprite->removeFromParent();
+
+    // 对范围内角色造成伤害（排除玩家自身）
+    if (_gameLayer)
+    {
+        DamageInfo dmg;
+        dmg.amount = BOMB_DAMAGE;
+        dmg.attacker = _player;
+
+        std::function<void(Node *)> applyAoE = [&](Node *node)
+        {
+            if (!node)
+                return;
+
+            if (auto character = dynamic_cast<CharacterBase *>(node))
+            {
+                if (character != _player)
+                {
+                    // Check circle (explosion) vs character AABB overlap.
+                    // Prefer physics collider AABB (world-centered), fall back to visual bounds.
+                    Rect hitRectWorld;
+                    bool hasHitRectWorld = false;
+
+                    if (auto body = character->getPhysicsBody())
+                    {
+                        auto shape = body->getFirstShape();
+                        if (shape)
+                        {
+                            Size shapeSizeWorld;
+                            switch (shape->getType())
+                            {
+                            case PhysicsShape::Type::BOX:
+                                shapeSizeWorld = static_cast<PhysicsShapeBox *>(shape)->getSize();
+                                break;
+                            case PhysicsShape::Type::CIRCLE:
+                            {
+                                float r = static_cast<PhysicsShapeCircle *>(shape)->getRadius();
+                                shapeSizeWorld = Size(r * 2.0f, r * 2.0f);
+                                break;
+                            }
+                            default:
+                                break;
+                            }
+
+                            if (shapeSizeWorld.width > 0.0f && shapeSizeWorld.height > 0.0f)
+                            {
+                                Vec2 centerLocal(character->getContentSize().width * 0.5f,
+                                                 character->getContentSize().height * 0.5f);
+                                Vec2 bodyCenterWorld = character->convertToWorldSpace(centerLocal);
+                                Vec2 rectCenterWorld = bodyCenterWorld + shape->getCenter();
+
+                                hitRectWorld = Rect(rectCenterWorld.x - shapeSizeWorld.width / 2.0f,
+                                                    rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
+                                                    shapeSizeWorld.width,
+                                                    shapeSizeWorld.height);
+                                hasHitRectWorld = true;
+                            }
+                        }
+                    }
+
+                    if (!hasHitRectWorld)
+                    {
+                        Rect bboxParent = character->getBoundingBox();
+                        Vec2 originWorld = bboxParent.origin;
+                        Vec2 topRightWorld = bboxParent.origin + bboxParent.size;
+                        if (character->getParent())
+                        {
+                            originWorld = character->getParent()->convertToWorldSpace(bboxParent.origin);
+                            topRightWorld = character->getParent()->convertToWorldSpace(bboxParent.origin + bboxParent.size);
+                        }
+
+                        hitRectWorld = Rect(
+                            std::min(originWorld.x, topRightWorld.x),
+                            std::min(originWorld.y, topRightWorld.y),
+                            std::fabs(topRightWorld.x - originWorld.x),
+                            std::fabs(topRightWorld.y - originWorld.y));
+                    }
+
+                    float dx = 0.0f;
+                    if (explosionWorld.x < hitRectWorld.getMinX()) dx = hitRectWorld.getMinX() - explosionWorld.x;
+                    else if (explosionWorld.x > hitRectWorld.getMaxX()) dx = explosionWorld.x - hitRectWorld.getMaxX();
+
+                    float dy = 0.0f;
+                    if (explosionWorld.y < hitRectWorld.getMinY()) dy = hitRectWorld.getMinY() - explosionWorld.y;
+                    else if (explosionWorld.y > hitRectWorld.getMaxY()) dy = explosionWorld.y - hitRectWorld.getMaxY();
+
+                    if ((dx * dx + dy * dy) <= (BOMB_EXPLOSION_RADIUS * BOMB_EXPLOSION_RADIUS))
+                    {
+                        character->takeDamage(dmg);
+                    }
+                }
+            }
+
+            const auto &children = node->getChildren();
+            for (auto child : children)
+            {
+                applyAoE(child);
+            }
+        };
+
+        applyAoE(_gameLayer);
+    }
 
     // 创建爆炸效果
     auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
@@ -1714,7 +1611,7 @@ Scene *OriginMushroomScene::createScene()
 LevelConfig OriginMushroomScene::getLevelConfig() const
 {
     LevelConfig config;
-    config.tmxMapPath = "/Map/Origin_Mushroom/Origin_Mushroom.tmx";
+    config.tmxMapPath = "Map/Origin_Mushroom/Origin_Mushroom.tmx";
     config.backgroundPath = "Map/Origin_Mushroom/jimeng-2025-12-07-8064-Game concept art for a 2D side-scrolling...._0.png";
     config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";
