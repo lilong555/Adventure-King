@@ -193,9 +193,9 @@ void DebugScene::initPlatforms()
         physicsBody->setDynamic(false); // 静态刚体不受力影响
 
         // 配置碰撞掩码
-        physicsBody->setCategoryBitmask(CATEGORY_PLATFORM);
-        physicsBody->setCollisionBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
-        physicsBody->setContactTestBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
+        physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLATFORM));
+        physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER| GamePhysicsCategory::BOMB));
+        physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::BOMB));
 
         platformNode->addComponent(physicsBody);
         this->addChild(platformNode, 1);
@@ -236,7 +236,7 @@ void DebugScene::initPlayer()
     Vec2 startPos(origin.x + visibleSize.width / 2, origin.y + GROUND_Y + getContentSize().height / 2);
 
     // 创建玩家角色（战士职业）
-    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    _player = PlayerCharacter::create(CharacterRole::MAGE, "Sprites/Characters/Player/Klee/spr_klee_run.png");
 
     if (!_player)
     {
@@ -280,9 +280,9 @@ void DebugScene::initPlayer()
     physicsBody->setLinearDamping(0.0f);   // 无线性阻尼
 
     // 配置碰撞掩码
-    physicsBody->setCategoryBitmask(CATEGORY_PLAYER);
-    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);
-    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM | CATEGORY_BOMB);
+    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER ));
+    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM));
+    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::BOMB));
 
     _player->addComponent(physicsBody);
     this->addChild(_player, 5);
@@ -1922,8 +1922,8 @@ void DebugScene::initPhysicsContactListener()
         int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
         // 玩家与平台碰撞时，保持玩家的水平速度
-        if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
-            (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+        if (categoryA == ToMask(GamePhysicsCategory::PLAYER) && categoryB == ToMask(GamePhysicsCategory::PLATFORM) ||
+            (categoryA == ToMask(GamePhysicsCategory::PLATFORM) && categoryB == ToMask(GamePhysicsCategory::PLAYER)))
         {
             // 设置碰撞的弹性为0，避免弹跳
             solve.setRestitution(0.0f);
@@ -1967,8 +1967,8 @@ bool DebugScene::onContactBegin(PhysicsContact &contact)
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
     // 玩家与平台碰撞 - 检测是否落地
-    if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
-        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+    if ((categoryA == ToMask(GamePhysicsCategory::PLAYER) && categoryB == ToMask(GamePhysicsCategory::PLATFORM)) ||
+        (categoryA == ToMask(GamePhysicsCategory::PLATFORM) && categoryB == ToMask(GamePhysicsCategory::PLAYER)))
     {
         // 获取碰撞法向量，判断是从上方落下还是侧面碰撞
         auto contactData = contact.getContactData();
@@ -1991,10 +1991,10 @@ bool DebugScene::onContactBegin(PhysicsContact &contact)
     }
 
     // 炸弹与平台碰撞 - 触发爆炸
-    if ((categoryA == CATEGORY_BOMB && categoryB == CATEGORY_PLATFORM) ||
-        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_BOMB))
+    if ((categoryA == ToMask(GamePhysicsCategory::BOMB) && categoryB == ToMask(GamePhysicsCategory::PLATFORM)) ||
+        (categoryA == ToMask(GamePhysicsCategory::PLATFORM) && categoryB == ToMask(GamePhysicsCategory::BOMB)))
     {
-        Node *bombNode = (categoryA == CATEGORY_BOMB) ? nodeA : nodeB;
+        Node *bombNode = (categoryA == ToMask(GamePhysicsCategory::BOMB)) ? nodeA : nodeB;
 
         // 查找对应的炸弹并爆炸
         for (auto &bomb : _bombs)
@@ -2031,8 +2031,8 @@ void DebugScene::onContactSeparate(PhysicsContact &contact)
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
     // 玩家离开平台
-    if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
-        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+    if ((categoryA == ToMask(GamePhysicsCategory::PLAYER) && categoryB == ToMask(GamePhysicsCategory::PLATFORM)) ||
+        (categoryA == ToMask(GamePhysicsCategory::PLATFORM) && categoryB == ToMask(GamePhysicsCategory::PLAYER)))
     {
         // 只有当接触计数大于0时才减少
         if (_groundContactCount > 0)
@@ -2241,9 +2241,9 @@ void DebugScene::doThrowBomb()
     physicsBody->setRotationEnable(true); // 允许旋转
 
     // 设置碰撞掩码
-    physicsBody->setCategoryBitmask(CATEGORY_BOMB);
-    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);   // 只与平台碰撞
-    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM); // 检测与平台的接触
+    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::BOMB));
+    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM));   // 只与平台碰撞
+    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM)); // 检测与平台的接触
 
     bombSprite->addComponent(physicsBody);
     this->addChild(bombSprite, 4);

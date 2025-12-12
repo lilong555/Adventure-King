@@ -20,33 +20,11 @@
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
 #include "Character/Base/CharacterData.h"
+#include "Physics/GamePhysicsCategory.h"
 #include <memory>
 
 // 前向声明
 class PlayerCharacter;
-
-//=============================================================================
-// 物理碰撞分类掩码
-//=============================================================================
-/**
- * @brief 物理碰撞分类掩码枚举
- *
- * 用于设置物理刚体的碰撞分类和掩码，控制哪些物体之间可以发生碰撞。
- * 使用位掩码（bitmask）方式，支持组合多个分类。
- *
- * @example 设置玩家只与平台碰撞：
- *   physicsBody->setCategoryBitmask(CATEGORY_PLAYER);
- *   physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);
- */
-enum PhysicsCategory
-{
-    CATEGORY_NONE = 0,          ///< 无碰撞
-    CATEGORY_PLAYER = 1 << 0,   ///< 玩家 (0x01)
-    CATEGORY_PLATFORM = 1 << 1, ///< 平台/地面 (0x02)
-    CATEGORY_BOMB = 1 << 2,     ///< 炸弹/投掷物 (0x04)
-    CATEGORY_ENEMY = 1 << 3,    ///< 敌人/木桩 (0x08)
-    CATEGORY_ALL = 0xFFFFFFFF   ///< 所有类别
-};
 
 //=============================================================================
 // 游戏对象结构体定义
