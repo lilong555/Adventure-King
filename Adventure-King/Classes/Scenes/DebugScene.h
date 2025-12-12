@@ -306,6 +306,7 @@ private:
 
     bool _isMovingLeft = false;           ///< 是否正在向左移动
     bool _isMovingRight = false;          ///< 是否正在向右移动
+    bool _isRunPressed = false;           ///< 是否按下跑步键（Shift）
     float _moveSpeed = 200.0f;            ///< 基础移动速度（像素/秒）
 
     //=========================================================================
@@ -321,6 +322,7 @@ private:
 
     bool _isGrounded = false;    ///< 是否在地面上（通过碰撞检测更新）
     int _groundContactCount = 0; ///< 与地面接触的计数（处理多平台边缘情况）
+    int _jumpCount = 0;          ///< 当前空中已跳次数（落地重置）
 
     /// 跳跃冲量（数值越大跳得越高）
     static constexpr float JUMP_IMPULSE = 350.0f;

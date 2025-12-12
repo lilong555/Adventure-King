@@ -366,6 +366,7 @@ void GameScene::initPlayer(const Vec2 &startPos)
     // 初始化地面状态
     _isGrounded = true;
     _groundContactCount = 1;
+    _jumpCount = 0;
 
     // 初始化玩家技能
     initPlayerSkills();
@@ -1020,6 +1021,7 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
             {
                 _groundContactCount++;
                 _isGrounded = true;
+                _jumpCount = 0; // 落地后重置跳跃次数
                 CCLOG("Player grounded (normal.y=%.2f), contacts: %d", normal.y, _groundContactCount);
             }
         }
@@ -1090,22 +1092,31 @@ void GameScene::onContactSeparate(PhysicsContact &contact)
 
     if (platformContact && _groundContactCount > 0)
     {
+        bool wasGroundContact = false;
+        if (auto contactData = contact.getContactData())
+        {
+            Vec2 normal = contactData->normal;
+            if (playerIsB)
+            {
+                normal = -normal;
+            }
+            // 只有离开“脚下平台”的接触才减少计数，避免侧面碰撞影响落地判断
+            wasGroundContact = (normal.y < GROUND_NORMAL_THRESHOLD);
+        }
+
+        if (!wasGroundContact)
+        {
+            return;
+        }
+
         _groundContactCount--;
 
         if (_groundContactCount <= 0)
         {
             _groundContactCount = 0;
-
-            // 检查玩家速度确定是否真的离地
-            if (_player && _player->getPhysicsBody())
-            {
-                Vec2 velocity = _player->getPhysicsBody()->getVelocity();
-                if (fabsf(velocity.y) > 10.0f)
-                {
-                    _isGrounded = false;
-                    CCLOG("Player left ground (velocity.y=%.2f)", velocity.y);
-                }
-            }
+            // 只要完全离开所有脚下平台就认为离地，避免在空中速度为0时误判为落地
+            _isGrounded = false;
+            CCLOG("Player left ground, contacts: 0");
         }
     }
 }
@@ -1134,7 +1145,7 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingLeft = true;
         _player->setFlippedX(true);
         if (!_isAttacking && !_isCastingSkill)
-            _player->setMoving(true);
+            _player->setMoving(true, _isRunPressed);
         break;
 
     case EventKeyboard::KeyCode::KEY_D:
@@ -1142,7 +1153,16 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         _isMovingRight = true;
         _player->setFlippedX(false);
         if (!_isAttacking && !_isCastingSkill)
-            _player->setMoving(true);
+            _player->setMoving(true, _isRunPressed);
+        break;
+
+    case EventKeyboard::KeyCode::KEY_SHIFT:
+    case EventKeyboard::KeyCode::KEY_RIGHT_SHIFT:
+        _isRunPressed = true;
+        if ((_isMovingLeft || _isMovingRight) && !_isAttacking && !_isCastingSkill)
+        {
+            _player->setMoving(true, true);
+        }
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
@@ -1185,6 +1205,15 @@ void GameScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
 {
     switch (keyCode)
     {
+    case EventKeyboard::KeyCode::KEY_SHIFT:
+    case EventKeyboard::KeyCode::KEY_RIGHT_SHIFT:
+        _isRunPressed = false;
+        if ((_isMovingLeft || _isMovingRight) && !_isAttacking && !_isCastingSkill && _player)
+        {
+            _player->setMoving(true, false);
+        }
+        break;
+
     case EventKeyboard::KeyCode::KEY_A:
     case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
         _isMovingLeft = false;
@@ -1208,12 +1237,31 @@ void GameScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
 
 void GameScene::handleJump()
 {
-    if (_isGrounded && _player && _player->getPhysicsBody())
+    if (!_player || !_player->getPhysicsBody())
+        return;
+
+    // 落地时允许重新开始计数
+    if (_isGrounded)
     {
-        _player->getPhysicsBody()->applyImpulse(Vec2(0, _playerConfig.jumpImpulse));
-        _isGrounded = false;
-        CCLOG("Player jumped");
+        _jumpCount = 0;
     }
+
+    if (_jumpCount >= _playerConfig.maxJumpCount)
+        return;
+
+    // 主动跳跃时清空地面接触计数，避免离地瞬间残留接触导致空中误判为落地
+    _groundContactCount = 0;
+
+    auto physicsBody = _player->getPhysicsBody();
+    Vec2 velocity = physicsBody->getVelocity();
+    // 让二段跳更干脆：清掉当前垂直速度
+    velocity.y = 0.0f;
+    physicsBody->setVelocity(velocity);
+
+    physicsBody->applyImpulse(Vec2(0, _playerConfig.jumpImpulse));
+    _isGrounded = false;
+    _jumpCount++;
+    CCLOG(_jumpCount == 1 ? "Player jumped" : "Player double jumped");
 }
 
 bool GameScene::handleGateInteraction()
@@ -1254,14 +1302,15 @@ void GameScene::updatePlayerMovement(float dt)
     Vec2 velocity = physicsBody->getVelocity();
 
     // 计算目标水平速度
+    float currentSpeed = _isRunPressed ? _playerConfig.runSpeed : _playerConfig.walkSpeed;
     float targetVelocityX = 0.0f;
     if (_isMovingLeft)
     {
-        targetVelocityX = -_playerConfig.moveSpeed;
+        targetVelocityX = -currentSpeed;
     }
     else if (_isMovingRight)
     {
-        targetVelocityX = _playerConfig.moveSpeed;
+        targetVelocityX = currentSpeed;
     }
 
     velocity.x = targetVelocityX;
@@ -1274,9 +1323,10 @@ void GameScene::updateGroundedState(const Vec2 &velocity)
     if (_groundContactCount > 0 && fabsf(velocity.y) < GROUND_VELOCITY_THRESHOLD)
     {
         _isGrounded = true;
+        _jumpCount = 0;
     }
-    // 如果玩家在下落且速度很大，确保非着地状态
-    else if (velocity.y < FALLING_VELOCITY_THRESHOLD && _groundContactCount <= 0)
+    // 没有任何地面接触时一律视为在空中（哪怕垂直速度为0）
+    else if (_groundContactCount <= 0)
     {
         _isGrounded = false;
     }
@@ -1334,7 +1384,7 @@ void GameScene::onAttackAnimationFinished()
     if (_player)
     {
         // 根据当前输入恢复跑动/待机状态
-        _player->setMoving(_isMovingLeft || _isMovingRight);
+        _player->setMoving(_isMovingLeft || _isMovingRight, _isRunPressed);
     }
 
     CCLOG("Attack animation finished");
@@ -1359,7 +1409,7 @@ void GameScene::onSkillAnimationFinished()
 
     if (_player)
     {
-        _player->setMoving(_isMovingLeft || _isMovingRight);
+        _player->setMoving(_isMovingLeft || _isMovingRight, _isRunPressed);
     }
 
     CCLOG("Skill animation finished");

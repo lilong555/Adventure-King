@@ -187,6 +187,7 @@ void SettingMenuLayer::onMusicToggle(Ref* sender)
 void SettingMenuLayer::layoutUI()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
 
     const float TARGET_WIDTH_RATIO = 0.6f;
     float targetHeight = visibleSize.height * TARGET_WIDTH_RATIO;
@@ -194,10 +195,10 @@ void SettingMenuLayer::layoutUI()
     float scaleY = targetHeight / _background->getContentSize().height;
     _background->setScale(scaleY);
 
-    // 居中
-    _background->setPosition(
-        Vec2::ZERO
-    );
+    // 将背景居中显示
+    _background->setPosition(Vec2(
+        origin.x + visibleSize.width / 2,
+        origin.y + visibleSize.height / 2));
 }
 
 void SettingMenuLayer::onClose(Ref*)

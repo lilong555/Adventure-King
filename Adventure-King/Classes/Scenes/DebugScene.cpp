@@ -1253,7 +1253,7 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         if (_player)
             _player->setFlippedX(true); // 朝左
         if (!_isAttacking && !_isCastingSkill && _player)
-            _player->setMoving(true);
+            _player->setMoving(true, _isRunPressed);
         break;
 
     case EventKeyboard::KeyCode::KEY_D:
@@ -1262,7 +1262,16 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         if (_player)
             _player->setFlippedX(false); // 朝右
         if (!_isAttacking && !_isCastingSkill && _player)
-            _player->setMoving(true);
+            _player->setMoving(true, _isRunPressed);
+        break;
+
+    case EventKeyboard::KeyCode::KEY_SHIFT:
+    case EventKeyboard::KeyCode::KEY_RIGHT_SHIFT:
+        _isRunPressed = true;
+        if ((_isMovingLeft || _isMovingRight) && !_isAttacking && !_isCastingSkill && _player)
+        {
+            _player->setMoving(true, true);
+        }
         break;
 
     //-------------------------------------------------------------------------
@@ -1324,6 +1333,15 @@ void DebugScene::onKeyReleased(EventKeyboard::KeyCode keyCode, Event *event)
 {
     switch (keyCode)
     {
+    case EventKeyboard::KeyCode::KEY_SHIFT:
+    case EventKeyboard::KeyCode::KEY_RIGHT_SHIFT:
+        _isRunPressed = false;
+        if ((_isMovingLeft || _isMovingRight) && !_isAttacking && !_isCastingSkill && _player)
+        {
+            _player->setMoving(true, false);
+        }
+        break;
+
     case EventKeyboard::KeyCode::KEY_A:
     case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
         _isMovingLeft = false;
@@ -1368,6 +1386,10 @@ void DebugScene::updatePlayerMovement(float dt)
     if (attr)
     {
         currentMoveSpeed = attr->getAttributeValue(AttributeType::MOVE_SPEED);
+    }
+    if (_isRunPressed)
+    {
+        currentMoveSpeed *= 1.6f;
     }
 
     // 保持垂直速度（重力效果）
@@ -1871,7 +1893,7 @@ void DebugScene::onAttackAnimationFinished()
     //-------------------------------------------------------------------------
     if (_player)
     {
-        _player->setMoving(_isMovingLeft || _isMovingRight);
+        _player->setMoving(_isMovingLeft || _isMovingRight, _isRunPressed);
     }
 
     CCLOG("Attack animation finished");
@@ -1980,6 +2002,7 @@ bool DebugScene::onContactBegin(PhysicsContact &contact)
         {
             _groundContactCount++;
             _isGrounded = true;
+            _jumpCount = 0; // 落地后重置二段跳计数
             CCLOG("Player landed on platform, contact count: %d, normal: (%.2f, %.2f)",
                   _groundContactCount, normal.x, normal.y);
         }
@@ -2077,19 +2100,32 @@ void DebugScene::jump()
     if (!_player || _player->isDead())
         return;
 
-    // 只有在地面上才能跳跃
     if (_isGrounded)
     {
-        auto physicsBody = _player->getPhysicsBody();
-        if (physicsBody)
-        {
-            // 使用物理引擎的冲量实现跳跃
-            physicsBody->applyImpulse(Vec2(0, JUMP_IMPULSE * physicsBody->getMass()));
-        }
-        _isGrounded = false;
-        addDamageLog("跳跃!");
-        CCLOG("Player jumped with impulse");
+        _jumpCount = 0;
     }
+
+    if (_jumpCount >= 2)
+        return;
+
+    // 主动跳跃时清空地面接触计数，避免空中误判为落地
+    _groundContactCount = 0;
+
+    auto physicsBody = _player->getPhysicsBody();
+    if (physicsBody)
+    {
+        Vec2 velocity = physicsBody->getVelocity();
+        velocity.y = 0.0f;
+        physicsBody->setVelocity(velocity);
+
+        // 使用物理引擎的冲量实现跳跃
+        physicsBody->applyImpulse(Vec2(0, JUMP_IMPULSE * physicsBody->getMass()));
+    }
+
+    _isGrounded = false;
+    _jumpCount++;
+    addDamageLog(_jumpCount == 1 ? "跳跃!" : "二段跳!");
+    CCLOG(_jumpCount == 1 ? "Player jumped with impulse" : "Player double jumped with impulse");
 }
 
 /**
@@ -2171,7 +2207,7 @@ void DebugScene::onSkillAnimationFinished()
 
     if (_player)
     {
-        _player->setMoving(_isMovingLeft || _isMovingRight);
+        _player->setMoving(_isMovingLeft || _isMovingRight, _isRunPressed);
     }
 
     CCLOG("Skill animation finished");
