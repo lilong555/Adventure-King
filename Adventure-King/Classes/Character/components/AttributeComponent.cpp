@@ -1,4 +1,5 @@
 #include "Character/components/AttributeComponent.h"
+#include <algorithm>
 
 AttributeComponent::AttributeComponent() = default;
 
@@ -8,12 +9,11 @@ void AttributeComponent::setBaseAttributes(const Attributes &attributes)
 {
     _baseAttributes = attributes;
     recalculateFinalAttributes();
-	addEquipmentBonus(_equipmentBonus);
 }
 
 const Attributes &AttributeComponent::getBaseAttributes() const
 {
-    return _baseAttributes; 
+    return _baseAttributes;
 }
 
 void AttributeComponent::setBaseAttribute(AttributeType type, float value)
