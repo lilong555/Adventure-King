@@ -3,7 +3,7 @@ root = true
 # C++ 源代码和头文件
 [*.{h,cpp}]
 charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
@@ -19,6 +19,7 @@ insert_final_newline = true
 # JSON 配置文件
 [*.json]
 charset = utf-8
+end_of_line = lf
 indent_style = space
 indent_size = 2
 insert_final_newline = true
@@ -26,5 +27,12 @@ insert_final_newline = true
 # CMake 文件
 [CMakeLists.txt]
 charset = utf-8
+end_of_line = lf
 indent_style = space
 indent_size = 2
+
+# Tiled map assets
+[*.{tmx,tsx,tiled-session}]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
