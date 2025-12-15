@@ -236,7 +236,7 @@ void DebugScene::initPlayer()
     Vec2 startPos(origin.x + visibleSize.width / 2, origin.y + GROUND_Y + getContentSize().height / 2);
 
     // 创建玩家角色（战士职业）
-    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/spr_klee_run.png");
+    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png");
 
     if (!_player)
     {
@@ -2246,7 +2246,7 @@ void DebugScene::doThrowBomb()
         return;
 
     // 创建炸弹精灵
-    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/TNT.png");
+    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/defalt/TNT.png");
     if (!bombSprite)
     {
         CCLOG("Failed to create bomb sprite");
@@ -2319,7 +2319,7 @@ void DebugScene::explodeBomb(Bomb &bomb)
     bomb.sprite->removeFromParent();
 
     // 创建爆炸效果
-    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
+    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/defalt/BOOM_1.png");
     if (boomSprite)
     {
         boomSprite->setPosition(explodePos);

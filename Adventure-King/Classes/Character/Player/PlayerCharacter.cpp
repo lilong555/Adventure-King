@@ -21,8 +21,8 @@ constexpr float FIREBALL_SPEED_X = 650.0f;
 constexpr float FIREBALL_DAMAGE = 220.0f;
 constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
 
-const char *const PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/TNT.png";
-const char *const EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/BOOM_1.png";
+const char *const PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
+const char *const EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
 
 Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
 {
@@ -55,9 +55,9 @@ void ensureDefaultRunAnimation()
         return;
 
     std::vector<std::string> runPaths = {
-        "Sprites/Characters/Player/Klee/spr_klee_run_1.png",
-        "Sprites/Characters/Player/Klee/spr_klee_run_2.png",
-        "Sprites/Characters/Player/Klee/spr_klee_run.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
     };
 
     auto runAnim = createAnimationFromPaths(runPaths, 0.15f);
@@ -74,9 +74,9 @@ void ensureDefaultWalkAnimation()
         return;
 
     std::vector<std::string> walkPaths = {
-        "Sprites/Characters/Player/Klee/spr_klee_run_1.png",
-        "Sprites/Characters/Player/Klee/spr_klee_run_2.png",
-        "Sprites/Characters/Player/Klee/spr_klee_run.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
     };
 
     auto walkAnim = createAnimationFromPaths(walkPaths, 0.25f);
@@ -397,7 +397,7 @@ void PlayerCharacter::setMoving(bool moving, bool running)
     stopAllActions();
 
     auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
-        "Sprites/Characters/Player/Klee/spr_klee_run.png");
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png");
     if (defaultTexture)
     {
         setTexture(defaultTexture);
@@ -444,7 +444,7 @@ void PlayerCharacter::attackAnimated(const std::function<void()> &onFinished)
         }
         else
         {
-            path = StringUtils::format("Sprites/Characters/Player/Klee/%s_%d.png", prefix.c_str(), i);
+            path = StringUtils::format("Sprites/Characters/Player/Klee/defalt/%s_%d.png", prefix.c_str(), i);
         }
         paths.push_back(path);
     }
@@ -485,9 +485,9 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()> &onFinished)
     }
 
     std::vector<std::string> paths = {
-        "Sprites/Characters/Player/Klee/spr_klee_attack_1.png",
-        "Sprites/Characters/Player/Klee/spr_klee_attack_2.png",
-        "Sprites/Characters/Player/Klee/spr_klee_attack_3.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_attack_1.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_attack_2.png",
+        "Sprites/Characters/Player/Klee/defalt/spr_klee_attack_3.png",
     };
 
     auto animation = createAnimationFromPaths(paths, 0.13f);

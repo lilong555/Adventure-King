@@ -31,7 +31,7 @@ namespace
 {
     // 资源路径
     const char *const DEFAULT_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
-    const char *const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/spr_klee_run.png";
+    const char *const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png";
 
     // 默认值
     const Vec2 DEFAULT_SPAWN_POINT(100.0f, 200.0f);
