@@ -180,8 +180,8 @@ void GameUI::bindPlayer(PlayerCharacter *player)
     {
         _skillBar->bindPlayer(player);
 
-        // 设置技能1图标（火球临时复用 TNT 素材）
-        _skillBar->setSlotIcon(0, "Sprites/Characters/Player/Klee/defalt/TNT.png");
+        // 设置技能1图标（火球）
+        _skillBar->setSlotIcon(0, "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_short_1.png");
     }
 }
 

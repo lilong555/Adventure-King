@@ -394,7 +394,7 @@ void GameScene::initPlayerSkills()
         return;
     }
 
-    // 技能1：火球（临时使用炸弹素材）
+    // 技能1：火球
     auto fireballSkill = std::make_shared<ActiveSkill>();
     fireballSkill->id = FIREBALL_SKILL_ID;
     fireballSkill->name = "火球";
@@ -1445,7 +1445,7 @@ void GameScene::castFireball()
 
     // 技能释放成功，播放施法动画
     _isCastingSkill = true;
-    _player->castSkillAnimated([this]()
+    _player->castFireballAnimated([this]()
                                { this->onFireballAnimationFinished(); });
     CCLOG("Skill started: Fireball");
 }

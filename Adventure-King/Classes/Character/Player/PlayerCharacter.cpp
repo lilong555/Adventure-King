@@ -21,8 +21,11 @@ constexpr float FIREBALL_SPEED_X = 650.0f;
 constexpr float FIREBALL_DAMAGE = 220.0f;
 constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
 
-const char *const PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
-const char *const EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
+const char *const BOMB_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
+const char *const BOMB_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
+
+const char *const FIREBALL_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_short_1.png";
+const char *const FIREBALL_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_orange_1.png";
 
 Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
 {
@@ -514,6 +517,47 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()> &onFinished)
     runAction(sequence);
 }
 
+void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinished)
+{
+    if (isDead())
+        return;
+
+    // 切换至 ATTACKING 状态（技能施放暂复用攻击状态）
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::ATTACKING);
+    }
+
+    std::vector<std::string> paths = {
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_1.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_2.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_3.png",
+    };
+
+    auto animation = createAnimationFromPaths(paths, 0.13f);
+    if (!animation)
+    {
+        CCLOG("PlayerCharacter: failed to create fireball cast animation");
+        if (onFinished)
+            onFinished();
+        return;
+    }
+
+    // 停止当前动作，避免与跑动/攻击动画冲突
+    stopActionByTag(1002);
+    stopAllActions();
+
+    auto animate = Animate::create(animation);
+    auto callbackAction = CallFunc::create([onFinished]()
+                                           {
+                                               if (onFinished)
+                                                   onFinished();
+                                           });
+    auto sequence = Sequence::create(animate, callbackAction, nullptr);
+    sequence->setTag(1002);
+    runAction(sequence);
+}
+
 void PlayerCharacter::attack()
 {
     attackAnimated(nullptr);
@@ -566,7 +610,7 @@ void PlayerCharacter::spawnBombProjectile(Node *gameLayer)
     if (!gameLayer)
         return;
 
-    auto bombSprite = Sprite::create(PROJECTILE_SPRITE_PATH);
+    auto bombSprite = Sprite::create(BOMB_PROJECTILE_SPRITE_PATH);
     if (!bombSprite)
     {
         CCLOG("PlayerCharacter::spawnBombProjectile - Failed to create bomb sprite");
@@ -618,7 +662,7 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     if (!gameLayer)
         return;
 
-    auto fireballSprite = Sprite::create(PROJECTILE_SPRITE_PATH);
+    auto fireballSprite = Sprite::create(FIREBALL_PROJECTILE_SPRITE_PATH);
     if (!fireballSprite)
     {
         CCLOG("PlayerCharacter::spawnFireballProjectile - Failed to create fireball sprite");
@@ -639,11 +683,10 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     float spawnX = playerBox.getMidX() + dirX * (playerBox.size.width * 0.40f + 25.0f);
     float spawnY = playerBox.getMidY() + playerBox.size.height * 0.20f;
     fireballSprite->setPosition(Vec2(spawnX, spawnY));
-    fireballSprite->setScale(0.35f);
-    fireballSprite->setColor(Color3B(255, 120, 60));
+    fireballSprite->setScale(0.30f);
 
     PhysicsMaterial fireballMaterial(0.5f, 0.0f, 0.0f);
-    auto physicsBody = PhysicsBody::createCircle(12.0f, fireballMaterial);
+    auto physicsBody = PhysicsBody::createCircle(16.0f, fireballMaterial);
     physicsBody->setDynamic(true);
     physicsBody->setMass(0.4f);
     physicsBody->setRotationEnable(false);
@@ -854,11 +897,14 @@ void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
         }
     }
 
-    auto boomSprite = Sprite::create(EXPLOSION_SPRITE_PATH);
+    const char *const explosionPath = (projectile.type == ProjectileType::FIREBALL)
+                                          ? FIREBALL_EXPLOSION_SPRITE_PATH
+                                          : BOMB_EXPLOSION_SPRITE_PATH;
+    auto boomSprite = Sprite::create(explosionPath);
     if (boomSprite && gameLayer)
     {
         boomSprite->setPosition(explodePos);
-        boomSprite->setScale(0.8f);
+        boomSprite->setScale(projectile.type == ProjectileType::FIREBALL ? 0.9f : 0.8f);
         gameLayer->addChild(boomSprite, 6);
 
         auto scaleUp = ScaleTo::create(0.2f, 1.2f);

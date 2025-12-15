@@ -51,6 +51,7 @@ public:
 
     // 播放一次技能施放动画，结束后回调（用于场景侧触发技能效果）
     void castSkillAnimated(const std::function<void()> &onFinished = nullptr);
+    void castFireballAnimated(const std::function<void()> &onFinished = nullptr);
 
     // 实现角色基础攻击
     virtual void attack() override;
