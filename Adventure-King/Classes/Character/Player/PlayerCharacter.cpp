@@ -20,12 +20,12 @@ constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;
 constexpr float FIREBALL_SPEED_X = 650.0f;
 constexpr float FIREBALL_DAMAGE = 220.0f;
 constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
+constexpr float FIREBALL_CAST_SCALE_MULTIPLIER = 1.15f;
 
 const char *const BOMB_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
 const char *const BOMB_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
 
-const char *const FIREBALL_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_short_1.png";
-const char *const FIREBALL_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_orange_1.png";
+const char *const FIREBALL_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png";
 
 Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
 {
@@ -532,6 +532,10 @@ void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinish
         "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_1.png",
         "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_2.png",
         "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_3.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_4.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_5.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_6.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_7.png",
     };
 
     auto animation = createAnimationFromPaths(paths, 0.13f);
@@ -547,9 +551,16 @@ void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinish
     stopActionByTag(1002);
     stopAllActions();
 
+    // rpg 技能帧人物占比更小，施放时做轻微放大补偿，结束后恢复（仅短时间影响）
+    float baseScaleX = getScaleX();
+    float baseScaleY = getScaleY();
+    setScale(baseScaleX * FIREBALL_CAST_SCALE_MULTIPLIER,
+             baseScaleY * FIREBALL_CAST_SCALE_MULTIPLIER);
+
     auto animate = Animate::create(animation);
-    auto callbackAction = CallFunc::create([onFinished]()
+    auto callbackAction = CallFunc::create([this, baseScaleX, baseScaleY, onFinished]()
                                            {
+                                               this->setScale(baseScaleX, baseScaleY);
                                                if (onFinished)
                                                    onFinished();
                                            });
@@ -684,6 +695,19 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     float spawnY = playerBox.getMidY() + playerBox.size.height * 0.20f;
     fireballSprite->setPosition(Vec2(spawnX, spawnY));
     fireballSprite->setScale(0.30f);
+    fireballSprite->setFlippedX(facingLeft);
+
+    // 飞行中循环播放导弹动画
+    std::vector<std::string> missilePaths = {
+        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_2.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_3.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_4.png",
+    };
+    if (auto missileAnim = createAnimationFromPaths(missilePaths, 0.08f))
+    {
+        fireballSprite->runAction(RepeatForever::create(Animate::create(missileAnim)));
+    }
 
     PhysicsMaterial fireballMaterial(0.5f, 0.0f, 0.0f);
     auto physicsBody = PhysicsBody::createCircle(16.0f, fireballMaterial);
@@ -897,21 +921,48 @@ void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
         }
     }
 
-    const char *const explosionPath = (projectile.type == ProjectileType::FIREBALL)
-                                          ? FIREBALL_EXPLOSION_SPRITE_PATH
-                                          : BOMB_EXPLOSION_SPRITE_PATH;
-    auto boomSprite = Sprite::create(explosionPath);
-    if (boomSprite && gameLayer)
+    if (gameLayer)
     {
-        boomSprite->setPosition(explodePos);
-        boomSprite->setScale(projectile.type == ProjectileType::FIREBALL ? 0.9f : 0.8f);
-        gameLayer->addChild(boomSprite, 6);
+        if (projectile.type == ProjectileType::FIREBALL)
+        {
+            // 火球爆炸：使用 rpg 的闪光序列帧
+            std::vector<std::string> flashPaths = {
+                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_0.png",
+                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_1.png",
+                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_2.png",
+                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_3.png",
+                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_4.png",
+            };
 
-        auto scaleUp = ScaleTo::create(0.2f, 1.2f);
-        auto fadeOut = FadeOut::create(0.3f);
-        auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
-        auto remove = RemoveSelf::create();
-        boomSprite->runAction(Sequence::create(spawn, remove, nullptr));
+            if (auto flashAnim = createAnimationFromPaths(flashPaths, 0.05f))
+            {
+                auto boomSprite = Sprite::create(flashPaths.front());
+                if (boomSprite)
+                {
+                    boomSprite->setPosition(explodePos);
+                    boomSprite->setScale(0.9f);
+                    gameLayer->addChild(boomSprite, 6);
+                    boomSprite->runAction(Sequence::create(Animate::create(flashAnim), RemoveSelf::create(), nullptr));
+                }
+            }
+        }
+        else
+        {
+            // 炸弹爆炸沿用 defalt 素材
+            auto boomSprite = Sprite::create(BOMB_EXPLOSION_SPRITE_PATH);
+            if (boomSprite)
+            {
+                boomSprite->setPosition(explodePos);
+                boomSprite->setScale(0.8f);
+                gameLayer->addChild(boomSprite, 6);
+
+                auto scaleUp = ScaleTo::create(0.2f, 1.2f);
+                auto fadeOut = FadeOut::create(0.3f);
+                auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
+                auto remove = RemoveSelf::create();
+                boomSprite->runAction(Sequence::create(spawn, remove, nullptr));
+            }
+        }
     }
 
     projectile.sprite = nullptr;
