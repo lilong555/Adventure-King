@@ -583,10 +583,11 @@ void PlayerCharacter::spawnBombProjectile(Node *gameLayer)
     bool facingLeft = isFlippedX();
     float throwDirX = facingLeft ? -1.0f : 1.0f;
 
-    Vec2 playerPos = getPosition();
-    float offsetX = throwDirX * bombSprite->getContentSize().width;
-    float offsetY = bombSprite->getContentSize().height;
-    bombSprite->setPosition(playerPos + Vec2(offsetX, offsetY));
+    // 生成位置：基于玩家当前包围盒，避免受投掷物贴图尺寸影响导致偏远/偏高
+    Rect playerBox = getBoundingBox();
+    float spawnX = playerBox.getMidX() + throwDirX * (playerBox.size.width * 0.35f + 20.0f);
+    float spawnY = playerBox.getMidY() + playerBox.size.height * 0.15f;
+    bombSprite->setPosition(Vec2(spawnX, spawnY));
     bombSprite->setScale(0.5f);
 
     PhysicsMaterial bombMaterial(0.5f, 0.3f, 0.2f);
@@ -634,8 +635,10 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     bool facingLeft = isFlippedX();
     float dirX = facingLeft ? -1.0f : 1.0f;
 
-    Vec2 playerPos = getPosition();
-    fireballSprite->setPosition(playerPos + Vec2(dirX * 60.0f, 60.0f));
+    Rect playerBox = getBoundingBox();
+    float spawnX = playerBox.getMidX() + dirX * (playerBox.size.width * 0.40f + 25.0f);
+    float spawnY = playerBox.getMidY() + playerBox.size.height * 0.20f;
+    fireballSprite->setPosition(Vec2(spawnX, spawnY));
     fireballSprite->setScale(0.35f);
     fireballSprite->setColor(Color3B(255, 120, 60));
 
@@ -690,12 +693,13 @@ bool PlayerCharacter::handleProjectileContact(Node *nodeA, int categoryA,
 
                 // Avoid modifying physics bodies inside the contact callback.
                 // Defer the actual explosion to the next tick.
-                this->runAction(Sequence::create(
+                auto actionNode = gameLayer ? gameLayer : this;
+                actionNode->runAction(Sequence::create(
                     DelayTime::create(0.0f),
                     CallFunc::create([this, gameLayer, projectileNode]()
                                      {
                                          if (!gameLayer)
-                                             return;
+                                            return;
 
                                          auto pending = findProjectile(projectileNode);
                                          if (pending && pending->isExploded)
