@@ -1086,61 +1086,9 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
     }
 
     // 玩家投掷物命中非玩家目标时触发爆炸（平台/碰撞体/敌人等）
-    auto findProjectile = [this](Node *node) -> GameBomb *
+    if (_player)
     {
-        if (!node)
-            return nullptr;
-
-        for (auto &projectile : _bombs)
-        {
-            if (projectile.sprite == node)
-            {
-                return &projectile;
-            }
-        }
-
-        return nullptr;
-    };
-
-    GameBomb *projectile = findProjectile(nodeA);
-    Node *projectileNode = nodeA;
-    Node *otherNode = nodeB;
-    int otherMask = categoryB;
-
-    if (!projectile)
-    {
-        projectile = findProjectile(nodeB);
-        projectileNode = nodeB;
-        otherNode = nodeA;
-        otherMask = categoryA;
-    }
-
-    if (projectile && !projectile->isExploded)
-    {
-        bool hitPlayer = (otherMask & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-        bool hitAnotherProjectile = (findProjectile(otherNode) != nullptr);
-
-        if (!hitPlayer && !hitAnotherProjectile)
-        {
-            projectile->isExploded = true;
-
-            // Avoid modifying physics bodies inside the contact callback.
-            // Defer the actual explosion to the next tick.
-            this->runAction(Sequence::create(
-                DelayTime::create(0.0f),
-                CallFunc::create([this, projectileNode]()
-                                 {
-                                     for (auto &pendingProjectile : _bombs)
-                                     {
-                                         if (pendingProjectile.sprite == projectileNode && pendingProjectile.isExploded)
-                                         {
-                                             explodeProjectile(pendingProjectile);
-                                             break;
-                                         }
-                                     }
-                                 }),
-                nullptr));
-        }
+        _player->handleProjectileContact(nodeA, categoryA, nodeB, categoryB, _gameLayer);
     }
 
     return true;
@@ -1359,13 +1307,7 @@ void GameScene::update(float dt)
         updateUI();
 
         // 清理已爆炸/移除的投掷物，避免列表无限增长
-        if (!_bombs.empty())
-        {
-            _bombs.erase(std::remove_if(_bombs.begin(), _bombs.end(),
-                                        [](const GameBomb &p)
-                                        { return p.sprite == nullptr; }),
-                         _bombs.end());
-        }
+        _player->cleanupProjectiles();
         return;
     }
 
@@ -1374,13 +1316,7 @@ void GameScene::update(float dt)
     updateUI();
 
     // 清理已爆炸/移除的投掷物，避免列表无限增长
-    if (!_bombs.empty())
-    {
-        _bombs.erase(std::remove_if(_bombs.begin(), _bombs.end(),
-                                    [](const GameBomb &p)
-                                    { return p.sprite == nullptr; }),
-                     _bombs.end());
-    }
+    _player->cleanupProjectiles();
 }
 
 void GameScene::updatePlayerMovement(float dt)
@@ -1519,7 +1455,10 @@ void GameScene::onFireballAnimationFinished()
     _isCastingSkill = false;
 
     // 动画结束后实际发射火球
-    doCastFireball();
+    if (_player)
+    {
+        _player->spawnFireballProjectile(_gameLayer);
+    }
 
     if (_player)
     {
@@ -1543,295 +1482,13 @@ void GameScene::throwBomb()
     _isAttacking = true;
     _player->castSkillAnimated([this]()
                                {
-                                   doThrowBomb();
+                                   if (_player)
+                                   {
+                                       _player->spawnBombProjectile(_gameLayer);
+                                   }
                                    this->onAttackAnimationFinished();
                                });
     CCLOG("Normal attack started: Throw Bomb");
-}
-
-/**
- * @brief 实际创建并投掷炸弹
- */
-void GameScene::doThrowBomb()
-{
-    if (!_player || _player->isDead())
-        return;
-    if (!_gameLayer)
-        return;
-
-    // 创建炸弹精灵
-    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/TNT.png");
-    if (!bombSprite)
-    {
-        CCLOG("Failed to create bomb sprite");
-        return;
-    }
-
-    // 创建炸弹对象
-    GameBomb bomb;
-    bomb.type = PlayerProjectileType::BOMB;
-    bomb.isExploded = false;
-    bomb.sprite = bombSprite;
-    bomb.damage = BOMB_DAMAGE;
-    bomb.explosionRadius = BOMB_EXPLOSION_RADIUS;
-
-    // 根据角色朝向决定炸弹方向
-    bool facingLeft = _player->isFlippedX();
-    float throwDirX = facingLeft ? -1.0f : 1.0f;
-
-    // 设置炸弹初始位置（角色上方）
-    Vec2 playerPos = _player->getPosition();
-    float offsetX = throwDirX * bomb.sprite->getContentSize().width;
-    float offsetY = bomb.sprite->getContentSize().height;
-    bombSprite->setPosition(playerPos + Vec2(offsetX, offsetY));
-    bombSprite->setScale(0.5f);
-
-    // 创建炸弹物理刚体
-    PhysicsMaterial bombMaterial(0.5f, 0.3f, 0.2f);                    // 密度、弹性、摩擦
-    auto physicsBody = PhysicsBody::createCircle(15.0f, bombMaterial); // 圆形碰撞体
-    physicsBody->setDynamic(true);
-    physicsBody->setMass(0.5f);
-    physicsBody->setRotationEnable(true); // 允许旋转
-
-    // 设置碰撞掩码
-    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER_ATTACK));
-    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setTag(0);
-
-    bombSprite->addComponent(physicsBody);
-    _gameLayer->addChild(bombSprite, 4);
-
-    // 施加初始速度（冲量）
-    Vec2 impulse(throwDirX * BOMB_THROW_SPEED_X * physicsBody->getMass(),
-                 BOMB_THROW_SPEED_Y * physicsBody->getMass());
-    physicsBody->applyImpulse(impulse);
-
-    _bombs.push_back(bomb);
-
-    CCLOG("Bomb thrown with physics!");
-}
-
-void GameScene::doCastFireball()
-{
-    if (!_player || _player->isDead())
-        return;
-    if (!_gameLayer)
-        return;
-
-    // 临时：火球素材复用炸弹
-    auto fireballSprite = Sprite::create("Sprites/Characters/Player/Klee/TNT.png");
-    if (!fireballSprite)
-    {
-        CCLOG("Failed to create fireball sprite");
-        return;
-    }
-
-    GameBomb fireball;
-    fireball.type = PlayerProjectileType::FIREBALL;
-    fireball.isExploded = false;
-    fireball.sprite = fireballSprite;
-    fireball.damage = FIREBALL_DAMAGE;
-    fireball.explosionRadius = FIREBALL_EXPLOSION_RADIUS;
-
-    bool facingLeft = _player->isFlippedX();
-    float dirX = facingLeft ? -1.0f : 1.0f;
-
-    Vec2 playerPos = _player->getPosition();
-    fireballSprite->setPosition(playerPos + Vec2(dirX * 60.0f, 60.0f));
-    fireballSprite->setScale(0.35f);
-    fireballSprite->setColor(Color3B(255, 120, 60));
-
-    // 创建火球物理刚体：直线飞行，不受重力影响
-    PhysicsMaterial fireballMaterial(0.5f, 0.0f, 0.0f);
-    auto physicsBody = PhysicsBody::createCircle(12.0f, fireballMaterial);
-    physicsBody->setDynamic(true);
-    physicsBody->setMass(0.4f);
-    physicsBody->setRotationEnable(false);
-    physicsBody->setGravityEnable(false);
-
-    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER_ATTACK));
-    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setTag(0);
-
-    fireballSprite->addComponent(physicsBody);
-    _gameLayer->addChild(fireballSprite, 4);
-
-    // 施加水平冲量（近似恒定初速度）
-    Vec2 impulse(dirX * FIREBALL_SPEED_X * physicsBody->getMass(), 0.0f);
-    physicsBody->applyImpulse(impulse);
-
-    _bombs.push_back(fireball);
-    CCLOG("Fireball launched with physics!");
-}
-
-/**
- * @brief 处理炸弹爆炸
- */
-void GameScene::explodeProjectile(GameBomb &bomb)
-{
-    if (!bomb.sprite)
-        return;
-
-    Vec2 explodePos = bomb.sprite->getPosition();
-    Vec2 explosionWorld = explodePos;
-    if (bomb.sprite->getParent())
-    {
-        explosionWorld = bomb.sprite->getParent()->convertToWorldSpace(explodePos);
-    }
-
-    // 移除炸弹精灵
-    bomb.sprite->removeFromParent();
-
-    float explosionDamage = bomb.damage;
-    float explosionRadius = bomb.explosionRadius;
-    if (explosionDamage <= 0.0f)
-    {
-        explosionDamage = (bomb.type == PlayerProjectileType::FIREBALL) ? FIREBALL_DAMAGE : BOMB_DAMAGE;
-    }
-    if (explosionRadius <= 0.0f)
-    {
-        explosionRadius = (bomb.type == PlayerProjectileType::FIREBALL) ? FIREBALL_EXPLOSION_RADIUS : BOMB_EXPLOSION_RADIUS;
-    }
-
-    // 对范围内角色造成伤害（排除玩家自身）
-    if (_gameLayer)
-    {
-        DamageInfo dmg;
-        dmg.amount = explosionDamage;
-        dmg.attacker = _player;
-
-        std::vector<CharacterBase *> hitTargets;
-
-        std::function<void(Node *)> collectTargets = [&](Node *node)
-        {
-            if (!node)
-                return;
-
-            if (auto character = dynamic_cast<CharacterBase *>(node))
-            {
-                if (character != _player && !character->isDead())
-                {
-                    // Check circle (explosion) vs character AABB overlap.
-                    // Prefer physics collider AABB (world-centered), fall back to visual bounds.
-                    Rect hitRectWorld;
-                    bool hasHitRectWorld = false;
-
-                    if (auto body = character->getPhysicsBody())
-                    {
-                        auto shape = body->getFirstShape();
-                        if (shape)
-                        {
-                            Size shapeSizeWorld;
-                            switch (shape->getType())
-                            {
-                            case PhysicsShape::Type::BOX:
-                                shapeSizeWorld = static_cast<PhysicsShapeBox *>(shape)->getSize();
-                                break;
-                            case PhysicsShape::Type::CIRCLE:
-                            {
-                                float r = static_cast<PhysicsShapeCircle *>(shape)->getRadius();
-                                shapeSizeWorld = Size(r * 2.0f, r * 2.0f);
-                                break;
-                            }
-                            default:
-                                break;
-                            }
-
-                            if (shapeSizeWorld.width > 0.0f && shapeSizeWorld.height > 0.0f)
-                            {
-                                Vec2 centerLocal(character->getContentSize().width * 0.5f,
-                                                 character->getContentSize().height * 0.5f);
-                                Vec2 bodyCenterWorld = character->convertToWorldSpace(centerLocal);
-                                Vec2 rectCenterWorld = bodyCenterWorld + shape->getCenter();
-
-                                hitRectWorld = Rect(rectCenterWorld.x - shapeSizeWorld.width / 2.0f,
-                                                    rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
-                                                    shapeSizeWorld.width,
-                                                    shapeSizeWorld.height);
-                                hasHitRectWorld = true;
-                            }
-                        }
-                    }
-
-                    if (!hasHitRectWorld)
-                    {
-                        Rect bboxParent = character->getBoundingBox();
-                        Vec2 originWorld = bboxParent.origin;
-                        Vec2 topRightWorld = bboxParent.origin + bboxParent.size;
-                        if (character->getParent())
-                        {
-                            originWorld = character->getParent()->convertToWorldSpace(bboxParent.origin);
-                            topRightWorld = character->getParent()->convertToWorldSpace(bboxParent.origin + bboxParent.size);
-                        }
-
-                        hitRectWorld = Rect(
-                            std::min(originWorld.x, topRightWorld.x),
-                            std::min(originWorld.y, topRightWorld.y),
-                            std::fabs(topRightWorld.x - originWorld.x),
-                            std::fabs(topRightWorld.y - originWorld.y));
-                    }
-
-                    float dx = 0.0f;
-                    if (explosionWorld.x < hitRectWorld.getMinX())
-                        dx = hitRectWorld.getMinX() - explosionWorld.x;
-                    else if (explosionWorld.x > hitRectWorld.getMaxX())
-                        dx = explosionWorld.x - hitRectWorld.getMaxX();
-
-                    float dy = 0.0f;
-                    if (explosionWorld.y < hitRectWorld.getMinY())
-                        dy = hitRectWorld.getMinY() - explosionWorld.y;
-                    else if (explosionWorld.y > hitRectWorld.getMaxY())
-                        dy = explosionWorld.y - hitRectWorld.getMaxY();
-
-                    if ((dx * dx + dy * dy) <= (explosionRadius * explosionRadius))
-                    {
-                        hitTargets.push_back(character);
-                    }
-                }
-            }
-
-            // Copy child list to avoid iterator invalidation if takeDamage spawns nodes.
-            auto children = node->getChildren();
-            for (auto child : children)
-            {
-                collectTargets(child);
-            }
-        };
-
-        collectTargets(_gameLayer);
-
-        for (auto target : hitTargets)
-        {
-            if (target && !target->isDead())
-            {
-                target->takeDamage(dmg);
-            }
-        }
-    }
-
-    // 创建爆炸效果
-    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
-    if (boomSprite)
-    {
-        boomSprite->setPosition(explodePos);
-        boomSprite->setScale(0.8f);
-        _gameLayer->addChild(boomSprite, 6);
-
-        // 爆炸动画：放大 + 淡出
-        auto scaleUp = ScaleTo::create(0.2f, 1.2f);
-        auto fadeOut = FadeOut::create(0.3f);
-        auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
-        auto remove = RemoveSelf::create();
-        auto sequence = Sequence::create(spawn, remove, nullptr);
-        boomSprite->runAction(sequence);
-    }
-
-    bomb.sprite = nullptr;
-
-    const char *typeName = (bomb.type == PlayerProjectileType::FIREBALL) ? "Fireball" : "Bomb";
-    CCLOG("%s exploded at (%.0f, %.0f)", typeName, explodePos.x, explodePos.y);
 }
 
 // ============================================================

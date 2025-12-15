@@ -75,27 +75,6 @@ struct PlayerConfig
     float collisionBoxHeightRatio = 0.9f; ///< 碰撞盒高度比例
 };
 
-/**
- * @brief 玩家投掷物类型
- */
-enum class PlayerProjectileType
-{
-    BOMB,     ///< 普通攻击：炸弹
-    FIREBALL, ///< 技能1：火球（临时使用炸弹素材）
-};
-
-/**
- * @brief 玩家投掷物对象（用于场景内管理）
- */
-struct GameBomb
-{
-    PlayerProjectileType type = PlayerProjectileType::BOMB; ///< 投掷物类型
-    bool isExploded = false;           ///< 是否已爆炸
-    cocos2d::Sprite *sprite = nullptr; ///< 炸弹精灵
-    float damage = 0.0f;              ///< 爆炸伤害（原始值）
-    float explosionRadius = 0.0f;     ///< 爆炸半径
-};
-
 // ============================================================
 // GameScene 基类
 // ============================================================
@@ -180,11 +159,6 @@ protected:
     GameUI *_gameUI = nullptr; ///< 游戏 UI
 
     // -------------------------------
-    // 投掷物系统
-    // -------------------------------
-    std::vector<GameBomb> _bombs; ///< 当前场景中的玩家投掷物列表
-
-    // -------------------------------
     // 常量定义
     // -------------------------------
     static constexpr float DEFAULT_GATE_INTERACT_DISTANCE = 100.0f; ///< 默认传送门交互距离
@@ -197,20 +171,11 @@ protected:
     static constexpr int PLAYER_Z_ORDER = 5;                        ///< 玩家层级
     static constexpr int COLLISION_DEBUG_Z_ORDER = 100;             ///< 碰撞调试层级
 
-    // 普通攻击（炸弹）参数
-    static constexpr float BOMB_THROW_SPEED_X = 300.0f;   ///< 炸弹水平初速度
-    static constexpr float BOMB_THROW_SPEED_Y = 350.0f;   ///< 炸弹垂直初速度
-    static constexpr float BOMB_DAMAGE = 150.0f;          ///< 炸弹基础伤害
-    static constexpr float BOMB_EXPLOSION_RADIUS = 80.0f; ///< 爆炸范围半径
-
     // 技能1（火球）参数
     static constexpr size_t FIREBALL_SKILL_SLOT = 0;          ///< 技能1所在槽位索引
     static constexpr int FIREBALL_SKILL_ID = 1002;            ///< 技能1唯一ID
     static constexpr float FIREBALL_SKILL_MP_COST = 15.0f;    ///< 技能1 MP消耗
     static constexpr float FIREBALL_SKILL_COOLDOWN = 1.2f;    ///< 技能1冷却时间（秒）
-    static constexpr float FIREBALL_SPEED_X = 650.0f;         ///< 火球水平速度
-    static constexpr float FIREBALL_DAMAGE = 220.0f;          ///< 火球基础伤害
-    static constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f; ///< 火球爆炸半径
 
     // ===================================================================
     // 初始化方法
@@ -372,11 +337,6 @@ protected:
      */
     virtual void throwBomb();
 
-    /**
-     * @brief 实际创建并投掷炸弹
-     */
-    virtual void doThrowBomb();
-
     // ===================================================================
     // 技能系统
     // ===================================================================
@@ -391,16 +351,7 @@ protected:
      */
     virtual void onFireballAnimationFinished();
 
-    /**
-     * @brief 实际创建并发射火球
-     */
-    virtual void doCastFireball();
-
-    /**
-     * @brief 投掷物爆炸处理
-     * @param projectile 要爆炸的投掷物对象引用
-     */
-    virtual void explodeProjectile(GameBomb &projectile);
+    // 投掷物创建/爆炸逻辑已下沉到 PlayerCharacter
 
     // ===================================================================
     // 场景导航

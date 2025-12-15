@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <vector>
 
 class PlayerCharacter : public CharacterBase
 {
@@ -26,6 +27,19 @@ public:
 
     // 技能管理（外层接口，内部转发给 SkillComponent）
     void useSkill(size_t slotIndex);
+
+    // ================== 投掷物/攻击生成 ==================
+    // 由场景调用，传入关卡游戏层作为父节点
+    void spawnBombProjectile(cocos2d::Node *gameLayer);
+    void spawnFireballProjectile(cocos2d::Node *gameLayer);
+
+    // 由场景碰撞回调转发：检测是否为玩家投掷物并触发爆炸
+    bool handleProjectileContact(cocos2d::Node *nodeA, int categoryA,
+                                 cocos2d::Node *nodeB, int categoryB,
+                                 cocos2d::Node *gameLayer);
+
+    // 清理已爆炸/移除的投掷物（避免列表无限增长）
+    void cleanupProjectiles();
 
     // ================== 动作/状态驱动 ==================
     // 由场景输入层调用，用于切换跑动/待机动画状态
@@ -76,6 +90,24 @@ private:
     void refreshHpMpFromAttributes();
     void onWeaponChanged(const std::shared_ptr<Weapon> &weapon); // 武器变更时调用
 
+    enum class ProjectileType
+    {
+        BOMB,
+        FIREBALL,
+    };
+
+    struct Projectile
+    {
+        ProjectileType type = ProjectileType::BOMB;
+        bool isExploded = false;
+        cocos2d::Sprite *sprite = nullptr;
+        float damage = 0.0f;
+        float explosionRadius = 0.0f;
+    };
+
+    Projectile *findProjectile(cocos2d::Node *node);
+    void explodeProjectile(Projectile &projectile, cocos2d::Node *gameLayer);
+
     CharacterRole _role = CharacterRole::WARRIOR;
     int _skillPoints = 0;
 
@@ -87,4 +119,7 @@ private:
 
     // 装备变更回调
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;
+
+    // 玩家投掷物列表
+    std::vector<Projectile> _projectiles;
 };
