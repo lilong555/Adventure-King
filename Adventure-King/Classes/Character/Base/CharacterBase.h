@@ -51,6 +51,10 @@ public:
     void setAutoRemoveOnDeath(bool autoRemove) { _autoRemoveOnDeath = autoRemove; }
     bool getAutoRemoveOnDeath() const { return _autoRemoveOnDeath; }
 
+    // 受击飘字
+    void setDamageNumbersEnabled(bool enabled) { _damageNumbersEnabled = enabled; }
+    bool getDamageNumbersEnabled() const { return _damageNumbersEnabled; }
+
     // 等级/经验
     int getLevel() const { return _level; }
     void setLevel(int level) { _level = level; }
@@ -70,6 +74,10 @@ protected:
     bool initWithFile(const std::string &filename);
 
     virtual void update(float dt) override;
+
+    // 显示受击飘字（添加到角色父节点上，避免跟随角色移动）
+    void showDamageNumber(float damage, bool isCritical);
+
     // 组件
     std::unique_ptr<AttributeComponent> _attributeComponent;       // 属性组件
     std::unique_ptr<StateMachineComponent> _stateMachineComponent; // 状态机组件
@@ -81,4 +89,6 @@ protected:
     float _currentMP = 0.0f;        // 当前能量值
     float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断）
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
+
+    bool _damageNumbersEnabled = false; ///< 是否启用受击飘字
 };

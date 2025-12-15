@@ -57,7 +57,7 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
     {
         _physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER));
         _physicsBody->setCollisionBitmask(
-            ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::PLAYER | GamePhysicsCategory::BOMB)
+            ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB)
         );
         _physicsBody->setContactTestBitmask(
             ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB)

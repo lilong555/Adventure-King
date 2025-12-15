@@ -8,6 +8,11 @@
 
 USING_NS_CC;
 
+namespace
+{
+    const char *const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
+}
+
 CharacterBase::CharacterBase() = default;
 CharacterBase::~CharacterBase() = default;
 // 子类在 create 中调用，用于初始化贴图和组件
@@ -128,6 +133,8 @@ void CharacterBase::takeDamage(const DamageInfo &info)
     // 确保至少造成 1 点伤害（或者是 0，看游戏规则）
     finalDamage = std::max(1.0f, std::floor(finalDamage));
 
+    showDamageNumber(finalDamage, info.isCritical);
+
     _currentHP -= finalDamage;
 
     // Log 输出调试
@@ -146,6 +153,50 @@ void CharacterBase::takeDamage(const DamageInfo &info)
             _stateMachineComponent->changeState(CharacterState::HURT);
         }
     }
+}
+
+void CharacterBase::showDamageNumber(float damage, bool isCritical)
+{
+    if (!_damageNumbersEnabled)
+        return;
+    if (damage <= 0.0f)
+        return;
+
+    auto parent = getParent();
+    if (!parent)
+        return;
+
+    std::string damageText = StringUtils::format("%.0f", damage);
+    if (isCritical)
+    {
+        damageText = "暴击 " + damageText + "!";
+    }
+
+    auto label = Label::createWithTTF(
+        damageText,
+        DEFAULT_DAMAGE_FONT_PATH,
+        isCritical ? 28 : 22
+    );
+
+    if (!label)
+        return;
+
+    label->setColor(isCritical ? Color3B(255, 50, 50) : Color3B(255, 200, 50));
+    label->enableOutline(Color4B::BLACK, 2);
+
+    Rect bbox = getBoundingBox();
+    float offsetX = static_cast<float>((rand() % 31) - 15);
+    float offsetY = 20.0f + static_cast<float>((rand() % 11) - 5);
+    Vec2 pos = Vec2(bbox.getMidX(), bbox.getMaxY()) + Vec2(offsetX, offsetY);
+    label->setPosition(pos);
+
+    parent->addChild(label, 9999);
+
+    auto moveUp = MoveBy::create(0.8f, Vec2(0, 60));
+    auto fadeOut = FadeOut::create(0.5f);
+    auto spawn = Spawn::create(moveUp, fadeOut, nullptr);
+    auto remove = RemoveSelf::create();
+    label->runAction(Sequence::create(spawn, remove, nullptr));
 }
 void CharacterBase::die()
 {

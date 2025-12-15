@@ -17,6 +17,9 @@
 #include "2d/CCTMXTiledMap.h"
 #include "2d/CCTMXObjectGroup.h"
 #include "Physics/GamePhysicsCategory.h"
+#include <cstddef>
+#include <string>
+#include <vector>
 
 // 前向声明
 class PlayerCharacter;
@@ -70,15 +73,6 @@ struct PlayerConfig
     int maxJumpCount = 2;                 ///< 最大跳跃次数（1=单跳，2=二段跳）
     float collisionBoxWidthRatio = 0.8f;  ///< 碰撞盒宽度比例
     float collisionBoxHeightRatio = 0.9f; ///< 碰撞盒高度比例
-};
-
-/**
- * @brief 炸弹对象（用于场景内管理）
- */
-struct GameBomb
-{
-    bool isExploded = false;           ///< 是否已爆炸
-    cocos2d::Sprite *sprite = nullptr; ///< 炸弹精灵
 };
 
 // ============================================================
@@ -165,11 +159,6 @@ protected:
     GameUI *_gameUI = nullptr; ///< 游戏 UI
 
     // -------------------------------
-    // 炸弹系统
-    // -------------------------------
-    std::vector<GameBomb> _bombs; ///< 当前场景中的炸弹列表
-
-    // -------------------------------
     // 常量定义
     // -------------------------------
     static constexpr float DEFAULT_GATE_INTERACT_DISTANCE = 100.0f; ///< 默认传送门交互距离
@@ -182,17 +171,11 @@ protected:
     static constexpr int PLAYER_Z_ORDER = 5;                        ///< 玩家层级
     static constexpr int COLLISION_DEBUG_Z_ORDER = 100;             ///< 碰撞调试层级
 
-    // 炸弹系统常量
-    static constexpr float BOMB_THROW_SPEED_X = 300.0f;   ///< 炸弹水平初速度
-    static constexpr float BOMB_THROW_SPEED_Y = 350.0f;   ///< 炸弹垂直初速度
-    static constexpr float BOMB_DAMAGE = 150.0f;          ///< 炸弹基础伤害
-    static constexpr float BOMB_EXPLOSION_RADIUS = 80.0f; ///< 爆炸范围半径
-
-    // 技能配置常量
-    static constexpr size_t BOMB_SKILL_SLOT = 0;       ///< 炸弹技能所在槽位索引
-    static constexpr int BOMB_SKILL_ID = 1001;         ///< 炸弹技能唯一ID
-    static constexpr float BOMB_SKILL_MP_COST = 10.0f; ///< 炸弹技能MP消耗
-    static constexpr float BOMB_SKILL_COOLDOWN = 1.0f; ///< 炸弹技能冷却时间（秒）
+    // 技能1（火球）参数
+    static constexpr size_t FIREBALL_SKILL_SLOT = 0;          ///< 技能1所在槽位索引
+    static constexpr int FIREBALL_SKILL_ID = 1002;            ///< 技能1唯一ID
+    static constexpr float FIREBALL_SKILL_MP_COST = 15.0f;    ///< 技能1 MP消耗
+    static constexpr float FIREBALL_SKILL_COOLDOWN = 1.2f;    ///< 技能1冷却时间（秒）
 
     // ===================================================================
     // 初始化方法
@@ -345,37 +328,30 @@ protected:
     // ===================================================================
 
     /**
-     * @brief 播放攻击动画
-     */
-    /**
      * @brief 攻击动画结束回调
      */
     virtual void onAttackAnimationFinished();
+
+    /**
+     * @brief 普通攻击：扔炸弹（入口）
+     */
+    virtual void throwBomb();
 
     // ===================================================================
     // 技能系统
     // ===================================================================
 
     /**
-     * @brief 技能动画结束回调
+     * @brief 技能1：释放火球（入口）
      */
-    virtual void onSkillAnimationFinished();
+    virtual void castFireball();
 
     /**
-     * @brief 释放炸弹技能（入口）
+     * @brief 技能动画结束回调（火球）
      */
-    virtual void throwBomb();
+    virtual void onFireballAnimationFinished();
 
-    /**
-     * @brief 实际创建并投掷炸弹
-     */
-    virtual void doThrowBomb();
-
-    /**
-     * @brief 炸弹爆炸处理
-     * @param bomb 要爆炸的炸弹对象引用
-     */
-    virtual void explodeBomb(GameBomb &bomb);
+    // 投掷物创建/爆炸逻辑已下沉到 PlayerCharacter
 
     // ===================================================================
     // 场景导航
