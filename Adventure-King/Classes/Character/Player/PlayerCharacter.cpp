@@ -688,7 +688,7 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     float spawnX = playerBox.getMidX() + dirX * (playerBox.size.width * 0.40f + 25.0f);
     float spawnY = playerBox.getMidY() + playerBox.size.height * 0.20f;
     fireballSprite->setPosition(Vec2(spawnX, spawnY));
-    fireballSprite->setScale(0.30f);
+    fireballSprite->setScale(1.10f); // 火球略大一些
     fireballSprite->setFlippedX(facingLeft);
 
     // 飞行中循环播放导弹动画
