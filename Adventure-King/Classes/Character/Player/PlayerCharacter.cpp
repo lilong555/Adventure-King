@@ -20,7 +20,6 @@ constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;
 constexpr float FIREBALL_SPEED_X = 650.0f;
 constexpr float FIREBALL_DAMAGE = 220.0f;
 constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
-constexpr float FIREBALL_CAST_SCALE_MULTIPLIER = 1.15f;
 
 const char *const BOMB_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
 const char *const BOMB_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
@@ -551,16 +550,9 @@ void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinish
     stopActionByTag(1002);
     stopAllActions();
 
-    // rpg 技能帧人物占比更小，施放时做轻微放大补偿，结束后恢复（仅短时间影响）
-    float baseScaleX = getScaleX();
-    float baseScaleY = getScaleY();
-    setScale(baseScaleX * FIREBALL_CAST_SCALE_MULTIPLIER,
-             baseScaleY * FIREBALL_CAST_SCALE_MULTIPLIER);
-
     auto animate = Animate::create(animation);
-    auto callbackAction = CallFunc::create([this, baseScaleX, baseScaleY, onFinished]()
+    auto callbackAction = CallFunc::create([onFinished]()
                                            {
-                                               this->setScale(baseScaleX, baseScaleY);
                                                if (onFinished)
                                                    onFinished();
                                            });
@@ -715,17 +707,18 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     physicsBody->setMass(0.4f);
     physicsBody->setRotationEnable(false);
     physicsBody->setGravityEnable(false);
+    physicsBody->setLinearDamping(0.0f);
 
     physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER_ATTACK));
-    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
+    // 导弹不做物理碰撞反应（避免被地形/怪物推挤导致下落），只需要 Contact 回调触发爆炸即可
+    physicsBody->setCollisionBitmask(0);
     physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
     physicsBody->setTag(0);
 
     fireballSprite->addComponent(physicsBody);
     gameLayer->addChild(fireballSprite, 4);
 
-    Vec2 impulse(dirX * FIREBALL_SPEED_X * physicsBody->getMass(), 0.0f);
-    physicsBody->applyImpulse(impulse);
+    physicsBody->setVelocity(Vec2(dirX * FIREBALL_SPEED_X, 0.0f));
 
     _projectiles.push_back(projectile);
 }
