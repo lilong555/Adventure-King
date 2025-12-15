@@ -180,7 +180,7 @@ void GameUI::bindPlayer(PlayerCharacter *player)
     {
         _skillBar->bindPlayer(player);
 
-        // 设置炸弹技能图标（如果有）
+        // 设置技能1图标（火球临时复用 TNT 素材）
         _skillBar->setSlotIcon(0, "Sprites/Characters/Player/Klee/TNT.png");
     }
 }

@@ -18,6 +18,9 @@ bool MonsterBase::init(const std::string& spriteFrameName)
             return false;
     }
 
+    // 怪物默认开启受击飘字
+    setDamageNumbersEnabled(true);
+
     // === 创建怪物碰撞体 ===
     Size size = getContentSize();
     Size boxSize(size.width * 0.35f, size.height * 0.9f);
@@ -275,6 +278,8 @@ void MonsterBase::takeDamage(const DamageInfo& info)
 
     float hp = getCurrentHP();
     hp -= dmg;
+
+    showDamageNumber(dmg, info.isCritical);
 
     setCurrentHP(hp);
     updateHpBar();
