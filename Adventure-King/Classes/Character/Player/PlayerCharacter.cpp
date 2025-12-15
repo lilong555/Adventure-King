@@ -12,81 +12,82 @@ USING_NS_CC;
 
 namespace
 {
-constexpr float BOMB_THROW_SPEED_X = 300.0f;
-constexpr float BOMB_THROW_SPEED_Y = 350.0f;
-constexpr float BOMB_DAMAGE = 150.0f;
-constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;
+    constexpr float BOMB_THROW_SPEED_X = 300.0f;
+    constexpr float BOMB_THROW_SPEED_Y = 350.0f;
+    constexpr float BOMB_DAMAGE = 150.0f;
+    constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;
 
-constexpr float FIREBALL_SPEED_X = 650.0f;
-constexpr float FIREBALL_DAMAGE = 220.0f;
-constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
+    constexpr float FIREBALL_SPEED_X = 650.0f;
+    constexpr float FIREBALL_DAMAGE = 220.0f;
+    constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
 
-const char *const BOMB_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
-const char *const BOMB_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
+    const char *const BOMB_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
+    const char *const BOMB_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
 
-const char *const FIREBALL_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png";
+    const char *const FIREBALL_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png";
 
-Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
-{
-    auto textureCache = Director::getInstance()->getTextureCache();
-    Vector<SpriteFrame *> frames;
-
-    for (const auto &path : paths)
+    Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
     {
-        auto texture = textureCache->addImage(path);
-        if (!texture)
+        // delayPerUnit 为动画每帧的延迟时间，单位为秒；
+        auto textureCache = Director::getInstance()->getTextureCache();
+        Vector<SpriteFrame *> frames;
+
+        for (const auto &path : paths)
         {
-            CCLOG("PlayerCharacter: failed to load texture %s", path.c_str());
-            continue;
+            auto texture = textureCache->addImage(path);
+            if (!texture)
+            {
+                CCLOG("PlayerCharacter: failed to load texture %s", path.c_str());
+                continue;
+            }
+
+            frames.pushBack(SpriteFrame::createWithTexture(
+                texture, Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height)));
         }
 
-        frames.pushBack(SpriteFrame::createWithTexture(
-            texture, Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height)));
+        if (frames.empty())
+            return nullptr;
+
+        return Animation::createWithSpriteFrames(frames, delayPerUnit);
     }
 
-    if (frames.empty())
-        return nullptr;
-
-    return Animation::createWithSpriteFrames(frames, delayPerUnit);
-}
-
-void ensureDefaultRunAnimation()
-{
-    auto cache = AnimationCache::getInstance();
-    if (cache->getAnimation("hero_run"))
-        return;
-
-    std::vector<std::string> runPaths = {
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
-    };
-
-    auto runAnim = createAnimationFromPaths(runPaths, 0.15f);
-    if (runAnim)
+    void ensureDefaultRunAnimation()
     {
-        cache->addAnimation(runAnim, "hero_run");
+        auto cache = AnimationCache::getInstance();
+        if (cache->getAnimation("hero_run"))
+            return;
+
+        std::vector<std::string> runPaths = {
+            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
+            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
+            "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
+        };
+
+        auto runAnim = createAnimationFromPaths(runPaths, 0.15f);
+        if (runAnim)
+        {
+            cache->addAnimation(runAnim, "hero_run");
+        }
     }
-}
 
-void ensureDefaultWalkAnimation()
-{
-    auto cache = AnimationCache::getInstance();
-    if (cache->getAnimation("hero_walk"))
-        return;
-
-    std::vector<std::string> walkPaths = {
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
-    };
-
-    auto walkAnim = createAnimationFromPaths(walkPaths, 0.25f);
-    if (walkAnim)
+    void ensureDefaultWalkAnimation()
     {
-        cache->addAnimation(walkAnim, "hero_walk");
+        auto cache = AnimationCache::getInstance();
+        if (cache->getAnimation("hero_walk"))
+            return;
+
+        std::vector<std::string> walkPaths = {
+            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
+            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
+            "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
+        };
+
+        auto walkAnim = createAnimationFromPaths(walkPaths, 0.25f);
+        if (walkAnim)
+        {
+            cache->addAnimation(walkAnim, "hero_walk");
+        }
     }
-}
 } // namespace
 
 PlayerCharacter *PlayerCharacter::create(CharacterRole role,
@@ -404,8 +405,8 @@ void PlayerCharacter::setMoving(bool moving, bool running)
     {
         setTexture(defaultTexture);
         setTextureRect(Rect(0, 0,
-                             defaultTexture->getContentSize().width,
-                             defaultTexture->getContentSize().height));
+                            defaultTexture->getContentSize().width,
+                            defaultTexture->getContentSize().height));
         setFlippedX(wasFlippedX);
     }
 
@@ -468,8 +469,7 @@ void PlayerCharacter::attackAnimated(const std::function<void()> &onFinished)
     auto callbackAction = CallFunc::create([onFinished]()
                                            {
                                                if (onFinished)
-                                                   onFinished();
-                                           });
+                                                   onFinished(); });
     auto sequence = Sequence::create(animate, callbackAction, nullptr);
     sequence->setTag(1000);
     runAction(sequence);
@@ -509,13 +509,12 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()> &onFinished)
     auto callbackAction = CallFunc::create([onFinished]()
                                            {
                                                if (onFinished)
-                                                   onFinished();
-                                           });
+                                                   onFinished(); });
     auto sequence = Sequence::create(animate, callbackAction, nullptr);
     sequence->setTag(1001);
     runAction(sequence);
 }
-
+// 火球术施放动画
 void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinished)
 {
     if (isDead())
@@ -529,15 +528,19 @@ void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinish
 
     std::vector<std::string> paths = {
         "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_1.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_2.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_3.png",
+        //"Sprites/Characters/Player/Klee/rpg/spr_klee_attack_2.png",
+        //"Sprites/Characters/Player/Klee/rpg/spr_klee_attack_3.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_4.png",
         "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_4.png",
         "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_5.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_5.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_5.png",
         "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_6.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_7.png",
+        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_6.png",
+        //"Sprites/Characters/Player/Klee/rpg/spr_klee_attack_7.png",
     };
 
-    auto animation = createAnimationFromPaths(paths, 0.13f);
+    auto animation = createAnimationFromPaths(paths, 0.04f); // 参数可调整施法速度
     if (!animation)
     {
         CCLOG("PlayerCharacter: failed to create fireball cast animation");
@@ -554,8 +557,7 @@ void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinish
     auto callbackAction = CallFunc::create([onFinished]()
                                            {
                                                if (onFinished)
-                                                   onFinished();
-                                           });
+                                                   onFinished(); });
     auto sequence = Sequence::create(animate, callbackAction, nullptr);
     sequence->setTag(1002);
     runAction(sequence);
@@ -765,8 +767,7 @@ bool PlayerCharacter::handleProjectileContact(Node *nodeA, int categoryA,
                                          if (pending && pending->isExploded)
                                          {
                                              explodeProjectile(*pending, gameLayer);
-                                         }
-                                     }),
+                                         } }),
                     nullptr));
                 return true;
             }
