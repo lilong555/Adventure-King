@@ -36,13 +36,12 @@ bool CharacterBase::initWithSpriteFrameName(const std::string &spriteFrameName)
     _stateMachineComponent = std::make_unique<StateMachineComponent>(this);
     _skillComponent = std::make_unique<SkillComponent>(this);
 
-    _level = 1;
-    _experience = 0;
-    _currentHP = 0.0f;
-    _currentMP = 0.0f;
+	_level = 1;
+	_experience = 0;
+	_currentHP = 0.0f;
+	_currentMP = 0.0f;
 
-    scheduleUpdate();
-    return true;
+	return true;
 }
 
 // 使用普通文件路径初始化
@@ -60,13 +59,12 @@ bool CharacterBase::initWithFile(const std::string &filename)
     _stateMachineComponent = std::make_unique<StateMachineComponent>(this);
     _skillComponent = std::make_unique<SkillComponent>(this);
 
-    _level = 1;
-    _experience = 0;
-    _currentHP = 0.0f;
-    _currentMP = 0.0f;
+	_level = 1;
+	_experience = 0;
+	_currentHP = 0.0f;
+	_currentMP = 0.0f;
 
-    scheduleUpdate();
-    return true;
+	return true;
 }
 // 每帧更新
 void CharacterBase::update(float dt)

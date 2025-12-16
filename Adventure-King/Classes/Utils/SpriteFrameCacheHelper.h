@@ -1,44 +1,37 @@
 #pragma once
 
 #include "cocos2d.h"
-#include <cctype>
 #include <string>
+#include <unordered_set>
 
 namespace SpriteFrameCacheHelper
 {
-    inline bool looksLikeFilePath(const std::string &nameOrPath)
+    inline bool isFilePath(const std::string &nameOrPath)
     {
-        if (nameOrPath.find('/') != std::string::npos || nameOrPath.find('\\') != std::string::npos)
-        {
-            return true;
-        }
-
-        auto dotPos = nameOrPath.rfind('.');
-        if (dotPos == std::string::npos)
-        {
-            return false;
-        }
-
-        std::string ext = nameOrPath.substr(dotPos);
-        for (auto &c : ext)
-        {
-            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        }
-
-        return ext == ".png" || ext == ".jpg" || ext == ".jpeg";
+        return nameOrPath.find('/') != std::string::npos || nameOrPath.find('\\') != std::string::npos;
     }
 
     inline cocos2d::SpriteFrame *getOrCreateSpriteFrame(const std::string &frameNameOrFile)
     {
         auto cache = cocos2d::SpriteFrameCache::getInstance();
-        if (auto cached = cache->getSpriteFrameByName(frameNameOrFile))
+        if (!isFilePath(frameNameOrFile))
         {
-            return cached;
+            // 对于精灵表（plist）里的帧名，直接走 SpriteFrameCache（缺失时打印日志有助于排错）
+            return cache->getSpriteFrameByName(frameNameOrFile);
         }
 
-        if (!looksLikeFilePath(frameNameOrFile))
+        // 对于文件路径（Sprites/...），避免先 getSpriteFrameByName 触发 “Frame isn't found” 的噪音日志：
+        // 首次使用时直接按文件加载并加入缓存，后续再从 SpriteFrameCache 获取。
+        static std::unordered_set<std::string> s_cachedFileFrames;
+        if (s_cachedFileFrames.find(frameNameOrFile) != s_cachedFileFrames.end())
         {
-            return nullptr;
+            auto cached = cache->getSpriteFrameByName(frameNameOrFile);
+            if (cached)
+            {
+                return cached;
+            }
+            // 缓存可能被清理（例如 removeUnusedSpriteFrames），允许重建
+            s_cachedFileFrames.erase(frameNameOrFile);
         }
 
         auto textureCache = cocos2d::Director::getInstance()->getTextureCache();
@@ -56,6 +49,7 @@ namespace SpriteFrameCacheHelper
         }
 
         cache->addSpriteFrame(frame, frameNameOrFile);
+        s_cachedFileFrames.insert(frameNameOrFile);
         return frame;
     }
 } // namespace SpriteFrameCacheHelper
