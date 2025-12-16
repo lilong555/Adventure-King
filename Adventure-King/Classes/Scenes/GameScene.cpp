@@ -19,6 +19,7 @@
 #include "Save/SaveData.h"
 #include <algorithm>
 #include <cctype>
+#include <climits>
 #include <cmath>
 #include <cstdlib>
 #include <functional>
@@ -1041,7 +1042,7 @@ void GameScene::loadEnemySpawnPoints(const std::string &groupName)
         {
             char *endPtr = nullptr;
             long parsed = std::strtol(countStr.c_str(), &endPtr, 10);
-            if (endPtr != countStr.c_str() && parsed > 0)
+            if (endPtr != countStr.c_str() && parsed > 0 && parsed <= INT_MAX)
             {
                 count = static_cast<int>(parsed);
             }
@@ -1095,6 +1096,7 @@ void GameScene::updateEnemySpawns()
 
     constexpr float SPAWN_SPACING_X = 80.0f;
     constexpr float SPAWN_INTERVAL_SECONDS = 0.4f;
+    auto player = _player;
 
     for (auto &spawnPoint : _enemySpawnPoints)
     {
@@ -1121,8 +1123,8 @@ void GameScene::updateEnemySpawns()
             const float delaySeconds = static_cast<float>(i) * SPAWN_INTERVAL_SECONDS;
             _gameLayer->runAction(Sequence::create(
                 DelayTime::create(delaySeconds),
-                CallFunc::create([this, monsterType, monsterPos]() {
-                    if (!this || !_gameLayer || !_player)
+                CallFuncN::create([this, player, monsterType, monsterPos](Node *actionTarget) {
+                    if (!actionTarget || !player)
                         return;
 
                     auto monster = createMonsterByType(monsterType);
@@ -1130,9 +1132,9 @@ void GameScene::updateEnemySpawns()
                         return;
 
                     monster->setPosition(monsterPos);
-                    monster->setTarget(_player);
+                    monster->setTarget(player);
                     monster->setHome(monsterPos);
-                    _gameLayer->addChild(monster, PLAYER_Z_ORDER);
+                    actionTarget->addChild(monster, PLAYER_Z_ORDER);
                 }),
                 nullptr));
         }
