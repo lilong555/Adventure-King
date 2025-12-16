@@ -1091,6 +1091,7 @@ void GameScene::updateEnemySpawns()
     const float playerX = _player->getPositionX();
 
     constexpr float SPAWN_SPACING_X = 80.0f;
+    constexpr float SPAWN_INTERVAL_SECONDS = 0.4f;
 
     for (auto &spawnPoint : _enemySpawnPoints)
     {
@@ -1104,22 +1105,35 @@ void GameScene::updateEnemySpawns()
         const int count = std::max(1, spawnPoint.count);
         const float centerIndex = (static_cast<float>(count) - 1.0f) * 0.5f;
 
+        // 首次进入视野即锁定生成，避免来回触发
+        spawnPoint.hasSpawned = true;
+
         for (int i = 0; i < count; ++i)
         {
-            auto monster = createMonsterByType(spawnPoint.monsterType);
-            if (!monster)
-                break;
-
+            const std::string monsterType = spawnPoint.monsterType;
             const float offsetX = (static_cast<float>(i) - centerIndex) * SPAWN_SPACING_X;
             const Vec2 monsterPos = spawnPoint.position + Vec2(offsetX, 0.0f);
 
-            monster->setPosition(monsterPos);
-            monster->setTarget(_player);
-            monster->setHome(monsterPos);
-            _gameLayer->addChild(monster, PLAYER_Z_ORDER);
+            // 分批生成：大约每 0.4 秒生成一个
+            const float delaySeconds = static_cast<float>(i) * SPAWN_INTERVAL_SECONDS;
+            _gameLayer->runAction(Sequence::create(
+                DelayTime::create(delaySeconds),
+                CallFunc::create([this, monsterType, monsterPos]() {
+                    if (!this || !_gameLayer || !_player)
+                        return;
+
+                    auto monster = createMonsterByType(monsterType);
+                    if (!monster)
+                        return;
+
+                    monster->setPosition(monsterPos);
+                    monster->setTarget(_player);
+                    monster->setHome(monsterPos);
+                    _gameLayer->addChild(monster, PLAYER_Z_ORDER);
+                }),
+                nullptr));
         }
 
-        spawnPoint.hasSpawned = true;
         CCLOG("Enemy spawn triggered: type='%s', count=%d, pos=(%.0f, %.0f)",
               spawnPoint.monsterType.c_str(), count,
               spawnPoint.position.x, spawnPoint.position.y);
