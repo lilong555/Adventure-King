@@ -2,6 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
+#include <cmath>
 
 
 USING_NS_CC;
@@ -77,7 +78,9 @@ void GoblinMonster::initAttributes()
     base.set(AttributeType::CRITICAL_RATE, 0.05f);
     base.set(AttributeType::MAX_HP, 60.0f);
     base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
-    base.set(AttributeType::ATTACK_RANGE, 300.0f); // 发动攻击的距离
+    // 当前哥布林缩放为 0.36（原 0.6 的 0.6 倍），攻击判定框也按比例缩放，
+    // 因此攻击距离也按比例缩短，避免“看起来够不着却开始攻击”。
+    base.set(AttributeType::ATTACK_RANGE, 150.0f); // 发动攻击的距离
 
     // 2. 交给基类处理 (一行代码搞定逻辑！)
     setupCharacterStats(base);
@@ -185,7 +188,21 @@ void GoblinMonster::updateAI(float dt)
     // ============================================================
     // 2. 基础数据计算
     // ============================================================
-    float distToPlayer = distanceTo(_target);
+    // 攻击决策使用水平距离（更符合横版战斗手感），避免因锚点/高度差导致攻击时机不准
+    cocos2d::Vec2 myWorldPos = this->getPosition();
+    if (this->getParent())
+    {
+        myWorldPos = this->getParent()->convertToWorldSpace(this->getPosition());
+    }
+
+    cocos2d::Vec2 targetWorldPos = _target->getPosition();
+    if (_target->getParent())
+    {
+        targetWorldPos = _target->getParent()->convertToWorldSpace(_target->getPosition());
+    }
+
+    float distToPlayer = myWorldPos.distance(targetWorldPos);
+    float horizontalDistToPlayer = std::fabs(targetWorldPos.x - myWorldPos.x);
     Vec2 homePos = _homePosition;
     float distFromHome = this->getPosition().distance(homePos);
     auto stateMachine = getStateMachineComponent();
@@ -233,16 +250,16 @@ void GoblinMonster::updateAI(float dt)
         // 6. 攻击与战斗逻辑
         // ------------------------------------------------------------
 
-    _attackTimer += dt; // 累加时间 (配合方案一：只在非攻击时累加也可以，这里先保持简单)
-
     // 1. 如果正在攻击：什么都别做，彻底退出
     if (getStateMachineComponent()->getCurrentState() == CharacterState::ATTACKING)
     {
         return;
     }
 
-    // 2. 如果距离够近：进入战斗决策
-    if (distToPlayer <= _attackRange)
+    _attackTimer += dt;
+
+    // 2. 如果进入攻击距离：进入战斗决策
+    if (horizontalDistToPlayer <= _attackRange)
     {
         // 2.1 冷却完毕 -> 打！
         if (_attackTimer >= _attackInterval && !_isStunned)
@@ -266,6 +283,12 @@ void GoblinMonster::updateAI(float dt)
     getStateMachineComponent()->changeState(CharacterState::WALKING);
 }
 #pragma endregion
+
+void GoblinMonster::updateAttack(float dt)
+{
+    CC_UNUSED_PARAM(dt);
+    // GoblinMonster 的攻击决策与冷却计时由 updateAI 统一处理，避免与基类逻辑重复。
+}
 
 #pragma region Attack
 
