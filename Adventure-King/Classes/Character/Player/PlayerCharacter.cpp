@@ -611,7 +611,13 @@ void PlayerCharacter::spawnBombProjectile(Node *gameLayer)
         return;
 
     auto bombFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(BOMB_PROJECTILE_SPRITE_PATH);
-    auto bombSprite = bombFrame ? Sprite::createWithSpriteFrame(bombFrame) : Sprite::create(BOMB_PROJECTILE_SPRITE_PATH);
+    if (!bombFrame)
+    {
+        CCLOG("PlayerCharacter::spawnBombProjectile - Failed to get or create bomb sprite frame: %s", BOMB_PROJECTILE_SPRITE_PATH);
+        return;
+    }
+
+    auto bombSprite = Sprite::createWithSpriteFrame(bombFrame);
     if (!bombSprite)
     {
         CCLOG("PlayerCharacter::spawnBombProjectile - Failed to create bomb sprite");
@@ -664,7 +670,13 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
         return;
 
     auto fireballFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(FIREBALL_PROJECTILE_SPRITE_PATH);
-    auto fireballSprite = fireballFrame ? Sprite::createWithSpriteFrame(fireballFrame) : Sprite::create(FIREBALL_PROJECTILE_SPRITE_PATH);
+    if (!fireballFrame)
+    {
+        CCLOG("PlayerCharacter::spawnFireballProjectile - Failed to get or create fireball sprite frame: %s", FIREBALL_PROJECTILE_SPRITE_PATH);
+        return;
+    }
+
+    auto fireballSprite = Sprite::createWithSpriteFrame(fireballFrame);
     if (!fireballSprite)
     {
         CCLOG("PlayerCharacter::spawnFireballProjectile - Failed to create fireball sprite");
@@ -928,8 +940,11 @@ void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
             if (auto flashAnim = createAnimationFromPaths(flashPaths, 0.05f))
             {
                 auto flashFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(flashPaths.front());
-                auto boomSprite = flashFrame ? Sprite::createWithSpriteFrame(flashFrame) : Sprite::create(flashPaths.front());
-                if (boomSprite)
+                if (!flashFrame)
+                {
+                    CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create explosion flash frame: %s", flashPaths.front().c_str());
+                }
+                else if (auto boomSprite = Sprite::createWithSpriteFrame(flashFrame))
                 {
                     boomSprite->setPosition(explodePos);
                     boomSprite->setScale(0.9f);
@@ -942,8 +957,11 @@ void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
         {
             // 炸弹爆炸沿用 defalt 素材
             auto boomFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(BOMB_EXPLOSION_SPRITE_PATH);
-            auto boomSprite = boomFrame ? Sprite::createWithSpriteFrame(boomFrame) : Sprite::create(BOMB_EXPLOSION_SPRITE_PATH);
-            if (boomSprite)
+            if (!boomFrame)
+            {
+                CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create bomb explosion frame: %s", BOMB_EXPLOSION_SPRITE_PATH);
+            }
+            else if (auto boomSprite = Sprite::createWithSpriteFrame(boomFrame))
             {
                 boomSprite->setPosition(explodePos);
                 boomSprite->setScale(0.8f);

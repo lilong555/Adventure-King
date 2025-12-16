@@ -36,12 +36,15 @@ bool CharacterBase::initWithSpriteFrameName(const std::string &spriteFrameName)
     _stateMachineComponent = std::make_unique<StateMachineComponent>(this);
     _skillComponent = std::make_unique<SkillComponent>(this);
 
-	_level = 1;
-	_experience = 0;
-	_currentHP = 0.0f;
-	_currentMP = 0.0f;
+    _level = 1;
+    _experience = 0;
+    _currentHP = 0.0f;
+    _currentMP = 0.0f;
 
-	return true;
+    // 默认更新优先级设为 1，后续如果添加组件（addComponent 内部会 scheduleUpdate: priority 0），
+    // 会自动切换到引擎默认优先级，且不会触发 “don't update it again” 的 warning。
+    scheduleUpdateWithPriority(1);
+    return true;
 }
 
 // 使用普通文件路径初始化
@@ -59,12 +62,13 @@ bool CharacterBase::initWithFile(const std::string &filename)
     _stateMachineComponent = std::make_unique<StateMachineComponent>(this);
     _skillComponent = std::make_unique<SkillComponent>(this);
 
-	_level = 1;
-	_experience = 0;
-	_currentHP = 0.0f;
-	_currentMP = 0.0f;
+    _level = 1;
+    _experience = 0;
+    _currentHP = 0.0f;
+    _currentMP = 0.0f;
 
-	return true;
+    scheduleUpdateWithPriority(1);
+    return true;
 }
 // 每帧更新
 void CharacterBase::update(float dt)
