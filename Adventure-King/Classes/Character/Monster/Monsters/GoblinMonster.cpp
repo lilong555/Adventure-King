@@ -7,6 +7,20 @@
 
 USING_NS_CC;
 
+namespace
+{
+    cocos2d::Vec2 toWorldPos(cocos2d::Node* node)
+    {
+        if (!node)
+        {
+            return cocos2d::Vec2::ZERO;
+        }
+
+        auto parent = node->getParent();
+        return parent ? parent->convertToWorldSpace(node->getPosition()) : node->getPosition();
+    }
+} // namespace
+
 GoblinMonster::GoblinMonster()
 {
 }
@@ -34,14 +48,11 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
     if (!MonsterBase::init(spriteFrameName))
         return false;
 
-    // 2. 初始化 AI 参数 (关卡策划关注这一块)
-    setAIConfig(700,0,true);
-		// === 设置缩放比例 ===
-	    setScale(0.36f);
-	    _baseScaleX = 0.36f;
+	// 2. 初始化 AI 参数 (关卡策划关注这一块)
+	setAIConfig(700,0,true);
 
-    // === 设置怪物属性 ===
-    initAttributes();
+	// === 设置怪物属性 ===
+	initAttributes();
 
     // === 刷新 HP / MP ===
     setCurrentHP(_maxHP);
@@ -75,12 +86,12 @@ void GoblinMonster::initAttributes()
     base.set(AttributeType::STRENGTH, 10.0f);
     base.set(AttributeType::DEFENSE, 2.0f);
     base.set(AttributeType::MOVE_SPEED, 200.0f);   // 基础移速
-    base.set(AttributeType::CRITICAL_RATE, 0.05f);
-    base.set(AttributeType::MAX_HP, 60.0f);
-    base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
-    // 当前哥布林缩放为 0.36（原 0.6 的 0.6 倍），攻击判定框也按比例缩放，
-    // 因此攻击距离也按比例缩短，避免“看起来够不着却开始攻击”。
-    base.set(AttributeType::ATTACK_RANGE, 150.0f); // 发动攻击的距离
+	    base.set(AttributeType::CRITICAL_RATE, 0.05f);
+	    base.set(AttributeType::MAX_HP, 60.0f);
+	    base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
+	    // 怪物默认缩放见 MonsterBase::init，攻击判定框按缩放同比例缩放，
+	    // 因此攻击距离也需要匹配当前缩放，避免“看起来够不着却开始攻击”。
+	    base.set(AttributeType::ATTACK_RANGE, 150.0f); // 发动攻击的距离
 
     // 2. 交给基类处理 (一行代码搞定逻辑！)
     setupCharacterStats(base);
@@ -185,24 +196,15 @@ void GoblinMonster::updateAI(float dt)
         return;
     }
 
-    // ============================================================
-    // 2. 基础数据计算
-    // ============================================================
-    // 攻击决策使用水平距离（更符合横版战斗手感），避免因锚点/高度差导致攻击时机不准
-    cocos2d::Vec2 myWorldPos = this->getPosition();
-    if (this->getParent())
-    {
-        myWorldPos = this->getParent()->convertToWorldSpace(this->getPosition());
-    }
+	    // ============================================================
+	    // 2. 基础数据计算
+	    // ============================================================
+	    // 横版战斗中，“尝试攻击”以水平距离为主；是否命中由攻击判定框/物理碰撞决定。
+	    cocos2d::Vec2 myWorldPos = toWorldPos(this);
+	    cocos2d::Vec2 targetWorldPos = toWorldPos(_target);
 
-    cocos2d::Vec2 targetWorldPos = _target->getPosition();
-    if (_target->getParent())
-    {
-        targetWorldPos = _target->getParent()->convertToWorldSpace(_target->getPosition());
-    }
-
-    float distToPlayer = myWorldPos.distance(targetWorldPos);
-    float horizontalDistToPlayer = std::fabs(targetWorldPos.x - myWorldPos.x);
+	    float distToPlayer = myWorldPos.distance(targetWorldPos);
+	    float horizontalDistToPlayer = std::fabs(targetWorldPos.x - myWorldPos.x);
     Vec2 homePos = _homePosition;
     float distFromHome = this->getPosition().distance(homePos);
     auto stateMachine = getStateMachineComponent();
@@ -346,31 +348,28 @@ void GoblinMonster::attack()
     // -----------------------------------------------------------
     // 5. 判定框逻辑 (Hitbox)
     // -----------------------------------------------------------
-    auto logicSequence = cocos2d::Sequence::create(
-        cocos2d::DelayTime::create(hitTime),
-        cocos2d::CallFunc::create([this]() {
+	    auto logicSequence = cocos2d::Sequence::create(
+	        cocos2d::DelayTime::create(hitTime),
+	        cocos2d::CallFunc::create([this]() {
 
-            // 安全检查
-            if (!this || !this->getParent()) return;
-
-            auto parent = this->getParent();
+	            auto parent = this->getParent();
+	            if (!parent) return;
 
 	            // 计算朝向
 	            float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
 
-	            // 缩放适配：攻击判定基于旧的 0.6 缩放值调过，这里按当前缩放同比例缩放偏移/尺寸
-	            const float kAttackTuningScale = 0.6f;
+	            // 缩放适配：攻击判定最初按 0.6 的缩放手感调过，这里按当前缩放同比例缩放偏移/尺寸
+	            constexpr float kGoblinHitboxTuneScale = 0.6f;
 	            float scaleRatio = 1.0f;
-	            if (kAttackTuningScale > 0.0f)
+	            if (kGoblinHitboxTuneScale > 0.0f)
 	            {
-	                scaleRatio = fabs(this->getScaleX()) / kAttackTuningScale;
+	                scaleRatio = std::fabs(this->getScaleX()) / kGoblinHitboxTuneScale;
 	            }
 
 	            // 计算偏移
 	            cocos2d::Vec2 offset(100.f * direction * scaleRatio, 170.f * scaleRatio);
 	            cocos2d::Size hitboxSize(300.0f * scaleRatio, 20.0f * scaleRatio);
 
-	            // ★ 核心：计算世界/父节点坐标 ★
 	            cocos2d::Vec2 worldPos = this->getPosition() + offset;
 
 	            auto attackNode = cocos2d::Node::create();
@@ -378,19 +377,19 @@ void GoblinMonster::attack()
 	            attackNode->setContentSize(hitboxSize);
 	            attackNode->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
 
-            // ★ 核心：加到父节点，避免物理质心偏移 ★
-            parent->addChild(attackNode);
+	            // 加到父节点，避免物理质心偏移
+	            parent->addChild(attackNode);
 
 	            // 物理属性
 	            auto body = cocos2d::PhysicsBody::createBox(hitboxSize);
 	            body->setDynamic(false);
 	            body->setGravityEnable(false);
 	            body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
-            body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
-            body->setCollisionBitmask(0);
-            body->setTag(10); // 伤害值
+	            body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
+	            body->setCollisionBitmask(0);
+	            body->setTag(10); // 伤害值
 
-            attackNode->setPhysicsBody(body);
+	            attackNode->setPhysicsBody(body);
 
             // 0.1秒后销毁
             attackNode->runAction(
