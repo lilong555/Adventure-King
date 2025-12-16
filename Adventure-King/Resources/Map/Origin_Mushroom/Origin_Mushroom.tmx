@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="366" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="19" nextobjectid="45">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="366" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="19" nextobjectid="46">
  <tileset firstgid="1" source="Env_Tree_Oak_Giant_Green.tsx"/>
  <tileset firstgid="826" source="s1.tsx"/>
  <tileset firstgid="4546" source="s2.tsx"/>
@@ -252,11 +252,14 @@
   <object id="42" x="5012" y="716">
    <polygon points="0,0 228,-204 552,-192 556,-248 616,-260 624,-164 760,-64 488,-4 264,-164"/>
   </object>
-  <object id="43" x="6964" y="820">
-   <polyline points="0,0 224,-176 452,-4"/>
+  <object id="43" x="6928" y="732">
+   <polyline points="0,0 243.823,-96 492,-2.18182"/>
   </object>
   <object id="44" x="1832" y="840">
    <polygon points="0,0 244,-208 476,-188 476,-244 580,-244 580,-200 816,-88 508,-16 268,-176"/>
+  </object>
+  <object id="45" x="9972" y="732">
+   <polyline points="-364,8 0,0 224,-140 412,-4"/>
   </object>
  </objectgroup>
  <objectgroup id="8" name="born">
@@ -265,7 +268,7 @@
   </object>
  </objectgroup>
  <objectgroup id="9" name="gate">
-  <object id="24" x="8308.84" y="1111.6">
+  <object id="24" x="11176.8" y="851.6">
    <point/>
   </object>
  </objectgroup>

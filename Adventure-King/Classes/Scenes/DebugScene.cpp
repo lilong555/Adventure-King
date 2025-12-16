@@ -255,10 +255,10 @@ void DebugScene::initPlayer()
         return;
     }
 
-    // 配置玩家位置和锚点
-    _player->setPosition(startPos);
-    _player->setAnchorPoint(Vec2(0.5f, 0.5f)); // 物理引擎要求锚点在中心
-    _player->setScale(1.0f);
+	    // 配置玩家位置和锚点
+	    _player->setPosition(startPos);
+	    _player->setAnchorPoint(Vec2(0.5f, 0.5f)); // 物理引擎要求锚点在中心
+	    _player->setScale(0.5f);
 
     //-------------------------------------------------------------------------
     // 创建玩家物理刚体

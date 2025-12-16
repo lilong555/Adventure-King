@@ -7,7 +7,19 @@
     "expandedProjectPaths": [
     ],
     "fileStates": {
+        "Env_Tree_Oak_Giant_Green.tsx": {
+            "scaleInDock": 0.33
+        },
+        "Origin_Mushroom.tmx": {
+            "scale": 0.25,
+            "selectedLayer": 6,
+            "viewCenter": {
+                "x": 9588,
+                "y": 172
+            }
+        },
         "jimeng-2025-12-07-1176-Game concept art for a 2D side-scrolling...._0.tsx": {
+            "dynamicWrapping": true,
             "scaleInDock": 0.33,
             "scaleInEditor": 0.5
         },
@@ -16,16 +28,33 @@
             "scaleInEditor": 0.125
         },
         "jimeng-2025-12-07-3261-Game concept art for a 2D side-scrolling...._0.tsx": {
+            "dynamicWrapping": false,
             "scaleInDock": 1,
             "scaleInEditor": 1
         },
         "jimeng-2025-12-07-5397-Game concept art for a 2D side-scrolling...._0.tsx": {
+            "dynamicWrapping": true,
             "scaleInDock": 1,
             "scaleInEditor": 1
         },
         "jimeng-2025-12-07-8064-Game concept art for a 2D side-scrolling...._0.tsx": {
             "scaleInDock": 1,
             "scaleInEditor": 0.5
+        },
+        "s1.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 0.125,
+            "scaleInEditor": 0.125
+        },
+        "s2.tsx": {
+            "scaleInDock": 0.125
+        },
+        "s3.tsx": {
+            "scaleInDock": 0.125
+        },
+        "s4.tsx": {
+            "scaleInDock": 0.125,
+            "scaleInEditor": 0.25
         }
     },
     "last.imagePath": "E:/code/fansqim/tempresource",
@@ -36,8 +65,11 @@
     ],
     "project": "test.tiled-project",
     "recentFiles": [
-        "jimeng-2025-12-07-8064-Game concept art for a 2D side-scrolling...._0.tsx",
+        "Origin_Mushroom.tmx",
         "jimeng-2025-12-07-5397-Game concept art for a 2D side-scrolling...._0.tsx",
+        "s4.tsx",
+        "s1.tsx",
+        "jimeng-2025-12-07-8064-Game concept art for a 2D side-scrolling...._0.tsx",
         "jimeng-2025-12-07-3261-Game concept art for a 2D side-scrolling...._0.tsx",
         "jimeng-2025-12-07-1176-Game concept art for a 2D side-scrolling...._0.tsx",
         "jimeng-2025-12-07-2368-Game concept art for a 2D side-scrolling...._0.tsx"
