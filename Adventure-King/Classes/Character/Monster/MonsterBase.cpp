@@ -197,8 +197,17 @@ void MonsterBase::updateMovement(float dt)
     Vec2 targetPos = _target->getPosition();
     Vec2 myPos = getPosition();
 
+    // 当水平距离非常接近时，由于物理抖动可能导致方向频繁反转
+    const float kChaseDeadzoneX = 8.0f;
+    float dx = targetPos.x - myPos.x;
+    if (fabs(dx) <= kChaseDeadzoneX)
+    {
+        _physicsBody->setVelocity(Vec2(0, currentVy));
+        return;
+    }
+
     // 判断在左边还是右边
-    float dirX = (targetPos.x > myPos.x) ? 1.0f : -1.0f;
+    float dirX = (dx > 0.0f) ? 1.0f : -1.0f;
 
     // 3. 组合新速度：
     // X轴 = 我们想要的移动速度
@@ -394,7 +403,14 @@ void MonsterBase::faceTarget(Node* target)
 {
     if (!target) return;
 
-    float sign = (target->getPositionX() < getPositionX()) ? -1.0f : 1.0f;
+    const float kFaceDeadzoneX = 8.0f;
+    float dx = target->getPositionX() - getPositionX();
+    if (fabs(dx) <= kFaceDeadzoneX)
+    {
+        return;
+    }
+
+    float sign = (dx < 0.0f) ? -1.0f : 1.0f;
 
     // 只改符号，不改大小
     setScaleX(sign * fabs(_baseScaleX));
