@@ -359,8 +359,11 @@ void GameScene::initPlayer(const Vec2 &startPos)
 
     // 配置碰撞掩码
     physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
-    physicsBody->setCollisionBitmask(getCategoryBitmask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
-    physicsBody->setContactTestBitmask(getCategoryBitmask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
+    // 仅与地形发生物理碰撞；同时需要接收怪物攻击判定框的 Contact 回调用于结算伤害
+    physicsBody->setCollisionBitmask(getCategoryBitmask(
+        GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER_ATTACK));
+    physicsBody->setContactTestBitmask(getCategoryBitmask(
+        GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER_ATTACK));
 
     // 添加物理体到精灵
     playerSprite->addComponent(physicsBody);
