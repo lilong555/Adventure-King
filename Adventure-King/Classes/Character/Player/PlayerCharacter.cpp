@@ -3,6 +3,7 @@
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Physics/GamePhysicsCategory.h"
+#include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <cmath>
@@ -29,20 +30,18 @@ namespace
     Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
     {
         // delayPerUnit 为动画每帧的延迟时间，单位为秒；
-        auto textureCache = Director::getInstance()->getTextureCache();
         Vector<SpriteFrame *> frames;
 
         for (const auto &path : paths)
         {
-            auto texture = textureCache->addImage(path);
-            if (!texture)
+            auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+            if (!frame)
             {
-                CCLOG("PlayerCharacter: failed to load texture %s", path.c_str());
+                CCLOG("PlayerCharacter: failed to load sprite frame %s", path.c_str());
                 continue;
             }
 
-            frames.pushBack(SpriteFrame::createWithTexture(
-                texture, Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height)));
+            frames.pushBack(frame);
         }
 
         if (frames.empty())
@@ -106,24 +105,11 @@ PlayerCharacter *PlayerCharacter::create(CharacterRole role,
 bool PlayerCharacter::init(CharacterRole role,
                            const std::string &spriteFrameName)
 {
-    // 约定：带目录的字符串通常是文件路径（Sprites/...），优先按文件加载避免 SpriteFrameCache 报错刷屏
-    bool initSuccess = false;
-    bool looksLikeFilePath = spriteFrameName.find('/') != std::string::npos || spriteFrameName.find('\\') != std::string::npos;
-    if (looksLikeFilePath)
+    // 优先走 SpriteFrameCache（缺失时会按文件加载并加入缓存），减少重复创建 SpriteFrame 的开销
+    bool initSuccess = initWithSpriteFrameName(spriteFrameName);
+    if (!initSuccess)
     {
         initSuccess = initWithFile(spriteFrameName);
-        if (!initSuccess)
-        {
-            initSuccess = initWithSpriteFrameName(spriteFrameName);
-        }
-    }
-    else
-    {
-        initSuccess = initWithSpriteFrameName(spriteFrameName);
-        if (!initSuccess)
-        {
-            initSuccess = initWithFile(spriteFrameName);
-        }
     }
 
     if (!initSuccess)
@@ -411,14 +397,11 @@ void PlayerCharacter::setMoving(bool moving, bool running)
     bool wasFlippedX = isFlippedX();
     stopAllActions();
 
-    auto defaultTexture = Director::getInstance()->getTextureCache()->addImage(
+    auto defaultFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(
         "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png");
-    if (defaultTexture)
+    if (defaultFrame)
     {
-        setTexture(defaultTexture);
-        setTextureRect(Rect(0, 0,
-                            defaultTexture->getContentSize().width,
-                            defaultTexture->getContentSize().height));
+        setSpriteFrame(defaultFrame);
         setFlippedX(wasFlippedX);
     }
 
@@ -627,7 +610,14 @@ void PlayerCharacter::spawnBombProjectile(Node *gameLayer)
     if (!gameLayer)
         return;
 
-    auto bombSprite = Sprite::create(BOMB_PROJECTILE_SPRITE_PATH);
+    auto bombFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(BOMB_PROJECTILE_SPRITE_PATH);
+    if (!bombFrame)
+    {
+        CCLOG("PlayerCharacter::spawnBombProjectile - Failed to get or create bomb sprite frame: %s", BOMB_PROJECTILE_SPRITE_PATH);
+        return;
+    }
+
+    auto bombSprite = Sprite::createWithSpriteFrame(bombFrame);
     if (!bombSprite)
     {
         CCLOG("PlayerCharacter::spawnBombProjectile - Failed to create bomb sprite");
@@ -679,7 +669,14 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     if (!gameLayer)
         return;
 
-    auto fireballSprite = Sprite::create(FIREBALL_PROJECTILE_SPRITE_PATH);
+    auto fireballFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(FIREBALL_PROJECTILE_SPRITE_PATH);
+    if (!fireballFrame)
+    {
+        CCLOG("PlayerCharacter::spawnFireballProjectile - Failed to get or create fireball sprite frame: %s", FIREBALL_PROJECTILE_SPRITE_PATH);
+        return;
+    }
+
+    auto fireballSprite = Sprite::createWithSpriteFrame(fireballFrame);
     if (!fireballSprite)
     {
         CCLOG("PlayerCharacter::spawnFireballProjectile - Failed to create fireball sprite");
@@ -942,8 +939,12 @@ void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
 
             if (auto flashAnim = createAnimationFromPaths(flashPaths, 0.05f))
             {
-                auto boomSprite = Sprite::create(flashPaths.front());
-                if (boomSprite)
+                auto flashFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(flashPaths.front());
+                if (!flashFrame)
+                {
+                    CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create explosion flash frame: %s", flashPaths.front().c_str());
+                }
+                else if (auto boomSprite = Sprite::createWithSpriteFrame(flashFrame))
                 {
                     boomSprite->setPosition(explodePos);
                     boomSprite->setScale(0.9f);
@@ -955,8 +956,12 @@ void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
         else
         {
             // 炸弹爆炸沿用 defalt 素材
-            auto boomSprite = Sprite::create(BOMB_EXPLOSION_SPRITE_PATH);
-            if (boomSprite)
+            auto boomFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(BOMB_EXPLOSION_SPRITE_PATH);
+            if (!boomFrame)
+            {
+                CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create bomb explosion frame: %s", BOMB_EXPLOSION_SPRITE_PATH);
+            }
+            else if (auto boomSprite = Sprite::createWithSpriteFrame(boomFrame))
             {
                 boomSprite->setPosition(explodePos);
                 boomSprite->setScale(0.8f);
