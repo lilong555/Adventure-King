@@ -2,6 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
+#include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -18,8 +19,8 @@ CharacterBase::~CharacterBase() = default;
 // 子类在 create 中调用，用于初始化贴图和组件
 bool CharacterBase::initWithSpriteFrameName(const std::string &spriteFrameName)
 {
-    // 先检查精灵帧是否存在，避免断言失败
-    auto spriteFrame = SpriteFrameCache::getInstance()->getSpriteFrameByName(spriteFrameName);
+    // 优先从 SpriteFrameCache 获取；若缺失且看起来是文件路径，则按文件加载并加入缓存
+    auto spriteFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(spriteFrameName);
     if (!spriteFrame)
     {
         CCLOG("CharacterBase::initWithSpriteFrameName - SpriteFrame '%s' not found", spriteFrameName.c_str());
@@ -51,6 +52,9 @@ bool CharacterBase::initWithFile(const std::string &filename)
     {
         return false;
     }
+
+    // 将文件贴图加入 SpriteFrameCache，便于后续复用（避免重复创建 SpriteFrame）
+    SpriteFrameCacheHelper::getOrCreateSpriteFrame(filename);
 
     _attributeComponent = std::make_unique<AttributeComponent>();
     _stateMachineComponent = std::make_unique<StateMachineComponent>(this);

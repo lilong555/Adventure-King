@@ -2,6 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
+#include "Utils/SpriteFrameCacheHelper.h"
 #include <cmath>
 
 
@@ -134,17 +135,13 @@ void GoblinMonster::initAnimations()
         // 你的资源根目录是 Resources，所以路径从 Sprites/... 开始
         std::sprintf(str, "Sprites/Enemies/Goblin/Goblin_attack_%d.png", i);
 
-        // 2. ★ 核心修改：使用 TextureCache 直接加载硬盘上的图片 ★
-        auto texture = cocos2d::Director::getInstance()->getTextureCache()->addImage(str);
-
-        if (!texture)
+        // 2. 优先从 SpriteFrameCache 获取；缺失时按文件加载并加入缓存
+        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(str);
+        if (!frame)
         {
             break;
         }
 
-        // 3. 如果加载成功，用这张纹理创建一个 SpriteFrame
-        auto size = texture->getContentSize();
-        auto frame = cocos2d::SpriteFrame::createWithTexture(texture, cocos2d::Rect(0, 0, size.width, size.height));
         frames.pushBack(frame);
     }
 

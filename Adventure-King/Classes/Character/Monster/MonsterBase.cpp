@@ -12,24 +12,11 @@ MonsterBase::~MonsterBase()
 
 bool MonsterBase::init(const std::string& spriteFrameName)
 {
-    // 约定：带目录的字符串通常是文件路径（Sprites/...），优先按文件加载避免 SpriteFrameCache 报错刷屏
-    bool initSuccess = false;
-    bool looksLikeFilePath = spriteFrameName.find('/') != std::string::npos || spriteFrameName.find('\\') != std::string::npos;
-    if (looksLikeFilePath)
+    // 优先走 SpriteFrameCache（缺失时会按文件加载并加入缓存），减少重复创建 SpriteFrame 的开销
+    bool initSuccess = initWithSpriteFrameName(spriteFrameName);
+    if (!initSuccess)
     {
         initSuccess = initWithFile(spriteFrameName);
-        if (!initSuccess)
-        {
-            initSuccess = initWithSpriteFrameName(spriteFrameName);
-        }
-    }
-    else
-    {
-        initSuccess = initWithSpriteFrameName(spriteFrameName);
-        if (!initSuccess)
-        {
-            initSuccess = initWithFile(spriteFrameName);
-        }
     }
 
     if (!initSuccess)
