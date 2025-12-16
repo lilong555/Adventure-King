@@ -18,7 +18,9 @@
 #include "Save/SaveManager.h"
 #include "Save/SaveData.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <functional>
 #include <vector>
 
@@ -289,6 +291,13 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     //-------------------------------------------------------------------------
     Vec2 playerStartPos = getPlayerSpawnPoint();
     initPlayer(playerStartPos);
+
+    //-------------------------------------------------------------------------
+    // 步骤6.5：加载敌人生成点（enemy_g）
+    //-------------------------------------------------------------------------
+    loadEnemySpawnPoints();
+    // 处理“出生点一开始就在视野内”的情况
+    updateEnemySpawns();
 
     //-------------------------------------------------------------------------
     // 步骤7：初始化物理碰撞监听和输入
@@ -981,6 +990,143 @@ bool GameScene::isPlayerAtGate() const
 }
 
 // ===================================================================
+// 敌人生成点（enemy_g）
+// ===================================================================
+
+void GameScene::loadEnemySpawnPoints(const std::string &groupName)
+{
+    _enemySpawnPoints.clear();
+
+    if (!_tileMap)
+    {
+        CCLOG("Warning: Cannot load enemy spawn points - tilemap not loaded");
+        return;
+    }
+
+    auto enemyGroup = _tileMap->getObjectGroup(groupName);
+    if (!enemyGroup)
+    {
+        CCLOG("Info: '%s' object group not found in tilemap", groupName.c_str());
+        return;
+    }
+
+    auto objects = enemyGroup->getObjects();
+    CCLOG("Loading enemy spawn points '%s': %zu objects", groupName.c_str(), objects.size());
+
+    _enemySpawnPoints.reserve(objects.size());
+
+    for (const auto &obj : objects)
+    {
+        auto dict = obj.asValueMap();
+        double x = dict["x"].asDouble();
+        double y = dict["y"].asDouble();
+        std::string monsterType = dict["class"].asString();
+        if (monsterType.empty())
+        {
+            monsterType = dict["type"].asString();
+        }
+        std::string countStr = dict["name"].asString();
+
+        if (monsterType.empty())
+        {
+            CCLOG("Warning: Enemy spawn point at (%.0f, %.0f) missing type, skipped", x, y);
+            continue;
+        }
+
+        int count = 1;
+        if (!countStr.empty())
+        {
+            char *endPtr = nullptr;
+            long parsed = std::strtol(countStr.c_str(), &endPtr, 10);
+            if (endPtr != countStr.c_str() && parsed > 0)
+            {
+                count = static_cast<int>(parsed);
+            }
+        }
+
+        EnemySpawnPoint spawnPoint;
+        spawnPoint.position = Vec2(static_cast<float>(x), static_cast<float>(y));
+        spawnPoint.monsterType = monsterType;
+        spawnPoint.count = count;
+        spawnPoint.hasSpawned = false;
+        _enemySpawnPoints.push_back(std::move(spawnPoint));
+
+        CCLOG("  SpawnPoint: type='%s', count=%d, pos=(%.0f, %.0f)",
+              monsterType.c_str(), count, x, y);
+    }
+
+    std::sort(_enemySpawnPoints.begin(), _enemySpawnPoints.end(),
+              [](const EnemySpawnPoint &a, const EnemySpawnPoint &b)
+              { return a.position.x < b.position.x; });
+}
+
+float GameScene::getEnemySpawnViewDistance() const
+{
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    return visibleSize.width * 0.5f;
+}
+
+MonsterBase *GameScene::createMonsterByType(const std::string &monsterType) const
+{
+    std::string key = monsterType;
+    std::transform(key.begin(), key.end(), key.begin(),
+                   [](unsigned char c)
+                   { return static_cast<char>(std::tolower(c)); });
+
+    if (key == "goblin" || key == "goblinmonster")
+    {
+        return GoblinMonster::create();
+    }
+
+    CCLOG("Warning: Unknown monster type '%s'", monsterType.c_str());
+    return nullptr;
+}
+
+void GameScene::updateEnemySpawns()
+{
+    if (!_player || !_gameLayer || _enemySpawnPoints.empty())
+        return;
+
+    const float viewDistance = getEnemySpawnViewDistance();
+    const float playerX = _player->getPositionX();
+
+    constexpr float SPAWN_SPACING_X = 80.0f;
+
+    for (auto &spawnPoint : _enemySpawnPoints)
+    {
+        if (spawnPoint.hasSpawned)
+            continue;
+
+        const float dx = std::fabs(playerX - spawnPoint.position.x);
+        if (dx > viewDistance)
+            continue;
+
+        const int count = std::max(1, spawnPoint.count);
+        const float centerIndex = (static_cast<float>(count) - 1.0f) * 0.5f;
+
+        for (int i = 0; i < count; ++i)
+        {
+            auto monster = createMonsterByType(spawnPoint.monsterType);
+            if (!monster)
+                break;
+
+            const float offsetX = (static_cast<float>(i) - centerIndex) * SPAWN_SPACING_X;
+            const Vec2 monsterPos = spawnPoint.position + Vec2(offsetX, 0.0f);
+
+            monster->setPosition(monsterPos);
+            monster->setTarget(_player);
+            monster->setHome(monsterPos);
+            _gameLayer->addChild(monster, PLAYER_Z_ORDER);
+        }
+
+        spawnPoint.hasSpawned = true;
+        CCLOG("Enemy spawn triggered: type='%s', count=%d, pos=(%.0f, %.0f)",
+              spawnPoint.monsterType.c_str(), count,
+              spawnPoint.position.x, spawnPoint.position.y);
+    }
+}
+
+// ===================================================================
 // 碰撞检测回调
 // ===================================================================
 
@@ -1314,6 +1460,7 @@ void GameScene::update(float dt)
     updatePlayerMovement(dt);
     updateGroundedState(_player->getPhysicsBody()->getVelocity());
     updateUI();
+    updateEnemySpawns();
 
     // 清理已爆炸/移除的投掷物，避免列表无限增长
     _player->cleanupProjectiles();
@@ -1504,7 +1651,8 @@ LevelConfig OriginMushroomScene::getLevelConfig() const
 {
     LevelConfig config;
     config.tmxMapPath = "Map/Origin_Mushroom/Origin_Mushroom.tmx";
-    config.backgroundPath = "Map/Origin_Mushroom/jimeng-2025-12-07-8064-Game concept art for a 2D side-scrolling...._0.png";
+    // 起源之菇地图已自带背景图层，这里不再额外铺设重复背景
+    config.backgroundPath = "";
     config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";
     config.bornLayerName = "born";
@@ -1520,24 +1668,6 @@ bool OriginMushroomScene::init()
     if (!initWithPhysicsConfig(config))
     {
         return false;
-    }
-
-    // 生成一个测试哥布林
-    if (_gameLayer && _player)
-    {
-        Vec2 goblinPos = getPlayerSpawnPoint() + Vec2(400.0f, 0.0f);
-        auto goblin = GoblinMonster::create();
-        if (goblin)
-        {
-            goblin->setPosition(goblinPos);
-            goblin->setTarget(_player);
-            _gameLayer->addChild(goblin, PLAYER_Z_ORDER);
-            CCLOG("Spawned Goblin at (%.0f, %.0f)", goblinPos.x, goblinPos.y);
-        }
-        else
-        {
-            CCLOG("Error: Failed to create GoblinMonster");
-        }
     }
 
     CCLOG("OriginMushroomScene initialized");
