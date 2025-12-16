@@ -89,8 +89,10 @@ private:
 2.  **建议分层**:
     -   `background`: 纯装饰性背景。
     -   `ground`: 玩家可以行走的地面和平台。
-    -   `collision`: (可选)一个专门用于标记碰撞区域的图层。
-    -   `objects`: 对象层，用于标记玩家出生点、敌人刷新点、传送门等逻辑对象。
+    -   `collisions`: (推荐)用于标记碰撞区域的图层（多边形/折线/矩形对象 → 生成阻挡体）。
+    -   `born`: 对象组，用于标记玩家出生点。
+    -   `gate`: 对象组，用于标记传送门区域（矩形对象）。
+    -   `enemy_g`: 对象组，用于标记敌人生成点（`class/type`=怪物类型，`name`=数量）。
 3.  **添加属性**:
     -   可以在图块集（Tileset）中为某类瓦片添加自定义属性，如 `collidable = true`。
     -   也可以在对象层直接绘制矩形来标记碰撞区域。
@@ -128,6 +130,11 @@ void MapLayer::loadMap(const std::string& tmxFile)
                            mapTileSize.height * tileSize.height);
 }
 ```
+
+> 本项目（`Adventure-King/Classes/Scenes/GameScene.*`）约定：
+> - 碰撞图层名为 `collisions`
+> - 出生点对象组 `born`，传送门对象组 `gate`
+> - 刷怪点对象组 `enemy_g`：点 `class/type` 为怪物类型，点 `name` 为生成数量；首次进入视野触发并按约 `0.4s/只` 分批生成
 
 ---
 
