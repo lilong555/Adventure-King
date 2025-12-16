@@ -12,11 +12,34 @@ MonsterBase::~MonsterBase()
 
 bool MonsterBase::init(const std::string& spriteFrameName)
 {
-    if (!initWithSpriteFrameName(spriteFrameName))
+    // 约定：带目录的字符串通常是文件路径（Sprites/...），优先按文件加载避免 SpriteFrameCache 报错刷屏
+    bool initSuccess = false;
+    bool looksLikeFilePath = spriteFrameName.find('/') != std::string::npos || spriteFrameName.find('\\') != std::string::npos;
+    if (looksLikeFilePath)
     {
-        if (!initWithFile(spriteFrameName))
-            return false;
+        initSuccess = initWithFile(spriteFrameName);
+        if (!initSuccess)
+        {
+            initSuccess = initWithSpriteFrameName(spriteFrameName);
+        }
     }
+    else
+    {
+        initSuccess = initWithSpriteFrameName(spriteFrameName);
+        if (!initSuccess)
+        {
+            initSuccess = initWithFile(spriteFrameName);
+        }
+    }
+
+    if (!initSuccess)
+    {
+        return false;
+    }
+
+    // 默认缩放：配合地图比例（统一怪物体型）
+    setScale(0.36f);
+    _baseScaleX = 0.36f;
 
     // 怪物默认开启受击飘字
     setDamageNumbersEnabled(true);
@@ -33,7 +56,6 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     _physicsBody->setGravityEnable(true);
 
     addComponent(_physicsBody);
-    scheduleUpdate();
     return true;
 }
 // MonsterBase.cpp
@@ -197,8 +219,17 @@ void MonsterBase::updateMovement(float dt)
     Vec2 targetPos = _target->getPosition();
     Vec2 myPos = getPosition();
 
+    // 当水平距离非常接近时，由于物理抖动可能导致方向频繁反转
+    const float kChaseDeadzoneX = 8.0f;
+    float dx = targetPos.x - myPos.x;
+    if (fabs(dx) <= kChaseDeadzoneX)
+    {
+        _physicsBody->setVelocity(Vec2(0, currentVy));
+        return;
+    }
+
     // 判断在左边还是右边
-    float dirX = (targetPos.x > myPos.x) ? 1.0f : -1.0f;
+    float dirX = (dx > 0.0f) ? 1.0f : -1.0f;
 
     // 3. 组合新速度：
     // X轴 = 我们想要的移动速度
@@ -394,7 +425,14 @@ void MonsterBase::faceTarget(Node* target)
 {
     if (!target) return;
 
-    float sign = (target->getPositionX() < getPositionX()) ? -1.0f : 1.0f;
+    const float kFaceDeadzoneX = 8.0f;
+    float dx = target->getPositionX() - getPositionX();
+    if (fabs(dx) <= kFaceDeadzoneX)
+    {
+        return;
+    }
+
+    float sign = (dx < 0.0f) ? -1.0f : 1.0f;
 
     // 只改符号，不改大小
     setScaleX(sign * fabs(_baseScaleX));

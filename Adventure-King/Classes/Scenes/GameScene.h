@@ -24,6 +24,7 @@
 // 前向声明
 class PlayerCharacter;
 class GameUI;
+class MonsterBase;
 
 // ============================================================
 // 游戏对象结构体定义
@@ -66,7 +67,7 @@ struct LevelConfig
  */
 struct PlayerConfig
 {
-    float scale = 0.5f;                   ///< 玩家缩放比例
+    float scale = 0.25f;                  ///< 玩家缩放比例
     float walkSpeed = 220.0f;             ///< 行走速度
     float runSpeed = 350.0f;              ///< 跑步速度
     float jumpImpulse = 650.0f;           ///< 跳跃冲量
@@ -152,6 +153,19 @@ protected:
     // -------------------------------
     std::vector<cocos2d::Rect> _gateAreas; ///< Gate（传送门）位置列表
     bool _wasAtGate = false;               ///< 上一帧是否在传送门区域
+
+    // -------------------------------
+    // 敌人生成点系统（TMX objectgroup）
+    // -------------------------------
+    struct EnemySpawnPoint
+    {
+        cocos2d::Vec2 position;   ///< 生成点位置（世界坐标）
+        std::string monsterType;  ///< 怪物类型（TMX object type）
+        int count = 1;            ///< 生成数量（TMX object name）
+        bool hasSpawned = false;  ///< 是否已触发生成
+    };
+
+    std::vector<EnemySpawnPoint> _enemySpawnPoints; ///< 关卡内所有生成点
 
     // -------------------------------
     // UI 相关
@@ -392,6 +406,34 @@ protected:
      * @brief 更新 UI 状态
      */
     virtual void updateUI();
+
+    // ===================================================================
+    // 敌人生成点
+    // ===================================================================
+
+    /**
+     * @brief 从 TMX 对象组加载敌人生成点
+     * @param groupName 对象组名称（默认 enemy_g）
+     */
+    virtual void loadEnemySpawnPoints(const std::string &groupName = "enemy_g");
+
+    /**
+     * @brief 每帧检测生成点是否进入可视范围，并触发一次生成
+     */
+    virtual void updateEnemySpawns();
+
+    /**
+     * @brief 获取生成点触发距离（水平）
+     * @note 默认为屏幕半宽，视为“进入视野”
+     */
+    virtual float getEnemySpawnViewDistance() const;
+
+    /**
+     * @brief 根据类型创建怪物实例
+     * @param monsterType TMX object type
+     * @return 创建成功返回怪物指针，否则返回 nullptr
+     */
+    virtual MonsterBase *createMonsterByType(const std::string &monsterType) const;
 
     // ===================================================================
     // 抽象方法（子类必须实现）
