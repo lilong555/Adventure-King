@@ -32,8 +32,6 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
     // === 继承 MonsterBase 的初始化（加载纹理）===
     if (!MonsterBase::init(spriteFrameName))
         return false;
-    // 1. 初始化战斗属性 (数值策划关注这一块)
-    initAttributes();
 
     // 2. 初始化 AI 参数 (关卡策划关注这一块)
     setAIConfig(700,0,true);
@@ -111,9 +109,12 @@ void GoblinMonster::initAnimations()
     cocos2d::Vector<cocos2d::SpriteFrame*> frames;
     char str[200] = { 0 };
 
-    // 假设你有 6 帧攻击动作
-    // 注意：你的文件名是 Goblin_attack_1.png (没有补0)，所以要用 %d，而不是 %02d
-    for (int i = 1; i <= 6; i++)
+    // 按序加载攻击帧：从 1 开始，遇到缺失文件就停止（避免刷屏报错）
+    auto fileUtils = cocos2d::FileUtils::getInstance();
+    bool oldPopupNotify = fileUtils->isPopupNotify();
+    fileUtils->setPopupNotify(false);
+
+    for (int i = 1; i <= 20; i++)
     {
         // 1. 拼接路径
         // 你的资源根目录是 Resources，所以路径从 Sprites/... 开始
@@ -122,25 +123,22 @@ void GoblinMonster::initAnimations()
         // 2. ★ 核心修改：使用 TextureCache 直接加载硬盘上的图片 ★
         auto texture = cocos2d::Director::getInstance()->getTextureCache()->addImage(str);
 
-        if (texture)
+        if (!texture)
         {
-            // 3. 如果加载成功，用这张纹理创建一个 SpriteFrame
-            auto size = texture->getContentSize();
-            auto frame = cocos2d::SpriteFrame::createWithTexture(texture, cocos2d::Rect(0, 0, size.width, size.height));
-            frames.pushBack(frame);
+            break;
+        }
 
-            // CCLOG("Loaded: %s", str); // 调试成功日志
-        }
-        else
-        {
-            // 如果还是找不到，说明路径拼写还有细微差别
-            CCLOG("ERROR: Cannot load file from disk: '%s'", str);
-        }
+        // 3. 如果加载成功，用这张纹理创建一个 SpriteFrame
+        auto size = texture->getContentSize();
+        auto frame = cocos2d::SpriteFrame::createWithTexture(texture, cocos2d::Rect(0, 0, size.width, size.height));
+        frames.pushBack(frame);
     }
+
+    fileUtils->setPopupNotify(oldPopupNotify);
 
     if (frames.empty())
     {
-        CCLOG("ERROR: No frames loaded!");
+        CCLOG("ERROR: Goblin attack frames not found under Sprites/Enemies/Goblin/");
         return;
     }
 

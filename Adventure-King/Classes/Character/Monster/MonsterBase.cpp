@@ -12,10 +12,29 @@ MonsterBase::~MonsterBase()
 
 bool MonsterBase::init(const std::string& spriteFrameName)
 {
-    if (!initWithSpriteFrameName(spriteFrameName))
+    // 约定：带目录的字符串通常是文件路径（Sprites/...），优先按文件加载避免 SpriteFrameCache 报错刷屏
+    bool initSuccess = false;
+    bool looksLikeFilePath = spriteFrameName.find('/') != std::string::npos || spriteFrameName.find('\\') != std::string::npos;
+    if (looksLikeFilePath)
     {
-        if (!initWithFile(spriteFrameName))
-            return false;
+        initSuccess = initWithFile(spriteFrameName);
+        if (!initSuccess)
+        {
+            initSuccess = initWithSpriteFrameName(spriteFrameName);
+        }
+    }
+    else
+    {
+        initSuccess = initWithSpriteFrameName(spriteFrameName);
+        if (!initSuccess)
+        {
+            initSuccess = initWithFile(spriteFrameName);
+        }
+    }
+
+    if (!initSuccess)
+    {
+        return false;
     }
 
     // 默认缩放：配合地图比例（统一怪物体型）
@@ -37,7 +56,6 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     _physicsBody->setGravityEnable(true);
 
     addComponent(_physicsBody);
-    scheduleUpdate();
     return true;
 }
 // MonsterBase.cpp
