@@ -67,7 +67,7 @@ struct LevelConfig
  */
 struct PlayerConfig
 {
-    float scale = 0.5f;                   ///< 玩家缩放比例
+    float scale = 0.25f;                  ///< 玩家缩放比例
     float walkSpeed = 220.0f;             ///< 行走速度
     float runSpeed = 350.0f;              ///< 跑步速度
     float jumpImpulse = 650.0f;           ///< 跳跃冲量

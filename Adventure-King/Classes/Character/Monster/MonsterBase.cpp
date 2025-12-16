@@ -18,9 +18,9 @@ bool MonsterBase::init(const std::string& spriteFrameName)
             return false;
     }
 
-    // 默认缩放：与玩家比例匹配（统一怪物体型）
-    setScale(0.6f);
-    _baseScaleX = 0.6f;
+    // 默认缩放：配合地图比例（统一怪物体型）
+    setScale(0.36f);
+    _baseScaleX = 0.36f;
 
     // 怪物默认开启受击飘字
     setDamageNumbersEnabled(true);

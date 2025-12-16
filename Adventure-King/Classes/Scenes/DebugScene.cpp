@@ -258,7 +258,7 @@ void DebugScene::initPlayer()
 	    // 配置玩家位置和锚点
 	    _player->setPosition(startPos);
 	    _player->setAnchorPoint(Vec2(0.5f, 0.5f)); // 物理引擎要求锚点在中心
-	    _player->setScale(0.5f);
+		    _player->setScale(0.25f);
 
     //-------------------------------------------------------------------------
     // 创建玩家物理刚体
@@ -269,9 +269,8 @@ void DebugScene::initPlayer()
 
     // 计算碰撞体尺寸（略小于精灵以获得更好的游戏体验）
     Size playerSize = _player->getContentSize();
-    float scale = _player->getScale();
-    float boxWidth = playerSize.width * scale * 0.8f;    // 宽度80%
-    float boxHeight = playerSize.height * scale * 0.95f; // 高度95%
+	    float boxWidth = playerSize.width * 0.8f;    // 宽度80%
+	    float boxHeight = playerSize.height * 0.95f; // 高度95%
 
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), playerMaterial);
     physicsBody->setDynamic(true);         // 动态刚体，受力影响

@@ -333,11 +333,11 @@ void GameScene::initPlayer(const Vec2 &startPos)
 
     // 获取原始尺寸并设置缩放
     Size originalSize = playerSprite->getContentSize();
-    playerSprite->setScale(_playerConfig.scale);
+    float scale = _playerConfig.scale;
+    playerSprite->setScale(scale);
 
-    // 计算缩放后的实际显示尺寸
-    float scaledWidth = originalSize.width;
-    float scaledHeight = originalSize.height;
+    // 计算缩放后的实际显示尺寸（仅用于摆放位置）
+    float scaledHeight = originalSize.height * scale;
 
     // 锚点设置为中心
     playerSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
@@ -347,8 +347,8 @@ void GameScene::initPlayer(const Vec2 &startPos)
     playerSprite->setPosition(playerPos);
 
     // 计算碰撞体尺寸（基于配置的比例）
-    float boxWidth = scaledWidth * _playerConfig.collisionBoxWidthRatio;
-    float boxHeight = scaledHeight * _playerConfig.collisionBoxHeightRatio;
+    float boxWidth = originalSize.width * _playerConfig.collisionBoxWidthRatio;
+    float boxHeight = originalSize.height * _playerConfig.collisionBoxHeightRatio;
 
     // 创建物理体
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), PLAYER_PHYSICS_MATERIAL);

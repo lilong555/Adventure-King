@@ -37,9 +37,9 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
 
     // 2. 初始化 AI 参数 (关卡策划关注这一块)
     setAIConfig(700,0,true);
-	// === 设置缩放比例 ===
-    setScale(0.6f);
-    _baseScaleX = 0.6f;
+		// === 设置缩放比例 ===
+	    setScale(0.36f);
+	    _baseScaleX = 0.36f;
 
     // === 设置怪物属性 ===
     initAttributes();
@@ -334,28 +334,37 @@ void GoblinMonster::attack()
 
             auto parent = this->getParent();
 
-            // 计算朝向
-            float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
+	            // 计算朝向
+	            float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
 
-            // 计算偏移
-            cocos2d::Vec2 offset(100.f * direction, 170.f);
+	            // 缩放适配：攻击判定基于旧的 0.6 缩放值调过，这里按当前缩放同比例缩放偏移/尺寸
+	            const float kAttackTuningScale = 0.6f;
+	            float scaleRatio = 1.0f;
+	            if (kAttackTuningScale > 0.0f)
+	            {
+	                scaleRatio = fabs(this->getScaleX()) / kAttackTuningScale;
+	            }
 
-            // ★ 核心：计算世界/父节点坐标 ★
-            cocos2d::Vec2 worldPos = this->getPosition() + offset;
+	            // 计算偏移
+	            cocos2d::Vec2 offset(100.f * direction * scaleRatio, 170.f * scaleRatio);
+	            cocos2d::Size hitboxSize(300.0f * scaleRatio, 20.0f * scaleRatio);
 
-            auto attackNode = cocos2d::Node::create();
-            attackNode->setPosition(worldPos);
-            attackNode->setContentSize(cocos2d::Size(300, 20));
-            attackNode->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+	            // ★ 核心：计算世界/父节点坐标 ★
+	            cocos2d::Vec2 worldPos = this->getPosition() + offset;
+
+	            auto attackNode = cocos2d::Node::create();
+	            attackNode->setPosition(worldPos);
+	            attackNode->setContentSize(hitboxSize);
+	            attackNode->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
 
             // ★ 核心：加到父节点，避免物理质心偏移 ★
             parent->addChild(attackNode);
 
-            // 物理属性
-            auto body = cocos2d::PhysicsBody::createBox(cocos2d::Size(300, 20));
-            body->setDynamic(false);
-            body->setGravityEnable(false);
-            body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
+	            // 物理属性
+	            auto body = cocos2d::PhysicsBody::createBox(hitboxSize);
+	            body->setDynamic(false);
+	            body->setGravityEnable(false);
+	            body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
             body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
             body->setCollisionBitmask(0);
             body->setTag(10); // 伤害值
