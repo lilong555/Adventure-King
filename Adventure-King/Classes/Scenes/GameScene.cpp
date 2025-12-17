@@ -1149,111 +1149,139 @@ void GameScene::updateEnemySpawns()
 // 碰撞检测回调
 // ===================================================================
 
-bool GameScene::onContactBegin(PhysicsContact &contact)
+bool GameScene::onContactBegin(PhysicsContact& contact)
 {
     auto nodeA = contact.getShapeA()->getBody()->getNode();
     auto nodeB = contact.getShapeB()->getBody()->getNode();
-    auto bodyA = contact.getShapeA()->getBody();
-    auto bodyB = contact.getShapeB()->getBody();
 
-    if (!nodeA || !nodeB)
+    // 1. 安全检查：如果节点已经销毁，直接返回
+    if (!nodeA || !nodeB) return true;
+
+    auto shapeA = contact.getShapeA();
+    auto shapeB = contact.getShapeB();
+
+    // 获取掩码 (int 类型)
+    int categoryA = shapeA->getBody()->getCategoryBitmask();
+    int categoryB = shapeB->getBody()->getCategoryBitmask();
+
+    // ============================================================
+    // 模块 1：炸弹逻辑 (Bomb)
+    // ============================================================
+    bool isBombA = (categoryA & GamePhysicsCategory::BOMB);
+    bool isBombB = (categoryB & GamePhysicsCategory::BOMB);
+
+    if (isBombA || isBombB)
+    {
+        auto bombNode = isBombA ? nodeA : nodeB;
+        int otherCategory = isBombA ? categoryB : categoryA;
+
+        // 转换节点为 Bomb 对象
+        if (auto bomb = dynamic_cast<Bomb*>(bombNode))
+        {
+            // 如果炸弹还没有爆炸，且撞到了：平台、怪物、或通用阻挡
+            if (!bomb->isExploded() &&
+                (otherCategory & (GamePhysicsCategory::PLATFORM |
+                    GamePhysicsCategory::MONSTER |
+                    GamePhysicsCategory::COLLISION)))
+            {
+                // 【重要】必须延迟一帧执行爆炸，因为不能在物理步进中修改场景图
+                bomb->scheduleOnce([bomb](float) {
+                    bomb->explode();
+                    }, 0.0f, "bomb_explode_trigger");
+            }
+        }
+        // 炸弹逻辑处理完毕，不影响后续物理反馈，返回 true
         return true;
+    }
 
-    int categoryA = bodyA->getCategoryBitmask();
-    int categoryB = bodyB->getCategoryBitmask();
+    // ============================================================
+    // 模块 2：玩家落地检测 (Ground Detection)
+    // ============================================================
+    // 只有当玩家参与碰撞时才计算
+    bool isPlayerA = (categoryA & GamePhysicsCategory::PLAYER);
+    bool isPlayerB = (categoryB & GamePhysicsCategory::PLAYER);
 
-    // 检测玩家与平台/碰撞体的接触
-    bool playerIsA = (categoryA & GamePhysicsCategory::PLAYER);
-    bool playerIsB = (categoryB & GamePhysicsCategory::PLAYER);
-    bool platformContact =
-        (playerIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
-        (playerIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
-
-    if (platformContact)
+    if (isPlayerA || isPlayerB)
     {
-        // 获取碰撞法向量判断是否从上方落下
-        auto contactData = contact.getContactData();
-        if (contactData)
+        int otherCategory = isPlayerA ? categoryB : categoryA;
+
+        // 如果撞到的是平台或通用碰撞体
+        if (otherCategory & (GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION))
         {
-            Vec2 normal = contactData->normal;
-
-            // 如果玩家是 B，法向量需要反转
-            if (playerIsB)
+            auto contactData = contact.getContactData();
+            if (contactData)
             {
-                normal = -normal;
-            }
+                Vec2 normal = contactData->normal;
+                // 如果玩家是 B，法向量取反（保证 normal 始终指向某一个方向标准）
+                // 假设 normal 默认是从 A 指向 B
+                if (isPlayerB) normal = -normal;
 
-            // normal 是从玩家指向平台的向量
-            // 如果 normal.y < GROUND_NORMAL_THRESHOLD，说明平台在玩家下方
-            if (normal.y < GROUND_NORMAL_THRESHOLD)
-            {
-                _groundContactCount++;
-                _isGrounded = true;
-                _jumpCount = 0; // 落地后重置跳跃次数
-                CCLOG("Player grounded (normal.y=%.2f), contacts: %d", normal.y, _groundContactCount);
+                // 判定平台在玩家下方 (脚下的法线通常是向上的)
+                // 注意：这里需要根据你的具体物理设置调整阈值方向
+                if (normal.y < GROUND_NORMAL_THRESHOLD)
+                {
+                    _groundContactCount++;
+                    _isGrounded = true;
+                    _jumpCount = 0; // 重置跳跃
+                    // CCLOG("Player grounded, count: %d", _groundContactCount);
+                }
             }
         }
     }
 
     // ============================================================
-    // 战斗：怪物攻击 -> 玩家
+    // 模块 3：怪物攻击 -> 玩家 (受到近战伤害)
     // ============================================================
-    bool monsterAttackVsPlayer =
-        ((categoryA & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) != 0 && (categoryB & ToMask(GamePhysicsCategory::PLAYER)) != 0) ||
-        ((categoryB & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) != 0 && (categoryA & ToMask(GamePhysicsCategory::PLAYER)) != 0);
+    // 使用 ToMask 宏简化代码
+    bool monsterHitPlayer =
+        ((categoryA & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) && (categoryB & ToMask(GamePhysicsCategory::PLAYER))) ||
+        ((categoryB & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) && (categoryA & ToMask(GamePhysicsCategory::PLAYER)));
 
-    if (monsterAttackVsPlayer)
+    if (monsterHitPlayer)
     {
-        auto attackBody = ((categoryA & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) != 0) ? bodyA : bodyB;
-        auto playerNode = ((categoryA & ToMask(GamePhysicsCategory::PLAYER)) != 0) ? nodeA : nodeB;
-        auto player = dynamic_cast<CharacterBase *>(playerNode);
+        // 确定谁是攻击框，谁是玩家
+        auto attackBody = (categoryA & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) ? shapeA->getBody() : shapeB->getBody();
+        auto playerNode = (categoryA & ToMask(GamePhysicsCategory::PLAYER)) ? nodeA : nodeB;
 
-        if (player && !player->isDead())
+        if (auto player = dynamic_cast<CharacterBase*>(playerNode))
         {
-            float rawDamage = static_cast<float>(attackBody->getTag());
-            if (rawDamage <= 0.0f)
+            if (!player->isDead())
             {
-                rawDamage = 1.0f;
-            }
-
-            DamageInfo dmg;
-            dmg.amount = rawDamage;
-            player->takeDamage(dmg);
-        }
-    }
-
-    // ============================================================
-    // 战斗：玩家攻击 -> 怪物（近战/判定框）
-    // 注：投掷物/爆炸由后面的投掷物逻辑处理
-    // ============================================================
-    bool playerAttackVsMonster =
-        ((categoryA & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0 && (categoryB & ToMask(GamePhysicsCategory::MONSTER)) != 0) ||
-        ((categoryB & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0 && (categoryA & ToMask(GamePhysicsCategory::MONSTER)) != 0);
-
-    if (playerAttackVsMonster)
-    {
-        auto attackBody = ((categoryA & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0) ? bodyA : bodyB;
-        auto monsterNode = ((categoryA & ToMask(GamePhysicsCategory::MONSTER)) != 0) ? nodeA : nodeB;
-        auto monster = dynamic_cast<CharacterBase *>(monsterNode);
-
-        // 只对“角色本体”结算；投掷物的爆炸在后续逻辑中处理
-        if (monster && !monster->isDead())
-        {
-            float rawDamage = static_cast<float>(attackBody->getTag());
-            if (rawDamage > 0.0f)
-            {
+                float damageVal = static_cast<float>(attackBody->getTag()); // 从 Tag 获取伤害
                 DamageInfo dmg;
-                dmg.amount = rawDamage;
-                dmg.attacker = _player;
-                monster->takeDamage(dmg);
+                dmg.amount = (damageVal > 0) ? damageVal : 10.0f; // 默认伤害保底
+                player->takeDamage(dmg);
             }
         }
     }
 
-    // 玩家投掷物命中非玩家目标时触发爆炸（平台/碰撞体/敌人等）
-    if (_player)
+    // ============================================================
+    // 模块 4：玩家攻击 -> 怪物 (近战挥砍)
+    // ============================================================
+    bool playerHitMonster =
+        ((categoryA & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) && (categoryB & ToMask(GamePhysicsCategory::MONSTER))) ||
+        ((categoryB & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) && (categoryA & ToMask(GamePhysicsCategory::MONSTER)));
+
+    if (playerHitMonster)
     {
-        _player->handleProjectileContact(nodeA, categoryA, nodeB, categoryB, _gameLayer);
+        auto attackBody = (categoryA & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) ? shapeA->getBody() : shapeB->getBody();
+        auto monsterNode = (categoryA & ToMask(GamePhysicsCategory::MONSTER)) ? nodeA : nodeB;
+
+        if (auto monster = dynamic_cast<CharacterBase*>(monsterNode))
+        {
+            if (!monster->isDead())
+            {
+                float damageVal = static_cast<float>(attackBody->getTag());
+                DamageInfo dmg;
+                dmg.amount = (damageVal > 0) ? damageVal : 10.0f;
+                dmg.attacker = _player; // 记录攻击者
+
+                monster->takeDamage(dmg);
+
+                // 如果需要打击特效，可以在这里生成
+                // createHitEffect(monster->getPosition());
+            }
+        }
     }
 
     return true;
@@ -1375,7 +1403,7 @@ void GameScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
     // 技能按键
     case EventKeyboard::KeyCode::KEY_E:
     case EventKeyboard::KeyCode::KEY_K: // 临时兼容
-        castFireball(); // 技能1：火球
+        //aaaaaacastFireball(); // 技能1：火球
         break;
 
     default:
@@ -1583,78 +1611,89 @@ void GameScene::onAttackAnimationFinished()
 // 技能系统实现
 // ============================================================
 
-void GameScene::castFireball()
+/**
+ * @brief 只负责检查条件（MP/CD）、设置状态、播放动作
+ */
+void GameScene::throwBomb()
 {
-    if (!_player || _player->isDead())
-        return;
+    // 1. 安全检查
+    if (!_player || _player->isDead()) return;
 
-    // 如果正在施放技能或攻击中，禁用技能
-    if (_isCastingSkill || _isAttacking)
-    {
+    // 2. 状态检查：防止连点
+    if (_isCastingSkill || _isAttacking) {
         return;
     }
 
-    // 通过技能组件释放技能（会自动检查 MP、冷却，并扣除 MP）
+    // 3. 技能组件检查 (蓝量/冷却)
     auto skillComp = _player->getSkillComponent();
-    if (!skillComp)
-    {
-        CCLOG("Skill component not found");
-        return;
+    if (!skillComp || !skillComp->useActiveSkill(GameConfig::Skill::SLOT_BOMB)) {
+        CCLOG("Skill failed: No MP or Cooldown");
+        return; // 没蓝或冷却中，直接退出
     }
 
-    // 尝试使用技能1（火球）
-    if (!skillComp->useActiveSkill(FIREBALL_SKILL_SLOT))
-    {
-        CCLOG("Fireball cast failed - MP insufficient or on cooldown");
-        return;
-    }
-
-    // 技能释放成功，播放施法动画
-    _isCastingSkill = true;
-    _player->castFireballAnimated([this]()
-                               { this->onFireballAnimationFinished(); });
-    CCLOG("Skill started: Fireball");
+    // 4. 这里的 castSkillAnimated 删掉！直接进执行逻辑！
+    doThrowBomb();
 }
 
-void GameScene::onFireballAnimationFinished()
+/**
+ * @brief 负责重置状态、触发生成
+ */
+void GameScene::onSkillAnimationFinished()
 {
+    // 1. 解锁状态
     _isCastingSkill = false;
+    _isAttacking = false;
 
-    // 动画结束后实际发射火球
-    if (_player)
-    {
-        _player->spawnFireballProjectile(_gameLayer);
-    }
-
-    if (_player)
-    {
+    // 2. 恢复移动 (如果需要)
+    if (_player) {
+        // 根据按键状态恢复移动
         _player->setMoving(_isMovingLeft || _isMovingRight, _isRunPressed);
     }
 
-    CCLOG("Fireball animation finished");
+    CCLOG("Skill Finished: Ready for next command.");
 }
 
-void GameScene::throwBomb()
+
+
+/**
+ * @brief 实际创建并投掷炸弹
+ */
+void GameScene::doThrowBomb()
 {
-    if (!_player || _player->isDead())
-        return;
+    if (!_player || _player->isDead()) return;
 
-    // 普通攻击期间，不允许与技能/攻击互相打断
-    if (_isCastingSkill || _isAttacking)
-    {
-        return;
-    }
-
+    // 1. 锁定状态 (防止其他操作打断)
+    _isCastingSkill = true;
     _isAttacking = true;
-    _player->castSkillAnimated([this]()
-                               {
-                                   if (_player)
-                                   {
-                                       _player->spawnBombProjectile(_gameLayer);
-                                   }
-                                   this->onAttackAnimationFinished();
-                               });
-    CCLOG("Normal attack started: Throw Bomb");
+
+    CCLOG("Bomb Skill Triggered: Playing Animation...");
+
+    // 2. 播放动画 (这是唯一一次播放)
+    _player->castSkillAnimated([this]() {
+
+        // --- 动画回调开始 ---
+        if (!this || !_player || !_gameLayer) return;
+
+        // A. 生成炸弹逻辑
+        auto bomb = Bomb::create("Sprites/Characters/Player/Klee/TNT.png");
+        if (bomb)
+        {
+            Vec2 playerPos = _player->getPosition();
+            bool facingLeft = _player->isFlippedX();
+            float throwDirX = facingLeft ? -1.0f : 1.0f;
+
+            bomb->setPosition(playerPos + Vec2(throwDirX * 30.0f, 30.0f));
+            bomb->setAttacker(_player);
+            _gameLayer->addChild(bomb, 4);
+
+            // 抛出
+            bomb->throwAt(Vec2(throwDirX * Bomb::DEFAULT_THROW_SPEED_X, Bomb::DEFAULT_THROW_SPEED_Y));
+            CCLOG("Bomb Spawned!");
+        }
+
+        // B. 动画结束，去重置状态
+        this->onSkillAnimationFinished();
+        });
 }
 
 // ============================================================
@@ -1688,7 +1727,6 @@ bool OriginMushroomScene::init()
     {
         return false;
     }
-
     CCLOG("OriginMushroomScene initialized");
     return true;
 }
