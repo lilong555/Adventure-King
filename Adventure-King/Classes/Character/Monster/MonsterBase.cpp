@@ -498,9 +498,10 @@ void MonsterBase::updateAttack(float dt)
 
     if (_attackInterval > 0.0f)
     {
-        while (_attackTimer >= _attackInterval)
+        _attackTimer = std::fmod(_attackTimer, _attackInterval);
+        if (_attackTimer < 0.0f)
         {
-            _attackTimer -= _attackInterval;
+            _attackTimer += _attackInterval;
         }
     }
     else
