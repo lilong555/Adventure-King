@@ -80,7 +80,7 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     _physicsBody->setContactTestBitmask(
         ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB));
 
-    addComponent(_physicsBody);
+    setPhysicsBody(_physicsBody);
 
     return true;
 }

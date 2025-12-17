@@ -25,11 +25,12 @@ bool StateMachineComponent::init()
 
 void StateMachineComponent::onAdd()
 {
-    // 获取 Owner 并开启 update
+    // 当组件被 addComponent 到 Character 时，自动获取 Owner 并转换类型
     if (getOwner())
     {
-        // 强转并缓存为 CharacterBase 类型
         _cachedOwner = dynamic_cast<CharacterBase*>(getOwner());
+
+        // 开启 update 调度 (让 update 函数每帧被调用)
         getOwner()->scheduleUpdate();
     }
 }
