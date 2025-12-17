@@ -1,6 +1,7 @@
 #pragma once
-
-#include <type_traits> // 必须包含这个，用于支持下面的位运算模板
+//存放涉及到物理的对象
+//当你需要添加新的物体类型（例如 NPC、水流、梯子）时，只需在 enum class 中继续向左移位即可
+#include <type_traits>
 
 // ============================================================
 // 物理碰撞分类（强类型位掩码）
@@ -11,14 +12,14 @@ enum class GamePhysicsCategory : int
     NONE = 0,            // 无碰撞
 
     // === 核心实体 ===
-    PLAYER = 1 << 0,       // 玩家 (对应旧 CATEGORY_PLAYER)
-    MONSTER = 1 << 1,       // 怪物/敌人 (对应旧 CATEGORY_ENEMY)
-    PLATFORM = 1 << 2,       // 地面/平台 (对应旧 CATEGORY_PLATFORM)
+    PLAYER = 1 << 0,       // 玩家
+    MONSTER = 1 << 1,       // 怪物/敌人
+    PLATFORM = 1 << 2,       // 地面/平台
 
     // === 交互物体 ===
     TRIGGER = 1 << 3,       // 触发器
     ITEM = 1 << 7,       // 掉落道具
-    BOMB = 1 << 10,      // [新增] 炸弹/投掷物 (对应旧 CATEGORY_BOMB)
+    BOMB = 1 << 10,      // 炸弹/投掷物
 
     // === 战斗判定 (Hitbox) ===
     PLAYER_ATTACK = 1 << 4,       // 玩家的攻击判定框

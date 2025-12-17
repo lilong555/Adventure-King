@@ -983,88 +983,34 @@ bool GameScene::isPlayerAtGate() const
 // 碰撞检测回调
 // ===================================================================
 
-bool GameScene::onContactBegin(PhysicsContact &contact)
+bool GameScene::onContactBegin(PhysicsContact& contact)
 {
-    auto nodeA = contact.getShapeA()->getBody()->getNode();
-    auto nodeB = contact.getShapeB()->getBody()->getNode();
+    auto shapeA = contact.getShapeA();
+    auto shapeB = contact.getShapeB();
 
-    if (!nodeA || !nodeB)
-        return true;
+    // 获取掩码 (int 类型)
+    int categoryA = shapeA->getCategoryBitmask();
+    int categoryB = shapeB->getCategoryBitmask();
 
-    int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
-    int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
+    // 使用 operator& (int, enum) 进行判断
 
-    // 检测玩家与平台/碰撞体的接触
-    bool playerIsA = (categoryA & GamePhysicsCategory::PLAYER);
-    bool playerIsB = (categoryB & GamePhysicsCategory::PLAYER);
-    bool platformContact =
-        (playerIsA && ((categoryB & GamePhysicsCategory::PLATFORM) || (categoryB & GamePhysicsCategory::COLLISION))) ||
-        (playerIsB && ((categoryA & GamePhysicsCategory::PLATFORM) || (categoryA & GamePhysicsCategory::COLLISION)));
+    // 检查是否有炸弹参与碰撞
+    bool isBombA = (categoryA & GamePhysicsCategory::BOMB);
+    bool isBombB = (categoryB & GamePhysicsCategory::BOMB);
 
-    if (platformContact)
+    if (isBombA || isBombB)
     {
-        // 获取碰撞法向量判断是否从上方落下
-        auto contactData = contact.getContactData();
-        if (contactData)
+        // 逻辑：如果炸弹碰到了平台或怪物
+        int otherCategory = isBombA ? categoryB : categoryA;
+
+        // 检查对方是否是 平台 或 怪物
+        if (otherCategory & (GamePhysicsCategory::PLATFORM | GamePhysicsCategory::MONSTER))
         {
-            Vec2 normal = contactData->normal;
-
-            // 如果玩家是 B，法向量需要反转
-            if (playerIsB)
+            auto bombNode = isBombA ? shapeA->getBody()->getNode() : shapeB->getBody()->getNode();
+            if (auto bomb = dynamic_cast<Bomb*>(bombNode))
             {
-                normal = -normal;
-            }
-
-            // normal 是从玩家指向平台的向量
-            // 如果 normal.y < GROUND_NORMAL_THRESHOLD，说明平台在玩家下方
-            if (normal.y < GROUND_NORMAL_THRESHOLD)
-            {
-                _groundContactCount++;
-                _isGrounded = true;
-                _jumpCount = 0; // 落地后重置跳跃次数
-                CCLOG("Player grounded (normal.y=%.2f), contacts: %d", normal.y, _groundContactCount);
-            }
-        }
-    }
-
-    // 炸弹命中非玩家目标时触发爆炸（平台/碰撞体/敌人等）
-    bool bombIsA = (categoryA & ToMask(GamePhysicsCategory::BOMB)) != 0;
-    bool bombIsB = (categoryB & ToMask(GamePhysicsCategory::BOMB)) != 0;
-
-    if (bombIsA || bombIsB)
-    {
-        Node *bombNode = bombIsA ? nodeA : nodeB;
-        int otherMask = bombIsA ? categoryB : categoryA;
-        bool hitPlayer = (otherMask & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-        bool hitBomb = (otherMask & ToMask(GamePhysicsCategory::BOMB)) != 0;
-
-        if (!hitPlayer && !hitBomb)
-        {
-            for (auto &bomb : _bombs)
-            {
-                if (bomb.sprite == bombNode && !bomb.isExploded)
-                {
-                    bomb.isExploded = true;
-
-                    // Avoid modifying physics bodies inside the contact callback.
-                    // Defer the actual explosion to the next tick.
-                    this->runAction(Sequence::create(
-                        DelayTime::create(0.0f),
-                        CallFunc::create([this, bombNode]()
-                                         {
-                                             for (auto &pendingBomb : _bombs)
-                                             {
-                                                 if (pendingBomb.sprite == bombNode && pendingBomb.isExploded)
-                                                 {
-                                                     explodeBomb(pendingBomb);
-                                                     break;
-                                                 }
-                                             }
-                                         }),
-                        nullptr));
-
-                    break;
-                }
+                // 延迟爆炸
+                bomb->scheduleOnce([bomb](float) { bomb->explode(); }, 0, "bomb_explode");
             }
         }
     }
@@ -1395,27 +1341,6 @@ void GameScene::onAttackAnimationFinished()
 // ============================================================
 
 /**
- * @brief 播放技能施放动画
- */
-/**
- * @brief 技能动画播放完成回调
- */
-void GameScene::onSkillAnimationFinished()
-{
-    _isCastingSkill = false;
-
-    // 动画结束后实际丢出炸弹
-    doThrowBomb();
-
-    if (_player)
-    {
-        _player->setMoving(_isMovingLeft || _isMovingRight, _isRunPressed);
-    }
-
-    CCLOG("Skill animation finished");
-}
-
-/**
  * @brief 释放炸弹技能
  */
 void GameScene::throwBomb()
@@ -1448,9 +1373,32 @@ void GameScene::throwBomb()
     // 技能释放成功，播放技能动画
     _isCastingSkill = true;
     _player->castSkillAnimated([this]()
-                               { this->onSkillAnimationFinished(); });
+        { this->onSkillAnimationFinished(); });
     CCLOG("Skill started: Throw Bomb");
 }
+
+/**
+ * @brief 播放技能施放动画
+ */
+/**
+ * @brief 技能动画播放完成回调
+ */
+void GameScene::onSkillAnimationFinished()
+{
+    _isCastingSkill = false;
+
+    // 动画结束后实际丢出炸弹
+    doThrowBomb();
+
+    if (_player)
+    {
+        _player->setMoving(_isMovingLeft || _isMovingRight, _isRunPressed);
+    }
+
+    CCLOG("Skill animation finished");
+}
+
+
 
 /**
  * @brief 实际创建并投掷炸弹
@@ -1460,194 +1408,26 @@ void GameScene::doThrowBomb()
     if (!_player || _player->isDead())
         return;
 
-    // 创建炸弹精灵
-    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/TNT.png");
-    if (!bombSprite)
-    {
-        CCLOG("Failed to create bomb sprite");
-        return;
-    }
+    // 创建 Bomb 对象
+    auto bomb = Bomb::create("Sprites/Characters/Player/Klee/TNT.png");
+    if (!bomb) return;
 
-    // 创建炸弹对象
-    GameBomb bomb;
-    bomb.isExploded = false;
-    bomb.sprite = bombSprite;
-
-    // 根据角色朝向决定炸弹方向
+    // 设置位置
+    Vec2 playerPos = _player->getPosition();
     bool facingLeft = _player->isFlippedX();
     float throwDirX = facingLeft ? -1.0f : 1.0f;
+    bomb->setPosition(playerPos + Vec2(throwDirX * 30, 30)); // 简单偏移
 
-    // 设置炸弹初始位置（角色上方）
-    Vec2 playerPos = _player->getPosition();
-    float offsetX = throwDirX * bomb.sprite->getContentSize().width;
-    float offsetY = bomb.sprite->getContentSize().height;
-    bombSprite->setPosition(playerPos + Vec2(offsetX, offsetY));
-    bombSprite->setScale(0.5f);
+    // 设置攻击者
+    bomb->setAttacker(_player);
 
-    // 创建炸弹物理刚体
-    PhysicsMaterial bombMaterial(0.5f, 0.3f, 0.2f);                    // 密度、弹性、摩擦
-    auto physicsBody = PhysicsBody::createCircle(15.0f, bombMaterial); // 圆形碰撞体
-    physicsBody->setDynamic(true);
-    physicsBody->setMass(0.5f);
-    physicsBody->setRotationEnable(true); // 允许旋转
+    // 添加到场景
+    _gameLayer->addChild(bomb, 4);
 
-    // 设置碰撞掩码
-    physicsBody->setCategoryBitmask(static_cast<int>(GamePhysicsCategory::BOMB));
-    physicsBody->setCollisionBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setContactTestBitmask(static_cast<int>(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
+    // 投掷！
+    bomb->throwAt(Vec2(throwDirX * BOMB_THROW_SPEED_X, BOMB_THROW_SPEED_Y));
 
-    bombSprite->addComponent(physicsBody);
-    _gameLayer->addChild(bombSprite, 4);
-
-    // 施加初始速度（冲量）
-    Vec2 impulse(throwDirX * BOMB_THROW_SPEED_X * physicsBody->getMass(),
-                 BOMB_THROW_SPEED_Y * physicsBody->getMass());
-    physicsBody->applyImpulse(impulse);
-
-    _bombs.push_back(bomb);
-
-    CCLOG("Bomb thrown with physics!");
-}
-
-/**
- * @brief 处理炸弹爆炸
- */
-void GameScene::explodeBomb(GameBomb &bomb)
-{
-    if (!bomb.sprite)
-        return;
-
-    Vec2 explodePos = bomb.sprite->getPosition();
-    Vec2 explosionWorld = explodePos;
-    if (bomb.sprite->getParent())
-    {
-        explosionWorld = bomb.sprite->getParent()->convertToWorldSpace(explodePos);
-    }
-
-    // 移除炸弹精灵
-    bomb.sprite->removeFromParent();
-
-    // 对范围内角色造成伤害（排除玩家自身）
-    if (_gameLayer)
-    {
-        DamageInfo dmg;
-        dmg.amount = BOMB_DAMAGE;
-        dmg.attacker = _player;
-
-        std::function<void(Node *)> applyAoE = [&](Node *node)
-        {
-            if (!node)
-                return;
-
-            if (auto character = dynamic_cast<CharacterBase *>(node))
-            {
-                if (character != _player)
-                {
-                    // Check circle (explosion) vs character AABB overlap.
-                    // Prefer physics collider AABB (world-centered), fall back to visual bounds.
-                    Rect hitRectWorld;
-                    bool hasHitRectWorld = false;
-
-                    if (auto body = character->getPhysicsBody())
-                    {
-                        auto shape = body->getFirstShape();
-                        if (shape)
-                        {
-                            Size shapeSizeWorld;
-                            switch (shape->getType())
-                            {
-                            case PhysicsShape::Type::BOX:
-                                shapeSizeWorld = static_cast<PhysicsShapeBox *>(shape)->getSize();
-                                break;
-                            case PhysicsShape::Type::CIRCLE:
-                            {
-                                float r = static_cast<PhysicsShapeCircle *>(shape)->getRadius();
-                                shapeSizeWorld = Size(r * 2.0f, r * 2.0f);
-                                break;
-                            }
-                            default:
-                                break;
-                            }
-
-                            if (shapeSizeWorld.width > 0.0f && shapeSizeWorld.height > 0.0f)
-                            {
-                                Vec2 centerLocal(character->getContentSize().width * 0.5f,
-                                                 character->getContentSize().height * 0.5f);
-                                Vec2 bodyCenterWorld = character->convertToWorldSpace(centerLocal);
-                                Vec2 rectCenterWorld = bodyCenterWorld + shape->getCenter();
-
-                                hitRectWorld = Rect(rectCenterWorld.x - shapeSizeWorld.width / 2.0f,
-                                                    rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
-                                                    shapeSizeWorld.width,
-                                                    shapeSizeWorld.height);
-                                hasHitRectWorld = true;
-                            }
-                        }
-                    }
-
-                    if (!hasHitRectWorld)
-                    {
-                        Rect bboxParent = character->getBoundingBox();
-                        Vec2 originWorld = bboxParent.origin;
-                        Vec2 topRightWorld = bboxParent.origin + bboxParent.size;
-                        if (character->getParent())
-                        {
-                            originWorld = character->getParent()->convertToWorldSpace(bboxParent.origin);
-                            topRightWorld = character->getParent()->convertToWorldSpace(bboxParent.origin + bboxParent.size);
-                        }
-
-                        hitRectWorld = Rect(
-                            std::min(originWorld.x, topRightWorld.x),
-                            std::min(originWorld.y, topRightWorld.y),
-                            std::fabs(topRightWorld.x - originWorld.x),
-                            std::fabs(topRightWorld.y - originWorld.y));
-                    }
-
-                    float dx = 0.0f;
-                    if (explosionWorld.x < hitRectWorld.getMinX()) dx = hitRectWorld.getMinX() - explosionWorld.x;
-                    else if (explosionWorld.x > hitRectWorld.getMaxX()) dx = explosionWorld.x - hitRectWorld.getMaxX();
-
-                    float dy = 0.0f;
-                    if (explosionWorld.y < hitRectWorld.getMinY()) dy = hitRectWorld.getMinY() - explosionWorld.y;
-                    else if (explosionWorld.y > hitRectWorld.getMaxY()) dy = explosionWorld.y - hitRectWorld.getMaxY();
-
-                    if ((dx * dx + dy * dy) <= (BOMB_EXPLOSION_RADIUS * BOMB_EXPLOSION_RADIUS))
-                    {
-                        character->takeDamage(dmg);
-                    }
-                }
-            }
-
-            const auto &children = node->getChildren();
-            for (auto child : children)
-            {
-                applyAoE(child);
-            }
-        };
-
-        applyAoE(_gameLayer);
-    }
-
-    // 创建爆炸效果
-    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/BOOM_1.png");
-    if (boomSprite)
-    {
-        boomSprite->setPosition(explodePos);
-        boomSprite->setScale(0.8f);
-        _gameLayer->addChild(boomSprite, 6);
-
-        // 爆炸动画：放大 + 淡出
-        auto scaleUp = ScaleTo::create(0.2f, 1.2f);
-        auto fadeOut = FadeOut::create(0.3f);
-        auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
-        auto remove = RemoveSelf::create();
-        auto sequence = Sequence::create(spawn, remove, nullptr);
-        boomSprite->runAction(sequence);
-    }
-
-    bomb.sprite = nullptr;
-
-    CCLOG("Bomb exploded at (%.0f, %.0f)", explodePos.x, explodePos.y);
+    CCLOG("Bomb thrown!");
 }
 
 // ============================================================
@@ -1684,7 +1464,7 @@ bool OriginMushroomScene::init()
     // 生成一个测试哥布林
     if (_gameLayer && _player)
     {
-        Vec2 goblinPos = getPlayerSpawnPoint() + Vec2(400.0f, 0.0f);
+        Vec2 goblinPos = getPlayerSpawnPoint() + Vec2(800.0f, 0.0f);
         auto goblin = GoblinMonster::create();
         if (goblin)
         {

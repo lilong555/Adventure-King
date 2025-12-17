@@ -15,11 +15,12 @@ public:
     virtual bool init();
 
 private:
+    const float TARGET_HEIGHT_RATIO = 0.6f;//缩放的比例
+
     // 初始化组件
     bool initBackground();
     bool initCloseButton();
     bool initMusicToggle(); // 初始化音量开关
-    
 
     // 布局
     void layoutUI();
@@ -31,7 +32,6 @@ private:
     // 触摸事件 (用于吞噬触摸，保持模态)
     virtual bool onTouchBegan(cocos2d::Touch* touch, cocos2d::Event* event) override;
 
-private:
     cocos2d::Sprite* _background;
     cocos2d::MenuItemToggle* _musicToggle;
 };

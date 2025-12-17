@@ -17,6 +17,7 @@
 #include "2d/CCTMXTiledMap.h"
 #include "2d/CCTMXObjectGroup.h"
 #include "Physics/GamePhysicsCategory.h"
+#include "Objects/Projectiles/Bomb.h"
 
 // 前向声明
 class PlayerCharacter;
@@ -70,15 +71,6 @@ struct PlayerConfig
     int maxJumpCount = 2;                 ///< 最大跳跃次数（1=单跳，2=二段跳）
     float collisionBoxWidthRatio = 0.8f;  ///< 碰撞盒宽度比例
     float collisionBoxHeightRatio = 0.9f; ///< 碰撞盒高度比例
-};
-
-/**
- * @brief 炸弹对象（用于场景内管理）
- */
-struct GameBomb
-{
-    bool isExploded = false;           ///< 是否已爆炸
-    cocos2d::Sprite *sprite = nullptr; ///< 炸弹精灵
 };
 
 // ============================================================
@@ -163,11 +155,6 @@ protected:
     // UI 相关
     // -------------------------------
     GameUI *_gameUI = nullptr; ///< 游戏 UI
-
-    // -------------------------------
-    // 炸弹系统
-    // -------------------------------
-    std::vector<GameBomb> _bombs; ///< 当前场景中的炸弹列表
 
     // -------------------------------
     // 常量定义
@@ -370,12 +357,6 @@ protected:
      * @brief 实际创建并投掷炸弹
      */
     virtual void doThrowBomb();
-
-    /**
-     * @brief 炸弹爆炸处理
-     * @param bomb 要爆炸的炸弹对象引用
-     */
-    virtual void explodeBomb(GameBomb &bomb);
 
     // ===================================================================
     // 场景导航
