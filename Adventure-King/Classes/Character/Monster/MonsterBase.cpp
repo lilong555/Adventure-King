@@ -14,7 +14,7 @@ MonsterBase::~MonsterBase()
 
 bool MonsterBase::init(const std::string& spriteFrameName)
 {
-    // 优先走 SpriteFrameCache（缺失时会按文件加载并加入缓存），减少重复创建 SpriteFrame 的开销
+    // 1. 视觉初始化
     bool initSuccess = initWithSpriteFrameName(spriteFrameName);
     if (!initSuccess)
     {
@@ -26,7 +26,33 @@ bool MonsterBase::init(const std::string& spriteFrameName)
         return false;
     }
 
-    // 默认缩放：配合地图比例（统一怪物体型）
+    // ---------------------------------------------------------
+    // ✅ 【核心修复】手动挂载必要组件
+    // ---------------------------------------------------------
+    // 属性组件 (必须有，用于存血量/攻击力)
+    if (!getAttributeComponent()) {
+        auto attr = AttributeComponent::create();
+        attr->setName("AttributeComponent"); // 必须设置名字，基类通过名字查找
+        this->addComponent(attr);
+    }
+
+    // 状态机组件 (必须有，用于播放受击/死亡/攻击动画)
+    if (!getStateMachineComponent()) {
+        auto sm = StateMachineComponent::create();
+        sm->setName("StateMachineComponent");
+        this->addComponent(sm);
+    }
+
+    // 技能组件 (可选，如果怪物也用技能系统就加上)
+    if (!getSkillComponent()) {
+        auto skill = SkillComponent::create();
+        skill->setName("SkillComponent");
+        this->addComponent(skill);
+    }
+
+    // ---------------------------------------------------------
+
+    // 默认缩放
     setScale(0.36f);
     _baseScaleX = 0.36f;
 
@@ -36,7 +62,7 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     // 怪物默认开启受击飘字
     setDamageNumbersEnabled(true);
 
-    // === 创建怪物碰撞体 ===
+    // === 创建怪物物理体 ===
     Size size = getContentSize();
     Size boxSize(size.width * 0.35f, size.height * 0.9f);
 
@@ -54,7 +80,7 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     _physicsBody->setContactTestBitmask(
         ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB));
 
-    addComponent(_physicsBody);
+    setPhysicsBody(_physicsBody);
 
     // 性能：默认按屏幕宽度设置“活跃更新范围”，避免大量离屏怪物每帧跑 AI 逻辑
     if (_activeUpdateDistanceX <= 0.0f)

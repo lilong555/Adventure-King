@@ -155,6 +155,7 @@ bool GameScene::initLevelMap(const LevelConfig &config)
 
 void GameScene::initPlayer(const Vec2 &startPos)
 {
+    // 创建玩家角色（战士职业）
     auto playerSprite = PlayerCharacter::create(CharacterRole::WARRIOR, DEFAULT_PLAYER_SPRITE);
     if (!playerSprite)
     {
@@ -163,7 +164,7 @@ void GameScene::initPlayer(const Vec2 &startPos)
     }
 
     Size originalSize = playerSprite->getContentSize();
-    float scale = _playerConfig.scale;
+    float scale = GameConfig::Player::SCALE;
     playerSprite->setScale(scale);
 
     float scaledHeight = originalSize.height * scale;
@@ -172,8 +173,8 @@ void GameScene::initPlayer(const Vec2 &startPos)
     Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
     playerSprite->setPosition(playerPos);
 
-    float boxWidth = originalSize.width * _playerConfig.collisionBoxWidthRatio;
-    float boxHeight = originalSize.height * _playerConfig.collisionBoxHeightRatio;
+    float boxWidth = originalSize.width * GameConfig::Player::COLLISION_BOX_RATIO_W;
+    float boxHeight = originalSize.height * GameConfig::Player::COLLISION_BOX_RATIO_H;
 
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), PLAYER_PHYSICS_MATERIAL);
     physicsBody->setDynamic(true);
@@ -189,7 +190,7 @@ void GameScene::initPlayer(const Vec2 &startPos)
                                               GamePhysicsCategory::COLLISION |
                                               GamePhysicsCategory::MONSTER_ATTACK));
 
-    playerSprite->addComponent(physicsBody);
+    playerSprite->setPhysicsBody(physicsBody);
 
     _player = playerSprite;
     _player->setTag(TAG_PLAYER);
@@ -247,7 +248,6 @@ void GameScene::initInputController()
 {
     _inputController = std::make_unique<GameInputController>();
     _inputController->bindPlayer(_player);
-    _inputController->setPlayerConfig(_playerConfig);
     _inputController->setPauseToggle([this]()
                                      { togglePauseMenu(); });
     _inputController->setIsPausedGetter([this]()

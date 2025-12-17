@@ -1,56 +1,69 @@
 #pragma once
 
+#include "cocos2d.h" // 1. 必须引入 Cocos 头文件
 #include "Character/Base/CharacterData.h"
 #include <memory>
 #include <vector>
 
 class CharacterBase;
 
-class SkillComponent
+// 2. 继承自 cocos2d::Component
+class SkillComponent : public cocos2d::Component
 {
 public:
-    explicit SkillComponent(CharacterBase *owner);
+    // 3. 添加标准创建宏 (解决 create 报错的核心)
+    CREATE_FUNC(SkillComponent);
+
+    SkillComponent();
+    virtual ~SkillComponent();
+
+    // 4. 覆盖 Component 的生命周期方法
+    virtual bool init() override;
+    virtual void update(float dt) override;
+    virtual void onAdd() override; // 当组件被添加到节点时调用
 
     // 学习技能（解锁）
-    void learnSkill(const std::shared_ptr<Skill> &skill);
+    void learnSkill(const std::shared_ptr<Skill>& skill);
 
-    // 将技能装备到槽位
-    void equipActiveSkill(const std::shared_ptr<ActiveSkill> &skill, size_t slotIndex);
-    void equipPassiveSkill(const std::shared_ptr<PassiveSkill> &skill, size_t slotIndex);
+    // 将技能装备到槽位 (建议改为 bool 返回值，方便判断是否装备成功)
+    bool equipActiveSkill(const std::shared_ptr<ActiveSkill>& skill, size_t slotIndex);
+    bool equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill, size_t slotIndex);
 
     // 使用主动技能（成功返回 true）
     bool useActiveSkill(size_t slotIndex);
 
-    // 每帧更新冷却
-    void update(float dt);
-
-    const std::vector<std::shared_ptr<ActiveSkill>> &getActiveSlots() const { return _activeSlots; }
-    const std::vector<std::shared_ptr<PassiveSkill>> &getPassiveSlots() const { return _passiveSlots; }
+    const std::vector<std::shared_ptr<ActiveSkill>>& getActiveSlots() const { return _activeSlots; }
+    const std::vector<std::shared_ptr<PassiveSkill>>& getPassiveSlots() const { return _passiveSlots; }
 
     //================== 存档系统支持 ==================
 
     // 获取已学习的技能列表
-    const std::vector<std::shared_ptr<Skill>> &getLearnedSkills() const { return _learnedSkills; }
+    const std::vector<std::shared_ptr<Skill>>& getLearnedSkills() const { return _learnedSkills; }
 
     // 根据 ID 查找已学习的技能
     std::shared_ptr<Skill> findLearnedSkillById(int skillId) const;
 
     // 清空并设置主动技能槽位（用于读档）
-    void clearAndSetActiveSlots(const std::vector<std::shared_ptr<ActiveSkill>> &slots);
+    void clearAndSetActiveSlots(const std::vector<std::shared_ptr<ActiveSkill>>& slots);
 
     // 清空并设置被动技能槽位（用于读档）
-    void clearAndSetPassiveSlots(const std::vector<std::shared_ptr<PassiveSkill>> &slots);
+    void clearAndSetPassiveSlots(const std::vector<std::shared_ptr<PassiveSkill>>& slots);
 
     // 清空所有技能与槽位（用于读档前重置状态）
     void resetSkills();
 
 private:
-    CharacterBase *_owner = nullptr;
+    // 辅助函数：获取 Owner 并转换为 CharacterBase
+    // Component 自带 _owner 指针 (Node*)，我们需要转为 CharacterBase*
+    CharacterBase* getCharacterOwner() const;
+
+    // 缓存一个指针，避免每帧 dynamic_cast (在 onAdd 中赋值)
+    CharacterBase* _cachedOwner = nullptr;
 
     std::vector<std::shared_ptr<Skill>> _learnedSkills;
     std::vector<std::shared_ptr<ActiveSkill>> _activeSlots;
     std::vector<std::shared_ptr<PassiveSkill>> _passiveSlots;
 
-    void applyPassiveSkill(const std::shared_ptr<PassiveSkill> &skill);
-    void removePassiveSkill(const std::shared_ptr<PassiveSkill> &skill);
+    void applyPassiveSkill(const std::shared_ptr<PassiveSkill>& skill);
+    void removePassiveSkill(const std::shared_ptr<PassiveSkill>& skill);
 };

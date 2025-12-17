@@ -1,7 +1,71 @@
 #include "Character/components/AttributeComponent.h"
 #include <algorithm>
 
-AttributeComponent::AttributeComponent() = default;
+AttributeComponent::AttributeComponent()
+{
+    // 设置组件名字，方便通过 getComponent("AttributeComponent") 获取
+    setName("AttributeComponent");
+}
+
+AttributeComponent::~AttributeComponent()
+{
+}
+
+// 初始化函数
+bool AttributeComponent::init()
+{
+    if (!Component::init())
+    {
+        return false;
+    }
+
+    // 或者更简单的 Cocos2d-x 写法，Component 默认支持 update，
+    // 只要 owner 启用了 scheduleUpdate，组件的 update 就会被调用。
+    // 通常组件不需要手动 schedule，只要实现 update 方法并在 init 里 setName 即可。
+
+    return true;
+}
+void AttributeComponent::onAdd()
+{
+    // 当组件被挂载到节点上时，Cocos会自动调用这个函数
+    if (getOwner())
+    {
+        // 开启宿主节点的 update调度，这样组件的 update(dt) 也会被自动调用
+        getOwner()->scheduleUpdate();
+    }
+}
+// 每帧更新
+void AttributeComponent::update(float dt)
+{
+    // 调用原本的状态更新逻辑
+    updateStatusEffectsLogic(dt);
+}
+
+void AttributeComponent::updateStatusEffectsLogic(float dt)
+{
+    // 把你原来的 updateStatusEffects 代码搬到这里
+    if (_statusEffects.empty()) return;
+
+    bool needsRecalc = false;
+    for (auto it = _statusEffects.begin(); it != _statusEffects.end();)
+    {
+        it->duration -= dt;
+        if (it->duration <= 0)
+        {
+            it = _statusEffects.erase(it); // 移除过期的
+            needsRecalc = true;
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    if (needsRecalc)
+    {
+        recalculateFinalAttributes();
+    }
+}
 
 //---------------- 基础属性 ----------------
 
