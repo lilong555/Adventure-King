@@ -25,6 +25,9 @@ namespace
     constexpr float SPAWN_SPACING_X = 80.0f;
     constexpr float SPAWN_INTERVAL_SECONDS = 0.4f;
     constexpr int DEFAULT_CHARACTER_Z_ORDER = 5;
+
+    // 敌人生成点检测频率：不需要每帧检测，降低 CPU 开销
+    constexpr float ENEMY_SPAWN_CHECK_INTERVAL_SECONDS = 0.1f;
 }
 
 bool LevelMap::load(Node *gameLayer, const std::string &tmxPath)
@@ -365,6 +368,8 @@ bool LevelMap::isPointAtGate(const Vec2 &worldPos) const
 void LevelMap::loadEnemySpawnPoints(const std::string &groupName)
 {
     _enemySpawnPoints.clear();
+    _pendingEnemySpawnPoints = 0;
+    _enemySpawnCheckAccumulator = 0.0f;
 
     if (!_tileMap)
     {
@@ -427,33 +432,62 @@ void LevelMap::loadEnemySpawnPoints(const std::string &groupName)
     std::sort(_enemySpawnPoints.begin(), _enemySpawnPoints.end(),
               [](const EnemySpawnPoint &a, const EnemySpawnPoint &b)
               { return a.position.x < b.position.x; });
+
+    _pendingEnemySpawnPoints = _enemySpawnPoints.size();
 }
 
 void LevelMap::updateEnemySpawns(PlayerCharacter *player,
                                 Node *gameLayer,
                                 const std::function<MonsterBase *(const std::string &)> &createMonsterByType,
-                                float viewDistanceX)
+                                float viewDistanceX,
+                                float dt)
 {
     if (!player || !gameLayer || _enemySpawnPoints.empty())
         return;
     if (!createMonsterByType)
         return;
+    if (_pendingEnemySpawnPoints == 0)
+        return;
+
+    // 允许外部以 dt<=0 的方式强制立即检测（例如场景初始化时）
+    if (dt > 0.0f)
+    {
+        _enemySpawnCheckAccumulator += dt;
+        if (_enemySpawnCheckAccumulator < ENEMY_SPAWN_CHECK_INTERVAL_SECONDS)
+        {
+            return;
+        }
+    }
+    _enemySpawnCheckAccumulator = 0.0f;
 
     const float playerX = player->getPositionX();
+    const float minX = playerX - viewDistanceX;
+    const float maxX = playerX + viewDistanceX;
 
-    for (auto &spawnPoint : _enemySpawnPoints)
+    auto startIt = std::lower_bound(_enemySpawnPoints.begin(),
+                                    _enemySpawnPoints.end(),
+                                    minX,
+                                    [](const EnemySpawnPoint &spawnPoint, float x)
+                                    { return spawnPoint.position.x < x; });
+
+    for (auto it = startIt; it != _enemySpawnPoints.end(); ++it)
     {
-        if (spawnPoint.hasSpawned)
-            continue;
+        auto &spawnPoint = *it;
 
-        const float dx = std::fabs(playerX - spawnPoint.position.x);
-        if (dx > viewDistanceX)
+        if (spawnPoint.position.x > maxX)
+            break;
+
+        if (spawnPoint.hasSpawned)
             continue;
 
         const int count = std::max(1, spawnPoint.count);
         const float centerIndex = (static_cast<float>(count) - 1.0f) * 0.5f;
 
         spawnPoint.hasSpawned = true;
+        if (_pendingEnemySpawnPoints > 0)
+        {
+            _pendingEnemySpawnPoints--;
+        }
 
         for (int i = 0; i < count; ++i)
         {
@@ -486,4 +520,3 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
               spawnPoint.position.x, spawnPoint.position.y);
     }
 }
-

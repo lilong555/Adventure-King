@@ -17,6 +17,7 @@ namespace
 {
     const char *const GATE_INTERACTION_HINT = "Press W to enter gate";
     constexpr int UI_Z_ORDER = 100;
+    constexpr float UI_UPDATE_INTERVAL_SECONDS = 0.05f;
 }
 
 bool GameUIController::init(Scene *scene,
@@ -142,10 +143,13 @@ bool GameUIController::init(Scene *scene,
 
     _scene->addChild(_gameUI, UI_Z_ORDER);
     CCLOG("GameUI initialized for level: %s", levelName.c_str());
+
+    _updateAccumulator = UI_UPDATE_INTERVAL_SECONDS;
+    _gameUI->updateDisplay();
     return true;
 }
 
-void GameUIController::update()
+void GameUIController::update(float dt)
 {
     if (!_gameUI)
         return;
@@ -165,6 +169,13 @@ void GameUIController::update()
         _gameUI->hideInteractionHint();
     }
     _wasAtGate = atGate;
+
+    _updateAccumulator += dt;
+    if (_updateAccumulator < UI_UPDATE_INTERVAL_SECONDS)
+    {
+        return;
+    }
+    _updateAccumulator = 0.0f;
 
     _gameUI->updateDisplay();
 }

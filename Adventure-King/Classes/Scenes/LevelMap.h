@@ -46,7 +46,8 @@ public:
     void updateEnemySpawns(PlayerCharacter *player,
                            cocos2d::Node *gameLayer,
                            const std::function<MonsterBase *(const std::string &)> &createMonsterByType,
-                           float viewDistanceX);
+                           float viewDistanceX,
+                           float dt);
 
 private:
     bool parseTMXObjectVertices(const cocos2d::ValueMap &dict,
@@ -66,5 +67,8 @@ private:
 
     std::vector<cocos2d::Rect> _gateAreas;
     std::vector<EnemySpawnPoint> _enemySpawnPoints;
-};
 
+    // 性能：避免每帧全量扫描生成点
+    size_t _pendingEnemySpawnPoints = 0;
+    float _enemySpawnCheckAccumulator = 0.0f;
+};
