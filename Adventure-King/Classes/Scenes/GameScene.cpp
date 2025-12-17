@@ -622,7 +622,6 @@ bool OriginMushroomScene::init()
     {
         return false;
     }
-
     CCLOG("OriginMushroomScene initialized");
     return true;
 }

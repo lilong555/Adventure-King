@@ -28,6 +28,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
+#include "Physics/GamePhysicsCategory.h"
 #include "MapScene.h"
 #include <algorithm>
 
@@ -193,9 +194,9 @@ void DebugScene::initPlatforms()
         physicsBody->setDynamic(false); // 静态刚体不受力影响
 
         // 配置碰撞掩码
-        physicsBody->setCategoryBitmask(CATEGORY_PLATFORM);
-        physicsBody->setCollisionBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
-        physicsBody->setContactTestBitmask(CATEGORY_PLAYER | CATEGORY_BOMB);
+        physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLATFORM));
+        physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER) | ToMask(GamePhysicsCategory::BOMB));
+        physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER) | ToMask(GamePhysicsCategory::BOMB));
 
         platformNode->addComponent(physicsBody);
         this->addChild(platformNode, 1);
@@ -246,7 +247,7 @@ void DebugScene::initPlayer()
         auto placeholder = DrawNode::create();
         placeholder->drawSolidRect(Vec2(-25, -40), Vec2(25, 40), Color4F::GREEN);
         placeholder->setPosition(startPos);
-        this->addChild(placeholder, 5);
+        this->addChild(placeholder, 4);
 
         auto label = Label::createWithTTF("玩家占位符\n(需要精灵帧)", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
         label->setPosition(startPos + Vec2(0, 60));
@@ -279,9 +280,9 @@ void DebugScene::initPlayer()
     physicsBody->setLinearDamping(0.0f);   // 无线性阻尼
 
     // 配置碰撞掩码
-    physicsBody->setCategoryBitmask(CATEGORY_PLAYER);
-    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);
-    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM | CATEGORY_BOMB);
+    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
+    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM));
+    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM) | ToMask(GamePhysicsCategory::BOMB));
 
     _player->addComponent(physicsBody);
     this->addChild(_player, 5);
@@ -1906,11 +1907,7 @@ void DebugScene::onAttackAnimationFinished()
 // 2. 炸弹与平台的碰撞 - 触发炸弹爆炸
 // 3. 碰撞分离检测 - 判断角色离开平台进入空中
 //
-// 碰撞类别(Category)使用位掩码区分：
-// - CATEGORY_PLAYER (0x01)   : 玩家
-// - CATEGORY_PLATFORM (0x02) : 平台/地面
-// - CATEGORY_BOMB (0x04)     : 炸弹
-// - CATEGORY_ENEMY (0x08)    : 敌人
+// 碰撞类别(Category)使用位掩码区分
 //=============================================================================
 
 /**
@@ -1943,8 +1940,8 @@ void DebugScene::initPhysicsContactListener()
         int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
         // 玩家与平台碰撞时，保持玩家的水平速度
-        if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
-            (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+        if ((categoryA == ToMask(GamePhysicsCategory::PLAYER) && categoryB == ToMask(GamePhysicsCategory::PLATFORM)) ||
+            (categoryA == ToMask(GamePhysicsCategory::PLATFORM) && categoryB == ToMask(GamePhysicsCategory::PLAYER)))
         {
             // 设置碰撞的弹性为0，避免弹跳
             solve.setRestitution(0.0f);
@@ -1980,53 +1977,19 @@ bool DebugScene::onContactBegin(PhysicsContact &contact)
     auto nodeA = contact.getShapeA()->getBody()->getNode();
     auto nodeB = contact.getShapeB()->getBody()->getNode();
 
-    if (!nodeA || !nodeB)
-        return true;
+    // 尝试将节点转换为 Bomb
+    auto bombA = dynamic_cast<Bomb*>(nodeA);
+    auto bombB = dynamic_cast<Bomb*>(nodeB);
 
-    // 获取碰撞双方的类别
-    int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
-    int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
-
-    // 玩家与平台碰撞 - 检测是否落地
-    if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
-        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+    if (bombA)
     {
-        // 获取碰撞法向量，判断是从上方落下还是侧面碰撞
-        auto contactData = contact.getContactData();
-        Vec2 normal = contactData->normal;
-
-        // 只有当碰撞法向量主要朝上时（从上方落下），才认为是落地
-        // normal.y > 0.7 表示法向量主要朝上
-        if (std::abs(normal.y) > 0.5f)
-        {
-            _groundContactCount++;
-            _isGrounded = true;
-            _jumpCount = 0; // 落地后重置二段跳计数
-            CCLOG("Player landed on platform, contact count: %d, normal: (%.2f, %.2f)",
-                  _groundContactCount, normal.x, normal.y);
-        }
-        else
-        {
-            // 侧面碰撞，不处理落地逻辑
-            CCLOG("Side collision detected, normal: (%.2f, %.2f)", normal.x, normal.y);
-        }
+        // 延迟一帧爆炸，避免在物理步进中修改场景图
+        this->scheduleOnce([bombA](float) { bombA->explode(); }, 0, "explode_bomb_a");
     }
 
-    // 炸弹与平台碰撞 - 触发爆炸
-    if ((categoryA == CATEGORY_BOMB && categoryB == CATEGORY_PLATFORM) ||
-        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_BOMB))
+    if (bombB)
     {
-        Node *bombNode = (categoryA == CATEGORY_BOMB) ? nodeA : nodeB;
-
-        // 查找对应的炸弹并爆炸
-        for (auto &bomb : _bombs)
-        {
-            if (bomb.sprite == bombNode && !bomb.isExploded)
-            {
-                explodeBomb(bomb);
-                break;
-            }
-        }
+        this->scheduleOnce([bombB](float) { bombB->explode(); }, 0, "explode_bomb_b");
     }
 
     return true;
@@ -2053,8 +2016,8 @@ void DebugScene::onContactSeparate(PhysicsContact &contact)
     int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
 
     // 玩家离开平台
-    if ((categoryA == CATEGORY_PLAYER && categoryB == CATEGORY_PLATFORM) ||
-        (categoryA == CATEGORY_PLATFORM && categoryB == CATEGORY_PLAYER))
+    if ((categoryA == ToMask(GamePhysicsCategory::PLAYER) && categoryB == ToMask(GamePhysicsCategory::PLATFORM)) ||
+        (categoryA == ToMask(GamePhysicsCategory::PLATFORM) && categoryB == ToMask(GamePhysicsCategory::PLAYER)))
     {
         // 只有当接触计数大于0时才减少
         if (_groundContactCount > 0)
@@ -2215,168 +2178,35 @@ void DebugScene::onSkillAnimationFinished()
 //=============================================================================
 // 第11部分：炸弹物理系统 (Bomb Physics System)
 //=============================================================================
-// 本部分处理炸弹的创建、物理模拟和爆炸效果：
-// 1. 炸弹创建 - 带物理刚体的抛物线投掷
-// 2. 爆炸效果 - 视觉特效和范围伤害计算
-//
-// 炸弹物理参数：
-// - BOMB_THROW_SPEED_X (300) : 水平抛出速度
-// - BOMB_THROW_SPEED_Y (350) : 垂直抛出速度
-// - BOMB_DAMAGE (150)        : 基础爆炸伤害
-// - BOMB_EXPLOSION_RADIUS (80): 爆炸范围半径
-//=============================================================================
-
-/**
- * @brief 实际创建并投掷炸弹
- *
- * 创建带有物理刚体的炸弹精灵，并施加初始冲量实现抛物线轨迹。
- *
- * 物理设置：
- * - 使用圆形碰撞体(半径15)
- * - 碰撞类别: CATEGORY_BOMB
- * - 只与 CATEGORY_PLATFORM 产生碰撞
- * - 允许旋转，模拟真实物理效果
- *
- * @note 炸弹方向由角色当前朝向决定
- */
 void DebugScene::doThrowBomb()
 {
     if (!_player || _player->isDead())
         return;
 
-    // 创建炸弹精灵
-    auto bombSprite = Sprite::create("Sprites/Characters/Player/Klee/defalt/TNT.png");
-    if (!bombSprite)
-    {
-        CCLOG("Failed to create bomb sprite");
-        return;
-    }
+    // 1. 创建 Bomb 对象 (工厂方法内部已经处理了 initPhysics)
+    auto bomb = Bomb::create("Sprites/Characters/Player/Klee/TNT.png");
+    if (!bomb) return;
 
-    // 创建炸弹对象
-    Bomb bomb;
-    bomb.isExploded = false;
-    bomb.sprite = bombSprite;
-
-    // 根据角色朝向决定炸弹方向
+    // 2. 计算出生位置和方向
+    Vec2 playerPos = _player->getPosition();
     bool facingLeft = _player->isFlippedX();
     float throwDirX = facingLeft ? -1.0f : 1.0f;
+    
+    // 设置初始位置 (在玩家头顶偏前方)
+    bomb->setPosition(playerPos + Vec2(throwDirX * 30, 30));
 
-    // 设置炸弹初始位置（角色上方）
-    Vec2 playerPos = _player->getPosition();
-    float offsetX = throwDirX * bomb.sprite->getContentSize().width;
-    float offsetY = bomb.sprite->getContentSize().height;
-    bombSprite->setPosition(playerPos + Vec2(offsetX, offsetY));
-    bombSprite->setScale(0.5f);
+    // 3. 设置攻击者 (用于后续计算伤害归属)
+    bomb->setAttacker(_player);
 
-    // 创建炸弹物理刚体
-    PhysicsMaterial bombMaterial(0.5f, 0.3f, 0.2f);                    // 密度、弹性、摩擦
-    auto physicsBody = PhysicsBody::createCircle(15.0f, bombMaterial); // 圆形碰撞体
-    physicsBody->setDynamic(true);
-    physicsBody->setMass(0.5f);
-    physicsBody->setRotationEnable(true); // 允许旋转
+    // 4. 【重要修改】添加到场景层，而不是 Player
+    // 假设 DebugScene 本身就是游戏层，或者你有 _gameLayer
+    this->addChild(bomb, 5); 
 
-    // 设置碰撞掩码
-    physicsBody->setCategoryBitmask(CATEGORY_BOMB);
-    physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);   // 只与平台碰撞
-    physicsBody->setContactTestBitmask(CATEGORY_PLATFORM); // 检测与平台的接触
+    // 5. 投掷！
+    // 这里使用原本的宏定义速度
+    bomb->throwAt(Vec2(throwDirX * BOMB_THROW_SPEED_X, BOMB_THROW_SPEED_Y));
 
-    bombSprite->addComponent(physicsBody);
-    this->addChild(bombSprite, 4);
-
-    // 施加初始速度（冲量）
-    Vec2 impulse(throwDirX * BOMB_THROW_SPEED_X * physicsBody->getMass(),
-                 BOMB_THROW_SPEED_Y * physicsBody->getMass());
-    physicsBody->applyImpulse(impulse);
-
-    _bombs.push_back(bomb);
-
-    addDamageLog("丢出炸弹!");
-    CCLOG("Bomb thrown with physics!");
-}
-
-/**
- * @brief 处理炸弹爆炸
- *
- * 当炸弹碰撞平台时触发爆炸，执行以下操作：
- * 1. 移除炸弹精灵
- * 2. 在爆炸位置创建爆炸视觉特效（放大+淡出）
- * 3. 检测爆炸范围内的目标并计算伤害
- * 4. 伤害公式: (BOMB_DAMAGE + 力量*5) × 暴击倍率
- *
- * @param bomb 要爆炸的炸弹对象引用
- *
- * @note 暴击率从角色属性组件读取
- */
-void DebugScene::explodeBomb(Bomb &bomb)
-{
-    if (!bomb.sprite)
-        return;
-
-    Vec2 explodePos = bomb.sprite->getPosition();
-
-    // 移除炸弹精灵
-    bomb.sprite->removeFromParent();
-
-    // 创建爆炸效果
-    auto boomSprite = Sprite::create("Sprites/Characters/Player/Klee/defalt/BOOM_1.png");
-    if (boomSprite)
-    {
-        boomSprite->setPosition(explodePos);
-        boomSprite->setScale(0.8f);
-        this->addChild(boomSprite, 6);
-
-        // 爆炸动画：放大 + 淡出
-        auto scaleUp = ScaleTo::create(0.2f, 1.2f);
-        auto fadeOut = FadeOut::create(0.3f);
-        auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
-        auto remove = RemoveSelf::create();
-        auto sequence = Sequence::create(spawn, remove, nullptr);
-        boomSprite->runAction(sequence);
-    }
-
-    // 检测是否命中木桩
-    if (_targetDummy.sprite && _targetDummy.currentHP > 0)
-    {
-        Vec2 dummyPos = _targetDummy.sprite->getPosition();
-        Size dummySize = _targetDummy.sprite->getContentSize();       // 获取木桩大小
-        float distance = explodePos.distance(dummyPos);               // 计算与木桩的距离
-        float dummyScale = _targetDummy.sprite->getScale();           // 获取木桩缩放比例
-        float dummyHitRadius = (dummySize.width * dummyScale) * 0.5f; // 木桩的碰撞半径
-        if (distance - dummyHitRadius <= BOMB_EXPLOSION_RADIUS)
-        {
-            // 从角色属性组件获取暴击率和攻击力
-            float critRate = 0.0f;          // 默认暴击率 0%
-            float critMultiplier = 1.5f;    // 默认暴击倍率 1.5
-            float baseDamage = BOMB_DAMAGE; // 基础伤害
-
-            if (_player)
-            {
-                auto attr = _player->getAttributeComponent();
-                if (attr)
-                {
-                    // 从属性组件读取暴击率
-                    critRate = attr->getAttributeValue(AttributeType::CRITICAL_RATE);
-                    // 伤害 = 炸弹基础伤害 + 角色力量值 * 倍率
-                    float strength = attr->getAttributeValue(AttributeType::STRENGTH);
-                    baseDamage = BOMB_DAMAGE + strength * 5.0f; // 每点力量增加5点伤害
-                }
-            }
-
-            // 根据暴击率计算是否暴击
-            bool isCrit = (rand() % 100) < static_cast<int>(critRate * 100);
-            float damage = baseDamage;
-            if (isCrit)
-            {
-                damage *= critMultiplier;
-            }
-            dealDamageToTarget(damage, isCrit);
-        }
-    }
-
-    bomb.sprite = nullptr;
-
-    addDamageLog("炸弹爆炸!");
-    CCLOG("Bomb exploded at (%.0f, %.0f)", explodePos.x, explodePos.y);
+    CCLOG("Bomb thrown via new Class!");
 }
 
 //=============================================================================

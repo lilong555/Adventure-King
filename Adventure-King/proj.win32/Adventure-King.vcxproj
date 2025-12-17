@@ -162,10 +162,12 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
+    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp" />
     <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp" />
     <ClCompile Include="..\Classes\GameUI.cpp" />
     <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
     <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp" />
+    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp" />
     <ClCompile Include="..\Classes\Save\SaveData.cpp" />
     <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
     <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
@@ -194,10 +196,13 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h" />
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
+    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h" />
     <ClInclude Include="..\Classes\Character\Player\Projectiles\PlayerProjectileConfig.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h" />
     <ClInclude Include="..\Classes\GameUI.h" />
+    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h" />
+    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h" />
     <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
     <ClInclude Include="..\Classes\UI\SkillBar.h" />
     <ClInclude Include="..\Classes\UI\BossHealthBar.h" />

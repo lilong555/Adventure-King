@@ -19,6 +19,7 @@
 
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
+#include "Objects/Projectiles/Bomb.h"
 #include "Character/Base/CharacterData.h"
 #include <memory>
 
@@ -38,31 +39,19 @@ class PlayerCharacter;
  *   physicsBody->setCategoryBitmask(CATEGORY_PLAYER);
  *   physicsBody->setCollisionBitmask(CATEGORY_PLATFORM);
  */
-enum PhysicsCategory
-{
-    CATEGORY_NONE = 0,          ///< 无碰撞
-    CATEGORY_PLAYER = 1 << 0,   ///< 玩家 (0x01)
-    CATEGORY_PLATFORM = 1 << 1, ///< 平台/地面 (0x02)
-    CATEGORY_BOMB = 1 << 2,     ///< 炸弹/投掷物 (0x04)
-    CATEGORY_ENEMY = 1 << 3,    ///< 敌人/木桩 (0x08)
-    CATEGORY_ALL = 0xFFFFFFFF   ///< 所有类别
-};
+//enum PhysicsCategory
+//{
+//    CATEGORY_NONE = 0,          ///< 无碰撞
+//    CATEGORY_PLAYER = 1 << 0,   ///< 玩家 (0x01)
+//    CATEGORY_PLATFORM = 1 << 1, ///< 平台/地面 (0x02)
+//    CATEGORY_BOMB = 1 << 2,     ///< 炸弹/投掷物 (0x04)
+//    CATEGORY_ENEMY = 1 << 3,    ///< 敌人/木桩 (0x08)
+//    CATEGORY_ALL = 0xFFFFFFFF   ///< 所有类别
+//};
 
 //=============================================================================
 // 游戏对象结构体定义
 //=============================================================================
-
-/**
- * @brief 炸弹数据结构
- *
- * 用于存储炸弹的状态信息。炸弹是一种投掷物，
- * 在接触地面后会爆炸并对范围内的敌人造成伤害。
- */
-struct Bomb
-{
-    cocos2d::Sprite *sprite = nullptr; ///< 炸弹精灵节点
-    bool isExploded = false;           ///< 是否已爆炸（防止重复爆炸）
-};
 
 /**
  * @brief 木桩（靶子）数据结构
@@ -262,7 +251,6 @@ private:
     void onSkillAnimationFinished(); ///< 技能动画结束回调
     void throwBomb();                ///< 释放炸弹技能（入口）
     void doThrowBomb();              ///< 实际创建并投掷炸弹
-    void explodeBomb(Bomb &bomb);    ///< 炸弹爆炸处理
 
     //=========================================================================
     // 木桩/敌人系统

@@ -37,8 +37,17 @@
     <Filter Include="src\Character\Monster\Monsters">
       <UniqueIdentifier>{847e8903-7169-4413-8bc2-e8babac76bf4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Character\Monster\Ai">
-      <UniqueIdentifier>{b6fdf8c8-a16f-4867-a54f-c47a109f9a0b}</UniqueIdentifier>
+    <Filter Include="src\Character\Player\Players">
+      <UniqueIdentifier>{ea02012d-c2e9-4424-acb2-f40c937a7161}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Objects">
+      <UniqueIdentifier>{461233b5-d9fb-4264-b116-6045804d4cf9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Objects\Projectiles">
+      <UniqueIdentifier>{a306a2b2-a106-4f29-94f5-5f966d0bb182}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Physics">
+      <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -111,6 +120,19 @@
     <ClCompile Include="..\Classes\GameUI.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Save\SaveData.cpp" />
+    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
+    <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
+    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
+    <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
+    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
+    <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
+    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
+      <Filter>src\Character\Player\Players</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -129,9 +151,6 @@
       <Filter>src\Character\components</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\Base\CharacterBase.h">
-      <Filter>src\Character\Base</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\Base\CharacterData.h">
       <Filter>src\Character\Base</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h">
@@ -193,6 +212,22 @@
     </ClInclude>
     <ClInclude Include="..\Classes\GameUI.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
+    <ClInclude Include="..\Classes\UI\SkillBar.h" />
+    <ClInclude Include="..\Classes\UI\BossHealthBar.h" />
+    <ClInclude Include="..\Classes\UI\PauseMenu.h" />
+    <ClInclude Include="..\Classes\Save\SaveData.h" />
+    <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
+    <ClInclude Include="..\Classes\Save\SaveManager.h" />
+    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
+      <Filter>src\Character\Player\Players</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
+      <Filter>src\Physics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
