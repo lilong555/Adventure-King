@@ -11,13 +11,29 @@ USING_NS_CC;
 
 namespace
 {
-    const char *const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
+    const char* const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
 }
 
 CharacterBase::CharacterBase() = default;
 CharacterBase::~CharacterBase() = default;
+
+AttributeComponent* CharacterBase::getAttributeComponent()
+{
+    return static_cast<AttributeComponent*>(this->getComponent("AttributeComponent"));
+}
+
+StateMachineComponent* CharacterBase::getStateMachineComponent()
+{
+    return static_cast<StateMachineComponent*>(this->getComponent("StateMachineComponent"));
+}
+
+SkillComponent* CharacterBase::getSkillComponent()
+{
+    return static_cast<SkillComponent*>(this->getComponent("SkillComponent"));
+}
+
 // 子类在 create 中调用，用于初始化贴图和组件
-bool CharacterBase::initWithSpriteFrameName(const std::string &spriteFrameName)
+bool CharacterBase::initWithSpriteFrameName(const std::string& spriteFrameName)
 {
     // 优先从 SpriteFrameCache 获取；若缺失且看起来是文件路径，则按文件加载并加入缓存
     auto spriteFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(spriteFrameName);
@@ -32,35 +48,26 @@ bool CharacterBase::initWithSpriteFrameName(const std::string &spriteFrameName)
         return false;
     }
 
-    _attributeComponent = std::make_unique<AttributeComponent>();
-    _stateMachineComponent = std::make_unique<StateMachineComponent>(this);
-    _skillComponent = std::make_unique<SkillComponent>(this);
-
     _level = 1;
     _experience = 0;
     _currentHP = 0.0f;
     _currentMP = 0.0f;
 
-    // 默认更新优先级设为 1，后续如果添加组件（addComponent 内部会 scheduleUpdate: priority 0），
-    // 会自动切换到引擎默认优先级，且不会触发 “don't update it again” 的 warning。
+    // 默认更新优先级设为 1
     scheduleUpdateWithPriority(1);
     return true;
 }
 
 // 使用普通文件路径初始化
-bool CharacterBase::initWithFile(const std::string &filename)
+bool CharacterBase::initWithFile(const std::string& filename)
 {
     if (!Sprite::initWithFile(filename))
     {
         return false;
     }
 
-    // 将文件贴图加入 SpriteFrameCache，便于后续复用（避免重复创建 SpriteFrame）
+    // 将文件贴图加入 SpriteFrameCache，便于后续复用
     SpriteFrameCacheHelper::getOrCreateSpriteFrame(filename);
-
-    _attributeComponent = std::make_unique<AttributeComponent>();
-    _stateMachineComponent = std::make_unique<StateMachineComponent>(this);
-    _skillComponent = std::make_unique<SkillComponent>(this);
 
     _level = 1;
     _experience = 0;
@@ -70,36 +77,32 @@ bool CharacterBase::initWithFile(const std::string &filename)
     scheduleUpdateWithPriority(1);
     return true;
 }
+
 // 每帧更新
 void CharacterBase::update(float dt)
 {
-    // 这里为什么要调用父类的update？是因为：CharacterBase继承自cocos2d::Sprite，而Sprite类本身"可能"有自己的更新逻辑需要执行。
-    // 调用父类的update可以确保这些逻辑被正确执行，避免潜在的问题。
-    // 是良好的编程实践，确保类的继承体系中的所有必要逻辑都能被执行。
-    Sprite::update(dt); // 调用父类的 update
+    // 1. 必选：调用父类 update
+    Sprite::update(dt);
 
-    if (_stateMachineComponent)
-    {
-        _stateMachineComponent->update(dt);
-    }
+    // 2. 可选：在这里处理全局的角色逻辑（例如中毒掉血、BUFF计时）
 
-    if (_skillComponent)
-    {
-        _skillComponent->update(dt);
-    }
+    // 【重要修改】
+    // 不需要手动调用组件的 update！
+    // 只要组件被 addComponent 且 owner 开启了 scheduleUpdate，
+    // Cocos2d-x 引擎会自动调用所有组件的 update(dt)。
 
-    if (_attributeComponent)
-    {
-        _attributeComponent->updateStatusEffects(dt);
-    }
+    // 如果你要在这里手动调用 attributeComponent->updateStatusEffects(dt)，
+    // 请确保 AttributeComponent 内部的 update(dt) 没有重复做这件事。
+    // 为了保持清晰，建议把 updateStatusEffects 放在 AttributeComponent::update 里面调用。
 }
+
 // 受击
-void CharacterBase::takeDamage(const DamageInfo &info)
+void CharacterBase::takeDamage(const DamageInfo& info)
 {
-    if (isDead())
-        return;
+    if (isDead()) return;
 
     float finalDamage = info.amount;
+    auto attr = getAttributeComponent(); // 获取组件
 
     // ---------------------------------------------------------
     // 1. 暴击计算 (Critical Hit)
@@ -112,14 +115,14 @@ void CharacterBase::takeDamage(const DamageInfo &info)
     // ---------------------------------------------------------
     // 2. 防御计算 (Defense Mitigation - MOBA Style)
     // ---------------------------------------------------------
-    if (_attributeComponent)
+    if (attr)
     {
-        float defense = _attributeComponent->getAttributeValue(AttributeType::DEFENSE);
+        float defense = attr->getAttributeValue(AttributeType::DEFENSE);
 
         // 引入"护甲穿透"计算：防御力 = 原始防御 - 穿透值
         float effectiveDefense = std::max(0.0f, defense - info.penetration);
 
-        // 使用乘法公式：防御越高，减伤越高，但永远不会达到 100%
+        // 使用乘法公式：防御越高，减伤越高
         const float ARMOR_CONST = 100.0f;
         float reductionFactor = ARMOR_CONST / (ARMOR_CONST + effectiveDefense);
 
@@ -128,23 +131,26 @@ void CharacterBase::takeDamage(const DamageInfo &info)
 
     // ---------------------------------------------------------
     // 3. 随机浮动 (Random Variance)
-    // 让数字看起来不那么死板，通常浮动 +/- 5%
     // ---------------------------------------------------------
-    float variance = 0.95f + (rand() % 11) / 100.0f; // 0.95 ~ 1.05
+    // 修复：rand() 是整数，除以 100.0f 之前需要转型
+    // 范围 0.95 ~ 1.05
+    float variance = 0.95f + (static_cast<float>(rand() % 11) / 100.0f);
     finalDamage *= variance;
 
     // ---------------------------------------------------------
     // 4. 最终结算
     // ---------------------------------------------------------
-    // 确保至少造成 1 点伤害（或者是 0，看游戏规则）
     finalDamage = std::max(1.0f, std::floor(finalDamage));
 
     showDamageNumber(finalDamage, info.isCritical);
 
     _currentHP -= finalDamage;
 
-    // Log 输出调试
-    // printf("Received Dmg: %.0f (Raw: %.0f, Def: %.0f)\n", finalDamage, info.amount, defense);
+    // 获取最大生命值用于受击动画阈值
+    float maxHP = _maxHP;
+    if (attr) {
+        maxHP = attr->getAttributeValue(AttributeType::MAX_HP);
+    }
 
     if (_currentHP <= 0.0f)
     {
@@ -153,24 +159,24 @@ void CharacterBase::takeDamage(const DamageInfo &info)
     }
     else
     {
-        // 只有伤害超过一定阈值才播放受击动作，防止太多伤害导致鬼畜
-        if (_stateMachineComponent && finalDamage > (_maxHP * 0.05f))
+        // 只有伤害超过一定阈值才播放受击动作
+        if (auto sm = getStateMachineComponent())
         {
-            _stateMachineComponent->changeState(CharacterState::HURT);
+            if (maxHP > 0 && finalDamage > (maxHP * 0.05f))
+            {
+                sm->changeState(CharacterState::HURT);
+            }
         }
     }
 }
 
 void CharacterBase::showDamageNumber(float damage, bool isCritical)
 {
-    if (!_damageNumbersEnabled)
-        return;
-    if (damage <= 0.0f)
-        return;
+    if (!_damageNumbersEnabled) return;
+    if (damage <= 0.0f) return;
 
     auto parent = getParent();
-    if (!parent)
-        return;
+    if (!parent) return;
 
     std::string damageText = StringUtils::format("%.0f", damage);
     if (isCritical)
@@ -178,14 +184,16 @@ void CharacterBase::showDamageNumber(float damage, bool isCritical)
         damageText = "暴击 " + damageText + "!";
     }
 
-    auto label = Label::createWithTTF(
-        damageText,
-        DEFAULT_DAMAGE_FONT_PATH,
-        isCritical ? 28 : 22
-    );
+    // 使用 createWithSystemFont 作为备选，防止 TTF 文件缺失导致崩溃
+    Label* label = nullptr;
+    if (FileUtils::getInstance()->isFileExist(DEFAULT_DAMAGE_FONT_PATH)) {
+        label = Label::createWithTTF(damageText, DEFAULT_DAMAGE_FONT_PATH, isCritical ? 28 : 22);
+    }
+    else {
+        label = Label::createWithSystemFont(damageText, "Arial", isCritical ? 28 : 22);
+    }
 
-    if (!label)
-        return;
+    if (!label) return;
 
     label->setColor(isCritical ? Color3B(255, 50, 50) : Color3B(255, 200, 50));
     label->enableOutline(Color4B::BLACK, 2);
@@ -196,59 +204,69 @@ void CharacterBase::showDamageNumber(float damage, bool isCritical)
     Vec2 pos = Vec2(bbox.getMidX(), bbox.getMaxY()) + Vec2(offsetX, offsetY);
     label->setPosition(pos);
 
+    // 添加到 Scene 层而不是 Character 的子节点，防止随 Character 移动
+    // 这里使用了 parent (GameLayer)，这通常是正确的
     parent->addChild(label, 9999);
 
     auto moveUp = MoveBy::create(0.8f, Vec2(0, 60));
     auto fadeOut = FadeOut::create(0.5f);
-    auto spawn = Spawn::create(moveUp, fadeOut, nullptr);
-    auto remove = RemoveSelf::create();
-    label->runAction(Sequence::create(spawn, remove, nullptr));
+    // Sequence 1: 飘起 -> 消失
+    // Sequence 2: 同时移除自己
+    label->runAction(Sequence::create(
+        Spawn::create(moveUp, fadeOut, nullptr),
+        RemoveSelf::create(),
+        nullptr
+    ));
 }
+
 void CharacterBase::die()
 {
-    if (_stateMachineComponent)
+    // 切换状态
+    if (auto sm = getStateMachineComponent())
     {
-        _stateMachineComponent->changeState(CharacterState::DEAD);
+        sm->changeState(CharacterState::DEAD);
     }
 
     // 根据设置决定是否自动移除
     if (_autoRemoveOnDeath)
     {
-        // 播放死亡动画后移除角色
         setCascadeOpacityEnabled(true);
         runAction(Sequence::create(
             FadeOut::create(0.5f),
-            CallFunc::create([this]()
-                             { this->removeFromParent(); }),
+            RemoveSelf::create(),
             nullptr));
     }
     else
     {
-        // 不自动移除，只播放死亡视觉效果（变红闪烁）
+        // 不自动移除，尸体保留 (闪烁变灰效果)
         setCascadeOpacityEnabled(true);
-        auto tintRed = TintTo::create(0.2f, 255, 100, 100);
-        auto tintBack = TintTo::create(0.2f, 200, 200, 200);
-        auto blink = Sequence::create(tintRed, tintBack, nullptr);
-        runAction(RepeatForever::create(blink));
+        // 变灰而不是变红，通常更能代表死亡
+        setColor(Color3B::GRAY);
     }
 }
 
 void CharacterBase::setCurrentHP(float hp)
 {
-    float maxHp = hp;
-    if (_attributeComponent)
+    float maxHp = hp; // 默认值
+    if (auto attr = getAttributeComponent())
     {
-        maxHp = _attributeComponent->getAttributeValue(AttributeType::MAX_HP);
+        maxHp = attr->getAttributeValue(AttributeType::MAX_HP);
     }
+    // 确保 maxHp 至少为 1，防止除零或逻辑错误
+    maxHp = std::max(1.0f, maxHp);
+
     _currentHP = clampf(hp, 0.0f, maxHp);
 }
 
 void CharacterBase::setCurrentMP(float mp)
 {
     float maxMp = mp;
-    if (_attributeComponent)
+    if (auto attr = getAttributeComponent())
     {
-        maxMp = _attributeComponent->getAttributeValue(AttributeType::MAX_MP);
+        maxMp = attr->getAttributeValue(AttributeType::MAX_MP);
     }
+    // MP 可以为 0
+    maxMp = std::max(0.0f, maxMp);
+
     _currentMP = clampf(mp, 0.0f, maxMp);
 }

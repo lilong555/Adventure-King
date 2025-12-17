@@ -88,7 +88,7 @@ protected:
     // 玩家相关
     // -------------------------------
     PlayerCharacter *_player = nullptr; ///< 玩家角色
-    PlayerConfig _playerConfig;         ///< 玩家配置
+    //PlayerConfig _playerConfig;         ///< 玩家配置
 
     // -------------------------------
     // 输入系统
