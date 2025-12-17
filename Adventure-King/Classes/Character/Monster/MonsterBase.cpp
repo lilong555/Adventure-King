@@ -1,5 +1,7 @@
 #include "MonsterBase.h"
 #include "cocos2d.h"
+#include <algorithm>
+#include <cmath>
 USING_NS_CC;
 
 MonsterBase::MonsterBase()
@@ -54,7 +56,10 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     setScale(0.36f);
     _baseScaleX = 0.36f;
 
-    // 开启受击飘字
+    // 默认锚点：底部对齐（更符合横版地面站立表现）
+    setAnchorPoint(Vec2(0.5f, 0.0f));
+
+    // 怪物默认开启受击飘字
     setDamageNumbersEnabled(true);
 
     // === 创建怪物物理体 ===
@@ -68,11 +73,12 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     _physicsBody->setRotationEnable(false);
     _physicsBody->setGravityEnable(true);
 
-    // 设置物理掩码 (防止怪物之间互推，或者根据需要设置)
-    // 建议在这里加上 setCategoryBitmask 等设置，否则默认全是 0xFFFFFFFF
-    // _physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER));
-    // _physicsBody->setCollisionBitmask(...)
-    // _physicsBody->setContactTestBitmask(...)
+    // 默认物理掩码：怪物本体与平台/玩家/玩家攻击产生碰撞；同时需要接收 Contact 回调用于伤害结算
+    _physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER));
+    _physicsBody->setCollisionBitmask(
+        ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB | GamePhysicsCategory::COLLISION));
+    _physicsBody->setContactTestBitmask(
+        ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB));
 
     addComponent(_physicsBody);
 
@@ -126,26 +132,34 @@ void MonsterBase::update(float dt)
     CharacterBase::update(dt);
     updateAI(dt);
 
-    auto state = getStateMachineComponent()->getCurrentState();
+    auto sm = getStateMachineComponent();
+    if (!sm)
+        return;
 
-    if (state == CharacterState::WALKING)
+    auto state = sm->getCurrentState();
+
+    if (state == CharacterState::WALKING || state == CharacterState::STATE_PATROL)
     {
         updateMovement(dt); // 移动函数里通常包含了 faceTarget
     }
     else if (state == CharacterState::IDLE)
     {
-            if (_physicsBody)
-            {
-                // 1. 获取当前速度 (包含重力产生的向下速度)
-                cocos2d::Vec2 v = _physicsBody->getVelocity();
+        if (_physicsBody)
+        {
+            // 1. 获取当前速度 (包含重力产生的向下速度)
+            cocos2d::Vec2 v = _physicsBody->getVelocity();
 
-                // 2. 只把 X 轴归零 (停止左右走)
-                v.x = 0;
+            // 2. 只把 X 轴归零 (停止左右走)
+            v.x = 0;
 
-                // 3. 重新设置回去 (Y 轴保持不变，怪就能掉下去了)
-                _physicsBody->setVelocity(v);
-            }
-        if (_target) faceTarget(_target);
+            // 3. 重新设置回去 (Y 轴保持不变，怪就能掉下去了)
+            _physicsBody->setVelocity(v);
+        }
+
+        if (_target)
+        {
+            faceTarget(_target);
+        }
     }
 
     // 攻击状态下 (ATTACKING) 不调用 faceTarget，也就是“锁死方向”
@@ -163,43 +177,92 @@ void MonsterBase::setAIConfig(float AR, float LR, bool PTL) {
 }
 void MonsterBase::updateAI(float dt)
 {
-    if (!_target) return;
+    CC_UNUSED_PARAM(dt);
 
-    // 1. 基础数据
-    float dist = distanceTo(_target);
     auto sm = getStateMachineComponent();
+    if (!sm)
+        return;
 
-    // 2. 超出仇恨范围 -> 待机
-    if (_aggroRadius > 0.0f && dist > _aggroRadius)
+    if (isDead())
     {
-        sm->changeState(CharacterState::IDLE);
+        sm->changeState(CharacterState::DEAD);
         return;
     }
 
-    // 3. 在攻击范围内
-    if (dist <= _attackRange)
+    if (_isStunned)
     {
-        // ★ 关键修正 ★
-        // 只有当“冷却好了”才切 ATTACKING
-        // 否则切 IDLE (这样才能触发 MonsterBase::update 里的 faceTarget 转身逻辑)
-        if (_attackTimer >= _attackInterval)
+        sm->changeState(CharacterState::IDLE);
+        _hasMoveGoal = false;
+        return;
+    }
+
+    // 没有目标：如果有移动目标（回家/巡逻），继续走；否则待机
+    if (!_target)
+    {
+        if (_hasMoveGoal)
         {
-            sm->changeState(CharacterState::ATTACKING);
+            sm->changeState(CharacterState::WALKING);
+        }
+        else if (_patrolEnabled && std::fabs(_patrolRight.x - _patrolLeft.x) > 1.0f)
+        {
+            // 简单巡逻：在左右边界之间往返
+            const float kPatrolReachEpsilon = 8.0f;
+            float dx = (_patrolDir > 0 ? _patrolRight.x : _patrolLeft.x) - getPositionX();
+            if (std::fabs(dx) <= kPatrolReachEpsilon)
+            {
+                _patrolDir *= -1;
+            }
+
+            _moveGoalPos = (_patrolDir > 0) ? _patrolRight : _patrolLeft;
+            _hasMoveGoal = true;
+            sm->changeState(CharacterState::STATE_PATROL);
         }
         else
         {
             sm->changeState(CharacterState::IDLE);
         }
+        return;
     }
-    // 4. 不在范围 -> 追击
-    else
-    {
-        // 这里最好更新一下 _currentTargetPos，虽然这里是基类默认实现
-        // 如果你的 updateMovement 依赖 _currentTargetPos，这行必须加
-        // _currentTargetPos = _target->getPosition(); 
 
-        sm->changeState(CharacterState::WALKING);
+    const float distToTarget = distanceTo(_target);
+
+    // 超出仇恨范围（带一点缓冲，防止边界抖动）-> 丢失目标
+    if (_aggroRadius > 0.0f && distToTarget > _aggroRadius * 1.2f)
+    {
+        _target = nullptr;
+        _hasMoveGoal = false;
+        const bool canPatrol = _patrolEnabled && std::fabs(_patrolRight.x - _patrolLeft.x) > 1.0f;
+        sm->changeState(canPatrol ? CharacterState::STATE_PATROL : CharacterState::IDLE);
+        return;
     }
+
+    // 牵引/回家逻辑
+    if (_leashRadius > 0.0f && _hasHome)
+    {
+        const float distFromHome = getPosition().distance(_homePos);
+        if (distFromHome > _leashRadius)
+        {
+            _target = nullptr;
+            _moveGoalPos = _homePos;
+            _hasMoveGoal = true;
+            sm->changeState(CharacterState::WALKING);
+            return;
+        }
+    }
+
+    // 进入攻击距离：停下并面向目标，攻击由 updateAttack 触发
+    const float horizontalDist = horizontalDistanceTo(_target);
+    if (horizontalDist <= _attackRange)
+    {
+        _hasMoveGoal = false;
+        sm->changeState(CharacterState::IDLE);
+        return;
+    }
+
+    // 追击
+    _moveGoalPos = getPositionInParentSpace(_target);
+    _hasMoveGoal = true;
+    sm->changeState(CharacterState::WALKING);
 }
 
 #pragma endregion
@@ -208,6 +271,7 @@ void MonsterBase::updateAI(float dt)
 #pragma region 移动
 void MonsterBase::updateMovement(float dt)
 {
+    CC_UNUSED_PARAM(dt);
     if (!_physicsBody) return;
 
     float moveSpeed = 0.0f;
@@ -216,15 +280,16 @@ void MonsterBase::updateMovement(float dt)
         moveSpeed = attr->getAttributeValue(AttributeType::MOVE_SPEED);
     }
 
-    // 无目标 → 不移动
-    if (!_target)
+    // 没有目标且没有移动目标 → 不移动
+    if (!_target && !_hasMoveGoal)
     {
-        _physicsBody->setVelocity(Vec2::ZERO);
+        const float currentVy = _physicsBody->getVelocity().y;
+        _physicsBody->setVelocity(Vec2(0, currentVy));
         return;
     }
 
-    float dist = distanceTo(_target);
-    if (dist <= _attackRange)
+    // 进入攻击距离 -> 停止水平移动（垂直速度保留）
+    if (_target && horizontalDistanceTo(_target) <= _attackRange)
     {
         // 停止移动时，也要保留 Y 轴速度（防止怪物在空中攻击时突然定住不掉下来）
         float currentVy = _physicsBody->getVelocity().y;
@@ -236,7 +301,7 @@ void MonsterBase::updateMovement(float dt)
     float currentVy = _physicsBody->getVelocity().y;
 
     // 2. 只计算水平方向 (X轴) 的向量
-    Vec2 targetPos = _target->getPosition();
+    Vec2 targetPos = _target ? getPositionInParentSpace(_target) : _moveGoalPos;
     Vec2 myPos = getPosition();
 
     // 当水平距离非常接近时，由于物理抖动可能导致方向频繁反转
@@ -245,6 +310,12 @@ void MonsterBase::updateMovement(float dt)
     if (fabs(dx) <= kChaseDeadzoneX)
     {
         _physicsBody->setVelocity(Vec2(0, currentVy));
+
+        // 到达移动目标（回家/巡逻）后清空目标
+        if (!_target && _hasMoveGoal)
+        {
+            _hasMoveGoal = false;
+        }
         return;
     }
 
@@ -256,7 +327,19 @@ void MonsterBase::updateMovement(float dt)
     // Y轴 = 物理引擎原本的速度 (让重力继续拉着它)
     _physicsBody->setVelocity(Vec2(dirX * moveSpeed, currentVy));
 
-    faceTarget(_target);
+    if (_target)
+    {
+        faceTarget(_target);
+    }
+    else
+    {
+        float targetWorldX = targetPos.x;
+        if (auto parent = getParent())
+        {
+            targetWorldX = parent->convertToWorldSpace(targetPos).x;
+        }
+        faceToX(targetWorldX);
+    }
 }
 #pragma endregion
 
@@ -265,50 +348,39 @@ void MonsterBase::updateMovement(float dt)
 
 void MonsterBase::updateAttack(float dt)
 {
-    // 如果没有目标，直接返回
-    if (!_target) return;
-
-    // 获取状态机
-    auto sm = getStateMachineComponent();
-
-    // =========================================================
-    // 1. 如果正在攻击中 (ATTACKING)
-    // =========================================================
-    if (sm->getCurrentState() == CharacterState::ATTACKING)
-    {
-        // ★ 这里什么都不用做！★
-        // 不要调用 faceTarget，让它保持攻击开始时的朝向。
-        // 等动作播放完，回调函数会自动把状态切回 IDLE。
+    if (isDead() || _isStunned)
         return;
-    }
 
-    // =========================================================
-    // 2. 如果是其他状态 (IDLE/WALKING) -> 处于攻击间隔中
-    // =========================================================
+    auto sm = getStateMachineComponent();
+    if (!sm)
+        return;
 
-    // 累加冷却时间
+    // 正在攻击：保持朝向不变
+    if (sm->getCurrentState() == CharacterState::ATTACKING)
+        return;
+
     _attackTimer += dt;
 
-    // ★ 关键点：在攻击间隔期间，怪物需要盯着玩家 ★
-    // 如果你在 updateAI 或 updateMovement 里已经调用了 faceTarget，这里可以省略。
-    // 但为了保险，可以在这里加一句（或者确保 IDLE 状态下也有人负责转身）：
-    if (sm->getCurrentState() == CharacterState::IDLE)
+    if (!_target)
+        return;
+
+    if (horizontalDistanceTo(_target) > _attackRange)
+        return;
+
+    if (_attackTimer < _attackInterval)
+        return;
+
+    // 准备攻击：停止水平速度（保留重力速度），锁定朝向
+    if (_physicsBody)
     {
-        faceTarget(_target);
+        cocos2d::Vec2 v = _physicsBody->getVelocity();
+        v.x = 0;
+        _physicsBody->setVelocity(v);
     }
 
-    // 检查距离
-    float dist = distanceTo(_target);
-    if (dist > _attackRange) return;
-
-    // 冷却完毕，且在范围内 -> 发动攻击
-    if (_attackTimer >= _attackInterval)
-    {
-        // 切状态
-        sm->changeState(CharacterState::ATTACKING);
-        // 执行攻击 (此时方向被锁死在上一帧的朝向)
-        attack();
-    }
+    _attackTimer = 0.0f;
+    sm->changeState(CharacterState::ATTACKING);
+    attack();
 }
 
 #pragma endregion
@@ -441,47 +513,95 @@ void MonsterBase::updateHpBar()
 
 #pragma region 工具函数
 
+Vec2 MonsterBase::getWorldPosition(const Node *node) const
+{
+    if (!node)
+        return Vec2::ZERO;
+
+    auto parent = node->getParent();
+    return parent ? parent->convertToWorldSpace(node->getPosition()) : node->getPosition();
+}
+
+Vec2 MonsterBase::getPositionInParentSpace(const Node *node) const
+{
+    Vec2 worldPos = getWorldPosition(node);
+    auto parent = getParent();
+    return parent ? parent->convertToNodeSpace(worldPos) : worldPos;
+}
+
+float MonsterBase::horizontalDistanceTo(const Node *target) const
+{
+    if (!target)
+        return 999999.0f;
+
+    Vec2 myWorldPos = getWorldPosition(this);
+    Vec2 targetWorldPos = getWorldPosition(target);
+    return std::fabs(targetWorldPos.x - myWorldPos.x);
+}
+
+void MonsterBase::faceToX(float targetWorldX)
+{
+    const float kFaceDeadzoneX = 8.0f;
+    float myWorldX = getWorldPosition(this).x;
+    float dx = targetWorldX - myWorldX;
+    if (std::fabs(dx) <= kFaceDeadzoneX)
+        return;
+
+    float sign = (dx < 0.0f) ? -1.0f : 1.0f;
+    setScaleX(sign * std::fabs(_baseScaleX));
+}
+
+void MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
+                                  const Size &hitboxSize,
+                                  int damageTag,
+                                  float lifeSeconds)
+{
+    auto parent = getParent();
+    if (!parent)
+        return;
+
+    auto attackNode = Node::create();
+    attackNode->setPosition(getPosition() + offsetInParentSpace);
+    attackNode->setContentSize(hitboxSize);
+    attackNode->setAnchorPoint(Vec2(0.5f, 0.5f));
+    parent->addChild(attackNode);
+
+    auto body = PhysicsBody::createBox(hitboxSize);
+    body->setDynamic(false);
+    body->setGravityEnable(false);
+    body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
+    body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
+    body->setCollisionBitmask(0);
+    body->setTag(damageTag);
+    attackNode->setPhysicsBody(body);
+
+    attackNode->runAction(Sequence::create(
+        DelayTime::create(std::max(0.0f, lifeSeconds)),
+        RemoveSelf::create(),
+        nullptr));
+}
+
 void MonsterBase::faceTarget(Node* target)
 {
     if (!target) return;
-
-    const float kFaceDeadzoneX = 8.0f;
-    float dx = target->getPositionX() - getPositionX();
-    if (fabs(dx) <= kFaceDeadzoneX)
-    {
-        return;
-    }
-
-    float sign = (dx < 0.0f) ? -1.0f : 1.0f;
-
-    // 只改符号，不改大小
-    setScaleX(sign * fabs(_baseScaleX));
+    faceToX(getWorldPosition(target).x);
 }
 
 // MonsterBase.cpp
 
 float MonsterBase::distanceTo(cocos2d::Node* target) const
 {
-    if (!target) return 999999.0f;
+    if (!target)
+        return 999999.0f;
 
-    // 1. 获取怪物在屏幕上的绝对位置 (世界坐标)
-    Vec2 myWorldPos = this->getParent()->convertToWorldSpace(this->getPosition());
-
-    // 2. 获取目标在屏幕上的绝对位置 (世界坐标)
-    // 注意：如果 target 没有父节点，它自己就是世界坐标，需要判空
-    Vec2 targetWorldPos = target->getPosition();
-    if (target->getParent())
-    {
-        targetWorldPos = target->getParent()->convertToWorldSpace(target->getPosition());
-    }
-
-    // 3. 计算这一刻的真实距离
+    Vec2 myWorldPos = getWorldPosition(this);
+    Vec2 targetWorldPos = getWorldPosition(target);
     return myWorldPos.distance(targetWorldPos);
 }
 
 bool MonsterBase::inAttackRange(Node* target)
 {
-    return distanceTo(target) <= _attackRange;
+    return horizontalDistanceTo(target) <= _attackRange;
 }
 void MonsterBase::setTarget(Node* target)
 {

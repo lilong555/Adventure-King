@@ -6,11 +6,16 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
+
+class PlayerSkillSet;
 
 class PlayerCharacter : public CharacterBase
 {
 public:
+    virtual ~PlayerCharacter();
+
     // 统一用 create(role, spriteFrameName)
     static PlayerCharacter *create(CharacterRole role,
                                    const std::string &spriteFrameName);
@@ -33,18 +38,40 @@ public:
     // 技能管理（外层接口，内部转发给 SkillComponent）
     void useSkill(size_t slotIndex);
 
-    // ================== 投掷物/攻击生成 ==================
-    // 由场景调用，传入关卡游戏层作为父节点
-    void spawnBombProjectile(cocos2d::Node *gameLayer);
-    void spawnFireballProjectile(cocos2d::Node *gameLayer);
+    // ================== 技能/普攻入口 ==================
+    // 内部处理：冷却/MP 检查、动画播放、投掷物生成（依赖 setCombatLayer 设置的父节点）
+    bool tryNormalAttack(const std::function<void()> &onFinished = nullptr);
+    bool tryUseSkill(size_t slotIndex, const std::function<void()> &onFinished = nullptr);
 
-    // 由场景碰撞回调转发：检测是否为玩家投掷物并触发爆炸
-    bool handleProjectileContact(cocos2d::Node *nodeA, int categoryA,
-                                 cocos2d::Node *nodeB, int categoryB,
-                                 cocos2d::Node *gameLayer);
+    // 设置投掷物/爆炸等战斗节点挂载的父节点（通常为 GameScene 的 _gameLayer）
+    void setCombatLayer(cocos2d::Node *gameLayer) { _combatLayer = gameLayer; }
 
-    // 清理已爆炸/移除的投掷物（避免列表无限增长）
-    void cleanupProjectiles();
+    // 角色素材路径信息（供 SkillSet 构建动画/投掷物配置）
+    const std::string &getDefaultSpriteDir() const { return _defaultSpriteDir; }
+    const std::string &getSkillSpriteDir() const { return _skillSpriteDir; }
+    const std::string &getCharacterKey() const { return _characterKey; }
+
+    // ================== SkillSet 通用工具 ==================
+    // 统一播放一次序列帧动画（失败则直接回调 onFinished）
+    void playOneShotAnimation(const std::vector<std::string> &paths,
+                              float delayPerUnit,
+                              int actionTag,
+                              const std::function<void()> &onFinished);
+
+    // 统一的“锁动作 → 播放动画 → 执行效果 → 解锁”流程
+    bool runActionLocked(const std::function<bool()> &preCheck,
+                         const std::function<void(const std::function<void()> &)> &playAnimation,
+                         const std::function<void()> &performEffect,
+                         const std::function<void()> &onFinished);
+
+    // 计算投掷物生成位置（基于玩家包围盒，避免贴图尺寸导致偏移）
+    cocos2d::Vec2 getProjectileSpawnPosition(float spawnOffsetXRatio,
+                                             float spawnOffsetX,
+                                             float spawnOffsetYRatio,
+                                             float spawnOffsetY) const;
+
+    // 将技能/投掷物节点添加到战斗层（通常是 GameScene 的 _gameLayer）
+    void addToCombatLayer(cocos2d::Node *node, int zOrder = 4);
 
     // ================== 动作/状态驱动 ==================
     // 由场景输入层调用，用于切换跑动/待机动画状态
@@ -56,7 +83,6 @@ public:
 
     // 播放一次技能施放动画，结束后回调（用于场景侧触发技能效果）
     void castSkillAnimated(const std::function<void()> &onFinished = nullptr);
-    void castFireballAnimated(const std::function<void()> &onFinished = nullptr);
 
     // 实现角色基础攻击
     virtual void attack() override;
@@ -70,6 +96,8 @@ public:
     // 获取当前攻击动画前缀
     const std::string &getAttackAnimationPrefix() const { return _attackAnimationPrefix; }
     int getAttackFrameCount() const { return _attackFrameCount; }
+
+    bool isActionLocked() const { return _actionLocked; }
 
     // 装备变更回调（供外部监听装备变化）
     using EquipmentChangeCallback = std::function<void(EquipmentSlot, const std::shared_ptr<Equipment> &)>;
@@ -94,9 +122,24 @@ private:
     int _jumpCount = 0;
     PlayerCharacter() = default;
 
+    virtual void onEnter() override;
+    virtual void onExit() override;
+    virtual void update(float dt) override;
+
+    cocos2d::Node *getCombatLayer() const;
+
+    bool onProjectileContactBegin(cocos2d::PhysicsContact &contact);
     void initAttributesByRole(CharacterRole role);
     void refreshHpMpFromAttributes();
     void onWeaponChanged(const std::shared_ptr<Weapon> &weapon); // 武器变更时调用
+    void createSkillSet();
+
+    void initAssetPaths(const std::string &spriteFrameName);
+    void ensureMoveAnimations();
+    void ensureMoveAnimationCached(const std::string &animationKey,
+                                   const std::vector<std::string> &framePaths,
+                                   float delayPerUnit);
+
     CharacterRole _role = CharacterRole::WARRIOR;
     int _skillPoints = 0;
 
@@ -105,32 +148,20 @@ private:
     // 当前攻击动画配置
     std::string _attackAnimationPrefix = "default";
     int _attackFrameCount = 3;
+    std::string _defaultAttackAnimationPrefix = "default";
 
     // 装备变更回调
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;
 
+    cocos2d::Node *_combatLayer = nullptr;
+    cocos2d::EventListenerPhysicsContact *_projectileContactListener = nullptr;
 
+    std::unique_ptr<PlayerSkillSet> _skillSet;
 
-    //下面这些建议移动到Projectiles文件夹中
+    std::string _defaultSpriteDir;
+    std::string _skillSpriteDir;
+    std::string _characterKey;
+    std::string _animationKeyPrefix;
 
-
-    enum class ProjectileType
-    {
-        BOMB,
-        FIREBALL,
-    };
-
-    struct Projectile
-    {
-        ProjectileType type = ProjectileType::BOMB;
-        bool isExploded = false;
-        cocos2d::Sprite *sprite = nullptr;
-        float damage = 0.0f;
-        float explosionRadius = 0.0f;
-    };
-
-    Projectile *findProjectile(cocos2d::Node *node);
-    void explodeProjectile(Projectile &projectile, cocos2d::Node *gameLayer);
-    // 玩家投掷物列表
-    std::vector<Projectile> _projectiles;
+    bool _actionLocked = false;
 };

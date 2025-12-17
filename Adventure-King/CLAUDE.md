@@ -7,11 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 本项目是一款基于 C++ 和 Cocos2d-x 引擎开发的横版动作冒险游戏，名为《冒险王之神兵传奇》。游戏的核心是扮演一名冒险者，通过探索世界、击败怪物和收集装备来提升实力。
 
 ## 最新进展
-- GameScene 已接入战斗/技能：炸弹技能绑定默认槽位，设定能量消耗与冷却，行走/攻击/技能动画用不同 Tag，输入包含移动、跳跃、普攻与技能；炸弹带物理体，碰平台即爆炸，详见 `GAMESCENE_COMPLETION_SUMMARY.md` 与 `Classes/Scenes/GameScene.*`。
-- 怪物系统落地：新增 `MonsterBase` 驱动 AI/移动/攻击/受击（持有 Attribute/StateMachine/Skill 组件，依赖外部设置 `_target`），首个敌人 `GoblinMonster`（`Classes/Character/Monster/Monsters`）设置基础生命、防御、力量、暴击和移动速度，较远感知、默认近战攻距，动画名 goblin_idle/walk/attack/hurt/dead，攻击优先技能槽否则普攻。
-- 修复 TMX 多边形/折线碰撞在高分屏下的缩放偏差：parseTMXObjectVertices 解析 points/polylinePoints 时按 CC_CONTENT_SCALE_FACTOR() 做同样缩放，保证碰撞与地图一致。
-- 动画体系统一：人物走路/攻击/技能动画已迁移到 PlayerCharacter（setMoving/attackAnimated/castSkillAnimated），GameScene 与 DebugScene 仅负责输入/状态与回调。
-- 代码行尾标准化：仓库源码/资源统一使用 LF（.bat/.cmd 例外为 CRLF），通过 .gitattributes/.editorconfig 固定提交行尾，避免 CRLF 抖动。
+- 战斗闭环打通：`GameScene::onContactBegin` 处理 `MONSTER_ATTACK ↔ PLAYER` 与 `PLAYER_ATTACK ↔ MONSTER`；投掷物命中/落地爆炸由 `PlayerCharacter::handleProjectileContact` 处理。
+- 玩家 Klee（KELL）：普攻为扔炸弹（`spawnBombProjectile`），技能1 发射导弹（`spawnFireballProjectile`），爆炸使用 `spr_vfx_explosion_flash_x`；受击飘字在 `CharacterBase::showDamageNumber`。
+- 刷怪落地：读取 TMX 对象组 `enemy_g`（`class/type`=怪物类型，`name`=数量），首次进入视野触发，并按约 `0.4s/只` 分批生成。
+- 性能优化：新增 `SpriteFrameCacheHelper::getOrCreateSpriteFrame`，对文件路径帧按需加载并写入 `SpriteFrameCache` 复用；`CharacterBase/Player/Monster/Goblin` 已接入；`CharacterBase` 使用 `scheduleUpdateWithPriority(1)` 保证更新且避免重复 schedule 警告。
+- 开发体验：`.vscode/c_cpp_properties.json` 增加 `Linux` 配置，修复 WSL2 下 IntelliSense 头文件解析问题。
 
 ## 构建与运行
 
@@ -101,11 +101,10 @@ Adventure-King/proj.win32/Debug.win32/Adventure-King.exe
 - **`DebugScene`** - 调试场景，用于测试角色功能，包含实时属性查看和修改面板
 
 ### 战斗与技能（GameScene）
-- 关卡已接入 DebugScene 的战斗/技能逻辑：炸弹技能绑定默认槽位，配置能量消耗与冷却，命中/落地即爆炸。
-- 动画：行走/攻击/技能分别用不同 Action Tag，`_isAttacking`/`_isCastingSkill` 防止动画冲突，行走动画自动随左右移动启停。
-- 输入映射：移动、跳跃、攻击、技能释放与暂停；炸弹技能走独立按键。
-- 碰撞：新增 `GamePhysicsCategory::BOMB`，炸弹带圆形刚体，碰平台触发爆炸特效；与场景碰撞/传送门逻辑并行。
-- 参考：`GAMESCENE_COMPLETION_SUMMARY.md`、`GAMESCENE_IMPLEMENTATION_GUIDE.md`、`Classes/Scenes/GameScene.*`。
+- 动画与投掷物逻辑已下沉到 `PlayerCharacter`，`GameScene` 负责输入/状态切换/碰撞结算与刷怪触发。
+- 输入映射（默认）：移动 `A/D`，跑步 `Shift`，跳跃 `W/Space`，普攻 `J/4`（扔炸弹），技能1 `E/K`（导弹），暂停 `Esc`。
+- 碰撞结算：`MONSTER_ATTACK` 的 `PhysicsBody::tag` 作为伤害写入玩家；`PLAYER_ATTACK` 近战判定框同理写入怪物；投掷物爆炸范围伤害由 `PlayerCharacter` 统一结算。
+- 刷怪：`loadEnemySpawnPoints/updateEnemySpawns` 读取 `enemy_g` 并按进入视野触发一次生成。
 
 ### 物理系统
 

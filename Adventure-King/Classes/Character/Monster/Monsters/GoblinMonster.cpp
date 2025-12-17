@@ -3,24 +3,10 @@
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Utils/SpriteFrameCacheHelper.h"
+#include <algorithm>
 #include <cmath>
 
-
 USING_NS_CC;
-
-namespace
-{
-    cocos2d::Vec2 toWorldPos(cocos2d::Node* node)
-    {
-        if (!node)
-        {
-            return cocos2d::Vec2::ZERO;
-        }
-
-        auto parent = node->getParent();
-        return parent ? parent->convertToWorldSpace(node->getPosition()) : node->getPosition();
-    }
-} // namespace
 
 GoblinMonster::GoblinMonster()
 {
@@ -63,18 +49,6 @@ bool GoblinMonster::init(const std::string& spriteFrameName)
     // === 注册状态动画（需要动画名已加入 AnimationCache）===
     initStateAnimations();
 
-    // === 设置物理掩码 ===
-    if (_physicsBody)
-    {
-        _physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER));
-        _physicsBody->setCollisionBitmask(
-            ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB)
-        );
-        _physicsBody->setContactTestBitmask(
-            ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB)
-        );
-    }
-    this->setAnchorPoint(Vec2(0.5f, 0.0f));
     initAnimations();
     return true;
 }
@@ -160,135 +134,6 @@ void GoblinMonster::initAnimations()
 }
 #pragma endregion
 
-#pragma region AI
-//重写ai逻辑
-void GoblinMonster::updateAI(float dt)
-{
-    // ============================================================
-    // 1. 寻找目标逻辑 (保持不变)
-    // ============================================================
-    if (!_target)
-    {
-        if (this->getParent())
-        {
-            auto player = this->getParent()->getChildByTag(100); // 假设 Tag 100
-            if (player)
-            {
-                float dist = this->getPosition().distance(player->getPosition());
-                if (dist <= _aggroRadius)
-                {
-                    _target = player;
-                    CCLOG("Monster found target!");
-                }
-            }
-        }
-    }
-
-    if (!_target)
-    {
-        if (_patrolEnabled)
-            getStateMachineComponent()->changeState(CharacterState::STATE_PATROL);
-        else
-            getStateMachineComponent()->changeState(CharacterState::IDLE);
-        return;
-    }
-
-	    // ============================================================
-	    // 2. 基础数据计算
-	    // ============================================================
-	    // 横版战斗中，“尝试攻击”以水平距离为主；是否命中由攻击判定框/物理碰撞决定。
-	    cocos2d::Vec2 myWorldPos = toWorldPos(this);
-	    cocos2d::Vec2 targetWorldPos = toWorldPos(_target);
-
-	    float distToPlayer = myWorldPos.distance(targetWorldPos);
-	    float horizontalDistToPlayer = std::fabs(targetWorldPos.x - myWorldPos.x);
-    Vec2 homePos = _homePosition;
-    float distFromHome = this->getPosition().distance(homePos);
-    auto stateMachine = getStateMachineComponent();
-
-    // ============================================================
-    // 3. 状态检查
-    // ============================================================
-    if (isDead())
-    {
-        stateMachine->changeState(CharacterState::DEAD);
-        return;
-    }
-
-    // ★ 修正提醒：你之前的代码里这里是 changeState(ATTACKING)，这应该是笔误？
-    // 硬直状态通常是 HURT 或 IDLE，不能是 ATTACKING
-    if (_isStunned)
-    {
-        stateMachine->changeState(CharacterState::IDLE);
-        return;
-    }
-
-    // ============================================================
-    // 4. 牵引/回家逻辑
-    // ============================================================
-    if (_leashRadius > 0.0f && distFromHome > _leashRadius)
-    {
-        _currentTargetPos = homePos;
-        stateMachine->changeState(CharacterState::WALKING);
-        return;
-    }
-
-    // ============================================================
-    // 5. 仇恨丢失逻辑 (增加一点缓冲距离，防抖动)
-    // ============================================================
-    if (_aggroRadius > 0.0f && distToPlayer > _aggroRadius * 1.2f)
-    {
-        if (_patrolEnabled)
-            stateMachine->changeState(CharacterState::STATE_PATROL);
-        else
-            stateMachine->changeState(CharacterState::IDLE);
-        return;
-    }
-
-    // ------------------------------------------------------------
-        // 6. 攻击与战斗逻辑
-        // ------------------------------------------------------------
-
-    // 1. 如果正在攻击：什么都别做，彻底退出
-    if (getStateMachineComponent()->getCurrentState() == CharacterState::ATTACKING)
-    {
-        return;
-    }
-
-    _attackTimer += dt;
-
-    // 2. 如果进入攻击距离：进入战斗决策
-    if (horizontalDistToPlayer <= _attackRange)
-    {
-        // 2.1 冷却完毕 -> 打！
-        if (_attackTimer >= _attackInterval && !_isStunned)
-        {
-            getStateMachineComponent()->changeState(CharacterState::ATTACKING);
-            this->attack();
-            return; // 绝对不要漏掉这个 return
-        }
-        // 2.2 冷却没好 -> 盯着看
-        else
-        {
-            faceTarget(_target);
-            getStateMachineComponent()->changeState(CharacterState::IDLE);
-            return; // 绝对不要漏掉这个 return
-        }
-    }
-
-    // 3. 如果距离远：追击 (只有上面没 return 才会走到这)
-    // =========================================================
-    _currentTargetPos = _target->getPosition();
-    getStateMachineComponent()->changeState(CharacterState::WALKING);
-}
-#pragma endregion
-
-void GoblinMonster::updateAttack(float dt)
-{
-    CC_UNUSED_PARAM(dt);
-    // GoblinMonster 的攻击决策与冷却计时由 updateAI 统一处理，避免与基类逻辑重复。
-}
-
 #pragma region Attack
 
 // GoblinMonster.cpp
@@ -297,22 +142,8 @@ void GoblinMonster::attack()
 {
     CCLOG("Goblin Attack Triggered!");
 
-    // 1. 重置计时器
-    _attackTimer = 0.0f;
-
     // -----------------------------------------------------------
-    // 2. 物理速度处理 (关键修复)
-    // -----------------------------------------------------------
-    // 只停止 X 轴移动，保留 Y 轴速度 (让怪物受重力影响自然下落)
-    if (_physicsBody)
-    {
-        cocos2d::Vec2 v = _physicsBody->getVelocity();
-        v.x = 0;
-        _physicsBody->setVelocity(v);
-    }
-
-    // -----------------------------------------------------------
-    // 3. 准备动画动作
+    // 1. 准备动画动作
     // -----------------------------------------------------------
     // ★ 安全保险：如果没有动画，创建一个 1秒的延时动作代替
     // 否则如果 _attackAnimate 为空，函数直接 return，状态机永远卡在 ATTACKING
@@ -328,7 +159,7 @@ void GoblinMonster::attack()
     }
 
     // -----------------------------------------------------------
-    // 4. 计算出刀时间
+    // 2. 计算出刀时间
     // -----------------------------------------------------------
     float hitTime = 0.4f; // 默认值
     if (_attackAnimate)
@@ -343,74 +174,53 @@ void GoblinMonster::attack()
     }
 
     // -----------------------------------------------------------
-    // 5. 判定框逻辑 (Hitbox)
+    // 3. 判定框逻辑 (Hitbox)
     // -----------------------------------------------------------
-	    auto logicSequence = cocos2d::Sequence::create(
-	        cocos2d::DelayTime::create(hitTime),
-	        cocos2d::CallFunc::create([this]() {
+		    auto logicSequence = cocos2d::Sequence::create(
+		        cocos2d::DelayTime::create(hitTime),
+		        cocos2d::CallFunc::create([this]() {
 
-	            auto parent = this->getParent();
-	            if (!parent) return;
+		            // 计算朝向
+		            float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
 
-	            // 计算朝向
-	            float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
-
-	            // 缩放适配：攻击判定最初按 0.6 的缩放手感调过，这里按当前缩放同比例缩放偏移/尺寸
-	            constexpr float kGoblinHitboxTuneScale = 0.6f;
+		            // 缩放适配：攻击判定最初按 0.6 的缩放手感调过，这里按当前缩放同比例缩放偏移/尺寸
+		            constexpr float kGoblinHitboxTuneScale = 0.6f;
 	            float scaleRatio = 1.0f;
 	            if (kGoblinHitboxTuneScale > 0.0f)
 	            {
 	                scaleRatio = std::fabs(this->getScaleX()) / kGoblinHitboxTuneScale;
 	            }
 
-	            // 计算偏移
-	            cocos2d::Vec2 offset(100.f * direction * scaleRatio, 170.f * scaleRatio);
-	            cocos2d::Size hitboxSize(300.0f * scaleRatio, 20.0f * scaleRatio);
+		            // 计算偏移
+		            cocos2d::Vec2 offset(100.f * direction * scaleRatio, 170.f * scaleRatio);
+		            cocos2d::Size hitboxSize(300.0f * scaleRatio, 20.0f * scaleRatio);
 
-	            cocos2d::Vec2 worldPos = this->getPosition() + offset;
+                    int damageTag = 1;
+                    if (auto attr = getAttributeComponent())
+                    {
+                        float strength = attr->getAttributeValue(AttributeType::STRENGTH);
+                        if (strength > 0.0f)
+                        {
+                            damageTag = static_cast<int>(std::round(strength));
+                        }
+                    }
 
-	            auto attackNode = cocos2d::Node::create();
-	            attackNode->setPosition(worldPos);
-	            attackNode->setContentSize(hitboxSize);
-	            attackNode->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+                    spawnMeleeHitbox(offset, hitboxSize, std::max(1, damageTag), 0.1f);
 
-	            // 加到父节点，避免物理质心偏移
-	            parent->addChild(attackNode);
-
-	            // 物理属性
-	            auto body = cocos2d::PhysicsBody::createBox(hitboxSize);
-	            body->setDynamic(false);
-	            body->setGravityEnable(false);
-	            body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
-	            body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
-	            body->setCollisionBitmask(0);
-	            body->setTag(10); // 伤害值
-
-	            attackNode->setPhysicsBody(body);
-
-            // 0.1秒后销毁
-            attackNode->runAction(
-                cocos2d::Sequence::create(
-                    cocos2d::DelayTime::create(0.1f),
-                    cocos2d::RemoveSelf::create(),
-                    nullptr
-                )
-            );
-
-            // 调试日志
-            // CCLOG("Hitbox spawned at: %.1f, %.1f", worldPos.x, worldPos.y);
-            }),
-        nullptr
-    );
+	            // 调试日志
+	            // CCLOG("Hitbox spawned at: %.1f, %.1f", worldPos.x, worldPos.y);
+	            }),
+	        nullptr
+	    );
 
     // -----------------------------------------------------------
-    // 6. 组合并运行 (Spawn = 并行)
+    // 4. 组合并运行 (Spawn = 并行)
     // -----------------------------------------------------------
     // 动画 和 逻辑 同时跑
     auto spawn = cocos2d::Spawn::create(animateAction, logicSequence, nullptr);
 
     // -----------------------------------------------------------
-    // 7. 结束回调 (恢复 IDLE)
+    // 5. 结束回调 (恢复 IDLE)
     // -----------------------------------------------------------
     auto finalSequence = cocos2d::Sequence::create(
         spawn,

@@ -1,11 +1,14 @@
 #include "Character/Player/PlayerCharacter.h"
+#include "Character/Player/SkillSets/KleeSkillSet.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
+#include "Objects/Projectiles/Bomb.h"
 #include "Physics/GamePhysicsCategory.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <vector>
 
@@ -13,20 +16,6 @@ USING_NS_CC;
 
 namespace
 {
-   /* constexpr float BOMB_THROW_SPEED_X = 300.0f;
-    constexpr float BOMB_THROW_SPEED_Y = 350.0f;
-    constexpr float BOMB_DAMAGE = 150.0f;
-    constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;*/
-
-   /* constexpr float FIREBALL_SPEED_X = 650.0f;
-    constexpr float FIREBALL_DAMAGE = 220.0f;
-    constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;*/
-
-    const char *const BOMB_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
-    const char *const BOMB_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
-
-    const char *const FIREBALL_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png";
-
     Animation *createAnimationFromPaths(const std::vector<std::string> &paths, float delayPerUnit)
     {
         // delayPerUnit 为动画每帧的延迟时间，单位为秒；
@@ -50,46 +39,12 @@ namespace
         return Animation::createWithSpriteFrames(frames, delayPerUnit);
     }
 
-    void ensureDefaultRunAnimation()
-    {
-        auto cache = AnimationCache::getInstance();
-        if (cache->getAnimation("hero_run"))
-            return;
-
-        std::vector<std::string> runPaths = {
-            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
-            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
-            "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
-        };
-
-        auto runAnim = createAnimationFromPaths(runPaths, 0.15f);
-        if (runAnim)
-        {
-            cache->addAnimation(runAnim, "hero_run");
-        }
-    }
-
-    void ensureDefaultWalkAnimation()
-    {
-        auto cache = AnimationCache::getInstance();
-        if (cache->getAnimation("hero_walk"))
-            return;
-
-        std::vector<std::string> walkPaths = {
-            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_1.png",
-            "Sprites/Characters/Player/Klee/defalt/spr_klee_run_2.png",
-            "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png",
-        };
-
-        auto walkAnim = createAnimationFromPaths(walkPaths, 0.25f);
-        if (walkAnim)
-        {
-            cache->addAnimation(walkAnim, "hero_walk");
-        }
-    }
 } // namespace
 
-PlayerCharacter* PlayerCharacter::create(CharacterRole role, const std::string& spritePath)
+PlayerCharacter::~PlayerCharacter() = default;
+
+PlayerCharacter *PlayerCharacter::create(CharacterRole role,
+                                         const std::string &spriteFrameName)
 {
     PlayerCharacter* pRet = new(std::nothrow) PlayerCharacter();
     if (pRet && pRet->init(role, spritePath))
@@ -126,6 +81,7 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     //this->setTag(TAG_PLAYER); // 建议在这里设置 Tag，方便查找
 
     _role = role;
+    initAssetPaths(spriteFrameName);
     _isGrounded = true;
     _jumpCount = 0;
 
@@ -179,88 +135,302 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     // 配置状态机动画
     if (auto sm = getStateMachineComponent())
     {
-        // 建议：不要硬编码字符串，最好定义在 GameConfig 或 CharacterData 中
-        sm->registerStateAnimation(CharacterState::IDLE, "hero_idle");
-        sm->registerStateAnimation(CharacterState::WALKING, "hero_walk");
-        sm->registerStateAnimation(CharacterState::RUNNING, "hero_run");
-        sm->registerStateAnimation(CharacterState::ATTACKING, "hero_attack");
-        sm->registerStateAnimation(CharacterState::HURT, "hero_hurt");
-        sm->registerStateAnimation(CharacterState::DEAD, "hero_dead");
-
+        sm->registerStateAnimation(CharacterState::IDLE, _animationKeyPrefix + "_idle");
+        sm->registerStateAnimation(CharacterState::WALKING, _animationKeyPrefix + "_walk");
+        sm->registerStateAnimation(CharacterState::RUNNING, _animationKeyPrefix + "_run");
+        sm->registerStateAnimation(CharacterState::ATTACKING, _animationKeyPrefix + "_attack");
+        sm->registerStateAnimation(CharacterState::HURT, _animationKeyPrefix + "_hurt");
+        sm->registerStateAnimation(CharacterState::DEAD, _animationKeyPrefix + "_dead");
         // 初始状态设为 IDLE
         sm->changeState(CharacterState::IDLE);
     }
 
-    // 预加载/缓存必要的动画动作（如果这些函数是生成 Animation 对象的）
-    ensureDefaultRunAnimation();
-    ensureDefaultWalkAnimation();
+    // 确保默认跑动动画存在（由 StateMachineComponent 播放）
+    ensureMoveAnimations();
+
+    createSkillSet();
+    if (_skillSet)
+    {
+        _skillSet->initSkills(*this);
+    }
 
     return true;
 }
-void PlayerCharacter::initPhysicsBody()
+
+void PlayerCharacter::onEnter()
 {
-    cocos2d::Size originalSize = this->getContentSize();
+    Sprite::onEnter();
 
-    // 计算碰撞盒大小 (读取配置中的比例)
-    float boxWidth = originalSize.width * GameConfig::Player::COLLISION_BOX_RATIO_W;
-    float boxHeight = originalSize.height * GameConfig::Player::COLLISION_BOX_RATIO_H;
+    if (_projectileContactListener)
+    {
+        return;
+    }
 
-    // 创建物理体
-    auto physicsBody = cocos2d::PhysicsBody::createBox(
-        cocos2d::Size(boxWidth, boxHeight),
-        GameConfig::Material::PLAYER
-    );
-
-    physicsBody->setDynamic(true);
-    physicsBody->setRotationEnable(false);
-    physicsBody->setMass(1.0f);
-    physicsBody->setLinearDamping(0.0f);
-
-    // 配置掩码 (使用 GameConfig 或 PhysicsConstants)
-    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
-
-    // 碰撞掩码
-    physicsBody->setCollisionBitmask(ToMask(
-        GamePhysicsCategory::PLATFORM |
-        GamePhysicsCategory::COLLISION |
-        GamePhysicsCategory::MONSTER_ATTACK
-    ));
-
-    // 接触回调掩码
-    physicsBody->setContactTestBitmask(ToMask(
-        GamePhysicsCategory::PLATFORM |
-        GamePhysicsCategory::COLLISION |
-        GamePhysicsCategory::MONSTER_ATTACK
-    ));
-
-    this->addComponent(physicsBody);
+    _projectileContactListener = EventListenerPhysicsContact::create();
+    _projectileContactListener->onContactBegin = CC_CALLBACK_1(PlayerCharacter::onProjectileContactBegin, this);
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(_projectileContactListener, this);
 }
 
-void PlayerCharacter::initDefaultSkills()
+void PlayerCharacter::onExit()
 {
-    auto skillComp = this->getSkillComponent();
-    if (!skillComp) return;
+    if (_projectileContactListener)
+    {
+        _eventDispatcher->removeEventListener(_projectileContactListener);
+        _projectileContactListener = nullptr;
+    }
 
-    // 创建火球技能
-    auto fireballSkill = std::make_shared<ActiveSkill>();
-    fireballSkill->id = GameConfig::Fireball::FIREBALL_ID; // 建议在 Config 定义 ID
-    fireballSkill->name = "火球";
-    fireballSkill->description = "发射火球...";
-    fireballSkill->manaCost = GameConfig::Fireball::FIREBALL_MP;
-    fireballSkill->cooldown = GameConfig::Fireball::FIREBALL_CD;
-    fireballSkill->currentCooldown = 0.0f;
-
-    skillComp->learnSkill(fireballSkill);
-    skillComp->equipActiveSkill(fireballSkill, GameConfig::Skill::SLOT_FIREBALL);
+    Sprite::onExit();
 }
 
-void PlayerCharacter::setGroundPosition(const cocos2d::Vec2& groundPos)
+void PlayerCharacter::update(float dt)
 {
-    // 自动计算从脚底到中心的偏移
-    float halfHeight = this->getContentSize().height * this->getScaleY() * 0.5f;
-    this->setPosition(groundPos + cocos2d::Vec2(0, halfHeight));
+    CharacterBase::update(dt);
 }
 
+Node *PlayerCharacter::getCombatLayer() const
+{
+    if (_combatLayer)
+    {
+        return _combatLayer;
+    }
+    return getParent();
+}
+
+bool PlayerCharacter::onProjectileContactBegin(PhysicsContact &contact)
+{
+    auto bodyA = contact.getShapeA()->getBody();
+    auto bodyB = contact.getShapeB()->getBody();
+    if (!bodyA || !bodyB)
+    {
+        return true;
+    }
+
+    auto nodeA = bodyA->getNode();
+    auto nodeB = bodyB->getNode();
+    if (!nodeA || !nodeB)
+    {
+        return true;
+    }
+
+    auto bombA = dynamic_cast<Bomb *>(nodeA);
+    auto bombB = dynamic_cast<Bomb *>(nodeB);
+    if (bombA || bombB)
+    {
+        int categoryA = bodyA->getCategoryBitmask();
+        int categoryB = bodyB->getCategoryBitmask();
+        int explodeMask = ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER);
+
+        if (bombA && !bombA->isExploded() && bombA->getExplodeOnContact() && ((categoryB & explodeMask) != 0))
+        {
+            bombA->scheduleOnce([bombA](float)
+                                { bombA->explode(); },
+                                0.0f,
+                                "bomb_explode_trigger");
+        }
+
+        if (bombB && !bombB->isExploded() && bombB->getExplodeOnContact() && ((categoryA & explodeMask) != 0))
+        {
+            bombB->scheduleOnce([bombB](float)
+                                { bombB->explode(); },
+                                0.0f,
+                                "bomb_explode_trigger");
+        }
+
+        return true;
+    }
+
+    return true;
+}
+
+void PlayerCharacter::initAssetPaths(const std::string &spriteFrameName)
+{
+    // Default to Klee to keep existing behavior if the input is not a file path.
+    _defaultSpriteDir = "Sprites/Characters/Player/Klee/defalt";
+    _skillSpriteDir = "Sprites/Characters/Player/Klee/rpg";
+    _characterKey = "klee";
+
+    if (SpriteFrameCacheHelper::isFilePath(spriteFrameName))
+    {
+        std::string normalized = spriteFrameName;
+        std::replace(normalized.begin(), normalized.end(), '\\', '/');
+
+        auto lastSlash = normalized.find_last_of('/');
+        if (lastSlash != std::string::npos && lastSlash > 0)
+        {
+            std::string defaultDir = normalized.substr(0, lastSlash);
+            if (!defaultDir.empty())
+            {
+                _defaultSpriteDir = defaultDir;
+
+                auto prevSlash = defaultDir.find_last_of('/');
+                if (prevSlash != std::string::npos && prevSlash > 0)
+                {
+                    std::string characterDir = defaultDir.substr(0, prevSlash);
+                    if (!characterDir.empty())
+                    {
+                        _skillSpriteDir = characterDir + "/rpg";
+
+                        auto charSlash = characterDir.find_last_of('/');
+                        std::string characterFolder = (charSlash != std::string::npos) ? characterDir.substr(charSlash + 1) : characterDir;
+                        if (!characterFolder.empty())
+                        {
+                            _characterKey = characterFolder;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    std::transform(_characterKey.begin(), _characterKey.end(), _characterKey.begin(),
+                   [](unsigned char c)
+                   { return static_cast<char>(std::tolower(c)); });
+
+    _animationKeyPrefix = "player_" + _characterKey;
+
+    _defaultAttackAnimationPrefix = "spr_" + _characterKey + "_attack";
+    _attackAnimationPrefix = _defaultAttackAnimationPrefix;
+    _attackFrameCount = 3;
+}
+
+void PlayerCharacter::createSkillSet()
+{
+    if (_skillSet)
+    {
+        return;
+    }
+
+    // TODO: 后续新增角色时，在此根据 _characterKey 选择不同 SkillSet
+    _skillSet = std::make_unique<KleeSkillSet>();
+}
+
+void PlayerCharacter::ensureMoveAnimations()
+{
+    if (_defaultSpriteDir.empty() || _characterKey.empty() || _animationKeyPrefix.empty())
+    {
+        return;
+    }
+
+    std::vector<std::string> movePaths = {
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run_2.png",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png",
+    };
+
+    ensureMoveAnimationCached(_animationKeyPrefix + "_run", movePaths, 0.15f);
+    ensureMoveAnimationCached(_animationKeyPrefix + "_walk", movePaths, 0.25f);
+}
+
+void PlayerCharacter::ensureMoveAnimationCached(const std::string &animationKey,
+                                                const std::vector<std::string> &framePaths,
+                                                float delayPerUnit)
+{
+    auto cache = AnimationCache::getInstance();
+    if (cache->getAnimation(animationKey))
+    {
+        return;
+    }
+
+    auto anim = createAnimationFromPaths(framePaths, delayPerUnit);
+    if (anim)
+    {
+        cache->addAnimation(anim, animationKey);
+    }
+}
+
+void PlayerCharacter::playOneShotAnimation(const std::vector<std::string> &paths,
+                                           float delayPerUnit,
+                                           int actionTag,
+                                           const std::function<void()> &onFinished)
+{
+    auto animation = createAnimationFromPaths(paths, delayPerUnit);
+    if (!animation)
+    {
+        if (onFinished)
+        {
+            onFinished();
+        }
+        return;
+    }
+
+    stopActionByTag(actionTag);
+    stopAllActions();
+
+    auto animate = Animate::create(animation);
+    auto callbackAction = CallFunc::create([onFinished]()
+                                           {
+                                               if (onFinished)
+                                               {
+                                                   onFinished();
+                                               } });
+    auto sequence = Sequence::create(animate, callbackAction, nullptr);
+    sequence->setTag(actionTag);
+    runAction(sequence);
+}
+
+bool PlayerCharacter::runActionLocked(const std::function<bool()> &preCheck,
+                                      const std::function<void(const std::function<void()> &)> &playAnimation,
+                                      const std::function<void()> &performEffect,
+                                      const std::function<void()> &onFinished)
+{
+    if (isDead())
+    {
+        return false;
+    }
+    if (_actionLocked)
+    {
+        return false;
+    }
+
+    if (preCheck && !preCheck())
+    {
+        return false;
+    }
+
+    _actionLocked = true;
+    playAnimation([this, performEffect, onFinished]()
+                  {
+                      if (performEffect)
+                      {
+                          performEffect();
+                      }
+                      _actionLocked = false;
+                      if (onFinished)
+                      {
+                          onFinished();
+                      } });
+    return true;
+}
+
+Vec2 PlayerCharacter::getProjectileSpawnPosition(float spawnOffsetXRatio,
+                                                 float spawnOffsetX,
+                                                 float spawnOffsetYRatio,
+                                                 float spawnOffsetY) const
+{
+    bool facingLeft = isFlippedX();
+    float dirX = facingLeft ? -1.0f : 1.0f;
+
+    Rect playerBox = getBoundingBox();
+    float spawnX = playerBox.getMidX() + dirX * (playerBox.size.width * spawnOffsetXRatio + spawnOffsetX);
+    float spawnY = playerBox.getMidY() + playerBox.size.height * spawnOffsetYRatio + spawnOffsetY;
+    return Vec2(spawnX, spawnY);
+}
+
+void PlayerCharacter::addToCombatLayer(Node *node, int zOrder)
+{
+    if (!node)
+    {
+        return;
+    }
+
+    auto layer = getCombatLayer();
+    if (!layer)
+    {
+        return;
+    }
+
+    layer->addChild(node, zOrder);
+}
 // 根据角色职业初始化基础属性
 void PlayerCharacter::initAttributesByRole(CharacterRole role)
 {
@@ -455,7 +625,7 @@ void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon> &weapon)
     if (weapon)
     {
         _attackAnimationPrefix = weapon->attackAnimationPrefix.empty()
-                                     ? "default"
+                                     ? _defaultAttackAnimationPrefix
                                      : weapon->attackAnimationPrefix;
         _attackFrameCount = weapon->attackFrameCount > 0 ? weapon->attackFrameCount : 3;
 
@@ -467,7 +637,7 @@ void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon> &weapon)
     else
     {
         // 恢复默认配置（无武器/拳头）
-        _attackAnimationPrefix = "default";
+        _attackAnimationPrefix = _defaultAttackAnimationPrefix;
         _attackFrameCount = 3;
         CCLOG("Weapon unequipped, using default attack");
     }
@@ -475,10 +645,35 @@ void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon> &weapon)
 
 void PlayerCharacter::useSkill(size_t slotIndex)
 {
-    if (auto skillComp = getSkillComponent())
+    tryUseSkill(slotIndex);
+}
+
+bool PlayerCharacter::tryNormalAttack(const std::function<void()> &onFinished)
+{
+    if (!_skillSet)
     {
-        skillComp->useActiveSkill(slotIndex);
+        createSkillSet();
     }
+    if (!_skillSet)
+    {
+        return false;
+    }
+
+    return _skillSet->tryNormalAttack(*this, onFinished);
+}
+
+bool PlayerCharacter::tryUseSkill(size_t slotIndex, const std::function<void()> &onFinished)
+{
+    if (!_skillSet)
+    {
+        createSkillSet();
+    }
+    if (!_skillSet)
+    {
+        return false;
+    }
+
+    return _skillSet->tryUseSkill(*this, slotIndex, onFinished);
 }
 
 void PlayerCharacter::setMoving(bool moving)
@@ -499,12 +694,12 @@ void PlayerCharacter::setMoving(bool moving, bool running)
     {
         if (running)
         {
-            ensureDefaultRunAnimation();
+            ensureMoveAnimations();
             sm->changeState(CharacterState::RUNNING);
         }
         else
         {
-            ensureDefaultWalkAnimation();
+            ensureMoveAnimations();
             sm->changeState(CharacterState::WALKING);
         }
         return;
@@ -514,8 +709,7 @@ void PlayerCharacter::setMoving(bool moving, bool running)
     bool wasFlippedX = isFlippedX();
     stopAllActions();
 
-    auto defaultFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png");
+    auto defaultFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
     if (defaultFrame)
     {
         setSpriteFrame(defaultFrame);
@@ -545,46 +739,23 @@ void PlayerCharacter::attackAnimated(const std::function<void()> &onFinished)
     }
 
     // 构建攻击帧路径
-    std::string prefix = _attackAnimationPrefix.empty() ? "spr_klee_attack" : _attackAnimationPrefix;
+    std::string prefix = _attackAnimationPrefix.empty() ? _defaultAttackAnimationPrefix : _attackAnimationPrefix;
     int frameCount = (_attackFrameCount > 0) ? _attackFrameCount : 3;
     std::vector<std::string> paths;
     paths.reserve(static_cast<size_t>(frameCount));
 
     for (int i = 1; i <= frameCount; ++i)
     {
-        std::string path;
-        if (prefix.find('/') != std::string::npos)
+        if (SpriteFrameCacheHelper::isFilePath(prefix))
         {
-            path = StringUtils::format("%s_%d.png", prefix.c_str(), i);
+            paths.push_back(StringUtils::format("%s_%d.png", prefix.c_str(), i));
+            continue;
         }
-        else
-        {
-            path = StringUtils::format("Sprites/Characters/Player/Klee/defalt/%s_%d.png", prefix.c_str(), i);
-        }
-        paths.push_back(path);
+
+        paths.push_back(StringUtils::format("%s/%s_%d.png", _defaultSpriteDir.c_str(), prefix.c_str(), i));
     }
 
-    auto animation = createAnimationFromPaths(paths, animSpeed);
-    if (!animation)
-    {
-        CCLOG("PlayerCharacter: failed to create attack animation (prefix=%s)", prefix.c_str());
-        if (onFinished)
-            onFinished();
-        return;
-    }
-
-    // 停止当前动作，避免与跑动等动画冲突
-    stopActionByTag(1000);
-    stopAllActions();
-
-    auto animate = Animate::create(animation);
-    auto callbackAction = CallFunc::create([onFinished]()
-                                           {
-                                               if (onFinished)
-                                                   onFinished(); });
-    auto sequence = Sequence::create(animate, callbackAction, nullptr);
-    sequence->setTag(1000);
-    runAction(sequence);
+    playOneShotAnimation(paths, animSpeed, 1000, onFinished);
 }
 
 void PlayerCharacter::castSkillAnimated(const std::function<void()> &onFinished)
@@ -598,86 +769,19 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()> &onFinished)
         sm->changeState(CharacterState::ATTACKING);
     }
 
-    std::vector<std::string> paths = {
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_attack_1.png",
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_attack_2.png",
-        "Sprites/Characters/Player/Klee/defalt/spr_klee_attack_3.png",
-    };
-
-    auto animation = createAnimationFromPaths(paths, 0.13f);
-    if (!animation)
+    std::vector<std::string> paths;
+    paths.reserve(3);
+    for (int i = 1; i <= 3; ++i)
     {
-        CCLOG("PlayerCharacter: failed to create skill cast animation");
-        if (onFinished)
-            onFinished();
-        return;
+        paths.push_back(StringUtils::format("%s/spr_%s_attack_%d.png", _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
     }
 
-    // 停止当前动作，避免与跑动/攻击动画冲突
-    stopActionByTag(1001);
-    stopAllActions();
-
-    auto animate = Animate::create(animation);
-    auto callbackAction = CallFunc::create([onFinished]()
-                                           {
-                                               if (onFinished)
-                                                   onFinished(); });
-    auto sequence = Sequence::create(animate, callbackAction, nullptr);
-    sequence->setTag(1001);
-    runAction(sequence);
-}
-// 火球术施放动画
-void PlayerCharacter::castFireballAnimated(const std::function<void()> &onFinished)
-{
-    if (isDead())
-        return;
-
-    // 切换至 ATTACKING 状态（技能施放暂复用攻击状态）
-    if (auto sm = getStateMachineComponent())
-    {
-        sm->changeState(CharacterState::ATTACKING);
-    }
-
-    std::vector<std::string> paths = {
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_1.png",
-        //"Sprites/Characters/Player/Klee/rpg/spr_klee_attack_2.png",
-        //"Sprites/Characters/Player/Klee/rpg/spr_klee_attack_3.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_4.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_4.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_5.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_5.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_5.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_6.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_klee_attack_6.png",
-        //"Sprites/Characters/Player/Klee/rpg/spr_klee_attack_7.png",
-    };
-
-    auto animation = createAnimationFromPaths(paths, 0.04f); // 参数可调整施法速度
-    if (!animation)
-    {
-        CCLOG("PlayerCharacter: failed to create fireball cast animation");
-        if (onFinished)
-            onFinished();
-        return;
-    }
-
-    // 停止当前动作，避免与跑动/攻击动画冲突
-    stopActionByTag(1002);
-    stopAllActions();
-
-    auto animate = Animate::create(animation);
-    auto callbackAction = CallFunc::create([onFinished]()
-                                           {
-                                               if (onFinished)
-                                                   onFinished(); });
-    auto sequence = Sequence::create(animate, callbackAction, nullptr);
-    sequence->setTag(1002);
-    runAction(sequence);
+    playOneShotAnimation(paths, 0.13f, 1001, onFinished);
 }
 
 void PlayerCharacter::attack()
 {
-    attackAnimated(nullptr);
+    tryNormalAttack();
 }
 
 void PlayerCharacter::onUseActiveSkill(const ActiveSkill &skill)
@@ -690,408 +794,4 @@ void PlayerCharacter::onUseActiveSkill(const ActiveSkill &skill)
 
     // TODO: 根据 skill.id 进行不同的特效/逻辑
     // 例如 id == 1001 -> 释放火球；id == 1002 -> 冲刺斩 等
-}
-
-void PlayerCharacter::cleanupProjectiles()
-{
-    if (_projectiles.empty())
-        return;
-
-    _projectiles.erase(
-        std::remove_if(_projectiles.begin(), _projectiles.end(),
-                       [](const Projectile &p)
-                       { return p.sprite == nullptr; }),
-        _projectiles.end());
-}
-
-PlayerCharacter::Projectile *PlayerCharacter::findProjectile(Node *node)
-{
-    if (!node)
-        return nullptr;
-
-    for (auto &projectile : _projectiles)
-    {
-        if (projectile.sprite == node)
-        {
-            return &projectile;
-        }
-    }
-
-    return nullptr;
-}
-
-void PlayerCharacter::spawnBombProjectile(Node *gameLayer)
-{
-    if (isDead())
-        return;
-    if (!gameLayer)
-        return;
-
-    auto bombFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(BOMB_PROJECTILE_SPRITE_PATH);
-    if (!bombFrame)
-    {
-        CCLOG("PlayerCharacter::spawnBombProjectile - Failed to get or create bomb sprite frame: %s", BOMB_PROJECTILE_SPRITE_PATH);
-        return;
-    }
-
-    auto bombSprite = Sprite::createWithSpriteFrame(bombFrame);
-    if (!bombSprite)
-    {
-        CCLOG("PlayerCharacter::spawnBombProjectile - Failed to create bomb sprite");
-        return;
-    }
-
-    Projectile projectile;
-    projectile.type = ProjectileType::BOMB;
-    projectile.isExploded = false;
-    projectile.sprite = bombSprite;
-    projectile.damage = GameConfig::Bomb::BASE_DAMAGE;
-    projectile.explosionRadius = GameConfig::Bomb::EXPLOSION_RADIUS;
-
-    bool facingLeft = isFlippedX();
-    float throwDirX = facingLeft ? -1.0f : 1.0f;
-
-    // 生成位置：基于玩家当前包围盒，避免受投掷物贴图尺寸影响导致偏远/偏高
-    Rect playerBox = getBoundingBox();
-    float spawnX = playerBox.getMidX() + throwDirX * (playerBox.size.width * 0.35f + 20.0f);
-    float spawnY = playerBox.getMidY() + playerBox.size.height * 0.15f;
-    bombSprite->setPosition(Vec2(spawnX, spawnY));
-    bombSprite->setScale(0.5f);
-
-    PhysicsMaterial bombMaterial(0.5f, 0.3f, 0.2f);
-    auto physicsBody = PhysicsBody::createCircle(15.0f, bombMaterial);
-    physicsBody->setDynamic(true);
-    physicsBody->setMass(0.5f);
-    physicsBody->setRotationEnable(true);
-
-    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER_ATTACK));
-    physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setTag(0);
-
-    bombSprite->addComponent(physicsBody);
-    gameLayer->addChild(bombSprite, 4);
-
-    Vec2 impulse(throwDirX * GameConfig::Bomb::THROW_SPEED_X * physicsBody->getMass(),
-        GameConfig::Bomb::THROW_SPEED_Y * physicsBody->getMass());
-    physicsBody->applyImpulse(impulse);
-
-    _projectiles.push_back(projectile);
-}
-
-void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
-{
-    if (isDead())
-        return;
-    if (!gameLayer)
-        return;
-
-    auto fireballFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(FIREBALL_PROJECTILE_SPRITE_PATH);
-    if (!fireballFrame)
-    {
-        CCLOG("PlayerCharacter::spawnFireballProjectile - Failed to get or create fireball sprite frame: %s", FIREBALL_PROJECTILE_SPRITE_PATH);
-        return;
-    }
-
-    auto fireballSprite = Sprite::createWithSpriteFrame(fireballFrame);
-    if (!fireballSprite)
-    {
-        CCLOG("PlayerCharacter::spawnFireballProjectile - Failed to create fireball sprite");
-        return;
-    }
-
-    Projectile projectile;
-    projectile.type = ProjectileType::FIREBALL;
-    projectile.isExploded = false;
-    projectile.sprite = fireballSprite;
-    projectile.damage = GameConfig::Fireball::BASE_DAMAGE;
-    projectile.explosionRadius = GameConfig::Fireball::EXPLOSION_RADIUS;
-
-    bool facingLeft = isFlippedX();
-    float dirX = facingLeft ? -1.0f : 1.0f;
-
-    Rect playerBox = getBoundingBox();
-    float spawnX = playerBox.getMidX() + dirX * (playerBox.size.width * 0.40f + 25.0f);
-    float spawnY = playerBox.getMidY() + playerBox.size.height * 0.20f;
-    fireballSprite->setPosition(Vec2(spawnX, spawnY));
-    fireballSprite->setScale(1.10f); // 火球略大一些
-    fireballSprite->setFlippedX(facingLeft);
-
-    // 飞行中循环播放导弹动画
-    std::vector<std::string> missilePaths = {
-        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_2.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_3.png",
-        "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_4.png",
-    };
-    if (auto missileAnim = createAnimationFromPaths(missilePaths, 0.08f))
-    {
-        fireballSprite->runAction(RepeatForever::create(Animate::create(missileAnim)));
-    }
-
-    PhysicsMaterial fireballMaterial(0.5f, 0.0f, 0.0f);
-    auto physicsBody = PhysicsBody::createCircle(16.0f, fireballMaterial);
-    physicsBody->setDynamic(true);
-    physicsBody->setMass(0.4f);
-    physicsBody->setRotationEnable(false);
-    physicsBody->setGravityEnable(false);
-    physicsBody->setLinearDamping(0.0f);
-
-    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER_ATTACK));
-    // 导弹不做物理碰撞反应（避免被地形/怪物推挤导致下落），只需要 Contact 回调触发爆炸即可
-    physicsBody->setCollisionBitmask(0);
-    physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
-    physicsBody->setTag(0);
-
-    fireballSprite->addComponent(physicsBody);
-    gameLayer->addChild(fireballSprite, 4);
-
-    physicsBody->setVelocity(Vec2(dirX * GameConfig::Fireball::EXPLOSION_RADIUS, 0.0f));
-
-    _projectiles.push_back(projectile);
-}
-
-bool PlayerCharacter::handleProjectileContact(Node *nodeA, int categoryA,
-                                              Node *nodeB, int categoryB,
-                                              Node *gameLayer)
-{
-    if (!_projectiles.empty())
-    {
-        Projectile *projectile = findProjectile(nodeA);
-        Node *projectileNode = nodeA;
-        Node *otherNode = nodeB;
-        int otherMask = categoryB;
-
-        if (!projectile)
-        {
-            projectile = findProjectile(nodeB);
-            projectileNode = nodeB;
-            otherNode = nodeA;
-            otherMask = categoryA;
-        }
-
-        if (projectile && !projectile->isExploded)
-        {
-            bool hitPlayer = (otherMask & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-            bool hitAnotherProjectile = (findProjectile(otherNode) != nullptr);
-
-            if (!hitPlayer && !hitAnotherProjectile)
-            {
-                projectile->isExploded = true;
-
-                // Avoid modifying physics bodies inside the contact callback.
-                // Defer the actual explosion to the next tick.
-                auto actionNode = gameLayer ? gameLayer : this;
-                actionNode->runAction(Sequence::create(
-                    DelayTime::create(0.0f),
-                    CallFunc::create([this, gameLayer, projectileNode]()
-                                     {
-                                         if (!gameLayer)
-                                            return;
-
-                                         auto pending = findProjectile(projectileNode);
-                                         if (pending && pending->isExploded)
-                                         {
-                                             explodeProjectile(*pending, gameLayer);
-                                         } }),
-                    nullptr));
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
-{
-    if (!projectile.sprite)
-        return;
-
-    Vec2 explodePos = projectile.sprite->getPosition();
-    Vec2 explosionWorld = explodePos;
-    if (projectile.sprite->getParent())
-    {
-        explosionWorld = projectile.sprite->getParent()->convertToWorldSpace(explodePos);
-    }
-
-    projectile.sprite->removeFromParent();
-
-    float explosionDamage = projectile.damage;
-    float explosionRadius = projectile.explosionRadius;
-    if (explosionDamage <= 0.0f)
-    {
-        explosionDamage = (projectile.type == ProjectileType::FIREBALL) ? GameConfig::Fireball::BASE_DAMAGE : GameConfig::Bomb::BASE_DAMAGE;
-    }
-    if (explosionRadius <= 0.0f)
-    {
-        explosionRadius = (projectile.type == ProjectileType::FIREBALL) ? GameConfig::Fireball::EXPLOSION_RADIUS : GameConfig::Bomb::EXPLOSION_RADIUS;
-    }
-
-    if (gameLayer)
-    {
-        DamageInfo dmg;
-        dmg.amount = explosionDamage;
-        dmg.attacker = this;
-
-        std::vector<CharacterBase *> hitTargets;
-
-        std::function<void(Node *)> collectTargets = [&](Node *node)
-        {
-            if (!node)
-                return;
-
-            if (auto character = dynamic_cast<CharacterBase *>(node))
-            {
-                if (character != this && !character->isDead())
-                {
-                    Rect hitRectWorld;
-                    bool hasHitRectWorld = false;
-
-                    if (auto body = character->getPhysicsBody())
-                    {
-                        auto shape = body->getFirstShape();
-                        if (shape)
-                        {
-                            Size shapeSizeWorld;
-                            switch (shape->getType())
-                            {
-                            case PhysicsShape::Type::BOX:
-                                shapeSizeWorld = static_cast<PhysicsShapeBox *>(shape)->getSize();
-                                break;
-                            case PhysicsShape::Type::CIRCLE:
-                            {
-                                float r = static_cast<PhysicsShapeCircle *>(shape)->getRadius();
-                                shapeSizeWorld = Size(r * 2.0f, r * 2.0f);
-                                break;
-                            }
-                            default:
-                                break;
-                            }
-
-                            if (shapeSizeWorld.width > 0.0f && shapeSizeWorld.height > 0.0f)
-                            {
-                                Vec2 centerLocal(character->getContentSize().width * 0.5f,
-                                                 character->getContentSize().height * 0.5f);
-                                Vec2 bodyCenterWorld = character->convertToWorldSpace(centerLocal);
-                                Vec2 rectCenterWorld = bodyCenterWorld + shape->getCenter();
-
-                                hitRectWorld = Rect(rectCenterWorld.x - shapeSizeWorld.width / 2.0f,
-                                                    rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
-                                                    shapeSizeWorld.width,
-                                                    shapeSizeWorld.height);
-                                hasHitRectWorld = true;
-                            }
-                        }
-                    }
-
-                    if (!hasHitRectWorld)
-                    {
-                        Rect bboxParent = character->getBoundingBox();
-                        Vec2 originWorld = bboxParent.origin;
-                        Vec2 topRightWorld = bboxParent.origin + bboxParent.size;
-                        if (character->getParent())
-                        {
-                            originWorld = character->getParent()->convertToWorldSpace(bboxParent.origin);
-                            topRightWorld = character->getParent()->convertToWorldSpace(bboxParent.origin + bboxParent.size);
-                        }
-
-                        hitRectWorld = Rect(
-                            std::min(originWorld.x, topRightWorld.x),
-                            std::min(originWorld.y, topRightWorld.y),
-                            std::fabs(topRightWorld.x - originWorld.x),
-                            std::fabs(topRightWorld.y - originWorld.y));
-                    }
-
-                    float dx = 0.0f;
-                    if (explosionWorld.x < hitRectWorld.getMinX())
-                        dx = hitRectWorld.getMinX() - explosionWorld.x;
-                    else if (explosionWorld.x > hitRectWorld.getMaxX())
-                        dx = explosionWorld.x - hitRectWorld.getMaxX();
-
-                    float dy = 0.0f;
-                    if (explosionWorld.y < hitRectWorld.getMinY())
-                        dy = hitRectWorld.getMinY() - explosionWorld.y;
-                    else if (explosionWorld.y > hitRectWorld.getMaxY())
-                        dy = explosionWorld.y - hitRectWorld.getMaxY();
-
-                    if ((dx * dx + dy * dy) <= (explosionRadius * explosionRadius))
-                    {
-                        hitTargets.push_back(character);
-                    }
-                }
-            }
-
-            // Copy child list to avoid iterator invalidation if takeDamage spawns nodes.
-            auto children = node->getChildren();
-            for (auto child : children)
-            {
-                collectTargets(child);
-            }
-        };
-
-        collectTargets(gameLayer);
-
-        for (auto target : hitTargets)
-        {
-            if (target && !target->isDead())
-            {
-                target->takeDamage(dmg);
-            }
-        }
-    }
-
-    if (gameLayer)
-    {
-        if (projectile.type == ProjectileType::FIREBALL)
-        {
-            // 火球爆炸：使用 rpg 的闪光序列帧
-            std::vector<std::string> flashPaths = {
-                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_0.png",
-                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_1.png",
-                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_2.png",
-                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_3.png",
-                "Sprites/Characters/Player/Klee/rpg/spr_vfx_explosion_flash_4.png",
-            };
-
-            if (auto flashAnim = createAnimationFromPaths(flashPaths, 0.05f))
-            {
-                auto flashFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(flashPaths.front());
-                if (!flashFrame)
-                {
-                    CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create explosion flash frame: %s", flashPaths.front().c_str());
-                }
-                else if (auto boomSprite = Sprite::createWithSpriteFrame(flashFrame))
-                {
-                    boomSprite->setPosition(explodePos);
-                    boomSprite->setScale(0.9f);
-                    gameLayer->addChild(boomSprite, 6);
-                    boomSprite->runAction(Sequence::create(Animate::create(flashAnim), RemoveSelf::create(), nullptr));
-                }
-            }
-        }
-        else
-        {
-            // 炸弹爆炸沿用 defalt 素材
-            auto boomFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(BOMB_EXPLOSION_SPRITE_PATH);
-            if (!boomFrame)
-            {
-                CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create bomb explosion frame: %s", BOMB_EXPLOSION_SPRITE_PATH);
-            }
-            else if (auto boomSprite = Sprite::createWithSpriteFrame(boomFrame))
-            {
-                boomSprite->setPosition(explodePos);
-                boomSprite->setScale(0.8f);
-                gameLayer->addChild(boomSprite, 6);
-
-                auto scaleUp = ScaleTo::create(0.2f, 1.2f);
-                auto fadeOut = FadeOut::create(0.3f);
-                auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
-                auto remove = RemoveSelf::create();
-                boomSprite->runAction(Sequence::create(spawn, remove, nullptr));
-            }
-        }
-    }
-
-    projectile.sprite = nullptr;
 }

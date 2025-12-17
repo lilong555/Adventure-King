@@ -84,7 +84,13 @@
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\GameInputController.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Scenes\GameScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\GameUIController.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\HelloWorldScene.cpp">
@@ -94,6 +100,9 @@
       <Filter>src\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\MapScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\LevelMap.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\Layers\SaveMenuLayer.cpp">
@@ -111,43 +120,29 @@
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp">
       <Filter>src\Character\Player</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp">
+      <Filter>src\Character\Player</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\GameUI.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
-      <Filter>src\Character\Player\Players</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\UI\PauseMenu.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\UI\SkillBar.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Save\SaveData.cpp">
-      <Filter>src\Save</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Save\SaveManager.cpp">
-      <Filter>src\Save</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp">
-      <Filter>src\Save</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Objects\Projectiles\ProjectilesBase.cpp">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClCompile>
-  </ItemGroup>
+    <ClCompile Include="..\Classes\Save\SaveData.cpp" />
+    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
+    <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
+    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
+    <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
+    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
+    <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
+	    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
+	      <Filter>src\Character\Player\Players</Filter>
+	    </ClCompile>
+	    <ClCompile Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.cpp">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClCompile>
+	    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClCompile>
+	  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
       <Filter>win32</Filter>
@@ -176,7 +171,13 @@
     <ClInclude Include="..\Classes\Scenes\DebugScene.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\GameInputController.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Scenes\GameScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\GameSceneConfig.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h">
@@ -186,6 +187,12 @@
       <Filter>src\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\MapScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\GameUIController.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\LevelMap.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\Layers\SaveMenuLayer.h">
@@ -200,20 +207,36 @@
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h">
       <Filter>src\Managers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
-      <Filter>src\Character\Player</Filter>
-    </ClInclude>
+	    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
+	      <Filter>src\Character\Player</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h">
+	      <Filter>src\Character\Player</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h">
+	      <Filter>src\Character\Player</Filter>
+	    </ClInclude>
     <ClInclude Include="..\Classes\GameUI.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
-      <Filter>src\Character\Player\Players</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
-      <Filter>src\Physics</Filter>
+    <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
+    <ClInclude Include="..\Classes\UI\SkillBar.h" />
+    <ClInclude Include="..\Classes\UI\BossHealthBar.h" />
+    <ClInclude Include="..\Classes\UI\PauseMenu.h" />
+    <ClInclude Include="..\Classes\Save\SaveData.h" />
+    <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
+    <ClInclude Include="..\Classes\Save\SaveManager.h" />
+	    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
+	      <Filter>src\Character\Player\Players</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
+	      <Filter>src\Physics</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\UI\BossHealthBar.h">
       <Filter>src\UI</Filter>
