@@ -250,13 +250,14 @@ void MonsterBase::setActiveUpdateDistanceX(float distanceX)
 
 bool MonsterBase::isWithinActiveUpdateRange() const
 {
-    if (!_target)
+    auto distanceTarget = _primaryTarget ? _primaryTarget : _target;
+    if (!distanceTarget)
         return true;
 
     if (_activeUpdateDistanceX <= 0.0f)
         return true;
 
-    return horizontalDistanceTo(_target) <= _activeUpdateDistanceX;
+    return horizontalDistanceTo(distanceTarget) <= _activeUpdateDistanceX;
 }
 void MonsterBase::updateAI(float dt)
 {
@@ -277,6 +278,15 @@ void MonsterBase::updateAI(float dt)
         sm->changeState(CharacterState::IDLE);
         _hasMoveGoal = false;
         return;
+    }
+
+    // 重新索敌：当 _target 因超出仇恨/牵引被清空时，玩家重新进入仇恨范围应当恢复
+    if (!_target && _primaryTarget)
+    {
+        if (_aggroRadius <= 0.0f || distanceTo(_primaryTarget) <= _aggroRadius)
+        {
+            _target = _primaryTarget;
+        }
     }
 
     // 没有目标：如果有移动目标（回家/巡逻），继续走；否则待机
@@ -725,6 +735,7 @@ bool MonsterBase::inAttackRange(Node* target)
 void MonsterBase::setTarget(Node* target)
 {
     _target = target;
+    _primaryTarget = target;
 }
 
 void MonsterBase::setHome(const cocos2d::Vec2& pos)

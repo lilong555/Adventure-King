@@ -74,6 +74,7 @@ protected:
     bool isWithinActiveUpdateRange() const;
 
     Node* _target = nullptr;     // 目标（通常是主角）
+    Node* _primaryTarget = nullptr; // 主目标引用（用于离屏激活/重新索敌）
     float _attackTimer = 0.0f;   // 攻击间隔计时
 
     cocos2d::Vec2 _homePos;
