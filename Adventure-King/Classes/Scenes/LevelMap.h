@@ -34,6 +34,10 @@ public:
                                   const std::string &backgroundPath,
                                   float mapWidthPixels) const;
 
+    // 使用多张背景图按顺序拼接（用于一次性大背景，如 Origin_Mushroom_0x.png）
+    void setupBackgroundSeries(cocos2d::Node *gameLayer,
+                               const std::vector<std::string> &backgroundPaths) const;
+
     void createCollisionBodiesFromTMX(cocos2d::Node *gameLayer,
                                       const std::string &groupName);
 

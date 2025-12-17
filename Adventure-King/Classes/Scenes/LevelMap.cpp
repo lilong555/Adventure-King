@@ -101,6 +101,40 @@ void LevelMap::setupRepeatingBackground(Node *gameLayer,
     CCLOG("Created repeating background: %d tiles, mapWidth=%.0f", repeatCount, mapWidthPixels);
 }
 
+void LevelMap::setupBackgroundSeries(Node *gameLayer,
+                                     const std::vector<std::string> &backgroundPaths) const
+{
+    if (!gameLayer)
+        return;
+
+    if (backgroundPaths.empty())
+        return;
+
+    auto origin = Director::getInstance()->getVisibleOrigin();
+
+    auto bgContainer = Node::create();
+    float xOffset = 0.0f;
+
+    for (const auto &path : backgroundPaths)
+    {
+        auto bgSprite = Sprite::create(path);
+        if (!bgSprite)
+        {
+            CCLOG("LevelMap::setupBackgroundSeries - failed to load: %s", path.c_str());
+            return;
+        }
+
+        bgSprite->setAnchorPoint(Vec2(0, 0));
+        bgSprite->setPosition(Vec2(origin.x + xOffset, origin.y));
+        bgContainer->addChild(bgSprite);
+
+        xOffset += bgSprite->getContentSize().width;
+    }
+
+    gameLayer->addChild(bgContainer, -1);
+    CCLOG("Created background series: %zu tiles", backgroundPaths.size());
+}
+
 void LevelMap::createCollisionBodiesFromTMX(Node *gameLayer, const std::string &groupName)
 {
     if (!_tileMap)

@@ -20,7 +20,9 @@
 #include "Save/SaveManager.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <memory>
+#include <vector>
 
 USING_NS_CC;
 
@@ -140,6 +142,21 @@ bool GameScene::initLevelMap(const LevelConfig &config)
     {
         _levelMap.reset();
         return false;
+    }
+
+    // Origin_Mushroom 背景：使用 Origin_Mushroom_0x.png 序列拼接为整张背景
+    if (config.tmxMapPath.find("Map/Origin_Mushroom/Origin_Mushroom.tmx") != std::string::npos)
+    {
+        std::vector<std::string> backgroundPaths;
+        backgroundPaths.reserve(6);
+        for (int i = 0; i <= 5; ++i)
+        {
+            char buffer[128];
+            std::snprintf(buffer, sizeof(buffer), "Map/Origin_Mushroom/Origin_Mushroom_%02d.png", i);
+            backgroundPaths.emplace_back(buffer);
+        }
+
+        _levelMap->setupBackgroundSeries(_gameLayer, backgroundPaths);
     }
 
     if (!config.backgroundPath.empty())
