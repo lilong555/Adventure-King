@@ -82,6 +82,28 @@ bool MonsterBase::init(const std::string& spriteFrameName)
 
     setPhysicsBody(_physicsBody);
 
+    // 性能：默认按屏幕宽度设置“活跃更新范围”，避免大量离屏怪物每帧跑 AI 逻辑
+    if (_activeUpdateDistanceX <= 0.0f)
+    {
+        auto visibleSize = Director::getInstance()->getVisibleSize();
+        if (visibleSize.width > 0.0f)
+        {
+            _activeUpdateDistanceX = visibleSize.width * 1.5f;
+        }
+    }
+
+    // 生成错峰：避免同帧生成多个怪物时，节流 tick 同帧集中触发造成尖刺
+    // 取 [0.5*interval, interval]：保证首次响应不会等待过久，同时分散负载
+    auto staggerAccumulator = [](float intervalSeconds) -> float {
+        if (intervalSeconds <= 0.0f)
+            return 0.0f;
+
+        return cocos2d::random(intervalSeconds * 0.5f, intervalSeconds);
+    };
+
+    _aiUpdateAccumulator = staggerAccumulator(_aiUpdateInterval);
+    _moveUpdateAccumulator = staggerAccumulator(_moveUpdateInterval);
+    _attackUpdateAccumulator = staggerAccumulator(_attackUpdateInterval);
     return true;
 }
 // MonsterBase.cpp
@@ -130,29 +152,97 @@ void MonsterBase::refreshCacheAttributes()
 void MonsterBase::update(float dt)
 {
     CharacterBase::update(dt);
-    updateAI(dt);
 
     auto sm = getStateMachineComponent();
     if (!sm)
         return;
 
+    if (isDead())
+    {
+        sm->changeState(CharacterState::DEAD);
+        return;
+    }
+
+    // 硬直/眩晕期间不做 AI/移动/攻击逻辑，避免节流导致的“硬直还在走”
+    if (_isStunned)
+    {
+        sm->changeState(CharacterState::IDLE);
+        _hasMoveGoal = false;
+        if (_physicsBody)
+        {
+            cocos2d::Vec2 v = _physicsBody->getVelocity();
+            v.x = 0;
+            _physicsBody->setVelocity(v);
+        }
+        return;
+    }
+
+    const bool withinActiveRange = isWithinActiveUpdateRange();
+    const float aiInterval = withinActiveRange ? _aiUpdateInterval : _inactiveAiUpdateInterval;
+
+    if (aiInterval <= 0.0f)
+    {
+        updateAI(dt);
+    }
+    else
+    {
+        _aiUpdateAccumulator += dt;
+        if (_aiUpdateAccumulator >= aiInterval)
+        {
+            // 传入累计 dt：即使当前 AI 不依赖 dt，也方便后续扩展时间相关逻辑
+            updateAI(_aiUpdateAccumulator);
+            _aiUpdateAccumulator = 0.0f;
+        }
+    }
+
     auto state = sm->getCurrentState();
+
+    // 离屏（或远离玩家）时：冻结水平速度并跳过移动/攻击计算，减少 CPU 占用
+    if (!withinActiveRange)
+    {
+        if (_physicsBody)
+        {
+            cocos2d::Vec2 v = _physicsBody->getVelocity();
+            v.x = 0;
+            _physicsBody->setVelocity(v);
+        }
+
+        // 避免离开激活范围时卡在攻击等中间状态（离屏不需要继续保持攻击状态）
+        if (state == CharacterState::ATTACKING)
+        {
+            sm->changeState(CharacterState::IDLE);
+        }
+        return;
+    }
+
+    // 攻击冷却计时：按帧累加，攻击动作期间不计时（保持“冷却从攻击结束开始”）
+    if (state != CharacterState::ATTACKING)
+    {
+        _attackTimer += dt;
+    }
 
     if (state == CharacterState::WALKING || state == CharacterState::STATE_PATROL)
     {
-        updateMovement(dt); // 移动函数里通常包含了 faceTarget
+        if (_moveUpdateInterval <= 0.0f)
+        {
+            updateMovement(dt);
+        }
+        else
+        {
+            _moveUpdateAccumulator += dt;
+            if (_moveUpdateAccumulator >= _moveUpdateInterval)
+            {
+                updateMovement(_moveUpdateAccumulator);
+                _moveUpdateAccumulator = 0.0f;
+            }
+        }
     }
     else if (state == CharacterState::IDLE)
     {
         if (_physicsBody)
         {
-            // 1. 获取当前速度 (包含重力产生的向下速度)
             cocos2d::Vec2 v = _physicsBody->getVelocity();
-
-            // 2. 只把 X 轴归零 (停止左右走)
             v.x = 0;
-
-            // 3. 重新设置回去 (Y 轴保持不变，怪就能掉下去了)
             _physicsBody->setVelocity(v);
         }
 
@@ -163,7 +253,19 @@ void MonsterBase::update(float dt)
     }
 
     // 攻击状态下 (ATTACKING) 不调用 faceTarget，也就是“锁死方向”
-    updateAttack(dt);
+    if (_attackUpdateInterval <= 0.0f)
+    {
+        updateAttack(dt);
+    }
+    else
+    {
+        _attackUpdateAccumulator += dt;
+        if (_attackUpdateAccumulator >= _attackUpdateInterval)
+        {
+            updateAttack(_attackUpdateAccumulator);
+            _attackUpdateAccumulator = 0.0f;
+        }
+    }
 }
 
 #pragma region AI
@@ -174,6 +276,35 @@ void MonsterBase::setAIConfig(float AR, float LR, bool PTL) {
 
     // --- 巡逻设置 ---
     _patrolEnabled = PTL;  // 是否巡逻
+}
+
+void MonsterBase::setUpdateTickIntervals(float aiIntervalSeconds, float movementIntervalSeconds, float attackIntervalSeconds)
+{
+    _aiUpdateInterval = std::max(0.0f, aiIntervalSeconds);
+    _moveUpdateInterval = std::max(0.0f, movementIntervalSeconds);
+    _attackUpdateInterval = std::max(0.0f, attackIntervalSeconds);
+}
+
+void MonsterBase::setInactiveAiUpdateInterval(float seconds)
+{
+    _inactiveAiUpdateInterval = std::max(0.0f, seconds);
+}
+
+void MonsterBase::setActiveUpdateDistanceX(float distanceX)
+{
+    _activeUpdateDistanceX = distanceX;
+}
+
+bool MonsterBase::isWithinActiveUpdateRange() const
+{
+    auto distanceTarget = _primaryTarget ? _primaryTarget : _target;
+    if (!distanceTarget)
+        return true;
+
+    if (_activeUpdateDistanceX <= 0.0f)
+        return true;
+
+    return horizontalDistanceTo(distanceTarget) <= _activeUpdateDistanceX;
 }
 void MonsterBase::updateAI(float dt)
 {
@@ -194,6 +325,16 @@ void MonsterBase::updateAI(float dt)
         sm->changeState(CharacterState::IDLE);
         _hasMoveGoal = false;
         return;
+    }
+
+    // 重新索敌：当 _target 因超出仇恨范围被清空时，玩家重新进入仇恨范围应当恢复
+    // 注意：若正在 leash 回家（_returningHome），不允许立即重新索敌，避免永远回不了家。
+    if (!_target && !_returningHome && _primaryTarget)
+    {
+        if (_aggroRadius <= 0.0f || distanceTo(_primaryTarget) <= _aggroRadius)
+        {
+            _target = _primaryTarget;
+        }
     }
 
     // 没有目标：如果有移动目标（回家/巡逻），继续走；否则待机
@@ -231,6 +372,7 @@ void MonsterBase::updateAI(float dt)
     {
         _target = nullptr;
         _hasMoveGoal = false;
+        _returningHome = false;
         const bool canPatrol = _patrolEnabled && std::fabs(_patrolRight.x - _patrolLeft.x) > 1.0f;
         sm->changeState(canPatrol ? CharacterState::STATE_PATROL : CharacterState::IDLE);
         return;
@@ -245,6 +387,7 @@ void MonsterBase::updateAI(float dt)
             _target = nullptr;
             _moveGoalPos = _homePos;
             _hasMoveGoal = true;
+            _returningHome = true;
             sm->changeState(CharacterState::WALKING);
             return;
         }
@@ -262,6 +405,7 @@ void MonsterBase::updateAI(float dt)
     // 追击
     _moveGoalPos = getPositionInParentSpace(_target);
     _hasMoveGoal = true;
+    _returningHome = false;
     sm->changeState(CharacterState::WALKING);
 }
 
@@ -315,6 +459,7 @@ void MonsterBase::updateMovement(float dt)
         if (!_target && _hasMoveGoal)
         {
             _hasMoveGoal = false;
+            _returningHome = false;
         }
         return;
     }
@@ -348,6 +493,7 @@ void MonsterBase::updateMovement(float dt)
 
 void MonsterBase::updateAttack(float dt)
 {
+    CC_UNUSED_PARAM(dt);
     if (isDead() || _isStunned)
         return;
 
@@ -358,8 +504,6 @@ void MonsterBase::updateAttack(float dt)
     // 正在攻击：保持朝向不变
     if (sm->getCurrentState() == CharacterState::ATTACKING)
         return;
-
-    _attackTimer += dt;
 
     if (!_target)
         return;
@@ -378,7 +522,18 @@ void MonsterBase::updateAttack(float dt)
         _physicsBody->setVelocity(v);
     }
 
-    _attackTimer = 0.0f;
+    if (_attackInterval > 0.0f)
+    {
+        _attackTimer = std::fmod(_attackTimer, _attackInterval);
+        if (_attackTimer < 0.0f)
+        {
+            _attackTimer += _attackInterval;
+        }
+    }
+    else
+    {
+        _attackTimer = 0.0f;
+    }
     sm->changeState(CharacterState::ATTACKING);
     attack();
 }
@@ -524,15 +679,30 @@ Vec2 MonsterBase::getWorldPosition(const Node *node) const
 
 Vec2 MonsterBase::getPositionInParentSpace(const Node *node) const
 {
+    if (!node)
+        return Vec2::ZERO;
+
+    auto myParent = getParent();
+    auto nodeParent = node->getParent();
+    if (myParent && nodeParent == myParent)
+    {
+        return node->getPosition();
+    }
+
     Vec2 worldPos = getWorldPosition(node);
-    auto parent = getParent();
-    return parent ? parent->convertToNodeSpace(worldPos) : worldPos;
+    return myParent ? myParent->convertToNodeSpace(worldPos) : worldPos;
 }
 
 float MonsterBase::horizontalDistanceTo(const Node *target) const
 {
     if (!target)
         return 999999.0f;
+
+    auto myParent = getParent();
+    if (myParent && target->getParent() == myParent)
+    {
+        return std::fabs(target->getPositionX() - getPositionX());
+    }
 
     Vec2 myWorldPos = getWorldPosition(this);
     Vec2 targetWorldPos = getWorldPosition(target);
@@ -583,7 +753,22 @@ void MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
 
 void MonsterBase::faceTarget(Node* target)
 {
-    if (!target) return;
+    if (!target)
+        return;
+
+    auto myParent = getParent();
+    if (myParent && target->getParent() == myParent)
+    {
+        const float kFaceDeadzoneX = 8.0f;
+        float dx = target->getPositionX() - getPositionX();
+        if (std::fabs(dx) <= kFaceDeadzoneX)
+            return;
+
+        float sign = (dx < 0.0f) ? -1.0f : 1.0f;
+        setScaleX(sign * std::fabs(_baseScaleX));
+        return;
+    }
+
     faceToX(getWorldPosition(target).x);
 }
 
@@ -593,6 +778,12 @@ float MonsterBase::distanceTo(cocos2d::Node* target) const
 {
     if (!target)
         return 999999.0f;
+
+    auto myParent = getParent();
+    if (myParent && target->getParent() == myParent)
+    {
+        return getPosition().distance(target->getPosition());
+    }
 
     Vec2 myWorldPos = getWorldPosition(this);
     Vec2 targetWorldPos = getWorldPosition(target);
@@ -606,6 +797,8 @@ bool MonsterBase::inAttackRange(Node* target)
 void MonsterBase::setTarget(Node* target)
 {
     _target = target;
+    _primaryTarget = target;
+    _returningHome = false;
 }
 
 void MonsterBase::setHome(const cocos2d::Vec2& pos)

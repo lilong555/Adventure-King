@@ -24,7 +24,7 @@ public:
               const std::function<bool()> &isPlayerAtGate,
               const std::function<void(const SaveSlotData &)> &onLoadSuccess);
 
-    void update();
+    void update(float dt);
 
     void togglePauseMenu();
     bool isPaused() const { return _paused; }
@@ -38,10 +38,10 @@ private:
 
     bool _paused = false;
     bool _wasAtGate = false;
+    float _updateAccumulator = 0.0f;
 
     std::function<void()> _onReturnToMap;
     std::function<void(bool)> _onPauseChanged;
     std::function<bool()> _isPlayerAtGate;
     std::function<void(const SaveSlotData &)> _onLoadSuccess;
 };
-

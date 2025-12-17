@@ -33,6 +33,11 @@ public:
     void enablePatrol(const cocos2d::Vec2& left, const cocos2d::Vec2& right);
     bool hasAggro() const;
 	void setAIConfig(float AR, float LR, bool PTL);//设置索敌、追击、巡逻
+
+    // 性能：降低 AI/移动/攻击逻辑的更新频率（物理仍由引擎每帧推进）
+    void setUpdateTickIntervals(float aiIntervalSeconds, float movementIntervalSeconds, float attackIntervalSeconds);
+    void setInactiveAiUpdateInterval(float seconds);
+    void setActiveUpdateDistanceX(float distanceX);
 protected:
 
     void setupCharacterStats(const Attributes& stats);
@@ -66,11 +71,15 @@ protected:
     float distanceTo(Node* target)const;
     bool inAttackRange(Node* target);
 
+    bool isWithinActiveUpdateRange() const;
+
     Node* _target = nullptr;     // 目标（通常是主角）
+    Node* _primaryTarget = nullptr; // 主目标引用（用于离屏激活/重新索敌）
     float _attackTimer = 0.0f;   // 攻击间隔计时
 
     cocos2d::Vec2 _homePos;
     bool _hasHome = false;
+    bool _returningHome = false;
 
     cocos2d::Vec2 _patrolLeft;
     cocos2d::Vec2 _patrolRight;
@@ -86,6 +95,16 @@ protected:
     cocos2d::Vec2 _moveGoalPos;    // 当前移动目标（父节点坐标系）
     bool _hasMoveGoal = false;     // 是否存在移动目标
     bool _isStunned = false;       // 是否硬直中
+
+    // 性能节流参数（默认值适配开发阶段：保证体验的同时降低 CPU）
+    float _aiUpdateAccumulator = 0.0f;
+    float _moveUpdateAccumulator = 0.0f;
+    float _attackUpdateAccumulator = 0.0f;
+    float _aiUpdateInterval = 0.1f;
+    float _inactiveAiUpdateInterval = 0.3f;
+    float _moveUpdateInterval = 0.033f;
+    float _attackUpdateInterval = 0.05f;
+    float _activeUpdateDistanceX = 0.0f; // 0 表示按屏幕宽度自动计算
 
     //碰撞盒
     cocos2d::PhysicsBody* _physicsBody = nullptr;

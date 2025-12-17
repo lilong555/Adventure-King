@@ -200,7 +200,9 @@ void ExplosiveProjectile::applyAoEDamage()
             float strength = attr->getAttributeValue(AttributeType::STRENGTH);
             damageAmount += (strength * 5.0f);
 
-            float critChancePercent = std::clamp(critRate * 100.0f, 0.0f, 100.0f);
+            // MSVC 当前工程可能未启用 C++17，避免使用 std::clamp
+            float critChancePercent = critRate * 100.0f;
+            critChancePercent = std::max(0.0f, std::min(critChancePercent, 100.0f));
             if ((rand() % 100) < static_cast<int>(critChancePercent))
             {
                 isCrit = true;

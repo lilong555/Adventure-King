@@ -119,7 +119,8 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
             _gameLayer,
             [this](const std::string &type)
             { return this->createMonsterByType(type); },
-            getEnemySpawnViewDistance());
+            getEnemySpawnViewDistance(),
+            0.0f);
     }
 
     CCLOG("Scene initialized with physics config: %s", getLevelName().c_str());
@@ -549,7 +550,7 @@ void GameScene::update(float dt)
     {
         if (_uiController)
         {
-            _uiController->update();
+            _uiController->update(dt);
         }
         return;
     }
@@ -561,7 +562,7 @@ void GameScene::update(float dt)
 
     if (_uiController)
     {
-        _uiController->update();
+        _uiController->update(dt);
     }
 
     if (_levelMap && _player)
@@ -571,7 +572,8 @@ void GameScene::update(float dt)
             _gameLayer,
             [this](const std::string &type)
             { return this->createMonsterByType(type); },
-            getEnemySpawnViewDistance());
+            getEnemySpawnViewDistance(),
+            dt);
     }
 
 }
