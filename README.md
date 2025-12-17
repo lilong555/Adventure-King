@@ -13,16 +13,13 @@
 ## 快速开始
 
 ### Windows 构建与运行
-- VSCode：`Ctrl+Shift+B` → `Build Debug (MSBuild)`；运行：`Adventure-King/proj.win32/Debug.win32/Adventure-King.exe`
 - Visual Studio：打开 `Adventure-King/proj.win32/Adventure-King.sln`，选择 `Debug/Win32` 构建并运行
 
-### VSCode IntelliSense（WSL2）
-`.vscode/c_cpp_properties.json` 同时包含 `Win32` 与 `Linux` 配置：在 WSL2 打开工程时请选择 `Linux`，避免系统头文件解析失败。
 
 ## 当前可玩内容（main）
 - 关卡：`Origin_Mushroom`（TMX 地图 + 物理碰撞 + 传送门）
 - 角色：Klee（KELL），含移动/跳跃/二段跳/受击飘字
-- 战斗闭环：
+- 战斗：
   - 普攻（`J`/`4`）：扔炸弹（TNT），落地/命中爆炸并对范围内敌人造成伤害
   - 技能1（`E`/`K`）：发射导弹（素材在 `Klee/rpg`），命中爆炸（`spr_vfx_explosion_flash_x`）
 - 刷怪：从 TMX 对象组 `enemy_g` 读取生成点，首次进入视野触发，约每 `0.4s` 生成一个
@@ -48,9 +45,6 @@
     - `class`（或 `type`）= 怪物类型（如 `goblin`）  
     - `name` = 数量（如 `3`）
 
-## 资源约定
-- `Adventure-King/Resources/Sprites/Characters/Player/Klee/defalt/`：移动/普攻动画、`TNT.png`、炸弹爆炸素材
-- `Adventure-King/Resources/Sprites/Characters/Player/Klee/rpg/`：技能1施放/导弹尾迹/爆炸闪光素材
 
 ## 游戏核心功能
 
