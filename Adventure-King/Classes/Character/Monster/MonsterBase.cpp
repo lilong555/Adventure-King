@@ -66,10 +66,18 @@ bool MonsterBase::init(const std::string& spriteFrameName)
         }
     }
 
-    // 首帧就执行一次节流逻辑（避免新生成怪物需要等待 interval 才开始追击/攻击）
-    _aiUpdateAccumulator = _aiUpdateInterval;
-    _moveUpdateAccumulator = _moveUpdateInterval;
-    _attackUpdateAccumulator = _attackUpdateInterval;
+    // 生成错峰：避免同帧生成多个怪物时，节流 tick 同帧集中触发造成尖刺
+    // 取 [0.5*interval, interval]：保证首次响应不会等待过久，同时分散负载
+    auto staggerAccumulator = [](float intervalSeconds) -> float {
+        if (intervalSeconds <= 0.0f)
+            return 0.0f;
+
+        return cocos2d::random(intervalSeconds * 0.5f, intervalSeconds);
+    };
+
+    _aiUpdateAccumulator = staggerAccumulator(_aiUpdateInterval);
+    _moveUpdateAccumulator = staggerAccumulator(_moveUpdateInterval);
+    _attackUpdateAccumulator = staggerAccumulator(_attackUpdateInterval);
     return true;
 }
 // MonsterBase.cpp
@@ -155,6 +163,7 @@ void MonsterBase::update(float dt)
         _aiUpdateAccumulator += dt;
         if (_aiUpdateAccumulator >= aiInterval)
         {
+            // 传入累计 dt：即使当前 AI 不依赖 dt，也方便后续扩展时间相关逻辑
             updateAI(_aiUpdateAccumulator);
             _aiUpdateAccumulator = 0.0f;
         }
@@ -171,7 +180,19 @@ void MonsterBase::update(float dt)
             v.x = 0;
             _physicsBody->setVelocity(v);
         }
+
+        // 避免离开激活范围时卡在攻击等中间状态（离屏不需要继续保持攻击状态）
+        if (state == CharacterState::ATTACKING)
+        {
+            sm->changeState(CharacterState::IDLE);
+        }
         return;
+    }
+
+    // 攻击冷却计时：按帧累加，攻击动作期间不计时（保持“冷却从攻击结束开始”）
+    if (state != CharacterState::ATTACKING)
+    {
+        _attackTimer += dt;
     }
 
     if (state == CharacterState::WALKING || state == CharacterState::STATE_PATROL)
@@ -280,8 +301,9 @@ void MonsterBase::updateAI(float dt)
         return;
     }
 
-    // 重新索敌：当 _target 因超出仇恨/牵引被清空时，玩家重新进入仇恨范围应当恢复
-    if (!_target && _primaryTarget)
+    // 重新索敌：当 _target 因超出仇恨范围被清空时，玩家重新进入仇恨范围应当恢复
+    // 注意：若正在 leash 回家（_returningHome），不允许立即重新索敌，避免永远回不了家。
+    if (!_target && !_returningHome && _primaryTarget)
     {
         if (_aggroRadius <= 0.0f || distanceTo(_primaryTarget) <= _aggroRadius)
         {
@@ -324,6 +346,7 @@ void MonsterBase::updateAI(float dt)
     {
         _target = nullptr;
         _hasMoveGoal = false;
+        _returningHome = false;
         const bool canPatrol = _patrolEnabled && std::fabs(_patrolRight.x - _patrolLeft.x) > 1.0f;
         sm->changeState(canPatrol ? CharacterState::STATE_PATROL : CharacterState::IDLE);
         return;
@@ -338,6 +361,7 @@ void MonsterBase::updateAI(float dt)
             _target = nullptr;
             _moveGoalPos = _homePos;
             _hasMoveGoal = true;
+            _returningHome = true;
             sm->changeState(CharacterState::WALKING);
             return;
         }
@@ -355,6 +379,7 @@ void MonsterBase::updateAI(float dt)
     // 追击
     _moveGoalPos = getPositionInParentSpace(_target);
     _hasMoveGoal = true;
+    _returningHome = false;
     sm->changeState(CharacterState::WALKING);
 }
 
@@ -408,6 +433,7 @@ void MonsterBase::updateMovement(float dt)
         if (!_target && _hasMoveGoal)
         {
             _hasMoveGoal = false;
+            _returningHome = false;
         }
         return;
     }
@@ -441,6 +467,7 @@ void MonsterBase::updateMovement(float dt)
 
 void MonsterBase::updateAttack(float dt)
 {
+    CC_UNUSED_PARAM(dt);
     if (isDead() || _isStunned)
         return;
 
@@ -451,8 +478,6 @@ void MonsterBase::updateAttack(float dt)
     // 正在攻击：保持朝向不变
     if (sm->getCurrentState() == CharacterState::ATTACKING)
         return;
-
-    _attackTimer += dt;
 
     if (!_target)
         return;
@@ -471,7 +496,17 @@ void MonsterBase::updateAttack(float dt)
         _physicsBody->setVelocity(v);
     }
 
-    _attackTimer = 0.0f;
+    if (_attackInterval > 0.0f)
+    {
+        while (_attackTimer >= _attackInterval)
+        {
+            _attackTimer -= _attackInterval;
+        }
+    }
+    else
+    {
+        _attackTimer = 0.0f;
+    }
     sm->changeState(CharacterState::ATTACKING);
     attack();
 }
@@ -736,6 +771,7 @@ void MonsterBase::setTarget(Node* target)
 {
     _target = target;
     _primaryTarget = target;
+    _returningHome = false;
 }
 
 void MonsterBase::setHome(const cocos2d::Vec2& pos)

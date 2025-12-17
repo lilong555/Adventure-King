@@ -79,6 +79,7 @@ protected:
 
     cocos2d::Vec2 _homePos;
     bool _hasHome = false;
+    bool _returningHome = false;
 
     cocos2d::Vec2 _patrolLeft;
     cocos2d::Vec2 _patrolRight;
