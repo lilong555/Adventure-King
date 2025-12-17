@@ -55,6 +55,8 @@ private:
 
     LoadSuccessCallback _loadSuccessCallback = nullptr;
 
+    const float TARGET_HEIGHT_RATIO = 0.7f; // 背景高度占屏幕比例
+
     // 初始化方法
     bool initBackground();
     bool initTitle();

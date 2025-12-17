@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include "Objects/Projectiles/Bomb.h"
 
 // 前向声明
 class PlayerCharacter;
@@ -346,6 +347,7 @@ protected:
      */
     virtual void onAttackAnimationFinished();
 
+            void onSkillAnimationFinished();
     /**
      * @brief 普通攻击：扔炸弹（入口）
      */
@@ -358,14 +360,16 @@ protected:
     /**
      * @brief 技能1：释放火球（入口）
      */
-    virtual void castFireball();
+    //virtual void castFireball();
 
     /**
      * @brief 技能动画结束回调（火球）
      */
-    virtual void onFireballAnimationFinished();
-
-    // 投掷物创建/爆炸逻辑已下沉到 PlayerCharacter
+    //virtual void onFireballAnimationFinished();
+    /**
+     * @brief 实际创建并投掷炸弹
+     */
+    virtual void doThrowBomb();
 
     // ===================================================================
     // 场景导航

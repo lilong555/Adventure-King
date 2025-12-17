@@ -127,7 +127,7 @@ bool SettingMenuLayer::initCloseButton()
 
     return true;
 }
-
+//背景音乐开关
 bool SettingMenuLayer::initMusicToggle()
 {
     // 初始状态：音乐是否开启
@@ -189,8 +189,7 @@ void SettingMenuLayer::layoutUI()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    const float TARGET_WIDTH_RATIO = 0.6f;
-    float targetHeight = visibleSize.height * TARGET_WIDTH_RATIO;
+    float targetHeight = visibleSize.height * TARGET_HEIGHT_RATIO;
 
     float scaleY = targetHeight / _background->getContentSize().height;
     _background->setScale(scaleY);

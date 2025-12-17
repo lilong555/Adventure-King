@@ -79,7 +79,6 @@ bool SaveMenuLayer::initBackground()
         return false;
     }
     this->addChild(_background);
-
     return true;
 }
 
@@ -155,8 +154,8 @@ void SaveMenuLayer::layoutUI()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    const float TARGET_WIDTH_RATIO = 0.7f;
-    float targetHeight = visibleSize.height * TARGET_WIDTH_RATIO;
+    
+    float targetHeight = visibleSize.height * TARGET_HEIGHT_RATIO;
 
     float scaleY = targetHeight / _background->getContentSize().height;
     _background->setScale(scaleY);
