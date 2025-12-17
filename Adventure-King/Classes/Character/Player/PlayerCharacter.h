@@ -8,7 +8,6 @@
 #include <vector>
 
 class PlayerSkillSet;
-struct PlayerProjectileConfig;
 
 class PlayerCharacter : public CharacterBase
 {
@@ -60,8 +59,14 @@ public:
                          const std::function<void()> &performEffect,
                          const std::function<void()> &onFinished);
 
-    // 通用投掷物生成（由 SkillSet 通过 config 描述具体投掷物/爆炸效果）
-    void spawnProjectile(const PlayerProjectileConfig &config);
+    // 计算投掷物生成位置（基于玩家包围盒，避免贴图尺寸导致偏移）
+    cocos2d::Vec2 getProjectileSpawnPosition(float spawnOffsetXRatio,
+                                             float spawnOffsetX,
+                                             float spawnOffsetYRatio,
+                                             float spawnOffsetY) const;
+
+    // 将技能/投掷物节点添加到战斗层（通常是 GameScene 的 _gameLayer）
+    void addToCombatLayer(cocos2d::Node *node, int zOrder = 4);
 
     // ================== 动作/状态驱动 ==================
     // 由场景输入层调用，用于切换跑动/待机动画状态
@@ -122,17 +127,6 @@ private:
     void onWeaponChanged(const std::shared_ptr<Weapon> &weapon); // 武器变更时调用
     void createSkillSet();
 
-    struct ProjectileInstance
-    {
-        bool isExploded = false;
-        cocos2d::Sprite *sprite = nullptr;
-        std::shared_ptr<const PlayerProjectileConfig> config;
-    };
-
-    ProjectileInstance *findProjectile(cocos2d::Node *node);
-    void explodeProjectile(ProjectileInstance &projectile, cocos2d::Node *gameLayer);
-    void cleanupProjectiles();
-
     void initAssetPaths(const std::string &spriteFrameName);
     void ensureMoveAnimations();
     void ensureMoveAnimationCached(const std::string &animationKey,
@@ -151,9 +145,6 @@ private:
 
     // 装备变更回调
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;
-
-    // 玩家投掷物列表
-    std::vector<ProjectileInstance> _projectiles;
 
     cocos2d::Node *_combatLayer = nullptr;
     cocos2d::EventListenerPhysicsContact *_projectileContactListener = nullptr;

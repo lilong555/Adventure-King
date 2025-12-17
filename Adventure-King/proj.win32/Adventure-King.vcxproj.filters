@@ -127,13 +127,16 @@
     <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
     <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
     <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
-    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
-      <Filter>src\Character\Player\Players</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClCompile>
-  </ItemGroup>
+	    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
+	      <Filter>src\Character\Player\Players</Filter>
+	    </ClCompile>
+	    <ClCompile Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.cpp">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClCompile>
+	    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClCompile>
+	  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
       <Filter>win32</Filter>
@@ -198,18 +201,15 @@
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h">
       <Filter>src\Managers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
-      <Filter>src\Character\Player</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\Player\Projectiles\PlayerProjectileConfig.h">
-      <Filter>src\Character\Player</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h">
-      <Filter>src\Character\Player</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h">
-      <Filter>src\Character\Player</Filter>
-    </ClInclude>
+	    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
+	      <Filter>src\Character\Player</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h">
+	      <Filter>src\Character\Player</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h">
+	      <Filter>src\Character\Player</Filter>
+	    </ClInclude>
     <ClInclude Include="..\Classes\GameUI.h">
       <Filter>src</Filter>
     </ClInclude>
@@ -220,14 +220,17 @@
     <ClInclude Include="..\Classes\Save\SaveData.h" />
     <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
     <ClInclude Include="..\Classes\Save\SaveManager.h" />
-    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
-      <Filter>src\Character\Player\Players</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
-      <Filter>src\Physics</Filter>
+	    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
+	      <Filter>src\Character\Player\Players</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
+	      <Filter>src\Objects\Projectiles</Filter>
+	    </ClInclude>
+	    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
+	      <Filter>src\Physics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

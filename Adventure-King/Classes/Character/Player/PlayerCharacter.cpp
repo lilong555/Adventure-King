@@ -1,9 +1,9 @@
 #include "Character/Player/PlayerCharacter.h"
-#include "Character/Player/Projectiles/PlayerProjectileConfig.h"
 #include "Character/Player/SkillSets/KleeSkillSet.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
+#include "Objects/Projectiles/Bomb.h"
 #include "Physics/GamePhysicsCategory.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
@@ -133,7 +133,6 @@ void PlayerCharacter::onExit()
 void PlayerCharacter::update(float dt)
 {
     CharacterBase::update(dt);
-    cleanupProjectiles();
 }
 
 Node *PlayerCharacter::getCombatLayer() const
@@ -147,11 +146,6 @@ Node *PlayerCharacter::getCombatLayer() const
 
 bool PlayerCharacter::onProjectileContactBegin(PhysicsContact &contact)
 {
-    if (_projectiles.empty())
-    {
-        return true;
-    }
-
     auto bodyA = contact.getShapeA()->getBody();
     auto bodyB = contact.getShapeB()->getBody();
     if (!bodyA || !bodyB)
@@ -166,64 +160,31 @@ bool PlayerCharacter::onProjectileContactBegin(PhysicsContact &contact)
         return true;
     }
 
-    int categoryA = bodyA->getCategoryBitmask();
-    int categoryB = bodyB->getCategoryBitmask();
-    bool hasPlayerAttack =
-        ((categoryA & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0) ||
-        ((categoryB & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0);
-    if (!hasPlayerAttack)
+    auto bombA = dynamic_cast<Bomb *>(nodeA);
+    auto bombB = dynamic_cast<Bomb *>(nodeB);
+    if (bombA || bombB)
     {
+        int categoryA = bodyA->getCategoryBitmask();
+        int categoryB = bodyB->getCategoryBitmask();
+        int explodeMask = ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER);
+
+        if (bombA && !bombA->isExploded() && bombA->getExplodeOnContact() && ((categoryB & explodeMask) != 0))
+        {
+            bombA->scheduleOnce([bombA](float)
+                                { bombA->explode(); },
+                                0.0f,
+                                "bomb_explode_trigger");
+        }
+
+        if (bombB && !bombB->isExploded() && bombB->getExplodeOnContact() && ((categoryA & explodeMask) != 0))
+        {
+            bombB->scheduleOnce([bombB](float)
+                                { bombB->explode(); },
+                                0.0f,
+                                "bomb_explode_trigger");
+        }
+
         return true;
-    }
-
-    ProjectileInstance *projectile = findProjectile(nodeA);
-    Node *projectileNode = nodeA;
-    Node *otherNode = nodeB;
-    int otherMask = categoryB;
-
-    if (!projectile)
-    {
-        projectile = findProjectile(nodeB);
-        projectileNode = nodeB;
-        otherNode = nodeA;
-        otherMask = categoryA;
-    }
-
-    if (projectile && !projectile->isExploded)
-    {
-        if (!projectile->config || !projectile->config->explodeOnContact)
-        {
-            return true;
-        }
-
-        bool hitPlayer = (otherMask & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-        bool hitAnotherProjectile = (findProjectile(otherNode) != nullptr);
-
-        if (!hitPlayer && !hitAnotherProjectile)
-        {
-            projectile->isExploded = true;
-
-            // Avoid modifying physics bodies inside the contact callback.
-            // Defer the actual explosion to the next tick.
-            auto layer = getCombatLayer();
-            auto actionNode = layer ? layer : this;
-            actionNode->runAction(Sequence::create(
-                DelayTime::create(0.0f),
-                CallFunc::create([this, projectileNode]()
-                                 {
-                                     auto layer = getCombatLayer();
-                                     if (!layer)
-                                     {
-                                         return;
-                                     }
-
-                                     auto pending = findProjectile(projectileNode);
-                                     if (pending && pending->isExploded)
-                                     {
-                                         explodeProjectile(*pending, layer);
-                                     } }),
-                nullptr));
-        }
     }
 
     return true;
@@ -387,6 +348,36 @@ bool PlayerCharacter::runActionLocked(const std::function<bool()> &preCheck,
                           onFinished();
                       } });
     return true;
+}
+
+Vec2 PlayerCharacter::getProjectileSpawnPosition(float spawnOffsetXRatio,
+                                                 float spawnOffsetX,
+                                                 float spawnOffsetYRatio,
+                                                 float spawnOffsetY) const
+{
+    bool facingLeft = isFlippedX();
+    float dirX = facingLeft ? -1.0f : 1.0f;
+
+    Rect playerBox = getBoundingBox();
+    float spawnX = playerBox.getMidX() + dirX * (playerBox.size.width * spawnOffsetXRatio + spawnOffsetX);
+    float spawnY = playerBox.getMidY() + playerBox.size.height * spawnOffsetYRatio + spawnOffsetY;
+    return Vec2(spawnX, spawnY);
+}
+
+void PlayerCharacter::addToCombatLayer(Node *node, int zOrder)
+{
+    if (!node)
+    {
+        return;
+    }
+
+    auto layer = getCombatLayer();
+    if (!layer)
+    {
+        return;
+    }
+
+    layer->addChild(node, zOrder);
 }
 // 根据角色职业初始化基础属性
 void PlayerCharacter::initAttributesByRole(CharacterRole role)
@@ -751,294 +742,4 @@ void PlayerCharacter::onUseActiveSkill(const ActiveSkill &skill)
 
     // TODO: 根据 skill.id 进行不同的特效/逻辑
     // 例如 id == 1001 -> 释放火球；id == 1002 -> 冲刺斩 等
-}
-
-void PlayerCharacter::cleanupProjectiles()
-{
-    if (_projectiles.empty())
-        return;
-
-    _projectiles.erase(
-        std::remove_if(_projectiles.begin(), _projectiles.end(),
-                       [](const ProjectileInstance &p)
-                       { return p.sprite == nullptr; }),
-        _projectiles.end());
-}
-
-PlayerCharacter::ProjectileInstance *PlayerCharacter::findProjectile(Node *node)
-{
-    if (!node)
-        return nullptr;
-
-    for (auto &projectile : _projectiles)
-    {
-        if (projectile.sprite == node)
-        {
-            return &projectile;
-        }
-    }
-
-    return nullptr;
-}
-
-void PlayerCharacter::spawnProjectile(const PlayerProjectileConfig &config)
-{
-    if (isDead())
-        return;
-
-    auto gameLayer = getCombatLayer();
-    if (!gameLayer)
-        return;
-
-    if (config.spritePath.empty())
-    {
-        return;
-    }
-
-    auto spriteFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(config.spritePath);
-    if (!spriteFrame)
-    {
-        CCLOG("PlayerCharacter::spawnProjectile - Failed to get or create sprite frame: %s", config.spritePath.c_str());
-        return;
-    }
-
-    auto projectileSprite = Sprite::createWithSpriteFrame(spriteFrame);
-    if (!projectileSprite)
-    {
-        CCLOG("PlayerCharacter::spawnProjectile - Failed to create sprite");
-        return;
-    }
-
-    bool facingLeft = isFlippedX();
-    float dirX = facingLeft ? -1.0f : 1.0f;
-
-    // 生成位置：基于玩家当前包围盒，避免受投掷物贴图尺寸影响导致偏远/偏高
-    Rect playerBox = getBoundingBox();
-    float spawnX = playerBox.getMidX() + dirX * (playerBox.size.width * config.spawnOffsetXRatio + config.spawnOffsetX);
-    float spawnY = playerBox.getMidY() + playerBox.size.height * config.spawnOffsetYRatio + config.spawnOffsetY;
-    projectileSprite->setPosition(Vec2(spawnX, spawnY));
-    projectileSprite->setScale(config.spriteScale);
-    if (config.flipXWithFacing)
-    {
-        projectileSprite->setFlippedX(facingLeft);
-    }
-
-    if (!config.loopAnimationPaths.empty())
-    {
-        if (auto anim = createAnimationFromPaths(config.loopAnimationPaths, config.loopAnimationDelay))
-        {
-            projectileSprite->runAction(RepeatForever::create(Animate::create(anim)));
-        }
-    }
-
-    auto physicsBody = PhysicsBody::createCircle(config.physicsRadius, config.material);
-    physicsBody->setDynamic(true);
-    physicsBody->setMass(config.mass);
-    physicsBody->setRotationEnable(config.rotationEnabled);
-    physicsBody->setGravityEnable(config.gravityEnabled);
-    physicsBody->setLinearDamping(config.linearDamping);
-
-    physicsBody->setCategoryBitmask(config.categoryBitmask);
-    physicsBody->setCollisionBitmask(config.collisionBitmask);
-    physicsBody->setContactTestBitmask(config.contactTestBitmask);
-    physicsBody->setTag(0);
-
-    projectileSprite->addComponent(physicsBody);
-    gameLayer->addChild(projectileSprite, 4);
-
-    Vec2 moveVec(dirX * config.moveVector.x, config.moveVector.y);
-    if (config.moveType == ProjectileMoveType::VELOCITY)
-    {
-        physicsBody->setVelocity(moveVec);
-    }
-    else
-    {
-        Vec2 impulse = config.scaleMoveByMass ? (moveVec * physicsBody->getMass()) : moveVec;
-        physicsBody->applyImpulse(impulse);
-    }
-
-    ProjectileInstance instance;
-    instance.isExploded = false;
-    instance.sprite = projectileSprite;
-    instance.config = std::make_shared<PlayerProjectileConfig>(config);
-    _projectiles.push_back(instance);
-}
-
-void PlayerCharacter::explodeProjectile(ProjectileInstance &projectile, Node *gameLayer)
-{
-    if (!projectile.sprite)
-        return;
-    if (!projectile.config)
-        return;
-
-    Vec2 explodePos = projectile.sprite->getPosition();
-    Vec2 explosionWorld = explodePos;
-    if (projectile.sprite->getParent())
-    {
-        explosionWorld = projectile.sprite->getParent()->convertToWorldSpace(explodePos);
-    }
-
-    projectile.sprite->removeFromParent();
-
-    const auto &cfg = *projectile.config;
-    float explosionDamage = cfg.damage;
-    float explosionRadius = cfg.explosionRadius;
-
-    if (gameLayer)
-    {
-        DamageInfo dmg;
-        dmg.amount = explosionDamage;
-        dmg.attacker = this;
-
-        std::vector<CharacterBase *> hitTargets;
-
-        std::function<void(Node *)> collectTargets = [&](Node *node)
-        {
-            if (!node)
-                return;
-
-            if (auto character = dynamic_cast<CharacterBase *>(node))
-            {
-                if (character != this && !character->isDead())
-                {
-                    Rect hitRectWorld;
-                    bool hasHitRectWorld = false;
-
-                    if (auto body = character->getPhysicsBody())
-                    {
-                        auto shape = body->getFirstShape();
-                        if (shape)
-                        {
-                            Size shapeSizeWorld;
-                            switch (shape->getType())
-                            {
-                            case PhysicsShape::Type::BOX:
-                                shapeSizeWorld = static_cast<PhysicsShapeBox *>(shape)->getSize();
-                                break;
-                            case PhysicsShape::Type::CIRCLE:
-                            {
-                                float r = static_cast<PhysicsShapeCircle *>(shape)->getRadius();
-                                shapeSizeWorld = Size(r * 2.0f, r * 2.0f);
-                                break;
-                            }
-                            default:
-                                break;
-                            }
-
-                            if (shapeSizeWorld.width > 0.0f && shapeSizeWorld.height > 0.0f)
-                            {
-                                Vec2 centerLocal(character->getContentSize().width * 0.5f,
-                                                 character->getContentSize().height * 0.5f);
-                                Vec2 bodyCenterWorld = character->convertToWorldSpace(centerLocal);
-                                Vec2 rectCenterWorld = bodyCenterWorld + shape->getCenter();
-
-                                hitRectWorld = Rect(rectCenterWorld.x - shapeSizeWorld.width / 2.0f,
-                                                    rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
-                                                    shapeSizeWorld.width,
-                                                    shapeSizeWorld.height);
-                                hasHitRectWorld = true;
-                            }
-                        }
-                    }
-
-                    if (!hasHitRectWorld)
-                    {
-                        Rect bboxParent = character->getBoundingBox();
-                        Vec2 originWorld = bboxParent.origin;
-                        Vec2 topRightWorld = bboxParent.origin + bboxParent.size;
-                        if (character->getParent())
-                        {
-                            originWorld = character->getParent()->convertToWorldSpace(bboxParent.origin);
-                            topRightWorld = character->getParent()->convertToWorldSpace(bboxParent.origin + bboxParent.size);
-                        }
-
-                        hitRectWorld = Rect(
-                            std::min(originWorld.x, topRightWorld.x),
-                            std::min(originWorld.y, topRightWorld.y),
-                            std::fabs(topRightWorld.x - originWorld.x),
-                            std::fabs(topRightWorld.y - originWorld.y));
-                    }
-
-                    float dx = 0.0f;
-                    if (explosionWorld.x < hitRectWorld.getMinX())
-                        dx = hitRectWorld.getMinX() - explosionWorld.x;
-                    else if (explosionWorld.x > hitRectWorld.getMaxX())
-                        dx = explosionWorld.x - hitRectWorld.getMaxX();
-
-                    float dy = 0.0f;
-                    if (explosionWorld.y < hitRectWorld.getMinY())
-                        dy = hitRectWorld.getMinY() - explosionWorld.y;
-                    else if (explosionWorld.y > hitRectWorld.getMaxY())
-                        dy = explosionWorld.y - hitRectWorld.getMaxY();
-
-                    if ((dx * dx + dy * dy) <= (explosionRadius * explosionRadius))
-                    {
-                        hitTargets.push_back(character);
-                    }
-                }
-            }
-
-            // Copy child list to avoid iterator invalidation if takeDamage spawns nodes.
-            auto children = node->getChildren();
-            for (auto child : children)
-            {
-                collectTargets(child);
-            }
-        };
-
-        collectTargets(gameLayer);
-
-        for (auto target : hitTargets)
-        {
-            if (target && !target->isDead())
-            {
-                target->takeDamage(dmg);
-            }
-        }
-    }
-
-    if (gameLayer)
-    {
-        if (!cfg.explosionVfx.framePaths.empty())
-        {
-            if (auto flashAnim = createAnimationFromPaths(cfg.explosionVfx.framePaths, cfg.explosionVfx.frameDelay))
-            {
-                auto flashFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(cfg.explosionVfx.framePaths.front());
-                if (!flashFrame)
-                {
-                    CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create explosion flash frame: %s", cfg.explosionVfx.framePaths.front().c_str());
-                }
-                else if (auto boomSprite = Sprite::createWithSpriteFrame(flashFrame))
-                {
-                    boomSprite->setPosition(explodePos);
-                    boomSprite->setScale(cfg.explosionVfx.frameScale);
-                    gameLayer->addChild(boomSprite, 6);
-                    boomSprite->runAction(Sequence::create(Animate::create(flashAnim), RemoveSelf::create(), nullptr));
-                }
-            }
-        }
-        else if (!cfg.explosionVfx.spritePath.empty())
-        {
-            auto boomFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(cfg.explosionVfx.spritePath);
-            if (!boomFrame)
-            {
-                CCLOG("PlayerCharacter::explodeProjectile - Failed to get or create explosion frame: %s", cfg.explosionVfx.spritePath.c_str());
-            }
-            else if (auto boomSprite = Sprite::createWithSpriteFrame(boomFrame))
-            {
-                boomSprite->setPosition(explodePos);
-                boomSprite->setScale(cfg.explosionVfx.spriteScale);
-                gameLayer->addChild(boomSprite, 6);
-
-                auto scaleUp = ScaleTo::create(cfg.explosionVfx.spriteScaleUpDuration,
-                                               cfg.explosionVfx.spriteScale * cfg.explosionVfx.spriteScaleUpFactor);
-                auto fadeOut = FadeOut::create(cfg.explosionVfx.spriteFadeOutDuration);
-                auto spawn = Spawn::create(scaleUp, fadeOut, nullptr);
-                auto remove = RemoveSelf::create();
-                boomSprite->runAction(Sequence::create(spawn, remove, nullptr));
-            }
-        }
-    }
-
-    projectile.sprite = nullptr;
 }

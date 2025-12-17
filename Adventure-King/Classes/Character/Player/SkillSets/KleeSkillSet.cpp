@@ -1,8 +1,7 @@
 #include "Character/Player/SkillSets/KleeSkillSet.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
-#include "Character/Player/Projectiles/PlayerProjectileConfig.h"
-#include "Physics/GamePhysicsCategory.h"
+#include "Objects/Projectiles/Bomb.h"
 #include "cocos2d.h"
 #include <memory>
 #include <string>
@@ -65,46 +64,32 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
         castPaths.push_back(StringUtils::format("%s/spr_%s_attack_%d.png", defaultDir.c_str(), characterKey.c_str(), i));
     }
 
-    PlayerProjectileConfig bombConfig;
-    bombConfig.spritePath = defaultDir + "/TNT.png";
-    bombConfig.spriteScale = 0.5f;
-    bombConfig.flipXWithFacing = false;
-    bombConfig.physicsRadius = 15.0f;
-    bombConfig.material = PhysicsMaterial(0.5f, 0.3f, 0.2f);
-    bombConfig.mass = 0.5f;
-    bombConfig.rotationEnabled = true;
-    bombConfig.gravityEnabled = true;
-    bombConfig.linearDamping = 0.0f;
-    bombConfig.categoryBitmask = ToMask(GamePhysicsCategory::PLAYER_ATTACK);
-    bombConfig.collisionBitmask = ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER);
-    bombConfig.contactTestBitmask = ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER);
-
-    bombConfig.spawnOffsetXRatio = 0.35f;
-    bombConfig.spawnOffsetX = 20.0f;
-    bombConfig.spawnOffsetYRatio = 0.15f;
-    bombConfig.spawnOffsetY = 0.0f;
-
-    bombConfig.moveType = ProjectileMoveType::IMPULSE;
-    bombConfig.moveVector = Vec2(BOMB_THROW_SPEED_X, BOMB_THROW_SPEED_Y);
-    bombConfig.scaleMoveByMass = true;
-
-    bombConfig.damage = BOMB_DAMAGE;
-    bombConfig.explosionRadius = BOMB_EXPLOSION_RADIUS;
-    bombConfig.explodeOnContact = true;
-
-    bombConfig.explosionVfx.spritePath = defaultDir + "/BOOM_1.png";
-    bombConfig.explosionVfx.spriteScale = 0.8f;
-    bombConfig.explosionVfx.spriteScaleUpDuration = 0.2f;
-    bombConfig.explosionVfx.spriteScaleUpFactor = 1.2f;
-    bombConfig.explosionVfx.spriteFadeOutDuration = 0.3f;
-
     bool ok = player.runActionLocked(
         []()
         { return true; },
         [&player, castPaths](const std::function<void()> &done)
         { player.playOneShotAnimation(castPaths, 0.13f, 1001, done); },
-        [&player, bombConfig]()
-        { player.spawnProjectile(bombConfig); },
+        [&player, defaultDir]()
+        {
+            auto bomb = Bomb::create(defaultDir + "/TNT.png");
+            if (!bomb)
+            {
+                return;
+            }
+
+            bomb->setScale(0.5f);
+            bomb->setPosition(player.getProjectileSpawnPosition(0.35f, 20.0f, 0.15f, 0.0f));
+            bomb->setAttacker(&player);
+            bomb->setBaseDamage(BOMB_DAMAGE);
+            bomb->setExplosionRadius(BOMB_EXPLOSION_RADIUS);
+            bomb->setExplosionSpriteVfx(defaultDir + "/BOOM_1.png", 0.8f, 0.2f, 1.2f, 0.3f);
+            bomb->setExplodeOnContact(true);
+
+            player.addToCombatLayer(bomb, 4);
+
+            float dirX = player.isFlippedX() ? -1.0f : 1.0f;
+            bomb->throwAt(Vec2(dirX * BOMB_THROW_SPEED_X, BOMB_THROW_SPEED_Y));
+        },
         [onFinished]()
         {
             if (onFinished)
@@ -172,51 +157,6 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
         }
     }
 
-    PlayerProjectileConfig fireballConfig;
-    fireballConfig.spritePath = skillDir + "/spr_vfx_rocket_trail_long_1.png";
-    fireballConfig.spriteScale = 1.10f;
-    fireballConfig.flipXWithFacing = true;
-    fireballConfig.loopAnimationPaths = {
-        skillDir + "/spr_vfx_rocket_trail_long_1.png",
-        skillDir + "/spr_vfx_rocket_trail_long_2.png",
-        skillDir + "/spr_vfx_rocket_trail_long_3.png",
-        skillDir + "/spr_vfx_rocket_trail_long_4.png",
-    };
-    fireballConfig.loopAnimationDelay = 0.08f;
-
-    fireballConfig.physicsRadius = 16.0f;
-    fireballConfig.material = PhysicsMaterial(0.5f, 0.0f, 0.0f);
-    fireballConfig.mass = 0.4f;
-    fireballConfig.rotationEnabled = false;
-    fireballConfig.gravityEnabled = false;
-    fireballConfig.linearDamping = 0.0f;
-    fireballConfig.categoryBitmask = ToMask(GamePhysicsCategory::PLAYER_ATTACK);
-    fireballConfig.collisionBitmask = 0;
-    fireballConfig.contactTestBitmask = ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER);
-
-    fireballConfig.spawnOffsetXRatio = 0.40f;
-    fireballConfig.spawnOffsetX = 25.0f;
-    fireballConfig.spawnOffsetYRatio = 0.20f;
-    fireballConfig.spawnOffsetY = 0.0f;
-
-    fireballConfig.moveType = ProjectileMoveType::VELOCITY;
-    fireballConfig.moveVector = Vec2(FIREBALL_SPEED_X, 0.0f);
-    fireballConfig.scaleMoveByMass = false;
-
-    fireballConfig.damage = FIREBALL_DAMAGE;
-    fireballConfig.explosionRadius = FIREBALL_EXPLOSION_RADIUS;
-    fireballConfig.explodeOnContact = true;
-
-    fireballConfig.explosionVfx.framePaths = {
-        skillDir + "/spr_vfx_explosion_flash_0.png",
-        skillDir + "/spr_vfx_explosion_flash_1.png",
-        skillDir + "/spr_vfx_explosion_flash_2.png",
-        skillDir + "/spr_vfx_explosion_flash_3.png",
-        skillDir + "/spr_vfx_explosion_flash_4.png",
-    };
-    fireballConfig.explosionVfx.frameDelay = 0.05f;
-    fireballConfig.explosionVfx.frameScale = 0.9f;
-
     bool ok = player.runActionLocked(
         [&player, slotIndex, skill]()
         {
@@ -235,8 +175,52 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
         },
         [&player, castPaths](const std::function<void()> &done)
         { player.playOneShotAnimation(castPaths, 0.04f, 1002, done); },
-        [&player, fireballConfig]()
-        { player.spawnProjectile(fireballConfig); },
+        [&player, skillDir]()
+        {
+            Bomb::PhysicsConfig physics;
+            physics.mass = 0.4f;
+            physics.rotationEnabled = false;
+            physics.gravityEnabled = false;
+
+            auto rocket = Bomb::create(skillDir + "/spr_vfx_rocket_trail_long_1.png", physics);
+            if (!rocket)
+            {
+                return;
+            }
+
+            rocket->setScale(1.10f);
+            rocket->setPosition(player.getProjectileSpawnPosition(0.40f, 25.0f, 0.20f, 0.0f));
+            rocket->setFlippedX(player.isFlippedX());
+            rocket->setAttacker(&player);
+            rocket->setBaseDamage(FIREBALL_DAMAGE);
+            rocket->setExplosionRadius(FIREBALL_EXPLOSION_RADIUS);
+            rocket->setExplodeOnContact(true);
+
+            rocket->setLoopAnimation(
+                {
+                    skillDir + "/spr_vfx_rocket_trail_long_1.png",
+                    skillDir + "/spr_vfx_rocket_trail_long_2.png",
+                    skillDir + "/spr_vfx_rocket_trail_long_3.png",
+                    skillDir + "/spr_vfx_rocket_trail_long_4.png",
+                },
+                0.08f);
+
+            rocket->setExplosionFrameVfx(
+                {
+                    skillDir + "/spr_vfx_explosion_flash_0.png",
+                    skillDir + "/spr_vfx_explosion_flash_1.png",
+                    skillDir + "/spr_vfx_explosion_flash_2.png",
+                    skillDir + "/spr_vfx_explosion_flash_3.png",
+                    skillDir + "/spr_vfx_explosion_flash_4.png",
+                },
+                0.05f,
+                0.9f);
+
+            player.addToCombatLayer(rocket, 4);
+
+            float dirX = player.isFlippedX() ? -1.0f : 1.0f;
+            rocket->setVelocity(Vec2(dirX * FIREBALL_SPEED_X, 0.0f));
+        },
         [onFinished, skill]()
         {
             if (onFinished)
