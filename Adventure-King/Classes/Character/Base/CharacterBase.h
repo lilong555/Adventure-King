@@ -1,8 +1,11 @@
 #pragma once
 
 #include "cocos2d.h"
+#include "Character/components/StateMachineComponent.h"
+#include "Character/components/SkillComponent.h"
 #include "Character/Base/CharacterData.h"
-#include <memory>
+
+// 移除 <memory>，因为不再使用 unique_ptr
 
 class AttributeComponent;
 class StateMachineComponent;
@@ -16,7 +19,7 @@ struct DamageInfo
     float penetration = 0;             // 护甲穿透（固定值或百分比）
     bool isCritical = false;           // 是否暴击
     float critMultiplier = 1.5f;       // 暴击倍率
-    CharacterBase *attacker = nullptr; // 攻击来源（用于反伤或仇恨统计）
+    CharacterBase* attacker = nullptr; // 攻击来源（用于反伤或仇恨统计）
 };
 
 // 角色基础类
@@ -25,15 +28,20 @@ class CharacterBase : public cocos2d::Sprite
 public:
     virtual ~CharacterBase();
 
-    // 组件 getter
-    AttributeComponent *getAttributeComponent() const { return _attributeComponent.get(); }          // 获取属性组件
-    StateMachineComponent *getStateMachineComponent() const { return _stateMachineComponent.get(); } // 获取状态机组件
-    SkillComponent *getSkillComponent() const { return _skillComponent.get(); }                      // 获取技能组件
+    // ------------------------------------------------------------
+    // ✅ 组件 Getter (核心修改)
+    // ------------------------------------------------------------
+    // 直接使用 Cocos2d-x 的泛型方法获取组件
+    // 这些方法会遍历 Node 的组件列表，不需要我们自己维护指针变量
+
+    AttributeComponent* getAttributeComponent();
+    StateMachineComponent* getStateMachineComponent();
+    SkillComponent* getSkillComponent();
 
     // 核心战斗接口
-    virtual void attack() = 0;                       // 普通攻击（子类必须实现）
-    virtual void takeDamage(const DamageInfo &info); // 受击
-    virtual void die();                              // 死亡
+    virtual void attack() = 0;                           // 普通攻击（子类必须实现）
+    virtual void takeDamage(const DamageInfo& info);     // 受击
+    virtual void die();                                  // 死亡
 
     // HP / MP
     float getCurrentHP() const { return _currentHP; }
@@ -63,31 +71,31 @@ public:
     void setExperience(int exp) { _experience = exp; }
 
     // SkillComponent 使用技能时的回调
-    virtual void onUseActiveSkill(const ActiveSkill &skill) {}
+    virtual void onUseActiveSkill(const ActiveSkill& skill) {}
 
 protected:
     CharacterBase();
 
     // 子类在 create 中调用，用于初始化贴图和组件
-    bool initWithSpriteFrameName(const std::string &spriteFrameName);
+    bool initWithSpriteFrameName(const std::string& spriteFrameName);
     // 使用普通文件路径初始化（用于调试或没有精灵帧缓存时）
-    bool initWithFile(const std::string &filename);
+    bool initWithFile(const std::string& filename);
 
     virtual void update(float dt) override;
 
     // 显示受击飘字（添加到角色父节点上，避免跟随角色移动）
     void showDamageNumber(float damage, bool isCritical);
 
-    // 组件
-    std::unique_ptr<AttributeComponent> _attributeComponent;       // 属性组件
-    std::unique_ptr<StateMachineComponent> _stateMachineComponent; // 状态机组件
-    std::unique_ptr<SkillComponent> _skillComponent;               // 技能组件
+    // ------------------------------------------------------------
+    // 成员变量
+    // ------------------------------------------------------------
+    // 注意：不再需要 _attributeComponent 等 unique_ptr 变量
 
     int _level = 1;                 // 角色等级
     int _experience = 0;            // 经验值
     float _currentHP = 0.0f;        // 当前生命值
     float _currentMP = 0.0f;        // 当前能量值
-    float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断）
+    float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断，通常应该从属性组件读）
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
 
     bool _damageNumbersEnabled = false; ///< 是否启用受击飘字

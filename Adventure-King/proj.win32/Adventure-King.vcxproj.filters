@@ -49,6 +49,12 @@
     <Filter Include="src\Physics">
       <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\UI">
+      <UniqueIdentifier>{6686c30f-b901-4ace-98e0-ebfe3c586b6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Save">
+      <UniqueIdentifier>{5879635e-04e4-4c14-a72a-c4cdc828da6f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -108,17 +114,37 @@
     <ClCompile Include="..\Classes\GameUI.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Save\SaveData.cpp" />
-    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
-    <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
-    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
-    <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
-    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
-    <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
     <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
       <Filter>src\Character\Player\Players</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\PauseMenu.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\SkillBar.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Save\SaveData.cpp">
+      <Filter>src\Save</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Save\SaveManager.cpp">
+      <Filter>src\Save</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp">
+      <Filter>src\Save</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\ProjectilesBase.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
       <Filter>src\Objects\Projectiles</Filter>
     </ClCompile>
   </ItemGroup>
@@ -180,13 +206,6 @@
     <ClInclude Include="..\Classes\GameUI.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
-    <ClInclude Include="..\Classes\UI\SkillBar.h" />
-    <ClInclude Include="..\Classes\UI\BossHealthBar.h" />
-    <ClInclude Include="..\Classes\UI\PauseMenu.h" />
-    <ClInclude Include="..\Classes\Save\SaveData.h" />
-    <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
-    <ClInclude Include="..\Classes\Save\SaveManager.h" />
     <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
       <Filter>src\Character\Player\Players</Filter>
     </ClInclude>
@@ -195,6 +214,36 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
       <Filter>src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\BossHealthBar.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\PauseMenu.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\PlayerStatusBar.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\SkillBar.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Save\SaveData.h">
+      <Filter>src\Save</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Save\SaveManager.h">
+      <Filter>src\Save</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Save\JsonSerializer.h">
+      <Filter>src\Save</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\ProjectilesBase.h">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Base\CharacterData.h">
+      <Filter>src\Character\Base</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

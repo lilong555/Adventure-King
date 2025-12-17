@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Character/Base/CharacterBase.h"
+#include "Character/Base/CharacterData.h"
+#include"Character/components/AttributeComponent.h"
 #include <functional>
 #include <map>
 #include <memory>
@@ -15,6 +17,9 @@ public:
 
     bool init(CharacterRole role,
               const std::string &spriteFrameName);
+    void initPhysicsBody();
+    void initDefaultSkills();
+    void setGroundPosition(const cocos2d::Vec2& groundPos);
 
     void addExperience(int amount);
     void levelUp();
@@ -85,11 +90,29 @@ public:
     void setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>> &items) { _equippedItems = items; }
 
 private:
+    bool _isGrounded = false;
+    int _jumpCount = 0;
     PlayerCharacter() = default;
 
     void initAttributesByRole(CharacterRole role);
     void refreshHpMpFromAttributes();
     void onWeaponChanged(const std::shared_ptr<Weapon> &weapon); // 武器变更时调用
+    CharacterRole _role = CharacterRole::WARRIOR;
+    int _skillPoints = 0;
+
+    std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;
+
+    // 当前攻击动画配置
+    std::string _attackAnimationPrefix = "default";
+    int _attackFrameCount = 3;
+
+    // 装备变更回调
+    EquipmentChangeCallback _equipmentChangeCallback = nullptr;
+
+
+
+    //下面这些建议移动到Projectiles文件夹中
+
 
     enum class ProjectileType
     {
@@ -108,19 +131,6 @@ private:
 
     Projectile *findProjectile(cocos2d::Node *node);
     void explodeProjectile(Projectile &projectile, cocos2d::Node *gameLayer);
-
-    CharacterRole _role = CharacterRole::WARRIOR;
-    int _skillPoints = 0;
-
-    std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;
-
-    // 当前攻击动画配置
-    std::string _attackAnimationPrefix = "default";
-    int _attackFrameCount = 3;
-
-    // 装备变更回调
-    EquipmentChangeCallback _equipmentChangeCallback = nullptr;
-
     // 玩家投掷物列表
     std::vector<Projectile> _projectiles;
 };

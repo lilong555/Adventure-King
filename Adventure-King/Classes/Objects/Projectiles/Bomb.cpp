@@ -11,6 +11,7 @@ Bomb* Bomb::create(const std::string& filename)
     if (bomb && bomb->initWithFile(filename))
     {
         bomb->autorelease();
+        bomb->setScale(GameConfig::Bomb::SPRITE_SCALE);
         bomb->initPhysics(); // 创建时自动初始化物理
         return bomb;
     }

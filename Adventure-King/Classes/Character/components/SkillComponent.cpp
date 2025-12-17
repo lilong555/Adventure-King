@@ -1,67 +1,114 @@
-#include "Character/components/SkillComponent.h"
+#include "SkillComponent.h"
 #include "Character/Base/CharacterBase.h"
-#include "Character/components/AttributeComponent.h"
+#include "Character/components/AttributeComponent.h" // 确保包含属性组件头文件
 
-SkillComponent::SkillComponent(CharacterBase *owner)
-    : _owner(owner)
+USING_NS_CC;
+
+SkillComponent::SkillComponent()
+{
+    setName("SkillComponent");
+}
+
+SkillComponent::~SkillComponent()
 {
 }
 
-void SkillComponent::learnSkill(const std::shared_ptr<Skill> &skill)
+bool SkillComponent::init()
+{
+    if (!Component::init())
+    {
+        return false;
+    }
+    // 初始化槽位大小，防止越界 (假设默认3个槽位)
+    _activeSlots.resize(3, nullptr);
+    _passiveSlots.resize(3, nullptr);
+    return true;
+}
+
+void SkillComponent::onAdd()
+{
+    // 当组件被 addComponent 到 Character 时，自动获取 Owner 并转换类型
+    if (getOwner())
+    {
+        _cachedOwner = dynamic_cast<CharacterBase*>(getOwner());
+
+        // 开启 update 调度 (让 update 函数每帧被调用)
+        getOwner()->scheduleUpdate();
+    }
+}
+
+CharacterBase* SkillComponent::getCharacterOwner() const
+{
+    return _cachedOwner;
+}
+
+void SkillComponent::learnSkill(const std::shared_ptr<Skill>& skill)
 {
     if (!skill)
         return;
     _learnedSkills.push_back(skill);
 }
 
-void SkillComponent::equipActiveSkill(const std::shared_ptr<ActiveSkill> &skill, size_t slotIndex)
+// 修改返回值类型为 bool
+bool SkillComponent::equipActiveSkill(const std::shared_ptr<ActiveSkill>& skill, size_t slotIndex)
 {
     if (!skill)
-        return;
+        return false;
 
     if (slotIndex >= _activeSlots.size())
     {
+        // 如果想支持动态扩容可以保留，或者直接返回 false
         _activeSlots.resize(slotIndex + 1);
     }
     _activeSlots[slotIndex] = skill;
+    return true;
 }
 
-void SkillComponent::equipPassiveSkill(const std::shared_ptr<PassiveSkill> &skill, size_t slotIndex)
+// 修改返回值类型为 bool
+bool SkillComponent::equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill, size_t slotIndex)
 {
     if (!skill)
-        return;
+        return false;
 
     if (slotIndex >= _passiveSlots.size())
     {
         _passiveSlots.resize(slotIndex + 1);
     }
 
-    // 如果原来有技能，先移除原有加成
+    // 如果该槽位原来有技能，先移除原有加成
     if (_passiveSlots[slotIndex])
     {
         removePassiveSkill(_passiveSlots[slotIndex]);
     }
 
     _passiveSlots[slotIndex] = skill;
+
+    // 应用新技能加成
     applyPassiveSkill(skill);
+
+    return true;
 }
 
-void SkillComponent::applyPassiveSkill(const std::shared_ptr<PassiveSkill> &skill)
+void SkillComponent::applyPassiveSkill(const std::shared_ptr<PassiveSkill>& skill)
 {
-    if (!_owner)
+    // 使用 _cachedOwner
+    if (!_cachedOwner)
         return;
-    auto attr = _owner->getAttributeComponent();
+
+    auto attr = _cachedOwner->getAttributeComponent();
     if (!attr)
         return;
 
     attr->addPassiveSkillBonus(skill->attributeBonus);
 }
 
-void SkillComponent::removePassiveSkill(const std::shared_ptr<PassiveSkill> &skill)
+void SkillComponent::removePassiveSkill(const std::shared_ptr<PassiveSkill>& skill)
 {
-    if (!_owner)
+    // 使用 _cachedOwner
+    if (!_cachedOwner)
         return;
-    auto attr = _owner->getAttributeComponent();
+
+    auto attr = _cachedOwner->getAttributeComponent();
     if (!attr)
         return;
 
@@ -72,35 +119,49 @@ bool SkillComponent::useActiveSkill(size_t slotIndex)
 {
     if (slotIndex >= _activeSlots.size())
         return false;
+
     auto skill = _activeSlots[slotIndex];
-    if (!skill || !_owner)
+
+    // 检查 skill 和 _cachedOwner
+    if (!skill || !_cachedOwner)
         return false;
 
-    // 冷却中
+    // 1. 检查冷却
     if (skill->currentCooldown > 0.0f)
     {
+        // 可以在这里打印日志 "技能冷却中"
         return false;
     }
 
-    // MP 不足
-    if (_owner->getCurrentMP() < skill->manaCost)
+    // 2. 检查 MP
+    // 假设 CharacterBase 有 getCurrentMP() 和 attribute 相关方法
+    float currentMP = _cachedOwner->getCurrentMP();
+
+    // 如果有 AttributeComponent，最好从那里获取，或者 CharacterBase 封装了接口
+    // 这里假设 CharacterBase 直接提供了 getCurrentMP
+    if (currentMP < skill->manaCost)
     {
+        // 可以在这里打印日志 "法力不足"
         return false;
     }
 
-    // 扣 MP、设置冷却
-    _owner->setCurrentMP(_owner->getCurrentMP() - skill->manaCost);
+    // 3. 消耗资源
+    _cachedOwner->setCurrentMP(currentMP - skill->manaCost);
+
+    // 4. 设置冷却
     skill->currentCooldown = skill->cooldown;
 
-    // 交给角色执行具体技能效果（生成子弹/范围伤害等）
-    _owner->onUseActiveSkill(*skill);
+    // 5. 执行技能逻辑
+    // 调用 CharacterBase 的回调，通知它播放动画或生成投掷物
+    _cachedOwner->onUseActiveSkill(*skill);
 
     return true;
 }
 
 void SkillComponent::update(float dt)
 {
-    for (auto &skill : _activeSlots)
+    // 遍历所有装备的主动技能，减少冷却时间
+    for (auto& skill : _activeSlots)
     {
         if (skill && skill->currentCooldown > 0.0f)
         {
@@ -117,7 +178,7 @@ void SkillComponent::update(float dt)
 
 std::shared_ptr<Skill> SkillComponent::findLearnedSkillById(int skillId) const
 {
-    for (const auto &skill : _learnedSkills)
+    for (const auto& skill : _learnedSkills)
     {
         if (skill && skill->id == skillId)
         {
@@ -127,16 +188,16 @@ std::shared_ptr<Skill> SkillComponent::findLearnedSkillById(int skillId) const
     return nullptr;
 }
 
-void SkillComponent::clearAndSetActiveSlots(const std::vector<std::shared_ptr<ActiveSkill>> &slots)
+void SkillComponent::clearAndSetActiveSlots(const std::vector<std::shared_ptr<ActiveSkill>>& slots)
 {
     _activeSlots.clear();
-    _activeSlots = slots;
+    _activeSlots = slots; // 拷贝列表
 }
 
-void SkillComponent::clearAndSetPassiveSlots(const std::vector<std::shared_ptr<PassiveSkill>> &slots)
+void SkillComponent::clearAndSetPassiveSlots(const std::vector<std::shared_ptr<PassiveSkill>>& slots)
 {
-    // 先移除所有旧的被动技能加成
-    for (const auto &skill : _passiveSlots)
+    // 1. 先移除旧的属性加成
+    for (const auto& skill : _passiveSlots)
     {
         if (skill)
         {
@@ -144,11 +205,12 @@ void SkillComponent::clearAndSetPassiveSlots(const std::vector<std::shared_ptr<P
         }
     }
 
+    // 2. 更新槽位
     _passiveSlots.clear();
     _passiveSlots = slots;
 
-    // 应用所有新的被动技能加成
-    for (const auto &skill : _passiveSlots)
+    // 3. 应用新的属性加成
+    for (const auto& skill : _passiveSlots)
     {
         if (skill)
         {

@@ -64,18 +64,16 @@ struct LevelConfig
 };
 
 /**
- * @brief 玩家配置参数
+ * @brief 玩家配置参数   ###已转移到gamePhysicsCategory.h
  */
-struct PlayerConfig
-{
-    float scale = 0.25f;                  ///< 玩家缩放比例（与地图/镜头比例协调）
-    float walkSpeed = 220.0f;             ///< 行走速度
-    float runSpeed = 350.0f;              ///< 跑步速度
-    float jumpImpulse = 650.0f;           ///< 跳跃冲量
-    int maxJumpCount = 2;                 ///< 最大跳跃次数（1=单跳，2=二段跳）
-    float collisionBoxWidthRatio = 0.8f;  ///< 碰撞盒宽度比例
-    float collisionBoxHeightRatio = 0.9f; ///< 碰撞盒高度比例
-};
+//struct PlayerConfig
+//{
+//    float scale = 0.25f;                  ///< 玩家缩放比例（与地图/镜头比例协调）
+//    float walkSpeed = 220.0f;             ///< 行走速度
+//    float runSpeed = 350.0f;              ///< 跑步速度
+//    float jumpImpulse = 650.0f;           ///< 跳跃冲量
+//    int maxJumpCount = 2;                 ///< 最大跳跃次数（1=单跳，2=二段跳）
+//};
 
 // ============================================================
 // GameScene 基类
@@ -122,7 +120,7 @@ protected:
     // 玩家相关
     // -------------------------------
     PlayerCharacter *_player = nullptr; ///< 玩家角色
-    PlayerConfig _playerConfig;         ///< 玩家配置
+    //PlayerConfig _playerConfig;         ///< 玩家配置
 
     // -------------------------------
     // 移动状态
@@ -186,11 +184,12 @@ protected:
     static constexpr int PLAYER_Z_ORDER = 5;                        ///< 玩家层级
     static constexpr int COLLISION_DEBUG_Z_ORDER = 100;             ///< 碰撞调试层级
 
-    // 技能1（火球）参数
-    static constexpr size_t FIREBALL_SKILL_SLOT = 0;          ///< 技能1所在槽位索引
-    static constexpr int FIREBALL_SKILL_ID = 1002;            ///< 技能1唯一ID
-    static constexpr float FIREBALL_SKILL_MP_COST = 15.0f;    ///< 技能1 MP消耗
-    static constexpr float FIREBALL_SKILL_COOLDOWN = 1.2f;    ///< 技能1冷却时间（秒）
+    // 技能1（火球）参数   移动到gameconfig.h
+    
+    //static constexpr size_t FIREBALL_SKILL_SLOT = 0;          ///< 技能1所在槽位索引
+    //static constexpr int FIREBALL_SKILL_ID = 1002;            ///< 技能1唯一ID
+    //static constexpr float FIREBALL_SKILL_MP_COST = 15.0f;    ///< 技能1 MP消耗
+    //static constexpr float FIREBALL_SKILL_COOLDOWN = 1.2f;    ///< 技能1冷却时间（秒）
 
     // ===================================================================
     // 初始化方法
@@ -228,11 +227,6 @@ protected:
      * @brief 初始化相机跟随
      */
     virtual void initCameraFollow();
-
-    /**
-     * @brief 初始化玩家技能
-     */
-    virtual void initPlayerSkills();
 
     // ===================================================================
     // 资源加载方法

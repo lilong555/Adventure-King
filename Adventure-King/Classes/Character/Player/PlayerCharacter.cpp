@@ -13,14 +13,14 @@ USING_NS_CC;
 
 namespace
 {
-    constexpr float BOMB_THROW_SPEED_X = 300.0f;
+   /* constexpr float BOMB_THROW_SPEED_X = 300.0f;
     constexpr float BOMB_THROW_SPEED_Y = 350.0f;
     constexpr float BOMB_DAMAGE = 150.0f;
-    constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;
+    constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;*/
 
-    constexpr float FIREBALL_SPEED_X = 650.0f;
+   /* constexpr float FIREBALL_SPEED_X = 650.0f;
     constexpr float FIREBALL_DAMAGE = 220.0f;
-    constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
+    constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;*/
 
     const char *const BOMB_PROJECTILE_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
     const char *const BOMB_EXPLOSION_SPRITE_PATH = "Sprites/Characters/Player/Klee/defalt/BOOM_1.png";
@@ -89,61 +89,178 @@ namespace
     }
 } // namespace
 
-PlayerCharacter *PlayerCharacter::create(CharacterRole role,
-                                         const std::string &spriteFrameName)
+PlayerCharacter* PlayerCharacter::create(CharacterRole role, const std::string& spritePath)
 {
-    PlayerCharacter *ret = new (std::nothrow) PlayerCharacter();
-    if (ret && ret->init(role, spriteFrameName))
+    PlayerCharacter* pRet = new(std::nothrow) PlayerCharacter();
+    if (pRet && pRet->init(role, spritePath))
     {
-        ret->autorelease();
-        return ret;
+        pRet->autorelease();
+        return pRet;
     }
-    delete ret;
-    return nullptr;
+    else
+    {
+        delete pRet;
+        pRet = nullptr;
+        return nullptr;
+    }
 }
 
-bool PlayerCharacter::init(CharacterRole role,
-                           const std::string &spriteFrameName)
+bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameName)
 {
-    // 优先走 SpriteFrameCache（缺失时会按文件加载并加入缓存），减少重复创建 SpriteFrame 的开销
-    bool initSuccess = initWithSpriteFrameName(spriteFrameName);
-    if (!initSuccess)
+    // ---------------------------------------------------------
+    // 1. 视觉初始化 (Visual Init)
+    // ---------------------------------------------------------
+    // 尝试从缓存加载，失败则尝试直接从文件加载
+    if (!initWithSpriteFrameName(spriteFrameName))
     {
-        initSuccess = initWithFile(spriteFrameName);
+        if (!initWithFile(spriteFrameName))
+        {
+            CCLOG("Error: Failed to init PlayerCharacter sprite: %s", spriteFrameName.c_str());
+            return false;
+        }
     }
 
-    if (!initSuccess)
-    {
-        return false;
-    }
+    // 设置基础变换属性
+    this->setAnchorPoint(cocos2d::Vec2::ANCHOR_MIDDLE); // 使用内置常量更清晰
+    this->setScale(GameConfig::Player::SCALE);
+    //this->setTag(TAG_PLAYER); // 建议在这里设置 Tag，方便查找
 
     _role = role;
+    _isGrounded = true;
+    _jumpCount = 0;
 
+    // ---------------------------------------------------------
+    // 2. 组件挂载 (Component Mounting) - 关键步骤！
+    // ---------------------------------------------------------
+    // 必须确保组件存在，否则后面的 initCalls 会操作空指针或失败
+
+    // 属性组件
+    if (!getAttributeComponent()) {
+        this->addComponent(AttributeComponent::create());
+    }
+
+    // 技能组件
+    if (!getSkillComponent()) {
+        this->addComponent(SkillComponent::create());
+    }
+
+    // 状态机组件
+    if (!getStateMachineComponent()) {
+        this->addComponent(StateMachineComponent::create()); // 假设状态机需要 Owner 指针
+    }
+
+    // ---------------------------------------------------------
+    // 3. 数据层初始化 (Data Layer)
+    // ---------------------------------------------------------
+    // 先初始化属性，因为物理质量、技能蓝耗等可能依赖属性值
     initAttributesByRole(role);
 
+    // 立即刷新一次状态，确保 UI 获取到的是满血满蓝
     if (auto attr = getAttributeComponent())
     {
         attr->recalculateFinalAttributes();
         refreshHpMpFromAttributes();
     }
 
-    // 示例：绑定不同状态的动画名（动画要提前放进 AnimationCache）
+    // ---------------------------------------------------------
+    // 4. 物理层初始化 (Physics Layer)
+    // ---------------------------------------------------------
+    initPhysicsBody();
+
+    // ---------------------------------------------------------
+    // 5. 逻辑层初始化 (Logic Layer)
+    // ---------------------------------------------------------
+    // 此时 SkillComponent 已确保存活，可以安全初始化技能
+    initDefaultSkills();
+
+    // ---------------------------------------------------------
+    // 6. 表现层初始化 (Presentation Layer)
+    // ---------------------------------------------------------
+    // 配置状态机动画
     if (auto sm = getStateMachineComponent())
     {
+        // 建议：不要硬编码字符串，最好定义在 GameConfig 或 CharacterData 中
         sm->registerStateAnimation(CharacterState::IDLE, "hero_idle");
         sm->registerStateAnimation(CharacterState::WALKING, "hero_walk");
         sm->registerStateAnimation(CharacterState::RUNNING, "hero_run");
         sm->registerStateAnimation(CharacterState::ATTACKING, "hero_attack");
         sm->registerStateAnimation(CharacterState::HURT, "hero_hurt");
         sm->registerStateAnimation(CharacterState::DEAD, "hero_dead");
+
+        // 初始状态设为 IDLE
+        sm->changeState(CharacterState::IDLE);
     }
 
-    // 确保默认跑动动画存在（由 StateMachineComponent 播放）
+    // 预加载/缓存必要的动画动作（如果这些函数是生成 Animation 对象的）
     ensureDefaultRunAnimation();
     ensureDefaultWalkAnimation();
 
     return true;
 }
+void PlayerCharacter::initPhysicsBody()
+{
+    cocos2d::Size originalSize = this->getContentSize();
+
+    // 计算碰撞盒大小 (读取配置中的比例)
+    float boxWidth = originalSize.width * GameConfig::Player::COLLISION_BOX_RATIO_W;
+    float boxHeight = originalSize.height * GameConfig::Player::COLLISION_BOX_RATIO_H;
+
+    // 创建物理体
+    auto physicsBody = cocos2d::PhysicsBody::createBox(
+        cocos2d::Size(boxWidth, boxHeight),
+        GameConfig::Material::PLAYER
+    );
+
+    physicsBody->setDynamic(true);
+    physicsBody->setRotationEnable(false);
+    physicsBody->setMass(1.0f);
+    physicsBody->setLinearDamping(0.0f);
+
+    // 配置掩码 (使用 GameConfig 或 PhysicsConstants)
+    physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
+
+    // 碰撞掩码
+    physicsBody->setCollisionBitmask(ToMask(
+        GamePhysicsCategory::PLATFORM |
+        GamePhysicsCategory::COLLISION |
+        GamePhysicsCategory::MONSTER_ATTACK
+    ));
+
+    // 接触回调掩码
+    physicsBody->setContactTestBitmask(ToMask(
+        GamePhysicsCategory::PLATFORM |
+        GamePhysicsCategory::COLLISION |
+        GamePhysicsCategory::MONSTER_ATTACK
+    ));
+
+    this->addComponent(physicsBody);
+}
+
+void PlayerCharacter::initDefaultSkills()
+{
+    auto skillComp = this->getSkillComponent();
+    if (!skillComp) return;
+
+    // 创建火球技能
+    auto fireballSkill = std::make_shared<ActiveSkill>();
+    fireballSkill->id = GameConfig::Fireball::FIREBALL_ID; // 建议在 Config 定义 ID
+    fireballSkill->name = "火球";
+    fireballSkill->description = "发射火球...";
+    fireballSkill->manaCost = GameConfig::Fireball::FIREBALL_MP;
+    fireballSkill->cooldown = GameConfig::Fireball::FIREBALL_CD;
+    fireballSkill->currentCooldown = 0.0f;
+
+    skillComp->learnSkill(fireballSkill);
+    skillComp->equipActiveSkill(fireballSkill, GameConfig::Skill::SLOT_FIREBALL);
+}
+
+void PlayerCharacter::setGroundPosition(const cocos2d::Vec2& groundPos)
+{
+    // 自动计算从脚底到中心的偏移
+    float halfHeight = this->getContentSize().height * this->getScaleY() * 0.5f;
+    this->setPosition(groundPos + cocos2d::Vec2(0, halfHeight));
+}
+
 // 根据角色职业初始化基础属性
 void PlayerCharacter::initAttributesByRole(CharacterRole role)
 {
@@ -332,7 +449,7 @@ WeaponType PlayerCharacter::getCurrentWeaponType() const
     }
     return WeaponType::SWORD; // 默认剑
 }
-
+//
 void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon> &weapon)
 {
     if (weapon)
@@ -628,8 +745,8 @@ void PlayerCharacter::spawnBombProjectile(Node *gameLayer)
     projectile.type = ProjectileType::BOMB;
     projectile.isExploded = false;
     projectile.sprite = bombSprite;
-    projectile.damage = BOMB_DAMAGE;
-    projectile.explosionRadius = BOMB_EXPLOSION_RADIUS;
+    projectile.damage = GameConfig::Bomb::BASE_DAMAGE;
+    projectile.explosionRadius = GameConfig::Bomb::EXPLOSION_RADIUS;
 
     bool facingLeft = isFlippedX();
     float throwDirX = facingLeft ? -1.0f : 1.0f;
@@ -655,8 +772,8 @@ void PlayerCharacter::spawnBombProjectile(Node *gameLayer)
     bombSprite->addComponent(physicsBody);
     gameLayer->addChild(bombSprite, 4);
 
-    Vec2 impulse(throwDirX * BOMB_THROW_SPEED_X * physicsBody->getMass(),
-                 BOMB_THROW_SPEED_Y * physicsBody->getMass());
+    Vec2 impulse(throwDirX * GameConfig::Bomb::THROW_SPEED_X * physicsBody->getMass(),
+        GameConfig::Bomb::THROW_SPEED_Y * physicsBody->getMass());
     physicsBody->applyImpulse(impulse);
 
     _projectiles.push_back(projectile);
@@ -687,8 +804,8 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     projectile.type = ProjectileType::FIREBALL;
     projectile.isExploded = false;
     projectile.sprite = fireballSprite;
-    projectile.damage = FIREBALL_DAMAGE;
-    projectile.explosionRadius = FIREBALL_EXPLOSION_RADIUS;
+    projectile.damage = GameConfig::Fireball::BASE_DAMAGE;
+    projectile.explosionRadius = GameConfig::Fireball::EXPLOSION_RADIUS;
 
     bool facingLeft = isFlippedX();
     float dirX = facingLeft ? -1.0f : 1.0f;
@@ -729,7 +846,7 @@ void PlayerCharacter::spawnFireballProjectile(Node *gameLayer)
     fireballSprite->addComponent(physicsBody);
     gameLayer->addChild(fireballSprite, 4);
 
-    physicsBody->setVelocity(Vec2(dirX * FIREBALL_SPEED_X, 0.0f));
+    physicsBody->setVelocity(Vec2(dirX * GameConfig::Fireball::EXPLOSION_RADIUS, 0.0f));
 
     _projectiles.push_back(projectile);
 }
@@ -804,11 +921,11 @@ void PlayerCharacter::explodeProjectile(Projectile &projectile, Node *gameLayer)
     float explosionRadius = projectile.explosionRadius;
     if (explosionDamage <= 0.0f)
     {
-        explosionDamage = (projectile.type == ProjectileType::FIREBALL) ? FIREBALL_DAMAGE : BOMB_DAMAGE;
+        explosionDamage = (projectile.type == ProjectileType::FIREBALL) ? GameConfig::Fireball::BASE_DAMAGE : GameConfig::Bomb::BASE_DAMAGE;
     }
     if (explosionRadius <= 0.0f)
     {
-        explosionRadius = (projectile.type == ProjectileType::FIREBALL) ? FIREBALL_EXPLOSION_RADIUS : BOMB_EXPLOSION_RADIUS;
+        explosionRadius = (projectile.type == ProjectileType::FIREBALL) ? GameConfig::Fireball::EXPLOSION_RADIUS : GameConfig::Bomb::EXPLOSION_RADIUS;
     }
 
     if (gameLayer)

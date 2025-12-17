@@ -39,9 +39,10 @@ namespace
     // 默认值
     const Vec2 DEFAULT_SPAWN_POINT(100.0f, 200.0f);
 
-    // 物理材质
-    const PhysicsMaterial PLAYER_PHYSICS_MATERIAL(1.0f, 0.0f, 0.0f);    // 密度, 弹性, 摩擦
-    const PhysicsMaterial COLLISION_PHYSICS_MATERIAL(1.0f, 0.0f, 0.8f); // 碰撞体材质
+    // 物理材质  已转移到gamephysicscategory
+    // 
+    //const PhysicsMaterial PLAYER_PHYSICS_MATERIAL(1.0f, 0.0f, 0.0f);    // 密度, 弹性, 摩擦
+    //const PhysicsMaterial COLLISION_PHYSICS_MATERIAL(1.0f, 0.0f, 0.8f); // 碰撞体材质
 
     // UI 文本
     const char *const GATE_INTERACTION_HINT = "Press W to enter gate";
@@ -321,9 +322,10 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     return true;
 }
 
-void GameScene::initPlayer(const Vec2 &startPos)
+void GameScene::initPlayer(const Vec2& startPos)
 {
-    // 创建玩家角色（战士职业）
+    // 1. 创建角色 (工厂方法内部已经搞定了物理、技能、缩放)
+    // 注意：原本的 create 方法参数可能需要调整适配新的 init
     auto playerSprite = PlayerCharacter::create(CharacterRole::WARRIOR, DEFAULT_PLAYER_SPRITE);
 
     if (!playerSprite)
@@ -332,96 +334,24 @@ void GameScene::initPlayer(const Vec2 &startPos)
         return;
     }
 
-    // 获取原始尺寸并设置缩放
-    Size originalSize = playerSprite->getContentSize();
-    float scale = _playerConfig.scale;
-    playerSprite->setScale(scale);
-
-    // 计算缩放后的实际显示尺寸（仅用于摆放位置）
-    float scaledHeight = originalSize.height * scale;
-
-    // 锚点设置为中心
-    playerSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
-
-    // 设置位置：startPos 是地面位置，需要将玩家中心抬高半个身高
-    Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
-    playerSprite->setPosition(playerPos);
-
-    // 计算碰撞体尺寸（基于配置的比例）
-    float boxWidth = originalSize.width * _playerConfig.collisionBoxWidthRatio;
-    float boxHeight = originalSize.height * _playerConfig.collisionBoxHeightRatio;
-
-    // 创建物理体
-    auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), PLAYER_PHYSICS_MATERIAL);
-    physicsBody->setDynamic(true);
-    physicsBody->setRotationEnable(false);
-    physicsBody->setMass(1.0f);
-    physicsBody->setLinearDamping(0.0f);
-
-    // 配置碰撞掩码
-    physicsBody->setCategoryBitmask(getCategoryBitmask(GamePhysicsCategory::PLAYER));
-    // 仅与地形发生物理碰撞；同时需要接收怪物攻击判定框的 Contact 回调用于结算伤害
-    physicsBody->setCollisionBitmask(getCategoryBitmask(
-        GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER_ATTACK));
-    physicsBody->setContactTestBitmask(getCategoryBitmask(
-        GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER_ATTACK));
-
-    // 添加物理体到精灵
-    playerSprite->addComponent(physicsBody);
-
-    // 保存引用并添加到游戏内容层
+    // 2. 保存引用
     _player = playerSprite;
-    _player->setTag(TAG_PLAYER);
+
+    // 3. 设置位置 (使用新封装的方法，传入地图的出生点坐标即可)
+    _player->setGroundPosition(startPos);
+
+    // 4. 添加到场景层
     _gameLayer->addChild(_player, PLAYER_Z_ORDER);
 
-    // 设置死亡时不自动移除
+    // 5. 设置其他场景特有的属性 (可选)
     _player->setAutoRemoveOnDeath(false);
 
-    // 初始化地面状态
-    _isGrounded = true;
-    _groundContactCount = 1;
-    _jumpCount = 0;
-
-    // 初始化玩家技能
-    initPlayerSkills();
-
-    CCLOG("Player created: pos=(%.0f, %.0f), boxSize=(%.0f, %.0f)",
-          playerPos.x, playerPos.y, boxWidth, boxHeight);
+    CCLOG("Player initialized at (%.0f, %.0f)", _player->getPositionX(), _player->getPositionY());
 }
 
-/**
- * @brief 初始化玩家技能
- *
- * 通过 SkillComponent 创建并装备主动技能。
- * 当前实现了技能1：火球。
- */
-void GameScene::initPlayerSkills()
-{
-    if (!_player)
-        return;
+// initPlayerSkills() 方法可以直接删除了，因为已经移到了 PlayerCharacter 内部
 
-    auto skillComp = _player->getSkillComponent();
-    if (!skillComp)
-    {
-        CCLOG("Failed to get skill component");
-        return;
-    }
 
-    // 技能1：火球
-    auto fireballSkill = std::make_shared<ActiveSkill>();
-    fireballSkill->id = FIREBALL_SKILL_ID;
-    fireballSkill->name = "火球";
-    fireballSkill->description = "发射火球，命中后爆炸造成范围伤害";
-    fireballSkill->manaCost = FIREBALL_SKILL_MP_COST;
-    fireballSkill->cooldown = FIREBALL_SKILL_COOLDOWN;
-    fireballSkill->currentCooldown = 0.0f;
-
-    // 学习并装备技能
-    skillComp->learnSkill(fireballSkill);
-    skillComp->equipActiveSkill(fireballSkill, FIREBALL_SKILL_SLOT);
-
-    CCLOG("Player skills initialized: Fireball equipped to slot %zu", FIREBALL_SKILL_SLOT);
-}
 
 void GameScene::initPhysicsContactListener()
 {
@@ -845,7 +775,7 @@ void GameScene::createPolygonCollisionBody(const std::vector<Vec2> &vertices,
     // 使用 EdgeChain 创建静态边缘碰撞体
     auto physicsBody = PhysicsBody::createEdgeChain(vertices.data(),
                                                     static_cast<int>(vertices.size()),
-                                                    COLLISION_PHYSICS_MATERIAL);
+                                                    GameConfig::Material::COLLISION);
 
     if (physicsBody)
     {
@@ -876,7 +806,7 @@ void GameScene::createRectCollisionBody(const Rect &rect, const std::string &nam
     auto collisionNode = Node::create();
     collisionNode->setPosition(Vec2(rectCenterX, rectCenterY) + _tileMap->getPosition());
 
-    auto physicsBody = PhysicsBody::createBox(rect.size, COLLISION_PHYSICS_MATERIAL);
+    auto physicsBody = PhysicsBody::createBox(rect.size, GameConfig::Material::COLLISION);
     physicsBody->setDynamic(false);
     physicsBody->setRotationEnable(false);
 
@@ -1456,7 +1386,7 @@ void GameScene::handleJump()
         _jumpCount = 0;
     }
 
-    if (_jumpCount >= _playerConfig.maxJumpCount)
+    if (_jumpCount >= GameConfig::Player::MAX_JUMP_COUNT)
         return;
 
     // 主动跳跃时清空地面接触计数，避免离地瞬间残留接触导致空中误判为落地
@@ -1468,7 +1398,7 @@ void GameScene::handleJump()
     velocity.y = 0.0f;
     physicsBody->setVelocity(velocity);
 
-    physicsBody->applyImpulse(Vec2(0, _playerConfig.jumpImpulse));
+    physicsBody->applyImpulse(Vec2(0, GameConfig::Player::JUMP_IMPULSE));
     _isGrounded = false;
     _jumpCount++;
     CCLOG(_jumpCount == 1 ? "Player jumped" : "Player double jumped");
@@ -1519,7 +1449,7 @@ void GameScene::updatePlayerMovement(float dt)
     Vec2 velocity = physicsBody->getVelocity();
 
     // 计算目标水平速度
-    float currentSpeed = _isRunPressed ? _playerConfig.runSpeed : _playerConfig.walkSpeed;
+    float currentSpeed = _isRunPressed ? GameConfig::Player::RUNSPEED : GameConfig::Player::WALKSPEED;
     float targetVelocityX = 0.0f;
     if (_isMovingLeft)
     {
