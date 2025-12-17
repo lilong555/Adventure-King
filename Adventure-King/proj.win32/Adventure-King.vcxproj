@@ -162,6 +162,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
+    <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp" />
     <ClCompile Include="..\Classes\GameUI.cpp" />
     <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
     <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp" />
@@ -169,11 +170,14 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
     <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
+    <ClCompile Include="..\Classes\Scenes\GameInputController.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameScene.cpp" />
+    <ClCompile Include="..\Classes\Scenes\GameUIController.cpp" />
     <ClCompile Include="..\Classes\Scenes\HelloWorldScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\HomeScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\SaveMenuLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\SetMenuLayer.cpp" />
+    <ClCompile Include="..\Classes\Scenes\LevelMap.cpp" />
     <ClCompile Include="..\Classes\Scenes\MapScene.cpp" />
     <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
     <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
@@ -190,6 +194,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h" />
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
+    <ClInclude Include="..\Classes\Character\Player\Projectiles\PlayerProjectileConfig.h" />
+    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h" />
+    <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h" />
     <ClInclude Include="..\Classes\GameUI.h" />
     <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
     <ClInclude Include="..\Classes\UI\SkillBar.h" />
@@ -201,11 +208,15 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
     <ClInclude Include="..\Classes\Save\SaveManager.h" />
     <ClInclude Include="..\Classes\Scenes\DebugScene.h" />
+    <ClInclude Include="..\Classes\Scenes\GameInputController.h" />
     <ClInclude Include="..\Classes\Scenes\GameScene.h" />
+    <ClInclude Include="..\Classes\Scenes\GameSceneConfig.h" />
+    <ClInclude Include="..\Classes\Scenes\GameUIController.h" />
     <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h" />
     <ClInclude Include="..\Classes\Scenes\HomeScene.h" />
     <ClInclude Include="..\Classes\Scenes\Layers\SaveMenuLayer.h" />
     <ClInclude Include="..\Classes\Scenes\Layers\SetMenuLayer.h" />
+    <ClInclude Include="..\Classes\Scenes\LevelMap.h" />
     <ClInclude Include="..\Classes\Scenes\MapScene.h" />
     <ClInclude Include="main.h" />
   </ItemGroup>
