@@ -3,10 +3,34 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "Origin_Mushroom.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.tsx": {
+            "scaleInDock": 1
+        },
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/Origin_Mushroom.tmx": {
+            "scale": 0.0758056640625,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 5850.486312399356,
+                "y": 646.3896940418681
+            }
+        },
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/s1.tsx": {
+            "scaleInDock": 1
+        },
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/s2.tsx": {
+            "scaleInDock": 1
+        },
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/s3.tsx": {
+            "scaleInDock": 1
+        },
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/s4.tsx": {
+            "scaleInDock": 1
+        },
         "Env_Tree_Oak_Giant_Green.tsx": {
             "scaleInDock": 0.33
         },
@@ -14,7 +38,7 @@
             "scale": 0.25,
             "selectedLayer": 6,
             "viewCenter": {
-                "x": 9588,
+                "x": 9590,
                 "y": 172
             }
         },
@@ -62,9 +86,12 @@
     "map.lastUsedFormat": "tmx",
     "map.width": 280,
     "openFiles": [
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/Origin_Mushroom.tmx",
+        "Origin_Mushroom.tmx"
     ],
     "project": "test.tiled-project",
     "recentFiles": [
+        "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/Origin_Mushroom.tmx",
         "Origin_Mushroom.tmx",
         "jimeng-2025-12-07-5397-Game concept art for a 2D side-scrolling...._0.tsx",
         "s4.tsx",
