@@ -17,6 +17,7 @@
   `".../MSBuild.exe" Adventure-King/proj.win32/Adventure-King.sln /p:Configuration=Debug /p:Platform=Win32 /m /t:Build`
 - Run: `Adventure-King/proj.win32/Debug.win32/Adventure-King.exe`
 - CMake (`Adventure-King/CMakeLists.txt`) supports cross-platform builds if you prefer `cmake` workflows.
+- VSCode IntelliSense: `.vscode/c_cpp_properties.json` 提供 `Win32` 与 `Linux` 两套配置；在 WSL2 打开工程请选择 `Linux`，避免系统头文件报错。
 
 ## Coding Style & Naming Conventions
 - Follow `Adventure-King/.editorconfig`: 4-space indents in `.cpp/.h`, spaces not tabs.
@@ -24,6 +25,13 @@
 - Classes and files use `PascalCase` (`PlayerCharacter.h/.cpp`); methods/vars use `camelCase`; private members use leading `_`.
 - Keep new logic inside `Adventure-King/Classes/` and reuse existing components (Attribute/StateMachine/Skill) where possible.
 - Player animations are managed by `PlayerCharacter`; scenes should call `setMoving`, `attackAnimated`, and `castSkillAnimated` instead of running actions directly.
+- 贴图加载：对文件路径（`Sprites/...`）优先用 `Adventure-King/Classes/Utils/SpriteFrameCacheHelper.h` 走 `SpriteFrameCache` 复用，避免重复创建与 “Frame isn't found” 日志噪音。
+
+## Map (TMX) Conventions
+- `collisions` 图层：多边形/折线/矩形对象用于生成物理碰撞体
+- `born` 对象组：玩家出生点
+- `gate` 对象组：传送门区域
+- `enemy_g` 对象组：刷怪点（`class/type`=怪物类型，`name`=生成数量；首次进入视野触发，约每 `0.4s` 生成一个）
 
 ## Testing Guidelines
 - No dedicated unit test suite. Validate changes by building and playtesting relevant scenes.

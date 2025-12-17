@@ -25,7 +25,7 @@ public:
 
     // 死亡重写
     virtual void die() override;
-    void initAttributes();
+
     void setTarget(cocos2d::Node* target);
     void setHome(const cocos2d::Vec2& pos);
     void setAggroRadius(float r);
@@ -46,6 +46,21 @@ protected:
     virtual void updateMovement(float dt);
     virtual void updateAttack(float dt);
 
+    // ===================================================================
+    // 通用工具：坐标/距离/朝向/判定框
+    // ===================================================================
+
+    cocos2d::Vec2 getWorldPosition(const cocos2d::Node *node) const;
+    cocos2d::Vec2 getPositionInParentSpace(const cocos2d::Node *node) const;
+    float horizontalDistanceTo(const cocos2d::Node *target) const;
+    void faceToX(float targetWorldX);
+
+    // 生成一次性的近战判定框（默认伤害通过 PhysicsBody::tag 传递给 onContactBegin）
+    void spawnMeleeHitbox(const cocos2d::Vec2 &offsetInParentSpace,
+                          const cocos2d::Size &hitboxSize,
+                          int damageTag,
+                          float lifeSeconds = 0.1f);
+
     // 工具
     void faceTarget(Node* target);
     float distanceTo(Node* target)const;
@@ -53,8 +68,6 @@ protected:
 
     Node* _target = nullptr;     // 目标（通常是主角）
     float _attackTimer = 0.0f;   // 攻击间隔计时
-
-
 
     cocos2d::Vec2 _homePos;
     bool _hasHome = false;
@@ -69,9 +82,9 @@ protected:
 	float _attackInterval = 1.5f; // 攻击间隔（秒）
 	float _moveSpeed = 150.0f;     // 移动速度
     float _baseScaleX = 1.0f;     // 记录基础水平缩放，用于翻转朝向
-    cocos2d::Vec2  _homePosition;  // 出生点位置
     bool _patrolEnabled = false;   // 是否允许巡逻
-    cocos2d::Vec2 _currentTargetPos;// 追击目标位置
+    cocos2d::Vec2 _moveGoalPos;    // 当前移动目标（父节点坐标系）
+    bool _hasMoveGoal = false;     // 是否存在移动目标
     bool _isStunned = false;       // 是否硬直中
 
     //碰撞盒

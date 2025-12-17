@@ -16,11 +16,7 @@ public:
     // 实现普通攻击
     virtual void attack() override;
 
-    // 根据自身特色扩展 AI
-    virtual void updateAI(float dt) override;
-
 protected:
-    virtual void updateAttack(float dt) override;
     void initAnimations();            // 初始化攻击动画
 
     cocos2d::Animate *_attackAnimate = nullptr;

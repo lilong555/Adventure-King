@@ -1,53 +1,44 @@
-ÎÄ¼ş¼Ğ PATH ÁĞ±í
-¾íĞòÁĞºÅÎª DE7F-4EEE
-D:.
-©¦  AppDelegate.cpp
-©¦  AppDelegate.h
-©¦  project_tree.txt
-©¦  
-©À©¤Character
-©¦  ©À©¤Base
-©¦  ©¦      CharacterBase.cpp
-©¦  ©¦      CharacterBase.h
-©¦  ©¦      CharacterData.h
-©¦  ©¦      
-©¦  ©À©¤components
-©¦  ©¦      AttributeComponent.cpp
-©¦  ©¦      AttributeComponent.h
-©¦  ©¦      SkillComponent.cpp
-©¦  ©¦      SkillComponent.h
-©¦  ©¦      StateMachineComponent.cpp
-©¦  ©¦      StateMachineComponent.h
-©¦  ©¦      
-©¦  ©À©¤Monster
-©¦  ©¦      MonsterBase.cpp
-©¦  ©¦      MonsterBase.h
-©¦  ©¦      
-©¦  ©¸©¤Player
-©¦          PlayerCharacter.cpp
-©¦          PlayerCharacter.h
-©¦          
-©À©¤Managers
-©¦      MusicManager.cpp
-©¦      MusicManager.h
-©¦      SceneTransitionManager.cpp
-©¦      SceneTransitionManager.h
-©¦      
-©¸©¤Scenes
-    ©¦  DebugScene.cpp
-    ©¦  DebugScene.h
-    ©¦  GameScene.cpp
-    ©¦  GameScene.h
-    ©¦  HelloWorldScene.cpp
-    ©¦  HelloWorldScene.h
-    ©¦  HomeScene.cpp
-    ©¦  HomeScene.h
-    ©¦  MapScene.cpp
-    ©¦  MapScene.h
-    ©¦  
-    ©¸©¤Layers
-            SaveMenuLayer.cpp
-            SaveMenuLayer.h
-            SetMenuLayer.cpp
-            SetMenuLayer.h
-            
+Adventure-King/Classes/
+â”œâ”€â”€ AppDelegate.cpp
+â”œâ”€â”€ AppDelegate.h
+â”œâ”€â”€ GameUI.cpp
+â”œâ”€â”€ GameUI.h
+â”œâ”€â”€ Character/
+â”‚   â”œâ”€â”€ Base/
+â”‚   â”‚   â”œâ”€â”€ CharacterBase.h/.cpp
+â”‚   â”‚   â””â”€â”€ CharacterData.h
+â”‚   â”œâ”€â”€ Player/
+â”‚   â”‚   â””â”€â”€ PlayerCharacter.h/.cpp
+â”‚   â”œâ”€â”€ Monster/
+â”‚   â”‚   â”œâ”€â”€ MonsterBase.h/.cpp
+â”‚   â”‚   â””â”€â”€ Monsters/
+â”‚   â”‚       â””â”€â”€ GoblinMonster.h/.cpp
+â”‚   â””â”€â”€ components/
+â”‚       â”œâ”€â”€ AttributeComponent.h/.cpp
+â”‚       â”œâ”€â”€ SkillComponent.h/.cpp
+â”‚       â””â”€â”€ StateMachineComponent.h/.cpp
+â”œâ”€â”€ Managers/
+â”‚   â”œâ”€â”€ MusicManager.h/.cpp
+â”‚   â””â”€â”€ SceneTransitionManager.h/.cpp
+â”œâ”€â”€ Physics/
+â”‚   â””â”€â”€ GamePhysicsCategory.h
+â”œâ”€â”€ Save/
+â”‚   â”œâ”€â”€ SaveManager.h/.cpp
+â”‚   â”œâ”€â”€ SaveData.h/.cpp
+â”‚   â””â”€â”€ JsonSerializer.h/.cpp
+â”œâ”€â”€ Scenes/
+â”‚   â”œâ”€â”€ GameScene.h/.cppï¼ˆå« OriginMushroomScene / MysteryForestSceneï¼‰
+â”‚   â”œâ”€â”€ DebugScene.h/.cpp
+â”‚   â”œâ”€â”€ HelloWorldScene.h/.cpp
+â”‚   â”œâ”€â”€ MapScene.h/.cpp
+â”‚   â”œâ”€â”€ HomeScene.h/.cpp
+â”‚   â””â”€â”€ Layers/
+â”‚       â”œâ”€â”€ SaveMenuLayer.h/.cpp
+â”‚       â””â”€â”€ SetMenuLayer.h/.cpp
+â”œâ”€â”€ UI/
+â”‚   â”œâ”€â”€ PlayerStatusBar.h/.cpp
+â”‚   â”œâ”€â”€ SkillBar.h/.cpp
+â”‚   â”œâ”€â”€ BossHealthBar.h/.cpp
+â”‚   â””â”€â”€ PauseMenu.h/.cpp
+â””â”€â”€ Utils/
+    â””â”€â”€ SpriteFrameCacheHelper.h
