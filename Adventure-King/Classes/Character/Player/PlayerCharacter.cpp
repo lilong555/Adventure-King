@@ -135,7 +135,7 @@ void PlayerCharacter::update(float dt)
     CharacterBase::update(dt);
 }
 
-Node *PlayerCharacter::getCombatLayer() const
+Node *PlayerCharacter::getCombatLayer()
 {
     if (_combatLayer)
     {

@@ -119,7 +119,7 @@ private:
     virtual void onExit() override;
     virtual void update(float dt) override;
 
-    cocos2d::Node *getCombatLayer() const;
+    cocos2d::Node *getCombatLayer();
 
     bool onProjectileContactBegin(cocos2d::PhysicsContact &contact);
     void initAttributesByRole(CharacterRole role);
