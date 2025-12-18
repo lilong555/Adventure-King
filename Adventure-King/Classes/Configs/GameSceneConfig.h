@@ -26,16 +26,19 @@ struct LevelConfig
     bool enablePhysicsDebug = false;
 };
 
+
+//这些在 GameConfig.h 中已配置
+
 /**
  * @brief 玩家配置参数
  */
-struct PlayerConfig
-{
-    float scale = 0.25f;
-    float walkSpeed = 220.0f;
-    float runSpeed = 350.0f;
-    float jumpImpulse = 650.0f;
-    int maxJumpCount = 2;
-    float collisionBoxWidthRatio = 0.8f;
-    float collisionBoxHeightRatio = 0.9f;
-};
+//struct PlayerConfig
+//{
+//    float scale = 0.25f;
+//    float walkSpeed = 220.0f;
+//    float runSpeed = 350.0f;
+//    float jumpImpulse = 650.0f;
+//    int maxJumpCount = 2;
+//    float collisionBoxWidthRatio = 0.8f;
+//    float collisionBoxHeightRatio = 0.9f;
+//};

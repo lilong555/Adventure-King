@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Character/Monster/MonsterBase.h"
+#include"Configs/GameConfigs.h"
 #include <string>
 
 class GoblinMonster : public MonsterBase

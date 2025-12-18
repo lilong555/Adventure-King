@@ -6,7 +6,7 @@
 #include "Scenes/LevelMap.h"
 #include "Character/Monster/MonsterBase.h"
 #include "Character/Player/PlayerCharacter.h"
-#include "Physics/GamePhysicsCategory.h"
+#include "Configs/GamePhysicsCategory.h"
 #include <algorithm>
 #include <cctype>
 #include <climits>

@@ -5,7 +5,8 @@
 
 #pragma once
 
-#include "Scenes/GameSceneConfig.h"
+#include "Configs/GameSceneConfig.h"
+#include"Configs/GameConfigs.h"
 #include "cocos2d.h"
 #include <functional>
 
@@ -15,7 +16,6 @@ class GameInputController
 {
 public:
     void bindPlayer(PlayerCharacter *player);
-    void setPlayerConfig(const PlayerConfig &config) { _config = config; }
 
     void setPauseToggle(const std::function<void()> &togglePause) { _togglePause = togglePause; }
     void setIsPausedGetter(const std::function<bool()> &isPaused) { _isPaused = isPaused; }
@@ -37,7 +37,6 @@ private:
     void resumeMoveAnimationIfIdle();
 
     PlayerCharacter *_player = nullptr;
-    PlayerConfig _config;
 
     bool _movingLeft = false;
     bool _movingRight = false;

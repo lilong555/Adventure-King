@@ -16,8 +16,9 @@
 #include "cocos2d.h"
 #include "2d/CCTMXTiledMap.h"
 #include "2d/CCTMXObjectGroup.h"
-#include "Physics/GamePhysicsCategory.h"
-#include "Scenes/GameSceneConfig.h"
+#include "Configs/GamePhysicsCategory.h"
+#include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 #include <cstddef>
 #include <memory>
 #include <string>
