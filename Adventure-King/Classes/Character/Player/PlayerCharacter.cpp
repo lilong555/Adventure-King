@@ -542,11 +542,9 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     auto sm = getStateMachineComponent();
     if (!sm) return;
 
-    // 玩家受击：无论伤害阈值如何，都打断当前动作并播放受击（需求：beattacked）
-    if (sm->getCurrentState() != CharacterState::DEAD)
-    {
-        sm->changeState(CharacterState::HURT);
-    }
+    // 保留基类的受击阈值：避免 DOT 等持续伤害频繁触发受击导致无法操控
+    if (sm->getCurrentState() != CharacterState::HURT)
+        return;
 
     // 取消上一次的受击镜像（连续受击时重新计算）
     stopActionByTag(ACTION_TAG_HURT_FACING);
