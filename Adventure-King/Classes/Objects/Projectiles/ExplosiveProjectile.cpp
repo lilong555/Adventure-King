@@ -87,7 +87,53 @@ void ExplosiveProjectile::setLoopAnimation(const std::vector<std::string> &frame
 
 void ExplosiveProjectile::addOnHitStatusEffect(const StatusEffectTemplate &effect)
 {
-    _onHitStatusEffects.push_back(effect);
+    StatusEffectTemplate validated = effect;
+    bool hasInvalid = false;
+
+    if (validated.duration < 0.0f)
+    {
+        validated.duration = 0.0f;
+        hasInvalid = true;
+    }
+
+    if (validated.stacks <= 0)
+    {
+        validated.stacks = 1;
+        hasInvalid = true;
+    }
+
+    if (validated.maxStacks < 0)
+    {
+        validated.maxStacks = 0;
+        hasInvalid = true;
+    }
+
+    if (validated.tickInterval < 0.0f)
+    {
+        validated.tickInterval = 0.0f;
+        hasInvalid = true;
+    }
+
+    if (validated.baseDamageScale < 0.0f)
+    {
+        validated.baseDamageScale = 0.0f;
+        hasInvalid = true;
+    }
+
+    if (validated.perStackDamageScale < 0.0f)
+    {
+        validated.perStackDamageScale = 0.0f;
+        hasInvalid = true;
+    }
+
+#if COCOS2D_DEBUG > 0
+    if (hasInvalid)
+    {
+        CCLOG("ExplosiveProjectile: invalid StatusEffectTemplate corrected (type=%d).", static_cast<int>(validated.type));
+    }
+#endif
+
+    _onHitStatusEffects.push_back(validated);
 }
 
 void ExplosiveProjectile::clearOnHitStatusEffects()
@@ -360,7 +406,7 @@ void ExplosiveProjectile::applyAoEDamage()
                 inst.elapsed = 0.0f;
                 inst.attributeBonus = tmpl.attributeBonus;
 
-                inst.stacks = std::max(1, tmpl.stacks);
+                inst.stacks = tmpl.stacks;
                 inst.maxStacks = tmpl.maxStacks;
                 inst.stackable = tmpl.stackable;
                 inst.refreshOnAdd = tmpl.refreshOnAdd;

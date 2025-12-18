@@ -31,6 +31,10 @@ namespace
     constexpr float ANIM_DELAY_WALK = 0.25f;
     constexpr float HURT_DURATION_SECONDS = 0.3f;
 
+    // Combat
+    constexpr float DEFAULT_WEAPON_DAMAGE = 5.0f;
+    constexpr float STRENGTH_DAMAGE_MULTIPLIER = 1.5f;
+
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths, float delayPerUnit)
     {
@@ -539,7 +543,7 @@ void PlayerCharacter::attack()
 
 float PlayerCharacter::getAttackPower()
 {
-    float weaponDamage = 5.0f;
+    float weaponDamage = DEFAULT_WEAPON_DAMAGE;
     if (auto weapon = getEquippedWeapon())
     {
         weaponDamage = weapon->attackDamage;
@@ -551,7 +555,7 @@ float PlayerCharacter::getAttackPower()
         strength = attr->getAttributeValue(AttributeType::STRENGTH);
     }
 
-    return weaponDamage + strength * 1.5f;
+    return weaponDamage + strength * STRENGTH_DAMAGE_MULTIPLIER;
 }
 
 void PlayerCharacter::takeDamage(const DamageInfo& info)

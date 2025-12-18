@@ -10,6 +10,38 @@ namespace
 {
     const char* const BURNING_PARTICLE_NAME = "BurningParticle";
 
+    struct BurningParticleConfig
+    {
+        int totalParticles = 120;
+
+        Vec2 gravity = Vec2(0.0f, 70.0f);
+        float angle = 90.0f;
+        float angleVar = 25.0f;
+        float speed = 25.0f;
+        float speedVar = 12.0f;
+        float life = 0.55f;
+        float lifeVar = 0.25f;
+
+        float startSize = 14.0f;
+        float startSizeVar = 6.0f;
+        float endSize = 0.0f;
+
+        Color4F startColor = Color4F(1.0f, 0.55f, 0.10f, 0.75f);
+        Color4F startColorVar = Color4F(0.10f, 0.10f, 0.10f, 0.10f);
+        Color4F endColor = Color4F(0.70f, 0.12f, 0.05f, 0.00f);
+        Color4F endColorVar = Color4F(0.10f, 0.10f, 0.10f, 0.00f);
+
+        // 位置：使用 Owner 的本地坐标，避免受 scaleX 翻转影响出现偏移
+        float emitterOffsetYRatio = 0.15f;
+        float posVarXRatio = 0.18f;
+        float posVarYRatio = 0.12f;
+
+        float baseEmission = 55.0f;
+        float perStackEmission = 25.0f;
+    };
+
+    const BurningParticleConfig kBurningParticleConfig;
+
     Texture2D* getWhiteParticleTexture()
     {
         static Texture2D* s_texture = nullptr;
@@ -55,22 +87,22 @@ namespace
         particle->setDuration(ParticleSystem::DURATION_INFINITY);
         particle->setEmitterMode(ParticleSystem::Mode::GRAVITY);
 
-        particle->setGravity(Vec2(0.0f, 70.0f));
-        particle->setAngle(90.0f);
-        particle->setAngleVar(25.0f);
-        particle->setSpeed(25.0f);
-        particle->setSpeedVar(12.0f);
-        particle->setLife(0.55f);
-        particle->setLifeVar(0.25f);
+        particle->setGravity(kBurningParticleConfig.gravity);
+        particle->setAngle(kBurningParticleConfig.angle);
+        particle->setAngleVar(kBurningParticleConfig.angleVar);
+        particle->setSpeed(kBurningParticleConfig.speed);
+        particle->setSpeedVar(kBurningParticleConfig.speedVar);
+        particle->setLife(kBurningParticleConfig.life);
+        particle->setLifeVar(kBurningParticleConfig.lifeVar);
 
-        particle->setStartSize(14.0f);
-        particle->setStartSizeVar(6.0f);
-        particle->setEndSize(0.0f);
+        particle->setStartSize(kBurningParticleConfig.startSize);
+        particle->setStartSizeVar(kBurningParticleConfig.startSizeVar);
+        particle->setEndSize(kBurningParticleConfig.endSize);
 
-        particle->setStartColor(Color4F(1.0f, 0.55f, 0.10f, 0.75f));
-        particle->setStartColorVar(Color4F(0.10f, 0.10f, 0.10f, 0.10f));
-        particle->setEndColor(Color4F(0.70f, 0.12f, 0.05f, 0.00f));
-        particle->setEndColorVar(Color4F(0.10f, 0.10f, 0.10f, 0.00f));
+        particle->setStartColor(kBurningParticleConfig.startColor);
+        particle->setStartColorVar(kBurningParticleConfig.startColorVar);
+        particle->setEndColor(kBurningParticleConfig.endColor);
+        particle->setEndColorVar(kBurningParticleConfig.endColorVar);
 
         particle->setPositionType(ParticleSystem::PositionType::GROUPED);
         particle->setPosition(Vec2::ZERO);
@@ -84,7 +116,7 @@ namespace
         }
 
         const auto size = owner->getContentSize();
-        return Vec2(size.width * 0.5f, size.height * 0.15f);
+        return Vec2(size.width * 0.5f, size.height * kBurningParticleConfig.emitterOffsetYRatio);
     }
 
     void updateBurningParticleIntensity(ParticleSystemQuad* particle, Node* owner, int stacks)
@@ -95,12 +127,12 @@ namespace
         }
 
         const auto size = owner->getContentSize();
-        particle->setPosVar(Vec2(size.width * 0.18f, size.height * 0.12f));
+        particle->setPosVar(Vec2(size.width * kBurningParticleConfig.posVarXRatio,
+                                 size.height * kBurningParticleConfig.posVarYRatio));
 
         stacks = std::max(1, stacks);
-        const float baseEmission = 55.0f;
-        const float perStackEmission = 25.0f;
-        particle->setEmissionRate(baseEmission + perStackEmission * static_cast<float>(stacks - 1));
+        particle->setEmissionRate(kBurningParticleConfig.baseEmission +
+                                  kBurningParticleConfig.perStackEmission * static_cast<float>(stacks - 1));
     }
 } // namespace
 
@@ -167,7 +199,7 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
         existing->setName(BURNING_VFX_NAME);
         owner->addChild(existing, 999);
 
-        auto particle = ParticleSystemQuad::createWithTotalParticles(120);
+        auto particle = ParticleSystemQuad::createWithTotalParticles(kBurningParticleConfig.totalParticles);
         particle->setName(BURNING_PARTICLE_NAME);
         existing->addChild(particle);
         applyBurningParticleStyle(particle);

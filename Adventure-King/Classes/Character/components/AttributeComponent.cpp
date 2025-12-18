@@ -54,30 +54,38 @@ void AttributeComponent::updateStatusEffectsLogic(float dt)
     {
         float remaining = effect.duration - effect.elapsed;
         float activeDt = std::max(0.0f, std::min(dt, remaining));
-        effect.elapsed += dt;
+        effect.elapsed += activeDt;
 
         // DOT：按 tickInterval 结算；伤害来源攻击力在施加时已写入 effect.sourceAttackPower
         if (owner && !owner->isDead() && effect.tickInterval > 0.0f && effect.sourceAttackPower > 0.0f)
         {
             effect.tickAccumulator += activeDt;
-            while (effect.tickAccumulator >= effect.tickInterval)
+
+            int tickCount = static_cast<int>(std::floor(effect.tickAccumulator / effect.tickInterval));
+            if (tickCount <= 0)
             {
-                effect.tickAccumulator -= effect.tickInterval;
+                continue;
+            }
 
-                int stacks = std::max(1, effect.stacks);
-                float scale = effect.baseDamageScale + effect.perStackDamageScale * static_cast<float>(stacks);
-                float dmgAmount = std::floor(std::max(0.0f, scale * effect.sourceAttackPower));
-                if (dmgAmount <= 0.0f)
-                {
-                    continue;
-                }
+            effect.tickAccumulator -= effect.tickInterval * static_cast<float>(tickCount);
 
-                DamageInfo dmg;
-                dmg.amount = dmgAmount;
-                dmg.attacker = nullptr;
-                dmg.isCritical = false;
-                dmg.penetration = 0.0f;
-                dmg.causesHitStun = false;
+            const int stacks = std::max(1, effect.stacks);
+            const float scale = effect.baseDamageScale + effect.perStackDamageScale * static_cast<float>(stacks);
+            const float dmgAmount = std::floor(std::max(0.0f, scale * effect.sourceAttackPower));
+            if (dmgAmount <= 0.0f)
+            {
+                continue;
+            }
+
+            DamageInfo dmg;
+            dmg.amount = dmgAmount;
+            dmg.attacker = nullptr;
+            dmg.isCritical = false;
+            dmg.penetration = 0.0f;
+            dmg.causesHitStun = false;
+
+            for (int i = 0; i < tickCount; ++i)
+            {
                 owner->takeDamage(dmg);
             }
         }
@@ -173,17 +181,22 @@ void AttributeComponent::addStatusEffect(const StatusEffectInstance &effect)
 
     if (merged != _statusEffects.end())
     {
+        bool needRecalculate = false;
+
         if (effect.stackable)
         {
+            const bool bonusChanged = (merged->attributeBonus.values != effect.attributeBonus.values);
+
             int addStacks = std::max(1, effect.stacks);
             int newStacks = merged->stacks + addStacks;
 
-            int maxStacks = effect.maxStacks > 0 ? effect.maxStacks : merged->maxStacks;
+            // 合并策略：以“最新施加”的配置为准（maxStacks/DOT 参数/刷新行为等）
+            int maxStacks = effect.maxStacks;
             if (maxStacks > 0)
             {
                 newStacks = std::min(newStacks, maxStacks);
             }
-            merged->stacks = newStacks;
+            merged->stacks = std::max(1, newStacks);
 
             if (effect.refreshOnAdd)
             {
@@ -201,24 +214,34 @@ void AttributeComponent::addStatusEffect(const StatusEffectInstance &effect)
             merged->stackable = effect.stackable;
             merged->maxStacks = maxStacks;
             merged->refreshOnAdd = effect.refreshOnAdd;
+
+            needRecalculate = bonusChanged;
         }
         else
         {
+            const bool bonusChanged = (merged->attributeBonus.values != effect.attributeBonus.values);
             *merged = effect;
+            needRecalculate = bonusChanged;
         }
 
-        _statusBonus.clear();
-        for (const auto& eff : _statusEffects)
+        if (needRecalculate)
         {
-            _statusBonus += eff.attributeBonus;
+            _statusBonus.clear();
+            for (const auto& eff : _statusEffects)
+            {
+                _statusBonus += eff.attributeBonus;
+            }
+            recalculateFinalAttributes();
         }
-        recalculateFinalAttributes();
         return;
     }
 
     _statusEffects.push_back(effect);
-    _statusBonus += effect.attributeBonus;
-    recalculateFinalAttributes();
+    if (!effect.attributeBonus.values.empty())
+    {
+        _statusBonus += effect.attributeBonus;
+        recalculateFinalAttributes();
+    }
 }
 
 void AttributeComponent::updateStatusEffects(float dt)
