@@ -54,6 +54,7 @@ void GoblinMonster::applyHpScalingForPlayerLevel(int playerLevel)
     }
 
     refreshCacheAttributes();
+    setHpBarScale(2.0f);
     ensureHpBar();
     setCurrentHP(_maxHP);
     updateHpBar();
@@ -82,6 +83,9 @@ bool GoblinMonster::init(const std::string &spriteFrameName)
 
     // === 设置怪物属性 ===
     initAttributes();
+
+    // 哥布林血条放大一倍
+    setHpBarScale(2.0f);
 
     // === 刷新 HP / MP ===
     setCurrentHP(_maxHP);

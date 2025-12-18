@@ -13,6 +13,12 @@ MonsterBase::~MonsterBase()
 {
 }
 
+void MonsterBase::setHpBarScale(float scale)
+{
+    _hpBarScale = std::max(0.1f, scale);
+    updateHpBar();
+}
+
 bool MonsterBase::init(const std::string& spriteFrameName)
 {
     // 1. 视觉初始化
@@ -688,6 +694,8 @@ void MonsterBase::updateHpBar()
 
     _hpBar->clear();
 
+    float uiScale = std::max(0.1f, _hpBarScale);
+
     float maxHp = _maxHP;
     if (auto attr = getAttributeComponent())
     {
@@ -696,8 +704,8 @@ void MonsterBase::updateHpBar()
     if (maxHp <= 0.0f)
         return;
 
-    float barWidth = 60.0f;
-    float barHeight = 8.0f;
+    float barWidth = 60.0f * uiScale;
+    float barHeight = 8.0f * uiScale;
     float yOffset = getContentSize().height + 10.0f;
 
     Vec2 barPos(getContentSize().width / 2 - barWidth / 2, yOffset);
