@@ -7,7 +7,8 @@
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/StatusEffectVfxComponent.h"
 #include "Objects/Projectiles/Bomb.h"
-#include "Physics/GamePhysicsCategory.h"
+#include "Configs/GameConfigs.h"
+#include"Configs/GamePhysicsCategory.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 

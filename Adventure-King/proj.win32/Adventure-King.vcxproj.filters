@@ -46,14 +46,17 @@
     <Filter Include="src\Objects\Projectiles">
       <UniqueIdentifier>{a306a2b2-a106-4f29-94f5-5f966d0bb182}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Physics">
-      <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\UI">
       <UniqueIdentifier>{6686c30f-b901-4ace-98e0-ebfe3c586b6d}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\Save">
       <UniqueIdentifier>{5879635e-04e4-4c14-a72a-c4cdc828da6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Character\Player\SkillSets">
+      <UniqueIdentifier>{e505816f-ca50-4b8b-a68d-a924446f71ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Configs">
+      <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -120,9 +123,6 @@
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp">
       <Filter>src\Character\Player</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp">
-      <Filter>src\Character\Player</Filter>
-    </ClCompile>
     <ClCompile Include="..\Classes\GameUI.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -133,16 +133,19 @@
     <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
     <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
     <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
-	    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
-	      <Filter>src\Character\Player\Players</Filter>
-	    </ClCompile>
-	    <ClCompile Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.cpp">
-	      <Filter>src\Objects\Projectiles</Filter>
-	    </ClCompile>
-	    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
-	      <Filter>src\Objects\Projectiles</Filter>
-	    </ClCompile>
-	  </ItemGroup>
+    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
+      <Filter>src\Character\Player\Players</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp">
+      <Filter>src\Character\Player\SkillSets</Filter>
+    </ClCompile>
+  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
       <Filter>win32</Filter>
@@ -177,9 +180,6 @@
     <ClInclude Include="..\Classes\Scenes\GameScene.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Scenes\GameSceneConfig.h">
-      <Filter>src\Scenes</Filter>
-    </ClInclude>
     <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
@@ -207,15 +207,9 @@
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h">
       <Filter>src\Managers</Filter>
     </ClInclude>
-	    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
-	      <Filter>src\Character\Player</Filter>
-	    </ClInclude>
-	    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h">
-	      <Filter>src\Character\Player</Filter>
-	    </ClInclude>
-	    <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h">
-	      <Filter>src\Character\Player</Filter>
-	    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h">
+      <Filter>src\Character\Player</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\GameUI.h">
       <Filter>src</Filter>
     </ClInclude>
@@ -226,17 +220,14 @@
     <ClInclude Include="..\Classes\Save\SaveData.h" />
     <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
     <ClInclude Include="..\Classes\Save\SaveManager.h" />
-	    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
-	      <Filter>src\Character\Player\Players</Filter>
-	    </ClInclude>
-	    <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h">
-	      <Filter>src\Objects\Projectiles</Filter>
-	    </ClInclude>
-	    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
-	      <Filter>src\Objects\Projectiles</Filter>
-	    </ClInclude>
-	    <ClInclude Include="..\Classes\Physics\GamePhysicsCategory.h">
-	      <Filter>src\Physics</Filter>
+    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
+      <Filter>src\Character\Player\Players</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
+      <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\UI\BossHealthBar.h">
       <Filter>src\UI</Filter>
@@ -259,14 +250,23 @@
     <ClInclude Include="..\Classes\Save\JsonSerializer.h">
       <Filter>src\Save</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Objects\Projectiles\ProjectilesBase.h">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClInclude>
     <ClInclude Include="..\Classes\Character\Base\CharacterData.h">
       <Filter>src\Character\Base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h">
+      <Filter>src\Character\Player\SkillSets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h">
+      <Filter>src\Character\Player\SkillSets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Configs\GameConfigs.h">
+      <Filter>src\Configs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Configs\GamePhysicsCategory.h">
+      <Filter>src\Configs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Configs\GameSceneConfig.h">
+      <Filter>src\Configs</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

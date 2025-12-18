@@ -2,6 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
+
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -30,6 +31,36 @@ namespace
         frames.pushBack(frame);
         auto anim = cocos2d::Animation::createWithSpriteFrames(frames, delayPerUnit);
         cache->addAnimation(anim, animationKey);
+    }
+
+    // 辅助函数实现
+    void ensureLoopAnimationCached(const std::string& key, const std::string& formatStr, int frameCount, float delay)
+    {
+        auto cache = cocos2d::AnimationCache::getInstance();
+        if (cache->getAnimation(key)) return; // 如果已经有了就不重复加载
+
+        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+        for (int i = 1; i <= frameCount; i++)
+        {
+            // 拼接文件名，例如 "Sprites/Enemies/Goblin/Goblin_run_1.png"
+            std::string path = cocos2d::StringUtils::format(formatStr.c_str(), i);
+
+            auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+            if (frame)
+            {
+                frames.pushBack(frame);
+            }
+            else
+            {
+                CCLOG("Error: Frame not found: %s", path.c_str());
+            }
+        }
+
+        if (!frames.empty())
+        {
+            auto anim = cocos2d::Animation::createWithSpriteFrames(frames, delay);
+            cache->addAnimation(anim, key);
+        }
     }
 }
 
@@ -102,25 +133,29 @@ bool GoblinMonster::init(const std::string &spriteFrameName)
 #pragma region 属性初始化
 void GoblinMonster::initAttributes()
 {
+    // 使用命名空间别名，让下面的代码写起来短一点，不用写 GameConfig::Monster::Goblin::...
+    namespace Conf = GameConfig::Monster::Goblin;
 
     Attributes base;
-    base.set(AttributeType::STRENGTH, 10.0f);
-    base.set(AttributeType::DEFENSE, 2.0f);
-    base.set(AttributeType::MOVE_SPEED, 200.0f); // 基础移速
-    base.set(AttributeType::CRITICAL_RATE, 0.05f);
-    base.set(AttributeType::MAX_HP, 1000.0f);
-    base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
-    // 怪物默认缩放见 MonsterBase::init，攻击判定框按缩放同比例缩放，
-    // 因此攻击距离也需要匹配当前缩放，避免“看起来够不着却开始攻击”。
-    base.set(AttributeType::ATTACK_RANGE, 150.0f); // 发动攻击的距离
 
-    // 2. 交给基类处理 (一行代码搞定逻辑！)
+    // 从配置读取数值
+    base.set(AttributeType::STRENGTH, Conf::STRENGTH);
+    base.set(AttributeType::DEFENSE, Conf::DEFENSE);
+    base.set(AttributeType::MOVE_SPEED, Conf::MOVE_SPEED);
+    base.set(AttributeType::CRITICAL_RATE, Conf::CRITICAL_RATE);
+    base.set(AttributeType::MAX_HP, Conf::MAX_HP);
+    // 如果你有 MP 属性，最好也设置一下，防止为 0 导致某些逻辑除零错误
+    base.set(AttributeType::MAX_MP, Conf::MAX_MP);
+
+    // 战斗属性
+    base.set(AttributeType::ATTACKINTERVAL, Conf::ATTACK_INTERVAL);
+    base.set(AttributeType::ATTACK_RANGE, Conf::ATTACK_RANGE);
+
+    // 2. 交给基类处理
     setupCharacterStats(base);
-    // 3. 初始化当前血量 (逻辑上这应该属于 HealthComponent，但写在这也没问题)
-    // auto hp = getComponent<HealthComponent>();
-    // if(hp) hp->setHP(60.0f);
 
-    CCLOG("Goblin Attributes Set. Speed: %.0f", _moveSpeed);
+    // 3. 这里的 Log 也可以直接读配置里的值，或者读成员变量 _moveSpeed
+    CCLOG("Goblin Attributes Set. Speed: %.0f, HP: %.0f", Conf::MOVE_SPEED, Conf::MAX_HP);
 }
 #pragma endregion
 
@@ -130,11 +165,17 @@ void GoblinMonster::initStateAnimations()
     // 受击/待机素材为单帧：用 AnimationCache 驱动 StateMachineComponent 统一播放
     ensureSingleFrameAnimationCached("goblin_idle", "Sprites/Enemies/Goblin/Goblin_idle.png");
     ensureSingleFrameAnimationCached("goblin_hurt", "Sprites/Enemies/Goblin/Goblin_beattacked.png");
-
+    ensureLoopAnimationCached(
+        "goblin_walk",                                      // 缓存Key
+        "Sprites/Enemies/Goblin/Goblin_walk_%d.png",         // 路径格式化字符串
+        4,                                                  // 帧数
+        0.15f                                               // 帧间隔时间(越小跑得越快)
+    );
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, "goblin_idle");
         sm->registerStateAnimation(CharacterState::HURT, "goblin_hurt");
+        sm->registerStateAnimation(CharacterState::WALKING, "goblin_walk");
     }
 }
 #pragma endregion

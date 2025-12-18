@@ -28,7 +28,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
-#include "Physics/GamePhysicsCategory.h"
+#include "Configs/GamePhysicsCategory.h"
 #include "MapScene.h"
 #include <algorithm>
 
@@ -2195,7 +2195,7 @@ void DebugScene::doThrowBomb()
         return;
 
     // 1. 创建 Bomb 对象 (工厂方法内部已经处理了 initPhysics)
-    auto bomb = Bomb::create("Sprites/Characters/Player/Klee/TNT.png");
+    auto bomb = Bomb::create("Sprites/Characters/Player/Klee/defalt/TNT.png");
     if (!bomb) return;
 
     // 2. 计算出生位置和方向
