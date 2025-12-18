@@ -161,6 +161,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\SkillComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\StateMachineComponent.cpp" />
+    <ClCompile Include="..\Classes\Character\components\StatusEffectVfxComponent.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
@@ -197,11 +198,12 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\components\AttributeComponent.h" />
     <ClInclude Include="..\Classes\Character\components\SkillComponent.h" />
     <ClInclude Include="..\Classes\Character\components\StateMachineComponent.h" />
-	    <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h" />
-	    <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
-	    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
-	    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h" />
-	    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h" />
+    <ClInclude Include="..\Classes\Character\components\StatusEffectVfxComponent.h" />
+		    <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h" />
+		    <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
+		    <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
+		    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h" />
+		    <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h" />
 	    <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h" />
 	    <ClInclude Include="..\Classes\GameUI.h" />
 	    <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h" />

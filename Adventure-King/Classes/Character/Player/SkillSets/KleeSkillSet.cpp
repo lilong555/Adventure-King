@@ -25,6 +25,11 @@ namespace
     constexpr float FIREBALL_SPEED_X = 650.0f;
     constexpr float FIREBALL_DAMAGE = 220.0f;
     constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
+
+    constexpr float BURN_DURATION_SECONDS = 5.0f;
+    constexpr float BURN_TICK_INTERVAL_SECONDS = 0.5f;
+    constexpr float BURN_BASE_DAMAGE_SCALE = 0.1f;
+    constexpr float BURN_PER_STACK_DAMAGE_SCALE = 0.1f;
 }
 
 void KleeSkillSet::initSkills(PlayerCharacter &player)
@@ -215,6 +220,19 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
                 },
                 0.05f,
                 0.9f);
+
+            // 命中/爆炸附加燃烧：持续5秒，每0.5秒一次，叠层并刷新
+            Bomb::StatusEffectTemplate burn;
+            burn.type = StatusEffectType::BURNING;
+            burn.duration = BURN_DURATION_SECONDS;
+            burn.stacks = 1;
+            burn.maxStacks = 0;
+            burn.stackable = true;
+            burn.refreshOnAdd = true;
+            burn.tickInterval = BURN_TICK_INTERVAL_SECONDS;
+            burn.baseDamageScale = BURN_BASE_DAMAGE_SCALE;
+            burn.perStackDamageScale = BURN_PER_STACK_DAMAGE_SCALE;
+            rocket->addOnHitStatusEffect(burn);
 
             player.addToCombatLayer(rocket, 4);
 

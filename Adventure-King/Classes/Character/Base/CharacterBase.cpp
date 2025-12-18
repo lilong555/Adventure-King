@@ -32,6 +32,16 @@ SkillComponent* CharacterBase::getSkillComponent()
     return static_cast<SkillComponent*>(this->getComponent("SkillComponent"));
 }
 
+float CharacterBase::getAttackPower()
+{
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return 0.0f;
+    }
+    return attr->getAttributeValue(AttributeType::STRENGTH);
+}
+
 // 子类在 create 中调用，用于初始化贴图和组件
 bool CharacterBase::initWithSpriteFrameName(const std::string& spriteFrameName)
 {
@@ -162,7 +172,7 @@ void CharacterBase::takeDamage(const DamageInfo& info)
         // 只有伤害超过一定阈值才播放受击动作
         if (auto sm = getStateMachineComponent())
         {
-            if (maxHP > 0 && finalDamage > (maxHP * 0.05f))
+            if (info.causesHitStun && maxHP > 0 && finalDamage > (maxHP * 0.05f))
             {
                 sm->changeState(CharacterState::HURT);
             }

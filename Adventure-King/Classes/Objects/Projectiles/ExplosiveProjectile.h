@@ -8,6 +8,22 @@
 class ExplosiveProjectile : public cocos2d::Sprite
 {
 public:
+    struct StatusEffectTemplate
+    {
+        StatusEffectType type = StatusEffectType::POISONED;
+        float duration = 0.0f;
+        Attributes attributeBonus;
+
+        int stacks = 1;
+        int maxStacks = 0;       // 0 = 不限制
+        bool stackable = false;  // true 时按 type 合并并叠加 stacks
+        bool refreshOnAdd = true;
+
+        float tickInterval = 0.0f;
+        float baseDamageScale = 0.0f;
+        float perStackDamageScale = 0.0f;
+    };
+
     void setAttacker(CharacterBase *attacker) { _attacker = attacker; }
     CharacterBase *getAttacker() const { return _attacker; }
 
@@ -32,6 +48,9 @@ public:
 
     void setLoopAnimation(const std::vector<std::string> &framePaths, float frameDelay);
 
+    void addOnHitStatusEffect(const StatusEffectTemplate &effect);
+    void clearOnHitStatusEffects();
+
     bool isExploded() const { return _isExploded; }
     void explode();
 
@@ -51,6 +70,8 @@ private:
     float _explosionRadius = 0.0f;
     CharacterBase *_attacker = nullptr;
 
+    std::vector<StatusEffectTemplate> _onHitStatusEffects;
+
     std::vector<std::string> _loopAnimationPaths;
     float _loopAnimationDelay = 0.08f;
 
@@ -64,4 +85,3 @@ private:
     float _explosionSpriteScaleUpFactor = 1.2f;
     float _explosionSpriteFadeOutDuration = 0.3f;
 };
-

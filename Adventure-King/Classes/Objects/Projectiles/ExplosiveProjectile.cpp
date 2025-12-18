@@ -85,6 +85,16 @@ void ExplosiveProjectile::setLoopAnimation(const std::vector<std::string> &frame
     runAction(action);
 }
 
+void ExplosiveProjectile::addOnHitStatusEffect(const StatusEffectTemplate &effect)
+{
+    _onHitStatusEffects.push_back(effect);
+}
+
+void ExplosiveProjectile::clearOnHitStatusEffects()
+{
+    _onHitStatusEffects.clear();
+}
+
 void ExplosiveProjectile::explode()
 {
     if (_isExploded)
@@ -167,10 +177,6 @@ void ExplosiveProjectile::playExplosionVfx()
 
 void ExplosiveProjectile::applyAoEDamage()
 {
-    if (_baseDamage <= 0.0f)
-    {
-        return;
-    }
     if (_explosionRadius <= 0.0f)
     {
         return;
@@ -188,10 +194,11 @@ void ExplosiveProjectile::applyAoEDamage()
         explosionWorld = root->convertToWorldSpace(getPosition());
     }
 
+    const bool dealDamage = _baseDamage > 0.0f;
     float damageAmount = _baseDamage;
     bool isCrit = false;
 
-    if (_attacker)
+    if (dealDamage && _attacker)
     {
         auto attr = _attacker->getAttributeComponent();
         if (attr)
@@ -244,6 +251,12 @@ void ExplosiveProjectile::applyAoEDamage()
     collectTargets(root);
 
     const float radiusSq = _explosionRadius * _explosionRadius;
+
+    float sourceAttackPower = 0.0f;
+    if (_attacker)
+    {
+        sourceAttackPower = _attacker->getAttackPower();
+    }
 
     for (auto target : targets)
     {
@@ -322,9 +335,45 @@ void ExplosiveProjectile::applyAoEDamage()
         else if (explosionWorld.y > hitRectWorld.getMaxY())
             dy = explosionWorld.y - hitRectWorld.getMaxY();
 
-        if ((dx * dx + dy * dy) <= radiusSq)
+        if ((dx * dx + dy * dy) > radiusSq)
+        {
+            continue;
+        }
+
+        if (dealDamage)
         {
             target->takeDamage(dmg);
+        }
+
+        if (!_onHitStatusEffects.empty())
+        {
+            auto attr = target->getAttributeComponent();
+            if (!attr)
+            {
+                continue;
+            }
+
+            for (const auto &tmpl : _onHitStatusEffects)
+            {
+                StatusEffectInstance inst;
+                inst.type = tmpl.type;
+                inst.duration = tmpl.duration;
+                inst.elapsed = 0.0f;
+                inst.attributeBonus = tmpl.attributeBonus;
+
+                inst.stacks = std::max(1, tmpl.stacks);
+                inst.maxStacks = tmpl.maxStacks;
+                inst.stackable = tmpl.stackable;
+                inst.refreshOnAdd = tmpl.refreshOnAdd;
+
+                inst.tickInterval = tmpl.tickInterval;
+                inst.tickAccumulator = 0.0f;
+                inst.sourceAttackPower = sourceAttackPower;
+                inst.baseDamageScale = tmpl.baseDamageScale;
+                inst.perStackDamageScale = tmpl.perStackDamageScale;
+
+                attr->addStatusEffect(inst);
+            }
         }
     }
 }

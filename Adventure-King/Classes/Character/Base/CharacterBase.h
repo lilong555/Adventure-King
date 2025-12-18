@@ -20,6 +20,7 @@ struct DamageInfo
     bool isCritical = false;           // 是否暴击
     float critMultiplier = 1.5f;       // 暴击倍率
     CharacterBase* attacker = nullptr; // 攻击来源（用于反伤或仇恨统计）
+    bool causesHitStun = true;         // 是否触发受击硬直/打断（DOT 等持续伤害应为 false）
 };
 
 // 角色基础类
@@ -72,6 +73,10 @@ public:
 
     // SkillComponent 使用技能时的回调
     virtual void onUseActiveSkill(const ActiveSkill& skill) {}
+
+    // 角色攻击力（用于 DOT 等需要“来源攻击力”计算的场景）
+    // 默认实现：返回 STRENGTH；玩家角色可覆写为“武器伤害 + 力量加成”等更贴近手感的计算
+    virtual float getAttackPower();
 
 protected:
     CharacterBase();

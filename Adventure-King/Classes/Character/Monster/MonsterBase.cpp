@@ -1,4 +1,5 @@
 #include "MonsterBase.h"
+#include "Character/components/StatusEffectVfxComponent.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <cmath>
@@ -48,6 +49,13 @@ bool MonsterBase::init(const std::string& spriteFrameName)
         auto skill = SkillComponent::create();
         skill->setName("SkillComponent");
         this->addComponent(skill);
+    }
+
+    // 状态效果VFX组件（燃烧等表现）
+    if (!getComponent("StatusEffectVfxComponent")) {
+        auto vfx = StatusEffectVfxComponent::create();
+        vfx->setName("StatusEffectVfxComponent");
+        this->addComponent(vfx);
     }
 
     // ---------------------------------------------------------
@@ -584,6 +592,12 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     if (hp <= 0)
     {
         die();
+        return;
+    }
+
+    // DOT 等持续伤害：不触发硬直/打断，避免频繁停机
+    if (!info.causesHitStun)
+    {
         return;
     }
 

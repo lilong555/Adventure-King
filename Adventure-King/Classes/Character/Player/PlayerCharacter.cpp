@@ -5,6 +5,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
+#include "Character/components/StatusEffectVfxComponent.h"
 #include "Objects/Projectiles/Bomb.h"
 #include "Physics/GamePhysicsCategory.h"
 #include "Utils/SpriteFrameCacheHelper.h"
@@ -130,6 +131,7 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     if (!getAttributeComponent())    this->addComponent(AttributeComponent::create());
     if (!getSkillComponent())        this->addComponent(SkillComponent::create());
     if (!getStateMachineComponent()) this->addComponent(StateMachineComponent::create());
+    if (!getComponent("StatusEffectVfxComponent")) this->addComponent(StatusEffectVfxComponent::create());
 
     // 3. 数据层初始化
     initAttributesByRole(role);
@@ -533,6 +535,23 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()>& onFinished)
 void PlayerCharacter::attack()
 {
     tryNormalAttack();
+}
+
+float PlayerCharacter::getAttackPower()
+{
+    float weaponDamage = 5.0f;
+    if (auto weapon = getEquippedWeapon())
+    {
+        weaponDamage = weapon->attackDamage;
+    }
+
+    float strength = 0.0f;
+    if (auto attr = getAttributeComponent())
+    {
+        strength = attr->getAttributeValue(AttributeType::STRENGTH);
+    }
+
+    return weaponDamage + strength * 1.5f;
 }
 
 void PlayerCharacter::takeDamage(const DamageInfo& info)

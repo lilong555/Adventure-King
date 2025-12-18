@@ -1,5 +1,7 @@
 #include "Character/components/AttributeComponent.h"
+#include "Character/Base/CharacterBase.h"
 #include <algorithm>
+#include <cmath>
 
 AttributeComponent::AttributeComponent()
 {
@@ -43,26 +45,61 @@ void AttributeComponent::update(float dt)
 
 void AttributeComponent::updateStatusEffectsLogic(float dt)
 {
-    // 把你原来的 updateStatusEffects 代码搬到这里
-    if (_statusEffects.empty()) return;
+    if (_statusEffects.empty())
+        return;
 
-    bool needsRecalc = false;
-    for (auto it = _statusEffects.begin(); it != _statusEffects.end();)
+    auto owner = dynamic_cast<CharacterBase*>(getOwner());
+
+    for (auto& effect : _statusEffects)
     {
-        it->duration -= dt;
-        if (it->duration <= 0)
+        float remaining = effect.duration - effect.elapsed;
+        float activeDt = std::max(0.0f, std::min(dt, remaining));
+        effect.elapsed += dt;
+
+        // DOT：按 tickInterval 结算；伤害来源攻击力在施加时已写入 effect.sourceAttackPower
+        if (owner && !owner->isDead() && effect.tickInterval > 0.0f && effect.sourceAttackPower > 0.0f)
         {
-            it = _statusEffects.erase(it); // 移除过期的
-            needsRecalc = true;
-        }
-        else
-        {
-            ++it;
+            effect.tickAccumulator += activeDt;
+            while (effect.tickAccumulator >= effect.tickInterval)
+            {
+                effect.tickAccumulator -= effect.tickInterval;
+
+                int stacks = std::max(1, effect.stacks);
+                float scale = effect.baseDamageScale + effect.perStackDamageScale * static_cast<float>(stacks);
+                float dmgAmount = std::floor(std::max(0.0f, scale * effect.sourceAttackPower));
+                if (dmgAmount <= 0.0f)
+                {
+                    continue;
+                }
+
+                DamageInfo dmg;
+                dmg.amount = dmgAmount;
+                dmg.attacker = nullptr;
+                dmg.isCritical = false;
+                dmg.penetration = 0.0f;
+                dmg.causesHitStun = false;
+                owner->takeDamage(dmg);
+            }
         }
     }
 
-    if (needsRecalc)
+    // 清理过期效果
+    auto it = std::remove_if(_statusEffects.begin(), _statusEffects.end(),
+                             [](const StatusEffectInstance& eff) { return eff.isExpired(); });
+    bool anyRemoved = (it != _statusEffects.end());
+    if (anyRemoved)
     {
+        _statusEffects.erase(it, _statusEffects.end());
+    }
+
+    // 只在状态变化时重算最终属性（主要用于带 attributeBonus 的效果）
+    if (anyRemoved)
+    {
+        _statusBonus.clear();
+        for (const auto& eff : _statusEffects)
+        {
+            _statusBonus += eff.attributeBonus;
+        }
         recalculateFinalAttributes();
     }
 }
@@ -129,6 +166,56 @@ void AttributeComponent::removePassiveSkillBonus(const Attributes &attributes)
 
 void AttributeComponent::addStatusEffect(const StatusEffectInstance &effect)
 {
+    auto merged = std::find_if(_statusEffects.begin(), _statusEffects.end(),
+                               [&effect](const StatusEffectInstance& existing) {
+                                   return existing.type == effect.type;
+                               });
+
+    if (merged != _statusEffects.end())
+    {
+        if (effect.stackable)
+        {
+            int addStacks = std::max(1, effect.stacks);
+            int newStacks = merged->stacks + addStacks;
+
+            int maxStacks = effect.maxStacks > 0 ? effect.maxStacks : merged->maxStacks;
+            if (maxStacks > 0)
+            {
+                newStacks = std::min(newStacks, maxStacks);
+            }
+            merged->stacks = newStacks;
+
+            if (effect.refreshOnAdd)
+            {
+                merged->duration = effect.duration;
+                merged->elapsed = 0.0f;
+                merged->tickAccumulator = 0.0f;
+            }
+
+            // DOT/参数以最新施加为准（便于后续不同来源/配置覆盖）
+            merged->tickInterval = effect.tickInterval;
+            merged->sourceAttackPower = effect.sourceAttackPower;
+            merged->baseDamageScale = effect.baseDamageScale;
+            merged->perStackDamageScale = effect.perStackDamageScale;
+            merged->attributeBonus = effect.attributeBonus;
+            merged->stackable = effect.stackable;
+            merged->maxStacks = maxStacks;
+            merged->refreshOnAdd = effect.refreshOnAdd;
+        }
+        else
+        {
+            *merged = effect;
+        }
+
+        _statusBonus.clear();
+        for (const auto& eff : _statusEffects)
+        {
+            _statusBonus += eff.attributeBonus;
+        }
+        recalculateFinalAttributes();
+        return;
+    }
+
     _statusEffects.push_back(effect);
     _statusBonus += effect.attributeBonus;
     recalculateFinalAttributes();
