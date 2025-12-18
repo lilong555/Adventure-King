@@ -159,8 +159,9 @@ private:
     cocos2d::Node* _combatLayer = nullptr;
     cocos2d::EventListenerPhysicsContact* _projectileContactListener = nullptr;
 
-    // 受击朝向（用于“受击方向为正向时反转受击 png”）
-    bool _hurtFlipOverrideActive = false;
-    bool _hurtRestoreFlippedX = false;
-    bool _hurtOverrideFlippedX = false;
+    // 受击方向：受击 png 带方向，角色朝向由 setFlippedX 管理；
+    // 这里使用 scaleX 的符号作为“额外镜像层”，避免与移动逻辑冲突。
+    bool _hurtMirrorActive = false;
+    bool _hurtDesiredFinalMirror = false; // 期望的最终镜像状态（= scaleX<0 XOR flippedX）
+    float _hurtMirrorAbsScaleX = 1.0f;    // 受击期间保持的 |scaleX|
 };

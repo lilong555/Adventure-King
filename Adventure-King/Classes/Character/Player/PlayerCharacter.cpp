@@ -191,6 +191,31 @@ void PlayerCharacter::update(float dt)
 {
     CharacterBase::update(dt);
     // 如果 SkillSet 需要 update，在此调用
+
+    // 受击方向：持续修正 scaleX 的符号，保证移动时的 setFlippedX（朝向）不会覆盖受击图的镜像
+    if (_hurtMirrorActive)
+    {
+        auto sm = getStateMachineComponent();
+        if (!sm || sm->getCurrentState() != CharacterState::HURT)
+        {
+            _hurtMirrorActive = false;
+            setScaleX(std::fabs(getScaleX()));
+            return;
+        }
+
+        float absScaleX = std::fabs(_hurtMirrorAbsScaleX);
+        if (absScaleX <= 0.0f)
+        {
+            absScaleX = std::fabs(getScaleX());
+        }
+
+        bool scaleMirror = _hurtDesiredFinalMirror ^ isFlippedX();
+        float desiredScaleX = scaleMirror ? -absScaleX : absScaleX;
+        if (std::fabs(getScaleX() - desiredScaleX) > 0.0001f)
+        {
+            setScaleX(desiredScaleX);
+        }
+    }
 }
 
 // =================================================================
@@ -511,26 +536,6 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
 {
     if (isDead()) return;
 
-    // 受击朝向：如果“正向受击”（攻击来自面向方向），则临时反转受击 png
-    bool currentFacing = isFlippedX();
-    bool baseFacing = currentFacing;
-    bool hadHurtFacingOverride = false;
-    if (_hurtFlipOverrideActive)
-    {
-        // 如果仍处于“受击反转”视觉态，则 baseFacing 以恢复值为准；
-        // 若期间外部改变了朝向，则取消该 tracking，避免覆盖用户输入。
-        if (currentFacing == _hurtOverrideFlippedX)
-        {
-            hadHurtFacingOverride = true;
-            baseFacing = _hurtRestoreFlippedX;
-        }
-        else
-        {
-            _hurtFlipOverrideActive = false;
-            baseFacing = currentFacing;
-        }
-    }
-
     CharacterBase::takeDamage(info);
     if (isDead()) return;
 
@@ -540,9 +545,10 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     if (sm->getCurrentState() != CharacterState::HURT)
         return;
 
-    // 取消上一次的受击朝向恢复（连续受击时重新计算）
+    // 取消上一次的受击镜像（连续受击时重新计算）
     stopActionByTag(ACTION_TAG_HURT_FACING);
-    _hurtFlipOverrideActive = false;
+    _hurtMirrorActive = false;
+    setScaleX(std::fabs(getScaleX()));
 
     if (info.attacker && info.attacker != this)
     {
@@ -559,37 +565,28 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
         float attackerX = getWorldX(info.attacker);
         bool attackerOnLeft = attackerX < myX;
 
-        // “正向受击” = 攻击来自面向的一侧（面向左且攻击来自左，或面向右且攻击来自右）
-        bool forwardHit = (baseFacing == attackerOnLeft);
-        bool desiredHurtFlip = baseFacing ^ forwardHit; // 正向受击则反转 png
+        // 受击 png 有方向：当攻击来自“面向方向”（正向受击）时，需要镜像受击图。
+        // 玩家面向由 setFlippedX 控制；因此使用 scaleX 的符号作为“额外镜像层”。
+        bool facingLeft = isFlippedX();
+        bool forwardHit = (facingLeft == attackerOnLeft);
 
-        if (desiredHurtFlip != baseFacing)
-        {
-            _hurtFlipOverrideActive = true;
-            _hurtRestoreFlippedX = baseFacing;
-            _hurtOverrideFlippedX = desiredHurtFlip;
-            setFlippedX(desiredHurtFlip);
+        _hurtDesiredFinalMirror = facingLeft ^ forwardHit; // 正向受击 -> 最终镜像状态反转
+        _hurtMirrorAbsScaleX = std::fabs(getScaleX());
+        _hurtMirrorActive = true;
 
-            auto restore = Sequence::create(
-                DelayTime::create(HURT_DURATION_SECONDS),
-                CallFunc::create([this]() {
-                    _hurtFlipOverrideActive = false;
+        // 立即应用一次（update 中也会持续校正，避免移动时朝向覆盖）
+        bool scaleMirror = _hurtDesiredFinalMirror ^ isFlippedX();
+        setScaleX(scaleMirror ? -_hurtMirrorAbsScaleX : _hurtMirrorAbsScaleX);
 
-                    // 如果期间朝向没被外部改变，恢复受击前朝向
-                    if (isFlippedX() == _hurtOverrideFlippedX)
-                    {
-                        setFlippedX(_hurtRestoreFlippedX);
-                    }
-                }),
-                nullptr);
-            restore->setTag(ACTION_TAG_HURT_FACING);
-            runAction(restore);
-        }
-        else if (hadHurtFacingOverride)
-        {
-            // 当前这次受击无需反转，但上一帧可能处于反转态：立刻恢复到 baseFacing
-            setFlippedX(baseFacing);
-        }
+        auto restore = Sequence::create(
+            DelayTime::create(HURT_DURATION_SECONDS),
+            CallFunc::create([this]() {
+                _hurtMirrorActive = false;
+                setScaleX(std::fabs(_hurtMirrorAbsScaleX));
+            }),
+            nullptr);
+        restore->setTag(ACTION_TAG_HURT_FACING);
+        runAction(restore);
     }
 
     // 受击：打断当前出手（防止“受击仍在投掷/施法”），并解除动作锁

@@ -484,6 +484,10 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
 
             DamageInfo dmg;
             dmg.amount = rawDamage;
+            if (auto attackNode = attackBody->getNode())
+            {
+                dmg.attacker = static_cast<CharacterBase *>(attackNode->getUserData());
+            }
             player->takeDamage(dmg);
         }
     }

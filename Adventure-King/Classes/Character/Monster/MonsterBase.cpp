@@ -599,33 +599,23 @@ void MonsterBase::takeDamage(const DamageInfo& info)
         _physicsBody->setVelocity(v);
     }
 
-    // 受击朝向：如果“正向受击”（攻击来自面向方向），则临时反转受击 png
+    // 受击方向：beattacked png 有方向；
+    // 当攻击来自“面向方向”（正向受击）时，需要镜像受击图。
     if (info.attacker && info.attacker != this)
     {
-        float originalScaleX = getScaleX();
-        bool facingLeft = originalScaleX < 0.0f;
-
         float myX = getWorldPosition(this).x;
         float attackerX = getWorldPosition(info.attacker).x;
         bool attackerOnLeft = attackerX < myX;
 
+        bool facingLeft = getScaleX() < 0.0f;
         bool forwardHit = (facingLeft == attackerOnLeft);
-        if (forwardHit)
-        {
-            float hurtScaleX = -originalScaleX;
-            setScaleX(hurtScaleX);
 
-            runAction(Sequence::create(
-                DelayTime::create(0.3f),
-                CallFunc::create([this, originalScaleX, hurtScaleX]() {
-                    // 若期间朝向被 AI/外部改变，则不强制恢复
-                    if (std::fabs(getScaleX() - hurtScaleX) < 0.0001f)
-                    {
-                        setScaleX(originalScaleX);
-                    }
-                }),
-                nullptr));
-        }
+        // 怪物朝向由 scaleX 的正负实现，避免改动它；用 Sprite::setFlippedX 作为“额外镜像层”
+        setFlippedX(forwardHit);
+        runAction(Sequence::create(
+            DelayTime::create(0.3f),
+            CallFunc::create([this]() { setFlippedX(false); }),
+            nullptr));
     }
 
     if (auto sm = getStateMachineComponent())
@@ -797,6 +787,8 @@ void MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
     attackNode->setPosition(getPosition() + offsetInParentSpace);
     attackNode->setContentSize(hitboxSize);
     attackNode->setAnchorPoint(Vec2(0.5f, 0.5f));
+    // 记录攻击来源，用于受击方向判断（例如正向/反向受击时翻转 beattacked png）
+    attackNode->setUserData(this);
     parent->addChild(attackNode);
 
     auto body = PhysicsBody::createBox(hitboxSize);
