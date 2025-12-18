@@ -112,9 +112,10 @@ void LevelMap::setupBackgroundSeries(Node *gameLayer,
 
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    auto bgContainer = Node::create();
-    float xOffset = 0.0f;
+    std::vector<Sprite *> sprites;
+    sprites.reserve(backgroundPaths.size());
 
+    float xOffset = 0.0f;
     for (const auto &path : backgroundPaths)
     {
         auto bgSprite = Sprite::create(path);
@@ -125,10 +126,17 @@ void LevelMap::setupBackgroundSeries(Node *gameLayer,
         }
 
         bgSprite->setAnchorPoint(Vec2(0, 0));
-        bgSprite->setPosition(Vec2(origin.x + xOffset, origin.y));
-        bgContainer->addChild(bgSprite);
+        bgSprite->setPosition(Vec2(xOffset, 0.0f));
 
         xOffset += bgSprite->getContentSize().width;
+        sprites.push_back(bgSprite);
+    }
+
+    auto bgContainer = Node::create();
+    bgContainer->setPosition(origin);
+    for (auto sprite : sprites)
+    {
+        bgContainer->addChild(sprite);
     }
 
     gameLayer->addChild(bgContainer, -1);

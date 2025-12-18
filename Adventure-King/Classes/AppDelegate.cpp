@@ -1,6 +1,7 @@
 
 #include "AppDelegate.h"
 #include "Scenes/HelloWorldScene.h"
+#include <cstdlib>
 
 #if USE_AUDIO_ENGINE && USE_SIMPLE_AUDIO_ENGINE
 #error "Don't use AudioEngine and SimpleAudioEngine at the same time. Please just select one in your game!"
@@ -70,7 +71,17 @@ bool AppDelegate::applicationDidFinishLaunching()
     director->setDisplayStats(true);
 
     // set FPS. the default value is 1.0/60 if you don't call this
-    director->setAnimationInterval(1.0f / 144.0f);
+    // 开发默认使用 144FPS 便于观察波动；可通过环境变量 ADVENTURE_KING_FPS 覆盖
+    float targetFps = 144.0f;
+    if (const char *fpsEnv = std::getenv("ADVENTURE_KING_FPS"))
+    {
+        const int fps = std::atoi(fpsEnv);
+        if (fps > 0)
+        {
+            targetFps = static_cast<float>(fps);
+        }
+    }
+    director->setAnimationInterval(1.0f / targetFps);
 
     // Set the design resolution
     glview->setDesignResolutionSize(designResolutionSize.width, designResolutionSize.height, ResolutionPolicy::SHOW_ALL);

@@ -20,9 +20,7 @@
 #include "Save/SaveManager.h"
 #include <algorithm>
 #include <cctype>
-#include <cstdio>
 #include <memory>
-#include <vector>
 
 USING_NS_CC;
 
@@ -33,6 +31,9 @@ namespace
     const char *const MAP_LOAD_FAILED_TEXT = " - Map Load Failed";
 
     const PhysicsMaterial PLAYER_PHYSICS_MATERIAL(1.0f, 0.0f, 0.0f);
+
+    constexpr int ORIGIN_MUSHROOM_BG_COUNT = 6;
+    const char *const ORIGIN_MUSHROOM_BG_PREFIX = "Map/Origin_Mushroom/Origin_Mushroom_";
 }
 
 cocos2d::Scene *GameScene::createScene()
@@ -144,22 +145,11 @@ bool GameScene::initLevelMap(const LevelConfig &config)
         return false;
     }
 
-    // Origin_Mushroom 背景：使用 Origin_Mushroom_0x.png 序列拼接为整张背景
-    if (config.tmxMapPath.find("Map/Origin_Mushroom/Origin_Mushroom.tmx") != std::string::npos)
+    if (!config.backgroundSeriesPaths.empty())
     {
-        std::vector<std::string> backgroundPaths;
-        backgroundPaths.reserve(6);
-        for (int i = 0; i <= 5; ++i)
-        {
-            char buffer[128];
-            std::snprintf(buffer, sizeof(buffer), "Map/Origin_Mushroom/Origin_Mushroom_%02d.png", i);
-            backgroundPaths.emplace_back(buffer);
-        }
-
-        _levelMap->setupBackgroundSeries(_gameLayer, backgroundPaths);
+        _levelMap->setupBackgroundSeries(_gameLayer, config.backgroundSeriesPaths);
     }
-
-    if (!config.backgroundPath.empty())
+    else if (!config.backgroundPath.empty())
     {
         _levelMap->setupRepeatingBackground(_gameLayer, config.backgroundPath, _levelMap->getMapSizeInPixels().width);
     }
@@ -625,6 +615,18 @@ LevelConfig OriginMushroomScene::getLevelConfig() const
     LevelConfig config;
     config.tmxMapPath = "Map/Origin_Mushroom/Origin_Mushroom.tmx";
     config.backgroundPath = "";
+    config.backgroundSeriesPaths.reserve(ORIGIN_MUSHROOM_BG_COUNT);
+    for (int i = 0; i < ORIGIN_MUSHROOM_BG_COUNT; ++i)
+    {
+        std::string path = ORIGIN_MUSHROOM_BG_PREFIX;
+        if (i < 10)
+        {
+            path += "0";
+        }
+        path += std::to_string(i);
+        path += ".png";
+        config.backgroundSeriesPaths.emplace_back(std::move(path));
+    }
     config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";
     config.bornLayerName = "born";
