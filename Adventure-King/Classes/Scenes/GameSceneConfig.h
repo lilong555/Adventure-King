@@ -6,6 +6,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 /**
  * @brief 关卡场景配置
@@ -14,6 +15,7 @@ struct LevelConfig
 {
     std::string tmxMapPath;
     std::string backgroundPath;
+    std::vector<std::string> backgroundSeriesPaths;
     std::string playerSpritePath;
 
     std::string collisionLayerName = "collisions";
@@ -37,4 +39,3 @@ struct PlayerConfig
     float collisionBoxWidthRatio = 0.8f;
     float collisionBoxHeightRatio = 0.9f;
 };
-
