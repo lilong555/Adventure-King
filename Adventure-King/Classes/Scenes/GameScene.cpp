@@ -618,14 +618,8 @@ LevelConfig OriginMushroomScene::getLevelConfig() const
     config.backgroundSeriesPaths.reserve(ORIGIN_MUSHROOM_BG_COUNT);
     for (int i = 0; i < ORIGIN_MUSHROOM_BG_COUNT; ++i)
     {
-        std::string path = ORIGIN_MUSHROOM_BG_PREFIX;
-        if (i < 10)
-        {
-            path += "0";
-        }
-        path += std::to_string(i);
-        path += ".png";
-        config.backgroundSeriesPaths.emplace_back(std::move(path));
+        config.backgroundSeriesPaths.emplace_back(
+            StringUtils::format("%s%02d.png", ORIGIN_MUSHROOM_BG_PREFIX, i));
     }
     config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";

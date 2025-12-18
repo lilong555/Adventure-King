@@ -78,7 +78,8 @@ bool AppDelegate::applicationDidFinishLaunching()
         const int fps = std::atoi(fpsEnv);
         if (fps > 0)
         {
-            targetFps = static_cast<float>(fps);
+            const int cappedFps = (fps > 300) ? 300 : fps;
+            targetFps = static_cast<float>(cappedFps);
         }
     }
     director->setAnimationInterval(1.0f / targetFps);

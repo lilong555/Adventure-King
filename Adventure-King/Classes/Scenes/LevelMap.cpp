@@ -134,7 +134,7 @@ void LevelMap::setupBackgroundSeries(Node *gameLayer,
 
     auto bgContainer = Node::create();
     bgContainer->setPosition(origin);
-    for (auto sprite : sprites)
+    for (auto *const sprite : sprites)
     {
         bgContainer->addChild(sprite);
     }
