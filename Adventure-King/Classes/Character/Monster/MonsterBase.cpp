@@ -791,8 +791,9 @@ void MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
     attackNode->setPosition(getPosition() + offsetInParentSpace);
     attackNode->setContentSize(hitboxSize);
     attackNode->setAnchorPoint(Vec2(0.5f, 0.5f));
-    // 记录攻击来源，用于受击方向判断（例如正向/反向受击时翻转 beattacked png）
-    attackNode->setUserData(this);
+    // 记录攻击来源，用于受击方向判断（例如按攻击左右决定 beattacked png 镜像）
+    // 使用 userObject（Ref*）避免 userData(void*) 的不安全类型转换
+    attackNode->setUserObject(this);
     parent->addChild(attackNode);
 
     auto body = PhysicsBody::createBox(hitboxSize);

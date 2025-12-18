@@ -74,6 +74,12 @@ public:
     bool isActionLocked() const { return _actionLocked; }
 
     // =============================================================
+    // Action Tags（供 SkillSet/动画复用）
+    // =============================================================
+    static constexpr int ACTION_TAG_ATTACK_ANIM = 200;
+    static constexpr int ACTION_TAG_SKILL_ANIM = 300;
+
+    // =============================================================
     // 战斗系统 (Combat & Skills)
     // =============================================================
     // 核心攻击接口

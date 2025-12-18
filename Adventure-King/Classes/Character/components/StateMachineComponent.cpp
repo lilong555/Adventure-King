@@ -84,7 +84,15 @@ void StateMachineComponent::playAnimationForState(CharacterState state)
 
     auto it = _stateAnimationNames.find(state);
     if (it == _stateAnimationNames.end())
+    {
+        // 某些状态（攻击/受击/死亡）可能由外部逻辑直接播放一次性动画；
+        // 此时也需要停止状态机上一次的循环动画，避免并发动作争抢 SpriteFrame。
+        if (state == CharacterState::DEAD || state == CharacterState::ATTACKING || state == CharacterState::HURT)
+        {
+            _cachedOwner->stopActionByTag(ACTION_TAG_STATE_ANIM);
+        }
         return;
+    }
 
     auto animation = AnimationCache::getInstance()->getAnimation(it->second);
     if (!animation)

@@ -68,7 +68,7 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
         []()
         { return true; },
         [&player, castPaths](const std::function<void()> &done)
-        { player.playOneShotAnimation(castPaths, 0.13f, 1001, done); },
+        { player.playOneShotAnimation(castPaths, 0.13f, PlayerCharacter::ACTION_TAG_ATTACK_ANIM, done); },
         [&player, defaultDir]()
         {
             auto bomb = Bomb::create(defaultDir + "/TNT.png");
@@ -174,7 +174,7 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
             return true;
         },
         [&player, castPaths](const std::function<void()> &done)
-        { player.playOneShotAnimation(castPaths, 0.04f, 1002, done); },
+        { player.playOneShotAnimation(castPaths, 0.04f, PlayerCharacter::ACTION_TAG_SKILL_ANIM, done); },
         [&player, skillDir]()
         {
             Bomb::PhysicsConfig physics;

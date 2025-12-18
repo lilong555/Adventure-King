@@ -23,8 +23,6 @@ USING_NS_CC;
 namespace
 {
     // Action Tags
-    constexpr int ACTION_TAG_ATTACK = 200;
-    constexpr int ACTION_TAG_SKILL = 300;
     constexpr int ACTION_TAG_HURT_FACING = 400;
 
     // Animation Delays
@@ -463,6 +461,11 @@ bool PlayerCharacter::runActionLocked(const std::function<bool()>& preCheck,
     if (_actionLocked) return false;
     if (preCheck && !preCheck()) return false;
 
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::ATTACKING);
+    }
+
     _actionLocked = true;
     playAnimation([this, performEffect, onFinished]() {
         if (performEffect) performEffect();
@@ -503,7 +506,7 @@ void PlayerCharacter::attackAnimated(const std::function<void()>& onFinished)
         }
     }
 
-    playOneShotAnimation(paths, animSpeed, ACTION_TAG_ATTACK, onFinished);
+    playOneShotAnimation(paths, animSpeed, PlayerCharacter::ACTION_TAG_ATTACK_ANIM, onFinished);
 }
 
 void PlayerCharacter::castSkillAnimated(const std::function<void()>& onFinished)
@@ -520,7 +523,7 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()>& onFinished)
         paths.push_back(StringUtils::format("%s/spr_%s_attack_%d.png", _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
     }
 
-    playOneShotAnimation(paths, 0.13f, ACTION_TAG_SKILL, onFinished);
+    playOneShotAnimation(paths, 0.13f, PlayerCharacter::ACTION_TAG_SKILL_ANIM, onFinished);
 }
 
 // =================================================================
@@ -590,10 +593,8 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     }
 
     // 受击：打断当前出手（防止“受击仍在投掷/施法”），并解除动作锁
-    stopActionByTag(ACTION_TAG_ATTACK);
-    stopActionByTag(ACTION_TAG_SKILL);
-    stopActionByTag(1001);
-    stopActionByTag(1002);
+    stopActionByTag(PlayerCharacter::ACTION_TAG_ATTACK_ANIM);
+    stopActionByTag(PlayerCharacter::ACTION_TAG_SKILL_ANIM);
     _actionLocked = false;
 }
 
