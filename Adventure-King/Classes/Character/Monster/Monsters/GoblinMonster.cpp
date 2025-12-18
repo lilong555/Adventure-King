@@ -8,6 +8,31 @@
 
 USING_NS_CC;
 
+namespace
+{
+    void ensureSingleFrameAnimationCached(const std::string &animationKey,
+                                          const std::string &framePath,
+                                          float delayPerUnit = 0.2f)
+    {
+        auto cache = AnimationCache::getInstance();
+        if (cache->getAnimation(animationKey))
+        {
+            return;
+        }
+
+        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(framePath);
+        if (!frame)
+        {
+            return;
+        }
+
+        cocos2d::Vector<cocos2d::SpriteFrame *> frames;
+        frames.pushBack(frame);
+        auto anim = cocos2d::Animation::createWithSpriteFrames(frames, delayPerUnit);
+        cache->addAnimation(anim, animationKey);
+    }
+}
+
 GoblinMonster::GoblinMonster()
 {
 }
@@ -81,13 +106,14 @@ void GoblinMonster::initAttributes()
 #pragma region 状态动画
 void GoblinMonster::initStateAnimations()
 {
+    // 受击/待机素材为单帧：用 AnimationCache 驱动 StateMachineComponent 统一播放
+    ensureSingleFrameAnimationCached("goblin_idle", "Sprites/Enemies/Goblin/Goblin_idle.png");
+    ensureSingleFrameAnimationCached("goblin_hurt", "Sprites/Enemies/Goblin/Goblin_beattacked.png");
+
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, "goblin_idle");
-        sm->registerStateAnimation(CharacterState::WALKING, "goblin_walk");
-        sm->registerStateAnimation(CharacterState::ATTACKING, "goblin_attack");
         sm->registerStateAnimation(CharacterState::HURT, "goblin_hurt");
-        sm->registerStateAnimation(CharacterState::DEAD, "goblin_dead");
     }
 }
 #pragma endregion

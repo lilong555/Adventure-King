@@ -138,22 +138,22 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     // 4. 物理层初始化 (使用内部辅助函数)
     helperSetupPhysicsBody(this);
 
-    // 5. 表现层初始化 - 状态机动画注册
+    // 5. 表现层初始化 - 缓存状态机动画（避免首次切状态时缺帧）
+    ensureMoveAnimations();
+    ensureStateAnimations();
+
+    // 6. 表现层初始化 - 状态机动画注册
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, _animationKeyPrefix + "_idle");
         sm->registerStateAnimation(CharacterState::WALKING, _animationKeyPrefix + "_walk");
         sm->registerStateAnimation(CharacterState::RUNNING, _animationKeyPrefix + "_run");
-        sm->registerStateAnimation(CharacterState::ATTACKING, _animationKeyPrefix + "_attack");
         sm->registerStateAnimation(CharacterState::HURT, _animationKeyPrefix + "_hurt");
-        sm->registerStateAnimation(CharacterState::DEAD, _animationKeyPrefix + "_dead");
 
         sm->changeState(CharacterState::IDLE);
     }
 
-    ensureMoveAnimations();
-
-    // 6. 技能集初始化
+    // 7. 技能集初始化
     createSkillSet();
     if (_skillSet)
     {
@@ -505,6 +505,27 @@ void PlayerCharacter::attack()
     tryNormalAttack();
 }
 
+void PlayerCharacter::takeDamage(const DamageInfo& info)
+{
+    if (isDead()) return;
+
+    CharacterBase::takeDamage(info);
+    if (isDead()) return;
+
+    auto sm = getStateMachineComponent();
+    if (!sm) return;
+
+    if (sm->getCurrentState() != CharacterState::HURT)
+        return;
+
+    // 受击：打断当前出手（防止“受击仍在投掷/施法”），并解除动作锁
+    stopActionByTag(ACTION_TAG_ATTACK);
+    stopActionByTag(ACTION_TAG_SKILL);
+    stopActionByTag(1001);
+    stopActionByTag(1002);
+    _actionLocked = false;
+}
+
 void PlayerCharacter::useSkill(size_t slotIndex)
 {
     tryUseSkill(slotIndex);
@@ -667,4 +688,47 @@ void PlayerCharacter::ensureMoveAnimations()
     // 调用内部静态辅助函数
     helperEnsureAnimationCached(_animationKeyPrefix + "_run", movePaths, ANIM_DELAY_RUN);
     helperEnsureAnimationCached(_animationKeyPrefix + "_walk", movePaths, ANIM_DELAY_WALK);
+}
+
+void PlayerCharacter::ensureStateAnimations()
+{
+    if (_defaultSpriteDir.empty() || _characterKey.empty() || _animationKeyPrefix.empty())
+    {
+        return;
+    }
+
+    auto cache = AnimationCache::getInstance();
+    if (!cache)
+    {
+        return;
+    }
+
+    auto ensureSingleFrame = [cache](const std::string& key, const std::string& framePath) {
+        if (cache->getAnimation(key))
+        {
+            return;
+        }
+
+        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(framePath);
+        if (!frame)
+        {
+#if COCOS2D_DEBUG > 0
+            CCLOG("PlayerCharacter: failed to load state frame %s", framePath.c_str());
+#endif
+            return;
+        }
+
+        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+        frames.pushBack(frame);
+        auto anim = Animation::createWithSpriteFrames(frames, 0.2f);
+        cache->addAnimation(anim, key);
+    };
+
+    // IDLE：用默认 run 静帧兜底（多角色兼容）
+    ensureSingleFrame(_animationKeyPrefix + "_idle",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+
+    // HURT：受击贴图（spr_<角色>_beattacked.png）
+    ensureSingleFrame(_animationKeyPrefix + "_hurt",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_beattacked.png");
 }

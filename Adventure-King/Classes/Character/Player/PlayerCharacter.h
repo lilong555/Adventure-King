@@ -78,6 +78,7 @@ public:
     // =============================================================
     // 核心攻击接口
     virtual void attack() override; // 普攻
+    virtual void takeDamage(const DamageInfo& info) override; // 受击（打断动作/播放受击）
     void useSkill(size_t slotIndex); // 技能
 
     // 尝试执行攻击/技能（包含资源检查、CD检查、动作锁检查）
@@ -119,6 +120,7 @@ private:
 
     // 动画管理
     void ensureMoveAnimations();
+    void ensureStateAnimations();
     // ensureMoveAnimationCached 已移至 .cpp 内部实现，不再暴露
 
     // 战斗逻辑

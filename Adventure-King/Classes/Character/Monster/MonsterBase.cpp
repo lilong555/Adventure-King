@@ -177,6 +177,22 @@ void MonsterBase::update(float dt)
         return;
     }
 
+    // 受击硬直期间：打断移动/攻击逻辑，并冻结水平速度，等待 StateMachineComponent 自动回到 IDLE
+    auto state = sm->getCurrentState();
+    if (state == CharacterState::HURT)
+    {
+        _hasMoveGoal = false;
+        _returningHome = false;
+
+        if (_physicsBody)
+        {
+            cocos2d::Vec2 v = _physicsBody->getVelocity();
+            v.x = 0;
+            _physicsBody->setVelocity(v);
+        }
+        return;
+    }
+
     const bool withinActiveRange = isWithinActiveUpdateRange();
     const float aiInterval = withinActiveRange ? _aiUpdateInterval : _inactiveAiUpdateInterval;
 
@@ -195,7 +211,7 @@ void MonsterBase::update(float dt)
         }
     }
 
-    auto state = sm->getCurrentState();
+    state = sm->getCurrentState();
 
     // 离屏（或远离玩家）时：冻结水平速度并跳过移动/攻击计算，减少 CPU 占用
     if (!withinActiveRange)
@@ -501,6 +517,9 @@ void MonsterBase::updateAttack(float dt)
     if (!sm)
         return;
 
+    if (sm->getCurrentState() == CharacterState::HURT)
+        return;
+
     // 正在攻击：保持朝向不变
     if (sm->getCurrentState() == CharacterState::ATTACKING)
         return;
@@ -568,7 +587,22 @@ void MonsterBase::takeDamage(const DamageInfo& info)
         return;
     }
 
-    getStateMachineComponent()->changeState(CharacterState::HURT);
+    // 受击：打断当前动作（尤其是攻击），并进入受击状态
+    stopAllActions();
+    _hasMoveGoal = false;
+    _returningHome = false;
+
+    if (_physicsBody)
+    {
+        cocos2d::Vec2 v = _physicsBody->getVelocity();
+        v.x = 0;
+        _physicsBody->setVelocity(v);
+    }
+
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::HURT);
+    }
 }
 
 void MonsterBase::die()

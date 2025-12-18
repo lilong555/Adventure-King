@@ -103,7 +103,7 @@ void StateMachineComponent::playAnimationForState(CharacterState state)
 
     Action* finalAction = nullptr;
 
-    if (state == CharacterState::DEAD || state == CharacterState::ATTACKING)
+    if (state == CharacterState::DEAD || state == CharacterState::ATTACKING || state == CharacterState::HURT)
     {
         finalAction = animate; // 播放一次
     }
