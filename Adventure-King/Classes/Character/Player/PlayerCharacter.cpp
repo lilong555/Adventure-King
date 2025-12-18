@@ -514,12 +514,14 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     // 受击朝向：如果“正向受击”（攻击来自面向方向），则临时反转受击 png
     bool currentFacing = isFlippedX();
     bool baseFacing = currentFacing;
+    bool hadHurtFacingOverride = false;
     if (_hurtFlipOverrideActive)
     {
         // 如果仍处于“受击反转”视觉态，则 baseFacing 以恢复值为准；
         // 若期间外部改变了朝向，则取消该 tracking，避免覆盖用户输入。
         if (currentFacing == _hurtOverrideFlippedX)
         {
+            hadHurtFacingOverride = true;
             baseFacing = _hurtRestoreFlippedX;
         }
         else
@@ -582,6 +584,11 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
                 nullptr);
             restore->setTag(ACTION_TAG_HURT_FACING);
             runAction(restore);
+        }
+        else if (hadHurtFacingOverride)
+        {
+            // 当前这次受击无需反转，但上一帧可能处于反转态：立刻恢复到 baseFacing
+            setFlippedX(baseFacing);
         }
     }
 
