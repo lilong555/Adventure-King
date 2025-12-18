@@ -68,6 +68,7 @@ enum class EquipmentSlot : uint8_t
 enum class StatusEffectType : uint8_t
 {
     POISONED, // 中毒
+    BURNING,  // 燃烧
     EXCITED,  // 亢奋
     STUNNED,  // 眩晕
     FULL_HP_CRIT // 满血暴击
@@ -191,6 +192,22 @@ struct StatusEffectInstance
     float duration = 0.0f;     // 持续时间（秒）
     float elapsed = 0.0f;      // 已经过的时间（秒）
     Attributes attributeBonus; // 状态对属性的影响（例如 EXCITED 给 MOVE_SPEED +50）
+
+    // -------------------------
+    // DOT/叠层效果扩展（可选）
+    // -------------------------
+    // 叠层：同 type 的效果再次施加时，若 stackable=true，则不会新建实例而是合并到已有实例。
+    int stacks = 1;              // 当前叠层数（>=1）
+    int maxStacks = 0;           // 最大层数（0 = 不限制）
+    bool stackable = false;      // true 时同 type 合并并叠加 stacks
+    bool refreshOnAdd = true;    // 再次施加时是否刷新持续时间/计时
+
+    // DOT（Damage Over Time）：tickInterval>0 时生效；伤害结算逻辑在 AttributeComponent 中。
+    float tickInterval = 0.0f;       // tick 间隔（秒，<=0 表示不 tick）
+    float tickAccumulator = 0.0f;    // tick 累计器（内部使用）
+    float sourceAttackPower = 0.0f;  // 伤害来源“攻击力”（施加时写入，用于快照）
+    float baseDamageScale = 0.0f;    // 基础比例（例如 0.1）
+    float perStackDamageScale = 0.0f; // 每层额外比例（例如 0.1）；总比例 = base + perStack * stacks
 
     // 是否过期
     bool isExpired() const { return elapsed >= duration; }

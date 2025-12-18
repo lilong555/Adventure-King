@@ -19,12 +19,17 @@ namespace
 
     constexpr float BOMB_THROW_SPEED_X = 300.0f;
     constexpr float BOMB_THROW_SPEED_Y = 350.0f;
-    constexpr float BOMB_DAMAGE = 150.0f;
     constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;
+    constexpr float BOMB_DAMAGE_SCALE = 1.0f;
 
     constexpr float FIREBALL_SPEED_X = 650.0f;
-    constexpr float FIREBALL_DAMAGE = 220.0f;
     constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
+    constexpr float FIREBALL_DAMAGE_SCALE = 2.5f;
+
+    constexpr float BURN_DURATION_SECONDS = 5.0f;
+    constexpr float BURN_TICK_INTERVAL_SECONDS = 0.5f;
+    constexpr float BURN_BASE_DAMAGE_SCALE = 0.1f;
+    constexpr float BURN_PER_STACK_DAMAGE_SCALE = 0.1f;
 }
 
 void KleeSkillSet::initSkills(PlayerCharacter &player)
@@ -80,7 +85,8 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
             bomb->setScale(0.5f);
             bomb->setPosition(player.getProjectileSpawnPosition(0.35f, 20.0f, 0.15f, 0.0f));
             bomb->setAttacker(&player);
-            bomb->setBaseDamage(BOMB_DAMAGE);
+            bomb->setBaseDamage(0.0f);
+            bomb->setAttackPowerDamageScale(BOMB_DAMAGE_SCALE);
             bomb->setExplosionRadius(BOMB_EXPLOSION_RADIUS);
             bomb->setExplosionSpriteVfx(defaultDir + "/BOOM_1.png", 0.8f, 0.2f, 1.2f, 0.3f);
             bomb->setExplodeOnContact(true);
@@ -192,7 +198,8 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
             rocket->setPosition(player.getProjectileSpawnPosition(0.40f, 25.0f, 0.20f, 0.0f));
             rocket->setFlippedX(player.isFlippedX());
             rocket->setAttacker(&player);
-            rocket->setBaseDamage(FIREBALL_DAMAGE);
+            rocket->setBaseDamage(0.0f);
+            rocket->setAttackPowerDamageScale(FIREBALL_DAMAGE_SCALE);
             rocket->setExplosionRadius(FIREBALL_EXPLOSION_RADIUS);
             rocket->setExplodeOnContact(true);
 
@@ -215,6 +222,19 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
                 },
                 0.05f,
                 0.9f);
+
+            // 命中/爆炸附加燃烧：持续5秒，每0.5秒一次，叠层并刷新
+            Bomb::StatusEffectTemplate burn;
+            burn.type = StatusEffectType::BURNING;
+            burn.duration = BURN_DURATION_SECONDS;
+            burn.stacks = 1;
+            burn.maxStacks = 0;
+            burn.stackable = true;
+            burn.refreshOnAdd = true;
+            burn.tickInterval = BURN_TICK_INTERVAL_SECONDS;
+            burn.baseDamageScale = BURN_BASE_DAMAGE_SCALE;
+            burn.perStackDamageScale = BURN_PER_STACK_DAMAGE_SCALE;
+            rocket->addOnHitStatusEffect(burn);
 
             player.addToCombatLayer(rocket, 4);
 

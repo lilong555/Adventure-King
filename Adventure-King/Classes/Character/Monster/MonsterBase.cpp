@@ -1,4 +1,5 @@
 #include "MonsterBase.h"
+#include "Character/components/StatusEffectVfxComponent.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <cmath>
@@ -10,6 +11,12 @@ MonsterBase::MonsterBase()
 
 MonsterBase::~MonsterBase()
 {
+}
+
+void MonsterBase::setHpBarScale(float scale)
+{
+    _hpBarScale = std::max(0.1f, scale);
+    updateHpBar();
 }
 
 bool MonsterBase::init(const std::string& spriteFrameName)
@@ -48,6 +55,13 @@ bool MonsterBase::init(const std::string& spriteFrameName)
         auto skill = SkillComponent::create();
         skill->setName("SkillComponent");
         this->addComponent(skill);
+    }
+
+    // 状态效果VFX组件（燃烧等表现）
+    if (!getComponent("StatusEffectVfxComponent")) {
+        auto vfx = StatusEffectVfxComponent::create();
+        vfx->setName("StatusEffectVfxComponent");
+        this->addComponent(vfx);
     }
 
     // ---------------------------------------------------------
@@ -587,6 +601,12 @@ void MonsterBase::takeDamage(const DamageInfo& info)
         return;
     }
 
+    // DOT 等持续伤害：不触发硬直/打断，避免频繁停机
+    if (!info.causesHitStun)
+    {
+        return;
+    }
+
     // 受击：打断当前动作（尤其是攻击），并进入受击状态
     stopAllActions();
     _hasMoveGoal = false;
@@ -674,6 +694,8 @@ void MonsterBase::updateHpBar()
 
     _hpBar->clear();
 
+    float uiScale = std::max(0.1f, _hpBarScale);
+
     float maxHp = _maxHP;
     if (auto attr = getAttributeComponent())
     {
@@ -682,8 +704,8 @@ void MonsterBase::updateHpBar()
     if (maxHp <= 0.0f)
         return;
 
-    float barWidth = 60.0f;
-    float barHeight = 8.0f;
+    float barWidth = 60.0f * uiScale;
+    float barHeight = 8.0f * uiScale;
     float yOffset = getContentSize().height + 10.0f;
 
     Vec2 barPos(getContentSize().width / 2 - barWidth / 2, yOffset);

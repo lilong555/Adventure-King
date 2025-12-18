@@ -5,6 +5,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
+#include "Character/components/StatusEffectVfxComponent.h"
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfigs.h"
 #include"Configs/GamePhysicsCategory.h"
@@ -30,6 +31,10 @@ namespace
     constexpr float ANIM_DELAY_RUN = 0.15f;
     constexpr float ANIM_DELAY_WALK = 0.25f;
     constexpr float HURT_DURATION_SECONDS = 0.3f;
+
+    // Combat
+    constexpr float DEFAULT_WEAPON_DAMAGE = 5.0f;
+    constexpr float STRENGTH_DAMAGE_MULTIPLIER = 1.5f;
 
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths, float delayPerUnit)
@@ -131,6 +136,7 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     if (!getAttributeComponent())    this->addComponent(AttributeComponent::create());
     if (!getSkillComponent())        this->addComponent(SkillComponent::create());
     if (!getStateMachineComponent()) this->addComponent(StateMachineComponent::create());
+    if (!getComponent("StatusEffectVfxComponent")) this->addComponent(StatusEffectVfxComponent::create());
 
     // 3. 数据层初始化
     initAttributesByRole(role);
@@ -534,6 +540,23 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()>& onFinished)
 void PlayerCharacter::attack()
 {
     tryNormalAttack();
+}
+
+float PlayerCharacter::getAttackPower()
+{
+    float weaponDamage = DEFAULT_WEAPON_DAMAGE;
+    if (auto weapon = getEquippedWeapon())
+    {
+        weaponDamage = weapon->attackDamage;
+    }
+
+    float strength = 0.0f;
+    if (auto attr = getAttributeComponent())
+    {
+        strength = attr->getAttributeValue(AttributeType::STRENGTH);
+    }
+
+    return weaponDamage + strength * STRENGTH_DAMAGE_MULTIPLIER;
 }
 
 void PlayerCharacter::takeDamage(const DamageInfo& info)

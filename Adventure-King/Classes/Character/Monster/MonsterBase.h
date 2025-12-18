@@ -26,6 +26,8 @@ public:
     // 死亡重写
     virtual void die() override;
 
+    void setHpBarScale(float scale);
+
     void setTarget(cocos2d::Node* target);
     void setHome(const cocos2d::Vec2& pos);
     void setAggroRadius(float r);
@@ -110,5 +112,6 @@ protected:
     cocos2d::PhysicsBody* _physicsBody = nullptr;
 
     cocos2d::DrawNode *_hpBar = nullptr;
+    float _hpBarScale = 1.0f;
 
 };

@@ -855,6 +855,9 @@ void DebugScene::updateDebugInfo()
                 case StatusEffectType::POISONED:
                     effectName = "中毒";
                     break;
+                case StatusEffectType::BURNING:
+                    effectName = "燃烧";
+                    break;
                 case StatusEffectType::EXCITED:
                     effectName = "亢奋";
                     break;
@@ -864,6 +867,14 @@ void DebugScene::updateDebugInfo()
                 case StatusEffectType::FULL_HP_CRIT:
                     effectName = "满血暴击";
                     break;
+                default:
+                    effectName = "未知";
+                    break;
+                }
+
+                if (eff.stackable && eff.stacks > 1)
+                {
+                    effectName += StringUtils::format("x%d", eff.stacks);
                 }
                 effectStr += StringUtils::format("%s(%.1fs)", effectName.c_str(), remaining);
                 if (i < effects.size() - 1)

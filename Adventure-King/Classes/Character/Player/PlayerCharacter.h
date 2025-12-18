@@ -85,6 +85,7 @@ public:
     // 核心攻击接口
     virtual void attack() override; // 普攻
     virtual void takeDamage(const DamageInfo& info) override; // 受击（打断动作/播放受击）
+    virtual float getAttackPower() override; // 攻击力（用于 DOT 等计算）
     void useSkill(size_t slotIndex); // 技能
 
     // 尝试执行攻击/技能（包含资源检查、CD检查、动作锁检查）

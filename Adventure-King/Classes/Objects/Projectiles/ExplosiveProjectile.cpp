@@ -85,6 +85,62 @@ void ExplosiveProjectile::setLoopAnimation(const std::vector<std::string> &frame
     runAction(action);
 }
 
+void ExplosiveProjectile::addOnHitStatusEffect(const StatusEffectTemplate &effect)
+{
+    StatusEffectTemplate validated = effect;
+    bool hasInvalid = false;
+
+    if (validated.duration < 0.0f)
+    {
+        validated.duration = 0.0f;
+        hasInvalid = true;
+    }
+
+    if (validated.stacks <= 0)
+    {
+        validated.stacks = 1;
+        hasInvalid = true;
+    }
+
+    if (validated.maxStacks < 0)
+    {
+        validated.maxStacks = 0;
+        hasInvalid = true;
+    }
+
+    if (validated.tickInterval < 0.0f)
+    {
+        validated.tickInterval = 0.0f;
+        hasInvalid = true;
+    }
+
+    if (validated.baseDamageScale < 0.0f)
+    {
+        validated.baseDamageScale = 0.0f;
+        hasInvalid = true;
+    }
+
+    if (validated.perStackDamageScale < 0.0f)
+    {
+        validated.perStackDamageScale = 0.0f;
+        hasInvalid = true;
+    }
+
+#if COCOS2D_DEBUG > 0
+    if (hasInvalid)
+    {
+        CCLOG("ExplosiveProjectile: invalid StatusEffectTemplate corrected (type=%d).", static_cast<int>(validated.type));
+    }
+#endif
+
+    _onHitStatusEffects.push_back(validated);
+}
+
+void ExplosiveProjectile::clearOnHitStatusEffects()
+{
+    _onHitStatusEffects.clear();
+}
+
 void ExplosiveProjectile::explode()
 {
     if (_isExploded)
@@ -167,10 +223,6 @@ void ExplosiveProjectile::playExplosionVfx()
 
 void ExplosiveProjectile::applyAoEDamage()
 {
-    if (_baseDamage <= 0.0f)
-    {
-        return;
-    }
     if (_explosionRadius <= 0.0f)
     {
         return;
@@ -188,17 +240,23 @@ void ExplosiveProjectile::applyAoEDamage()
         explosionWorld = root->convertToWorldSpace(getPosition());
     }
 
-    float damageAmount = _baseDamage;
+    float sourceAttackPower = 0.0f;
+    if (_attacker)
+    {
+        sourceAttackPower = _attacker->getAttackPower();
+    }
+
+    float damageAmount = _baseDamage + sourceAttackPower * _attackPowerDamageScale;
+
+    const bool dealDamage = damageAmount > 0.0f;
     bool isCrit = false;
 
-    if (_attacker)
+    if (dealDamage && _attacker)
     {
         auto attr = _attacker->getAttributeComponent();
         if (attr)
         {
             float critRate = attr->getAttributeValue(AttributeType::CRITICAL_RATE);
-            float strength = attr->getAttributeValue(AttributeType::STRENGTH);
-            damageAmount += (strength * 5.0f);
 
             // MSVC 当前工程可能未启用 C++17，避免使用 std::clamp
             float critChancePercent = critRate * 100.0f;
@@ -211,7 +269,7 @@ void ExplosiveProjectile::applyAoEDamage()
         }
     }
 
-    DamageInfo dmg;
+    DamageInfo dmg{};
     dmg.amount = damageAmount;
     dmg.attacker = _attacker;
     dmg.isCritical = isCrit;
@@ -322,9 +380,45 @@ void ExplosiveProjectile::applyAoEDamage()
         else if (explosionWorld.y > hitRectWorld.getMaxY())
             dy = explosionWorld.y - hitRectWorld.getMaxY();
 
-        if ((dx * dx + dy * dy) <= radiusSq)
+        if ((dx * dx + dy * dy) > radiusSq)
+        {
+            continue;
+        }
+
+        if (dealDamage)
         {
             target->takeDamage(dmg);
+        }
+
+        if (!_onHitStatusEffects.empty())
+        {
+            auto attr = target->getAttributeComponent();
+            if (!attr)
+            {
+                continue;
+            }
+
+            for (const auto &tmpl : _onHitStatusEffects)
+            {
+                StatusEffectInstance inst;
+                inst.type = tmpl.type;
+                inst.duration = tmpl.duration;
+                inst.elapsed = 0.0f;
+                inst.attributeBonus = tmpl.attributeBonus;
+
+                inst.stacks = tmpl.stacks;
+                inst.maxStacks = tmpl.maxStacks;
+                inst.stackable = tmpl.stackable;
+                inst.refreshOnAdd = tmpl.refreshOnAdd;
+
+                inst.tickInterval = tmpl.tickInterval;
+                inst.tickAccumulator = 0.0f;
+                inst.sourceAttackPower = sourceAttackPower;
+                inst.baseDamageScale = tmpl.baseDamageScale;
+                inst.perStackDamageScale = tmpl.perStackDamageScale;
+
+                attr->addStatusEffect(inst);
+            }
         }
     }
 }
