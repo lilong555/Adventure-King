@@ -421,7 +421,12 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType) cons
 
     if (key == "goblin" || key == "goblinmonster")
     {
-        return GoblinMonster::create();
+        auto goblin = GoblinMonster::create();
+        if (goblin && _player)
+        {
+            goblin->applyHpScalingForPlayerLevel(_player->getLevel());
+        }
+        return goblin;
     }
 
     CCLOG("Warning: Unknown monster type '%s'", monsterType.c_str());

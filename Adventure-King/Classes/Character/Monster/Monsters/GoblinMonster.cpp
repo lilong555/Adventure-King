@@ -42,6 +42,23 @@ GoblinMonster::~GoblinMonster()
     CC_SAFE_RELEASE(_attackAnimate);
 }
 
+void GoblinMonster::applyHpScalingForPlayerLevel(int playerLevel)
+{
+    int level = std::max(0, playerLevel);
+    int maxHp = 200 + level * 100 + (level / 10) * 1000;
+
+    auto attr = getAttributeComponent();
+    if (attr)
+    {
+        attr->setBaseAttribute(AttributeType::MAX_HP, static_cast<float>(maxHp));
+    }
+
+    refreshCacheAttributes();
+    ensureHpBar();
+    setCurrentHP(_maxHP);
+    updateHpBar();
+}
+
 GoblinMonster *GoblinMonster::create(const std::string &spriteFrameName)
 {
     GoblinMonster *ret = new (std::nothrow) GoblinMonster();
