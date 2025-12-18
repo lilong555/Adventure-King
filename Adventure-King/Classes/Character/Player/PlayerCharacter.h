@@ -158,4 +158,9 @@ private:
     // 弱引用 (Weak References)
     cocos2d::Node* _combatLayer = nullptr;
     cocos2d::EventListenerPhysicsContact* _projectileContactListener = nullptr;
+
+    // 受击朝向（用于“受击方向为正向时反转受击 png”）
+    bool _hurtFlipOverrideActive = false;
+    bool _hurtRestoreFlippedX = false;
+    bool _hurtOverrideFlippedX = false;
 };

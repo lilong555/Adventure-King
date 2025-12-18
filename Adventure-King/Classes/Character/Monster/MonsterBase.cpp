@@ -599,6 +599,35 @@ void MonsterBase::takeDamage(const DamageInfo& info)
         _physicsBody->setVelocity(v);
     }
 
+    // 受击朝向：如果“正向受击”（攻击来自面向方向），则临时反转受击 png
+    if (info.attacker && info.attacker != this)
+    {
+        float originalScaleX = getScaleX();
+        bool facingLeft = originalScaleX < 0.0f;
+
+        float myX = getWorldPosition(this).x;
+        float attackerX = getWorldPosition(info.attacker).x;
+        bool attackerOnLeft = attackerX < myX;
+
+        bool forwardHit = (facingLeft == attackerOnLeft);
+        if (forwardHit)
+        {
+            float hurtScaleX = -originalScaleX;
+            setScaleX(hurtScaleX);
+
+            runAction(Sequence::create(
+                DelayTime::create(0.3f),
+                CallFunc::create([this, originalScaleX, hurtScaleX]() {
+                    // 若期间朝向被 AI/外部改变，则不强制恢复
+                    if (std::fabs(getScaleX() - hurtScaleX) < 0.0001f)
+                    {
+                        setScaleX(originalScaleX);
+                    }
+                }),
+                nullptr));
+        }
+    }
+
     if (auto sm = getStateMachineComponent())
     {
         sm->changeState(CharacterState::HURT);

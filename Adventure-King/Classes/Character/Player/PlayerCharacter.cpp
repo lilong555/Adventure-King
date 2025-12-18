@@ -25,10 +25,12 @@ namespace
     // Action Tags
     constexpr int ACTION_TAG_ATTACK = 200;
     constexpr int ACTION_TAG_SKILL = 300;
+    constexpr int ACTION_TAG_HURT_FACING = 400;
 
     // Animation Delays
     constexpr float ANIM_DELAY_RUN = 0.15f;
     constexpr float ANIM_DELAY_WALK = 0.25f;
+    constexpr float HURT_DURATION_SECONDS = 0.3f;
 
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths, float delayPerUnit)
@@ -509,6 +511,24 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
 {
     if (isDead()) return;
 
+    // 受击朝向：如果“正向受击”（攻击来自面向方向），则临时反转受击 png
+    bool currentFacing = isFlippedX();
+    bool baseFacing = currentFacing;
+    if (_hurtFlipOverrideActive)
+    {
+        // 如果仍处于“受击反转”视觉态，则 baseFacing 以恢复值为准；
+        // 若期间外部改变了朝向，则取消该 tracking，避免覆盖用户输入。
+        if (currentFacing == _hurtOverrideFlippedX)
+        {
+            baseFacing = _hurtRestoreFlippedX;
+        }
+        else
+        {
+            _hurtFlipOverrideActive = false;
+            baseFacing = currentFacing;
+        }
+    }
+
     CharacterBase::takeDamage(info);
     if (isDead()) return;
 
@@ -517,6 +537,53 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
 
     if (sm->getCurrentState() != CharacterState::HURT)
         return;
+
+    // 取消上一次的受击朝向恢复（连续受击时重新计算）
+    stopActionByTag(ACTION_TAG_HURT_FACING);
+    _hurtFlipOverrideActive = false;
+
+    if (info.attacker && info.attacker != this)
+    {
+        auto getWorldX = [](const Node* node) -> float {
+            if (!node)
+                return 0.0f;
+
+            auto parent = node->getParent();
+            auto worldPos = parent ? parent->convertToWorldSpace(node->getPosition()) : node->getPosition();
+            return worldPos.x;
+        };
+
+        float myX = getWorldX(this);
+        float attackerX = getWorldX(info.attacker);
+        bool attackerOnLeft = attackerX < myX;
+
+        // “正向受击” = 攻击来自面向的一侧（面向左且攻击来自左，或面向右且攻击来自右）
+        bool forwardHit = (baseFacing == attackerOnLeft);
+        bool desiredHurtFlip = baseFacing ^ forwardHit; // 正向受击则反转 png
+
+        if (desiredHurtFlip != baseFacing)
+        {
+            _hurtFlipOverrideActive = true;
+            _hurtRestoreFlippedX = baseFacing;
+            _hurtOverrideFlippedX = desiredHurtFlip;
+            setFlippedX(desiredHurtFlip);
+
+            auto restore = Sequence::create(
+                DelayTime::create(HURT_DURATION_SECONDS),
+                CallFunc::create([this]() {
+                    _hurtFlipOverrideActive = false;
+
+                    // 如果期间朝向没被外部改变，恢复受击前朝向
+                    if (isFlippedX() == _hurtOverrideFlippedX)
+                    {
+                        setFlippedX(_hurtRestoreFlippedX);
+                    }
+                }),
+                nullptr);
+            restore->setTag(ACTION_TAG_HURT_FACING);
+            runAction(restore);
+        }
+    }
 
     // 受击：打断当前出手（防止“受击仍在投掷/施法”），并解除动作锁
     stopActionByTag(ACTION_TAG_ATTACK);
