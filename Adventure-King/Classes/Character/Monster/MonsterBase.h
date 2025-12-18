@@ -3,7 +3,7 @@
 #include "Character/components/SkillComponent.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/Base/CharacterBase.h"
-#include "Physics/GamePhysicsCategory.h"
+#include "Configs/GamePhysicsCategory.h"
 
 namespace cocos2d { class DrawNode; }
 

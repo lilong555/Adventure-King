@@ -4,7 +4,8 @@
 #define __BOMB_H__
 
 #include "Objects/Projectiles/ExplosiveProjectile.h"
-#include "Physics/GamePhysicsCategory.h"
+#include "Configs/GamePhysicsCategory.h"
+#include "Configs/GameConfigs.h"
 
 class Bomb : public ExplosiveProjectile
 {

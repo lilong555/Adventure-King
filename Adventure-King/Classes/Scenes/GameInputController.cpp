@@ -148,7 +148,7 @@ void GameInputController::update(float dt)
     auto physicsBody = _player->getPhysicsBody();
     Vec2 velocity = physicsBody->getVelocity();
 
-    float currentSpeed = _runPressed ? _config.runSpeed : _config.walkSpeed;
+    float currentSpeed = _runPressed ? GameConfig::Player::RUNSPEED : GameConfig::Player::WALKSPEED;
     float targetVelocityX = 0.0f;
     if (_movingLeft)
     {
@@ -218,7 +218,7 @@ void GameInputController::handleJump()
         _jumpCount = 0;
     }
 
-    if (_jumpCount >= _config.maxJumpCount)
+    if (_jumpCount >= GameConfig::Player::MAX_JUMP_COUNT)
         return;
 
     _groundContactCount = 0;
@@ -228,7 +228,7 @@ void GameInputController::handleJump()
     velocity.y = 0.0f;
     physicsBody->setVelocity(velocity);
 
-    physicsBody->applyImpulse(Vec2(0, _config.jumpImpulse));
+    physicsBody->applyImpulse(Vec2(0, GameConfig::Player::JUMP_IMPULSE));
     _grounded = false;
     _jumpCount++;
     CCLOG(_jumpCount == 1 ? "Player jumped" : "Player double jumped");
