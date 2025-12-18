@@ -194,8 +194,15 @@ void ExplosiveProjectile::applyAoEDamage()
         explosionWorld = root->convertToWorldSpace(getPosition());
     }
 
-    const bool dealDamage = _baseDamage > 0.0f;
-    float damageAmount = _baseDamage;
+    float sourceAttackPower = 0.0f;
+    if (_attacker)
+    {
+        sourceAttackPower = _attacker->getAttackPower();
+    }
+
+    float damageAmount = _baseDamage + sourceAttackPower * _attackPowerDamageScale;
+
+    const bool dealDamage = damageAmount > 0.0f;
     bool isCrit = false;
 
     if (dealDamage && _attacker)
@@ -204,8 +211,6 @@ void ExplosiveProjectile::applyAoEDamage()
         if (attr)
         {
             float critRate = attr->getAttributeValue(AttributeType::CRITICAL_RATE);
-            float strength = attr->getAttributeValue(AttributeType::STRENGTH);
-            damageAmount += (strength * 5.0f);
 
             // MSVC 当前工程可能未启用 C++17，避免使用 std::clamp
             float critChancePercent = critRate * 100.0f;
@@ -218,7 +223,7 @@ void ExplosiveProjectile::applyAoEDamage()
         }
     }
 
-    DamageInfo dmg;
+    DamageInfo dmg{};
     dmg.amount = damageAmount;
     dmg.attacker = _attacker;
     dmg.isCritical = isCrit;
@@ -251,12 +256,6 @@ void ExplosiveProjectile::applyAoEDamage()
     collectTargets(root);
 
     const float radiusSq = _explosionRadius * _explosionRadius;
-
-    float sourceAttackPower = 0.0f;
-    if (_attacker)
-    {
-        sourceAttackPower = _attacker->getAttackPower();
-    }
 
     for (auto target : targets)
     {

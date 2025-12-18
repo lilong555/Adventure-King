@@ -38,18 +38,6 @@ namespace
         return s_texture;
     }
 
-    Vec2 getBottomCenterLocal(Node* node)
-    {
-        if (!node)
-        {
-            return Vec2::ZERO;
-        }
-
-        const auto size = node->getContentSize();
-        const auto anchor = node->getAnchorPoint();
-        return Vec2(size.width * (0.5f - anchor.x), -size.height * anchor.y);
-    }
-
     void applyBurningParticleStyle(ParticleSystemQuad* particle)
     {
         if (!particle)
@@ -86,6 +74,17 @@ namespace
 
         particle->setPositionType(ParticleSystem::PositionType::GROUPED);
         particle->setPosition(Vec2::ZERO);
+    }
+
+    Vec2 getBurningEmitterLocalPos(Node* owner)
+    {
+        if (!owner)
+        {
+            return Vec2::ZERO;
+        }
+
+        const auto size = owner->getContentSize();
+        return Vec2(size.width * 0.5f, size.height * 0.15f);
     }
 
     void updateBurningParticleIntensity(ParticleSystemQuad* particle, Node* owner, int stacks)
@@ -175,7 +174,7 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
         updateBurningParticleIntensity(particle, owner, stacks);
     }
 
-    existing->setPosition(getBottomCenterLocal(owner) + Vec2(0.0f, owner->getContentSize().height * 0.15f));
+    existing->setPosition(getBurningEmitterLocalPos(owner));
 
     if (auto particle = dynamic_cast<ParticleSystemQuad*>(existing->getChildByName(BURNING_PARTICLE_NAME)))
     {

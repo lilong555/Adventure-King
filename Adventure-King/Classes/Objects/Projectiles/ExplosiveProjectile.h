@@ -30,6 +30,10 @@ public:
     void setBaseDamage(float damage) { _baseDamage = damage; }
     float getBaseDamage() const { return _baseDamage; }
 
+    // 伤害倍率：最终伤害会额外叠加 attackerAttackPower * scale
+    void setAttackPowerDamageScale(float scale) { _attackPowerDamageScale = scale; }
+    float getAttackPowerDamageScale() const { return _attackPowerDamageScale; }
+
     void setExplosionRadius(float radius) { _explosionRadius = radius; }
     float getExplosionRadius() const { return _explosionRadius; }
 
@@ -67,6 +71,7 @@ private:
     bool _explodeOnContact = true;
 
     float _baseDamage = 0.0f;
+    float _attackPowerDamageScale = 0.0f;
     float _explosionRadius = 0.0f;
     CharacterBase *_attacker = nullptr;
 
