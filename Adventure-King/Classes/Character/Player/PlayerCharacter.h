@@ -74,10 +74,17 @@ public:
     bool isActionLocked() const { return _actionLocked; }
 
     // =============================================================
+    // Action Tags（供 SkillSet/动画复用）
+    // =============================================================
+    static constexpr int ACTION_TAG_ATTACK_ANIM = 200;
+    static constexpr int ACTION_TAG_SKILL_ANIM = 300;
+
+    // =============================================================
     // 战斗系统 (Combat & Skills)
     // =============================================================
     // 核心攻击接口
     virtual void attack() override; // 普攻
+    virtual void takeDamage(const DamageInfo& info) override; // 受击（打断动作/播放受击）
     void useSkill(size_t slotIndex); // 技能
 
     // 尝试执行攻击/技能（包含资源检查、CD检查、动作锁检查）
@@ -119,6 +126,7 @@ private:
 
     // 动画管理
     void ensureMoveAnimations();
+    void ensureStateAnimations();
     // ensureMoveAnimationCached 已移至 .cpp 内部实现，不再暴露
 
     // 战斗逻辑
@@ -156,4 +164,10 @@ private:
     // 弱引用 (Weak References)
     cocos2d::Node* _combatLayer = nullptr;
     cocos2d::EventListenerPhysicsContact* _projectileContactListener = nullptr;
+
+    // 受击方向：受击 png 带方向，角色朝向由 setFlippedX 管理；
+    // 这里使用 scaleX 的符号作为“额外镜像层”，避免与移动逻辑冲突。
+    bool _hurtMirrorActive = false;
+    bool _hurtDesiredFinalMirror = false; // 期望的最终镜像状态（= scaleX<0 XOR flippedX）
+    float _hurtMirrorAbsScaleX = 1.0f;    // 受击期间保持的 |scaleX|
 };

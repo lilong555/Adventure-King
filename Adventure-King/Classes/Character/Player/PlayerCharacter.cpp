@@ -23,12 +23,12 @@ USING_NS_CC;
 namespace
 {
     // Action Tags
-    constexpr int ACTION_TAG_ATTACK = 200;
-    constexpr int ACTION_TAG_SKILL = 300;
+    constexpr int ACTION_TAG_HURT_FACING = 400;
 
     // Animation Delays
     constexpr float ANIM_DELAY_RUN = 0.15f;
     constexpr float ANIM_DELAY_WALK = 0.25f;
+    constexpr float HURT_DURATION_SECONDS = 0.3f;
 
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths, float delayPerUnit)
@@ -138,22 +138,22 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     // 4. 物理层初始化 (使用内部辅助函数)
     helperSetupPhysicsBody(this);
 
-    // 5. 表现层初始化 - 状态机动画注册
+    // 5. 表现层初始化 - 缓存状态机动画（避免首次切状态时缺帧）
+    ensureMoveAnimations();
+    ensureStateAnimations();
+
+    // 6. 表现层初始化 - 状态机动画注册
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, _animationKeyPrefix + "_idle");
         sm->registerStateAnimation(CharacterState::WALKING, _animationKeyPrefix + "_walk");
         sm->registerStateAnimation(CharacterState::RUNNING, _animationKeyPrefix + "_run");
-        sm->registerStateAnimation(CharacterState::ATTACKING, _animationKeyPrefix + "_attack");
         sm->registerStateAnimation(CharacterState::HURT, _animationKeyPrefix + "_hurt");
-        sm->registerStateAnimation(CharacterState::DEAD, _animationKeyPrefix + "_dead");
 
         sm->changeState(CharacterState::IDLE);
     }
 
-    ensureMoveAnimations();
-
-    // 6. 技能集初始化
+    // 7. 技能集初始化
     createSkillSet();
     if (_skillSet)
     {
@@ -189,6 +189,31 @@ void PlayerCharacter::update(float dt)
 {
     CharacterBase::update(dt);
     // 如果 SkillSet 需要 update，在此调用
+
+    // 受击方向：持续修正 scaleX 的符号，保证移动时的 setFlippedX（朝向）不会覆盖受击图的镜像
+    if (_hurtMirrorActive)
+    {
+        auto sm = getStateMachineComponent();
+        if (!sm || sm->getCurrentState() != CharacterState::HURT)
+        {
+            _hurtMirrorActive = false;
+            setScaleX(std::fabs(getScaleX()));
+            return;
+        }
+
+        float absScaleX = std::fabs(_hurtMirrorAbsScaleX);
+        if (absScaleX <= 0.0f)
+        {
+            absScaleX = std::fabs(getScaleX());
+        }
+
+        bool scaleMirror = _hurtDesiredFinalMirror ^ isFlippedX();
+        float desiredScaleX = scaleMirror ? -absScaleX : absScaleX;
+        if (std::fabs(getScaleX() - desiredScaleX) > 0.0001f)
+        {
+            setScaleX(desiredScaleX);
+        }
+    }
 }
 
 // =================================================================
@@ -436,6 +461,11 @@ bool PlayerCharacter::runActionLocked(const std::function<bool()>& preCheck,
     if (_actionLocked) return false;
     if (preCheck && !preCheck()) return false;
 
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::ATTACKING);
+    }
+
     _actionLocked = true;
     playAnimation([this, performEffect, onFinished]() {
         if (performEffect) performEffect();
@@ -476,7 +506,7 @@ void PlayerCharacter::attackAnimated(const std::function<void()>& onFinished)
         }
     }
 
-    playOneShotAnimation(paths, animSpeed, ACTION_TAG_ATTACK, onFinished);
+    playOneShotAnimation(paths, animSpeed, PlayerCharacter::ACTION_TAG_ATTACK_ANIM, onFinished);
 }
 
 void PlayerCharacter::castSkillAnimated(const std::function<void()>& onFinished)
@@ -493,7 +523,7 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()>& onFinished)
         paths.push_back(StringUtils::format("%s/spr_%s_attack_%d.png", _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
     }
 
-    playOneShotAnimation(paths, 0.13f, ACTION_TAG_SKILL, onFinished);
+    playOneShotAnimation(paths, 0.13f, PlayerCharacter::ACTION_TAG_SKILL_ANIM, onFinished);
 }
 
 // =================================================================
@@ -503,6 +533,69 @@ void PlayerCharacter::castSkillAnimated(const std::function<void()>& onFinished)
 void PlayerCharacter::attack()
 {
     tryNormalAttack();
+}
+
+void PlayerCharacter::takeDamage(const DamageInfo& info)
+{
+    if (isDead()) return;
+
+    CharacterBase::takeDamage(info);
+    if (isDead()) return;
+
+    auto sm = getStateMachineComponent();
+    if (!sm) return;
+
+    // 保留基类的受击阈值：避免 DOT 等持续伤害频繁触发受击导致无法操控
+    if (sm->getCurrentState() != CharacterState::HURT)
+        return;
+
+    // 取消上一次的受击镜像（连续受击时重新计算）
+    stopActionByTag(ACTION_TAG_HURT_FACING);
+    _hurtMirrorActive = false;
+    setScaleX(std::fabs(getScaleX()));
+
+    if (info.attacker && info.attacker != this)
+    {
+        auto getWorldX = [](const Node* node) -> float {
+            if (!node)
+                return 0.0f;
+
+            auto parent = node->getParent();
+            auto worldPos = parent ? parent->convertToWorldSpace(node->getPosition()) : node->getPosition();
+            return worldPos.x;
+        };
+
+        float myX = getWorldX(this);
+        float attackerX = getWorldX(info.attacker);
+        bool attackerOnLeft = attackerX < myX;
+
+        // beattacked png 有方向：以“攻击来源在左侧”为基准决定最终镜像状态。
+        // 玩家面向由 setFlippedX 控制；因此使用 scaleX 的符号作为“额外镜像层”。
+        //
+        // 目标：最终镜像状态 = attackerOnLeft
+        _hurtDesiredFinalMirror = attackerOnLeft;
+        _hurtMirrorAbsScaleX = std::fabs(getScaleX());
+        _hurtMirrorActive = true;
+
+        // 立即应用一次（update 中也会持续校正，避免移动时朝向覆盖）
+        bool scaleMirror = _hurtDesiredFinalMirror ^ isFlippedX();
+        setScaleX(scaleMirror ? -_hurtMirrorAbsScaleX : _hurtMirrorAbsScaleX);
+
+        auto restore = Sequence::create(
+            DelayTime::create(HURT_DURATION_SECONDS),
+            CallFunc::create([this]() {
+                _hurtMirrorActive = false;
+                setScaleX(std::fabs(_hurtMirrorAbsScaleX));
+            }),
+            nullptr);
+        restore->setTag(ACTION_TAG_HURT_FACING);
+        runAction(restore);
+    }
+
+    // 受击：打断当前出手（防止“受击仍在投掷/施法”），并解除动作锁
+    stopActionByTag(PlayerCharacter::ACTION_TAG_ATTACK_ANIM);
+    stopActionByTag(PlayerCharacter::ACTION_TAG_SKILL_ANIM);
+    _actionLocked = false;
 }
 
 void PlayerCharacter::useSkill(size_t slotIndex)
@@ -667,4 +760,47 @@ void PlayerCharacter::ensureMoveAnimations()
     // 调用内部静态辅助函数
     helperEnsureAnimationCached(_animationKeyPrefix + "_run", movePaths, ANIM_DELAY_RUN);
     helperEnsureAnimationCached(_animationKeyPrefix + "_walk", movePaths, ANIM_DELAY_WALK);
+}
+
+void PlayerCharacter::ensureStateAnimations()
+{
+    if (_defaultSpriteDir.empty() || _characterKey.empty() || _animationKeyPrefix.empty())
+    {
+        return;
+    }
+
+    auto cache = AnimationCache::getInstance();
+    if (!cache)
+    {
+        return;
+    }
+
+    auto ensureSingleFrame = [cache](const std::string& key, const std::string& framePath) {
+        if (cache->getAnimation(key))
+        {
+            return;
+        }
+
+        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(framePath);
+        if (!frame)
+        {
+#if COCOS2D_DEBUG > 0
+            CCLOG("PlayerCharacter: failed to load state frame %s", framePath.c_str());
+#endif
+            return;
+        }
+
+        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+        frames.pushBack(frame);
+        auto anim = Animation::createWithSpriteFrames(frames, 0.2f);
+        cache->addAnimation(anim, key);
+    };
+
+    // IDLE：用默认 run 静帧兜底（多角色兼容）
+    ensureSingleFrame(_animationKeyPrefix + "_idle",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+
+    // HURT：受击贴图（spr_<角色>_beattacked.png）
+    ensureSingleFrame(_animationKeyPrefix + "_hurt",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_beattacked.png");
 }

@@ -8,18 +8,43 @@
 
 USING_NS_CC;
 
+namespace
+{
+    void ensureSingleFrameAnimationCached(const std::string &animationKey,
+                                          const std::string &framePath,
+                                          float delayPerUnit = 0.2f)
+    {
+        auto cache = AnimationCache::getInstance();
+        if (cache->getAnimation(animationKey))
+        {
+            return;
+        }
+
+        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(framePath);
+        if (!frame)
+        {
+            return;
+        }
+
+        cocos2d::Vector<cocos2d::SpriteFrame *> frames;
+        frames.pushBack(frame);
+        auto anim = cocos2d::Animation::createWithSpriteFrames(frames, delayPerUnit);
+        cache->addAnimation(anim, animationKey);
+    }
+}
+
 GoblinMonster::GoblinMonster()
 {
 }
 
 GoblinMonster::~GoblinMonster()
 {
-	CC_SAFE_RELEASE(_attackAnimate);
+    CC_SAFE_RELEASE(_attackAnimate);
 }
 
-GoblinMonster* GoblinMonster::create(const std::string& spriteFrameName)
+GoblinMonster *GoblinMonster::create(const std::string &spriteFrameName)
 {
-    GoblinMonster* ret = new (std::nothrow) GoblinMonster();
+    GoblinMonster *ret = new (std::nothrow) GoblinMonster();
     if (ret && ret->init(spriteFrameName))
     {
         ret->autorelease();
@@ -29,17 +54,17 @@ GoblinMonster* GoblinMonster::create(const std::string& spriteFrameName)
     return nullptr;
 }
 
-bool GoblinMonster::init(const std::string& spriteFrameName)
+bool GoblinMonster::init(const std::string &spriteFrameName)
 {
     // === 继承 MonsterBase 的初始化（加载纹理）===
     if (!MonsterBase::init(spriteFrameName))
         return false;
 
-	// 2. 初始化 AI 参数 (关卡策划关注这一块)
-	setAIConfig(700,0,true);
+    // 2. 初始化 AI 参数 (关卡策划关注这一块)
+    setAIConfig(700, 0, true);
 
-	// === 设置怪物属性 ===
-	initAttributes();
+    // === 设置怪物属性 ===
+    initAttributes();
 
     // === 刷新 HP / MP ===
     setCurrentHP(_maxHP);
@@ -60,13 +85,13 @@ void GoblinMonster::initAttributes()
     Attributes base;
     base.set(AttributeType::STRENGTH, 10.0f);
     base.set(AttributeType::DEFENSE, 2.0f);
-    base.set(AttributeType::MOVE_SPEED, 200.0f);   // 基础移速
-	    base.set(AttributeType::CRITICAL_RATE, 0.05f);
-	    base.set(AttributeType::MAX_HP, 60.0f);
-	    base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
-	    // 怪物默认缩放见 MonsterBase::init，攻击判定框按缩放同比例缩放，
-	    // 因此攻击距离也需要匹配当前缩放，避免“看起来够不着却开始攻击”。
-	    base.set(AttributeType::ATTACK_RANGE, 150.0f); // 发动攻击的距离
+    base.set(AttributeType::MOVE_SPEED, 200.0f); // 基础移速
+    base.set(AttributeType::CRITICAL_RATE, 0.05f);
+    base.set(AttributeType::MAX_HP, 1000.0f);
+    base.set(AttributeType::ATTACKINTERVAL, 2.0f); // 基础攻速
+    // 怪物默认缩放见 MonsterBase::init，攻击判定框按缩放同比例缩放，
+    // 因此攻击距离也需要匹配当前缩放，避免“看起来够不着却开始攻击”。
+    base.set(AttributeType::ATTACK_RANGE, 150.0f); // 发动攻击的距离
 
     // 2. 交给基类处理 (一行代码搞定逻辑！)
     setupCharacterStats(base);
@@ -81,13 +106,14 @@ void GoblinMonster::initAttributes()
 #pragma region 状态动画
 void GoblinMonster::initStateAnimations()
 {
+    // 受击/待机素材为单帧：用 AnimationCache 驱动 StateMachineComponent 统一播放
+    ensureSingleFrameAnimationCached("goblin_idle", "Sprites/Enemies/Goblin/Goblin_idle.png");
+    ensureSingleFrameAnimationCached("goblin_hurt", "Sprites/Enemies/Goblin/Goblin_beattacked.png");
+
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, "goblin_idle");
-        sm->registerStateAnimation(CharacterState::WALKING, "goblin_walk");
-        sm->registerStateAnimation(CharacterState::ATTACKING, "goblin_attack");
         sm->registerStateAnimation(CharacterState::HURT, "goblin_hurt");
-        sm->registerStateAnimation(CharacterState::DEAD, "goblin_dead");
     }
 }
 #pragma endregion
@@ -95,8 +121,8 @@ void GoblinMonster::initStateAnimations()
 #pragma region 攻击动画初始化
 void GoblinMonster::initAnimations()
 {
-    cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-    char str[200] = { 0 };
+    cocos2d::Vector<cocos2d::SpriteFrame *> frames;
+    char str[200] = {0};
 
     // 按序加载攻击帧：从 1 开始，遇到缺失文件就停止（避免刷屏报错）
     auto fileUtils = cocos2d::FileUtils::getInstance();
@@ -147,7 +173,7 @@ void GoblinMonster::attack()
     // -----------------------------------------------------------
     // ★ 安全保险：如果没有动画，创建一个 1秒的延时动作代替
     // 否则如果 _attackAnimate 为空，函数直接 return，状态机永远卡在 ATTACKING
-    cocos2d::FiniteTimeAction* animateAction = nullptr;
+    cocos2d::FiniteTimeAction *animateAction = nullptr;
 
     if (_attackAnimate)
     {
@@ -176,42 +202,41 @@ void GoblinMonster::attack()
     // -----------------------------------------------------------
     // 3. 判定框逻辑 (Hitbox)
     // -----------------------------------------------------------
-		    auto logicSequence = cocos2d::Sequence::create(
-		        cocos2d::DelayTime::create(hitTime),
-		        cocos2d::CallFunc::create([this]() {
+    auto logicSequence = cocos2d::Sequence::create(
+        cocos2d::DelayTime::create(hitTime),
+        cocos2d::CallFunc::create([this]()
+                                  {
+                                      // 计算朝向
+                                      float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
 
-		            // 计算朝向
-		            float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
+                                      // 缩放适配：攻击判定最初按 0.6 的缩放手感调过，这里按当前缩放同比例缩放偏移/尺寸
+                                      constexpr float kGoblinHitboxTuneScale = 0.6f;
+                                      float scaleRatio = 1.0f;
+                                      if (kGoblinHitboxTuneScale > 0.0f)
+                                      {
+                                          scaleRatio = std::fabs(this->getScaleX()) / kGoblinHitboxTuneScale;
+                                      }
 
-		            // 缩放适配：攻击判定最初按 0.6 的缩放手感调过，这里按当前缩放同比例缩放偏移/尺寸
-		            constexpr float kGoblinHitboxTuneScale = 0.6f;
-	            float scaleRatio = 1.0f;
-	            if (kGoblinHitboxTuneScale > 0.0f)
-	            {
-	                scaleRatio = std::fabs(this->getScaleX()) / kGoblinHitboxTuneScale;
-	            }
+                                      // 计算偏移
+                                      cocos2d::Vec2 offset(100.f * direction * scaleRatio, 170.f * scaleRatio);
+                                      cocos2d::Size hitboxSize(300.0f * scaleRatio, 20.0f * scaleRatio);
 
-		            // 计算偏移
-		            cocos2d::Vec2 offset(100.f * direction * scaleRatio, 170.f * scaleRatio);
-		            cocos2d::Size hitboxSize(300.0f * scaleRatio, 20.0f * scaleRatio);
+                                      int damageTag = 1;
+                                      if (auto attr = getAttributeComponent())
+                                      {
+                                          float strength = attr->getAttributeValue(AttributeType::STRENGTH);
+                                          if (strength > 0.0f)
+                                          {
+                                              damageTag = static_cast<int>(std::round(strength));
+                                          }
+                                      }
 
-                    int damageTag = 1;
-                    if (auto attr = getAttributeComponent())
-                    {
-                        float strength = attr->getAttributeValue(AttributeType::STRENGTH);
-                        if (strength > 0.0f)
-                        {
-                            damageTag = static_cast<int>(std::round(strength));
-                        }
-                    }
+                                      spawnMeleeHitbox(offset, hitboxSize, std::max(1, damageTag), 0.1f);
 
-                    spawnMeleeHitbox(offset, hitboxSize, std::max(1, damageTag), 0.1f);
-
-	            // 调试日志
-	            // CCLOG("Hitbox spawned at: %.1f, %.1f", worldPos.x, worldPos.y);
-	            }),
-	        nullptr
-	    );
+                                      // 调试日志
+                                      // CCLOG("Hitbox spawned at: %.1f, %.1f", worldPos.x, worldPos.y);
+                                  }),
+        nullptr);
 
     // -----------------------------------------------------------
     // 4. 组合并运行 (Spawn = 并行)
@@ -224,15 +249,14 @@ void GoblinMonster::attack()
     // -----------------------------------------------------------
     auto finalSequence = cocos2d::Sequence::create(
         spawn,
-        cocos2d::CallFunc::create([this]() {
+        cocos2d::CallFunc::create([this]()
+                                  {
             auto sm = getStateMachineComponent();
             if (sm && sm->getCurrentState() != CharacterState::DEAD)
             {
                 sm->changeState(CharacterState::IDLE);
-            }
-            }),
-        nullptr
-    );
+            } }),
+        nullptr);
 
     this->runAction(finalSequence);
 }

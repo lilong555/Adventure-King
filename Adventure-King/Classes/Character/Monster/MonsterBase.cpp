@@ -177,6 +177,22 @@ void MonsterBase::update(float dt)
         return;
     }
 
+    // 受击硬直期间：打断移动/攻击逻辑，并冻结水平速度，等待 StateMachineComponent 自动回到 IDLE
+    auto state = sm->getCurrentState();
+    if (state == CharacterState::HURT)
+    {
+        _hasMoveGoal = false;
+        _returningHome = false;
+
+        if (_physicsBody)
+        {
+            cocos2d::Vec2 v = _physicsBody->getVelocity();
+            v.x = 0;
+            _physicsBody->setVelocity(v);
+        }
+        return;
+    }
+
     const bool withinActiveRange = isWithinActiveUpdateRange();
     const float aiInterval = withinActiveRange ? _aiUpdateInterval : _inactiveAiUpdateInterval;
 
@@ -195,7 +211,7 @@ void MonsterBase::update(float dt)
         }
     }
 
-    auto state = sm->getCurrentState();
+    state = sm->getCurrentState();
 
     // 离屏（或远离玩家）时：冻结水平速度并跳过移动/攻击计算，减少 CPU 占用
     if (!withinActiveRange)
@@ -501,6 +517,9 @@ void MonsterBase::updateAttack(float dt)
     if (!sm)
         return;
 
+    if (sm->getCurrentState() == CharacterState::HURT)
+        return;
+
     // 正在攻击：保持朝向不变
     if (sm->getCurrentState() == CharacterState::ATTACKING)
         return;
@@ -568,7 +587,45 @@ void MonsterBase::takeDamage(const DamageInfo& info)
         return;
     }
 
-    getStateMachineComponent()->changeState(CharacterState::HURT);
+    // 受击：打断当前动作（尤其是攻击），并进入受击状态
+    stopAllActions();
+    _hasMoveGoal = false;
+    _returningHome = false;
+
+    if (_physicsBody)
+    {
+        cocos2d::Vec2 v = _physicsBody->getVelocity();
+        v.x = 0;
+        _physicsBody->setVelocity(v);
+    }
+
+    // 受击方向：beattacked png 有方向；
+    // 当攻击来自“面向方向”（正向受击）时，需要镜像受击图。
+    if (info.attacker && info.attacker != this)
+    {
+        float myX = getWorldPosition(this).x;
+        float attackerX = getWorldPosition(info.attacker).x;
+        bool attackerOnLeft = attackerX < myX;
+
+        bool facingLeft = getScaleX() < 0.0f;
+
+        // beattacked png 有方向：以“攻击来源在左侧”为基准决定最终镜像状态。
+        // 怪物朝向由 scaleX 的正负实现，避免改动它；用 Sprite::setFlippedX 作为“额外镜像层”。
+        //
+        // 目标：最终镜像状态 = attackerOnLeft
+        // 最终镜像状态 = (scaleX<0) XOR flippedX  =>  flippedX = facingLeft XOR attackerOnLeft
+        bool hurtOverlayFlip = facingLeft ^ attackerOnLeft;
+        setFlippedX(hurtOverlayFlip);
+        runAction(Sequence::create(
+            DelayTime::create(0.3f),
+            CallFunc::create([this]() { setFlippedX(false); }),
+            nullptr));
+    }
+
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::HURT);
+    }
 }
 
 void MonsterBase::die()
@@ -734,6 +791,9 @@ void MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
     attackNode->setPosition(getPosition() + offsetInParentSpace);
     attackNode->setContentSize(hitboxSize);
     attackNode->setAnchorPoint(Vec2(0.5f, 0.5f));
+    // 记录攻击来源，用于受击方向判断（例如按攻击左右决定 beattacked png 镜像）
+    // 使用 userObject（Ref*）避免 userData(void*) 的不安全类型转换
+    attackNode->setUserObject(this);
     parent->addChild(attackNode);
 
     auto body = PhysicsBody::createBox(hitboxSize);
