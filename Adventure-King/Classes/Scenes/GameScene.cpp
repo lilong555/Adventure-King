@@ -482,13 +482,29 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
                 rawDamage = 1.0f;
             }
 
-            DamageInfo dmg;
+            DamageInfo dmg{};
             dmg.amount = rawDamage;
             if (auto attackNode = attackBody->getNode())
             {
                 dmg.attacker = dynamic_cast<CharacterBase *>(attackNode->getUserObject());
             }
-            player->takeDamage(dmg);
+
+            // 避免在物理回调中直接修改角色/物理状态（可能导致物理引擎内部状态被破坏）。
+            // 延迟到下一帧执行伤害结算。
+            std::string key = StringUtils::format("defer_monster_dmg_%p_%p",
+                                                  static_cast<void*>(attackBody),
+                                                  static_cast<void*>(player));
+            player->scheduleOnce(
+                [player, dmg](float)
+                {
+                    if (!player || player->isDead())
+                    {
+                        return;
+                    }
+                    player->takeDamage(dmg);
+                },
+                0.0f,
+                key);
         }
     }
 
@@ -511,10 +527,26 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
             float rawDamage = static_cast<float>(attackBody->getTag());
             if (rawDamage > 0.0f)
             {
-                DamageInfo dmg;
+                DamageInfo dmg{};
                 dmg.amount = rawDamage;
                 dmg.attacker = _player;
-                monster->takeDamage(dmg);
+
+                // 避免在物理回调中直接修改角色/物理状态（可能导致物理引擎内部状态被破坏）。
+                // 延迟到下一帧执行伤害结算。
+                std::string key = StringUtils::format("defer_player_dmg_%p_%p",
+                                                      static_cast<void*>(attackBody),
+                                                      static_cast<void*>(monster));
+                monster->scheduleOnce(
+                    [monster, dmg](float)
+                    {
+                        if (!monster || monster->isDead())
+                        {
+                            return;
+                        }
+                        monster->takeDamage(dmg);
+                    },
+                    0.0f,
+                    key);
             }
         }
     }
