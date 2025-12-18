@@ -542,8 +542,11 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     auto sm = getStateMachineComponent();
     if (!sm) return;
 
-    if (sm->getCurrentState() != CharacterState::HURT)
-        return;
+    // 玩家受击：无论伤害阈值如何，都打断当前动作并播放受击（需求：beattacked）
+    if (sm->getCurrentState() != CharacterState::DEAD)
+    {
+        sm->changeState(CharacterState::HURT);
+    }
 
     // 取消上一次的受击镜像（连续受击时重新计算）
     stopActionByTag(ACTION_TAG_HURT_FACING);
@@ -565,12 +568,11 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
         float attackerX = getWorldX(info.attacker);
         bool attackerOnLeft = attackerX < myX;
 
-        // 受击 png 有方向：当攻击来自“面向方向”（正向受击）时，需要镜像受击图。
+        // beattacked png 有方向：以“攻击来源在左侧”为基准决定最终镜像状态。
         // 玩家面向由 setFlippedX 控制；因此使用 scaleX 的符号作为“额外镜像层”。
-        bool facingLeft = isFlippedX();
-        bool forwardHit = (facingLeft == attackerOnLeft);
-
-        _hurtDesiredFinalMirror = facingLeft ^ forwardHit; // 正向受击 -> 最终镜像状态反转
+        //
+        // 目标：最终镜像状态 = attackerOnLeft
+        _hurtDesiredFinalMirror = attackerOnLeft;
         _hurtMirrorAbsScaleX = std::fabs(getScaleX());
         _hurtMirrorActive = true;
 

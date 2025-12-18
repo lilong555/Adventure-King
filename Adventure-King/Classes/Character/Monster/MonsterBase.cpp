@@ -608,10 +608,14 @@ void MonsterBase::takeDamage(const DamageInfo& info)
         bool attackerOnLeft = attackerX < myX;
 
         bool facingLeft = getScaleX() < 0.0f;
-        bool forwardHit = (facingLeft == attackerOnLeft);
 
-        // 怪物朝向由 scaleX 的正负实现，避免改动它；用 Sprite::setFlippedX 作为“额外镜像层”
-        setFlippedX(forwardHit);
+        // beattacked png 有方向：以“攻击来源在左侧”为基准决定最终镜像状态。
+        // 怪物朝向由 scaleX 的正负实现，避免改动它；用 Sprite::setFlippedX 作为“额外镜像层”。
+        //
+        // 目标：最终镜像状态 = attackerOnLeft
+        // 最终镜像状态 = (scaleX<0) XOR flippedX  =>  flippedX = facingLeft XOR attackerOnLeft
+        bool hurtOverlayFlip = facingLeft ^ attackerOnLeft;
+        setFlippedX(hurtOverlayFlip);
         runAction(Sequence::create(
             DelayTime::create(0.3f),
             CallFunc::create([this]() { setFlippedX(false); }),
