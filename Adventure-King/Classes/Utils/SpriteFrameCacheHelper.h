@@ -58,7 +58,8 @@ namespace SpriteFrameCacheHelper
     // 从文件创建帧，并强制使用固定原始尺寸（避免动画帧尺寸变化导致内容尺寸抖动）
     inline cocos2d::SpriteFrame *getOrCreateSpriteFrameWithOriginalSize(const std::string &filePath,
                                                                         const cocos2d::Size &originalSize,
-                                                                        bool alignBottom = false)
+                                                                        bool alignBottom = false,
+                                                                        bool alignLeft = false)
     {
         if (!isFilePath(filePath))
         {
@@ -68,7 +69,8 @@ namespace SpriteFrameCacheHelper
         const std::string cacheKey = filePath + "#orig=" +
                                      std::to_string(static_cast<int>(originalSize.width)) + "x" +
                                      std::to_string(static_cast<int>(originalSize.height)) +
-                                     (alignBottom ? "#bottom" : "");
+                                     (alignBottom ? "#bottom" : "") +
+                                     (alignLeft ? "#left" : "");
 
         auto cache = cocos2d::SpriteFrameCache::getInstance();
         if (auto cached = cache->getSpriteFrameByName(cacheKey))
@@ -89,6 +91,10 @@ namespace SpriteFrameCacheHelper
         if (alignBottom)
         {
             offset.y = (rect.size.height - originalSize.height) * 0.5f;
+        }
+        if (alignLeft)
+        {
+            offset.x = (rect.size.width - originalSize.width) * 0.5f;
         }
 
         auto frame = cocos2d::SpriteFrame::createWithTexture(texture, rect, false, offset, originalSize);
