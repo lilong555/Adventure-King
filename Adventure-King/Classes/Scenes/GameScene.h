@@ -102,6 +102,7 @@ protected:
     // -------------------------------
     PlayerCharacter *_player = nullptr; ///< 玩家角色
     //PlayerConfig _playerConfig;         ///< 玩家配置
+    MonsterBase *_boss = nullptr; ///< Boss 角色
 
     // -------------------------------
     // 输入系统
@@ -217,7 +218,7 @@ protected:
      * @param monsterType TMX object type
      * @return 创建成功返回怪物指针，否则返回 nullptr
      */
-    virtual MonsterBase *createMonsterByType(const std::string &monsterType) const;
+    virtual MonsterBase *createMonsterByType(const std::string &monsterType);
 
     // ===================================================================
     // 抽象方法（子类必须实现）

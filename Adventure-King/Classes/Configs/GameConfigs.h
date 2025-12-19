@@ -136,6 +136,43 @@ namespace GameConfig{
             inline constexpr float WALK_ANIM_FRAME_DELAY = 0.15f;
         }
 
+        // --- 哥布鲁 (Goblu) Boss 配置 ---
+        namespace Goblu
+        {
+            // 基础属性
+            inline constexpr float MAX_HP = 5000.0f;
+            inline constexpr float MAX_MP = 0.0f;
+            inline constexpr float STRENGTH = 25.0f;
+            inline constexpr float DEFENSE = 6.0f;
+            inline constexpr float CRITICAL_RATE = 0.08f;
+
+            // 移动与战斗
+            inline constexpr float MOVE_SPEED = 160.0f;
+            inline constexpr float ATTACK_INTERVAL = 2.6f;
+            inline constexpr float ATTACK_RANGE = 220.0f;
+
+            // 视野/AI 相关
+            inline constexpr float VISION_RANGE = 900.0f;
+            inline constexpr float CHASE_RANGE = 0.0f;
+            inline constexpr bool PATROL_ENABLED = true;
+
+            // Boss 体型/血条
+            inline constexpr float SCALE = 0.36f;
+            inline constexpr float HP_BAR_SCALE = 1.5f;
+
+            // 攻击动画/判定
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.12f;
+            inline constexpr int ATTACK_HIT_FRAME_INDEX = 2;
+            inline constexpr float ATTACK_HIT_FALLBACK_TIME = 0.45f;
+            inline constexpr float HITBOX_TUNE_SCALE = SCALE;
+            inline constexpr float HITBOX_OFFSET_X = 160.0f;
+            inline constexpr float HITBOX_OFFSET_Y = 170.0f;
+            inline constexpr float HITBOX_WIDTH = 380.0f;
+            inline constexpr float HITBOX_HEIGHT = 30.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.12f;
+            inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
+        }
+
         // --- 以后加 Boss 或者其他怪物 ---
         namespace Slime
         {
