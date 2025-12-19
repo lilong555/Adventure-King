@@ -16,6 +16,7 @@
 #include "Character/Base/CharacterBase.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
 #include <algorithm>
@@ -26,14 +27,11 @@ USING_NS_CC;
 
 namespace
 {
-    const char *const DEFAULT_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
-    const char *const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png";
-    const char *const MAP_LOAD_FAILED_TEXT = " - Map Load Failed";
+    const char *const DEFAULT_FONT_PATH = GameConfig::Scene::DEFAULT_FONT_PATH;
+    const char *const DEFAULT_PLAYER_SPRITE = GameConfig::Scene::DEFAULT_PLAYER_SPRITE;
+    const char *const MAP_LOAD_FAILED_TEXT = GameConfig::Scene::MAP_LOAD_FAILED_TEXT;
 
-    const PhysicsMaterial PLAYER_PHYSICS_MATERIAL(1.0f, 0.0f, 0.0f);
-
-    constexpr int ORIGIN_MUSHROOM_BG_COUNT = 6;
-    const char *const ORIGIN_MUSHROOM_BG_PREFIX = "Map/Origin_Mushroom/Origin_Mushroom_";
+    const PhysicsMaterial PLAYER_PHYSICS_MATERIAL = GameConfig::Material::PLAYER;
 }
 
 cocos2d::Scene *GameScene::createScene()
@@ -656,11 +654,13 @@ LevelConfig OriginMushroomScene::getLevelConfig() const
     LevelConfig config;
     config.tmxMapPath = "Map/Origin_Mushroom/Origin_Mushroom.tmx";
     config.backgroundPath = "";
-    config.backgroundSeriesPaths.reserve(ORIGIN_MUSHROOM_BG_COUNT);
-    for (int i = 0; i < ORIGIN_MUSHROOM_BG_COUNT; ++i)
+    config.backgroundSeriesPaths.reserve(GameConfig::Map::OriginMushroom::BACKGROUND_COUNT);
+    for (int i = 0; i < GameConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
     {
         config.backgroundSeriesPaths.emplace_back(
-            StringUtils::format("%s%02d.png", ORIGIN_MUSHROOM_BG_PREFIX, i));
+            StringUtils::format("%s%02d.png",
+                                GameConfig::Map::OriginMushroom::BACKGROUND_PREFIX,
+                                i));
     }
     config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";

@@ -146,13 +146,19 @@ public:
     void updateDisplay();
 
 protected:
-    // 创建UI组件
+    // 创建玩家状态栏 UI
     void createPlayerStatusBar();
+    // 创建技能栏 UI
     void createSkillBar();
+    // 创建 Boss 血条 UI
     void createBossHealthBar();
+    // 创建暂停菜单 UI
     void createPauseMenu();
+    // 创建地图按钮 UI
     void createMapButton();
+    // 创建交互提示 UI
     void createInteractionHint();
+    // 创建关卡名称 UI
     void createLevelNameLabel();
 
     // 地图按钮点击回调

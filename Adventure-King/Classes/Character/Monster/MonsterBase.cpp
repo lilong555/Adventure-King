@@ -1,5 +1,6 @@
 #include "MonsterBase.h"
 #include "Character/components/StatusEffectVfxComponent.h"
+#include "Configs/GameConfigs.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <cmath>
@@ -67,20 +68,22 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     // ---------------------------------------------------------
 
     // 默认缩放
-    setScale(0.36f);
-    _baseScaleX = 0.36f;
+    setScale(GameConfig::Monster::Base::SCALE);
+    _baseScaleX = GameConfig::Monster::Base::SCALE;
 
     // 默认锚点：底部对齐（更符合横版地面站立表现）
-    setAnchorPoint(Vec2(0.5f, 0.0f));
+    setAnchorPoint(Vec2(GameConfig::Monster::Base::ANCHOR_X,
+                        GameConfig::Monster::Base::ANCHOR_Y));
 
     // 怪物默认开启受击飘字
     setDamageNumbersEnabled(true);
 
     // === 创建怪物物理体 ===
     Size size = getContentSize();
-    Size boxSize(size.width * 0.35f, size.height * 0.9f);
+    Size boxSize(size.width * GameConfig::Monster::Base::PHYSICS_BOX_RATIO_W,
+                 size.height * GameConfig::Monster::Base::PHYSICS_BOX_RATIO_H);
 
-    PhysicsMaterial material(1.0f, 0.0f, 0.0f);
+    PhysicsMaterial material = GameConfig::Material::MONSTER;
 
     _physicsBody = PhysicsBody::createBox(boxSize, material);
     _physicsBody->setDynamic(true);
@@ -96,13 +99,19 @@ bool MonsterBase::init(const std::string& spriteFrameName)
 
     setPhysicsBody(_physicsBody);
 
+    _aiUpdateInterval = GameConfig::Monster::Base::AI_UPDATE_INTERVAL;
+    _inactiveAiUpdateInterval = GameConfig::Monster::Base::AI_INACTIVE_UPDATE_INTERVAL;
+    _moveUpdateInterval = GameConfig::Monster::Base::MOVE_UPDATE_INTERVAL;
+    _attackUpdateInterval = GameConfig::Monster::Base::ATTACK_UPDATE_INTERVAL;
+
     // 性能：默认按屏幕宽度设置“活跃更新范围”，避免大量离屏怪物每帧跑 AI 逻辑
     if (_activeUpdateDistanceX <= 0.0f)
     {
         auto visibleSize = Director::getInstance()->getVisibleSize();
         if (visibleSize.width > 0.0f)
         {
-            _activeUpdateDistanceX = visibleSize.width * 1.5f;
+            _activeUpdateDistanceX = visibleSize.width *
+                                     GameConfig::Monster::Base::ACTIVE_UPDATE_DISTANCE_MULTIPLIER;
         }
     }
 
@@ -377,7 +386,7 @@ void MonsterBase::updateAI(float dt)
         else if (_patrolEnabled && std::fabs(_patrolRight.x - _patrolLeft.x) > 1.0f)
         {
             // 简单巡逻：在左右边界之间往返
-            const float kPatrolReachEpsilon = 8.0f;
+            const float kPatrolReachEpsilon = GameConfig::Monster::Base::PATROL_REACH_EPSILON;
             float dx = (_patrolDir > 0 ? _patrolRight.x : _patrolLeft.x) - getPositionX();
             if (std::fabs(dx) <= kPatrolReachEpsilon)
             {
@@ -479,7 +488,7 @@ void MonsterBase::updateMovement(float dt)
     Vec2 myPos = getPosition();
 
     // 当水平距离非常接近时，由于物理抖动可能导致方向频繁反转
-    const float kChaseDeadzoneX = 8.0f;
+    const float kChaseDeadzoneX = GameConfig::Monster::Base::CHASE_DEADZONE_X;
     float dx = targetPos.x - myPos.x;
     if (fabs(dx) <= kChaseDeadzoneX)
     {
@@ -704,9 +713,9 @@ void MonsterBase::updateHpBar()
     if (maxHp <= 0.0f)
         return;
 
-    float barWidth = 60.0f * uiScale;
-    float barHeight = 8.0f * uiScale;
-    float yOffset = getContentSize().height + 10.0f;
+    float barWidth = GameConfig::Monster::Base::HP_BAR_WIDTH * uiScale;
+    float barHeight = GameConfig::Monster::Base::HP_BAR_HEIGHT * uiScale;
+    float yOffset = getContentSize().height + GameConfig::Monster::Base::HP_BAR_Y_OFFSET;
 
     Vec2 barPos(getContentSize().width / 2 - barWidth / 2, yOffset);
 
@@ -790,7 +799,7 @@ float MonsterBase::horizontalDistanceTo(const Node *target) const
 
 void MonsterBase::faceToX(float targetWorldX)
 {
-    const float kFaceDeadzoneX = 8.0f;
+    const float kFaceDeadzoneX = GameConfig::Monster::Base::FACE_DEADZONE_X;
     float myWorldX = getWorldPosition(this).x;
     float dx = targetWorldX - myWorldX;
     if (std::fabs(dx) <= kFaceDeadzoneX)
@@ -841,7 +850,7 @@ void MonsterBase::faceTarget(Node* target)
     auto myParent = getParent();
     if (myParent && target->getParent() == myParent)
     {
-        const float kFaceDeadzoneX = 8.0f;
+        const float kFaceDeadzoneX = GameConfig::Monster::Base::FACE_DEADZONE_X;
         float dx = target->getPositionX() - getPositionX();
         if (std::fabs(dx) <= kFaceDeadzoneX)
             return;

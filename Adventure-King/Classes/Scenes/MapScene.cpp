@@ -1,8 +1,10 @@
 ﻿#include "MapScene.h"
 #include "GameScene.h"
 #include "DebugScene.h"
+#include "Configs/GameConfigs.h"
 USING_NS_CC;
 
+// 统一的资源缺失提示
 static void problemLoading(const char *filename)
 {
     printf("Error while loading: %s\n", filename);
@@ -193,8 +195,7 @@ void MapScene::onMapMarkerClicked(int mapId)
     // 清空场景栈，回到根场景
     director->popToRootScene();
     // 用 replaceScene 替换当前场景（这样返回时才能回到 MapScene）
-    const float TRANSITION_DURATION = 0.6f;
-    auto transition = TransitionFade::create(TRANSITION_DURATION, destinationScene, Color3B::BLACK);
+    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION, destinationScene, Color3B::BLACK);
     director->replaceScene(transition);
 }
 

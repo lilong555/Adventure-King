@@ -24,6 +24,9 @@ public:
      */
     static PlayerStatusBar *create();
 
+    /**
+     * @brief 初始化状态栏节点与子组件
+     */
     virtual bool init() override;
 
     /**
@@ -57,19 +60,28 @@ public:
     void setExpBarVisible(bool visible);
 
 protected:
-    // 创建UI元素
+    // 创建各类 UI 元素
+    /// @brief 创建 HP 条
     void createHPBar();
+    /// @brief 创建 MP 条
     void createMPBar();
+    /// @brief 创建经验条
     void createExpBar();
+    /// @brief 创建等级标签
     void createLevelLabel();
 
     // 更新各个进度条
+    /// @brief 更新 HP 条显示
     void updateHPBar(float current, float max);
+    /// @brief 更新 MP 条显示
     void updateMPBar(float current, float max);
+    /// @brief 更新经验条显示
     void updateExpBar(int current, int required);
+    /// @brief 更新等级文本
     void updateLevelLabel(int level);
 
     // 播放血量变化动画
+    /// @brief 播放伤害延迟条动画
     void playHPChangeAnimation(float oldHP, float newHP);
 
 protected:

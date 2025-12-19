@@ -2,6 +2,7 @@
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
 #include "Objects/Projectiles/Bomb.h"
+#include "Configs/GameConfigs.h"
 #include "cocos2d.h"
 #include <memory>
 #include <string>
@@ -9,28 +10,6 @@
 #include <vector>
 
 USING_NS_CC;
-
-namespace
-{
-    constexpr int FIREBALL_SKILL_ID = 1002;
-    constexpr size_t FIREBALL_SKILL_SLOT = 0;
-    constexpr float FIREBALL_SKILL_MP_COST = 15.0f;
-    constexpr float FIREBALL_SKILL_COOLDOWN = 1.2f;
-
-    constexpr float BOMB_THROW_SPEED_X = 300.0f;
-    constexpr float BOMB_THROW_SPEED_Y = 350.0f;
-    constexpr float BOMB_EXPLOSION_RADIUS = 80.0f;
-    constexpr float BOMB_DAMAGE_SCALE = 1.0f;
-
-    constexpr float FIREBALL_SPEED_X = 650.0f;
-    constexpr float FIREBALL_EXPLOSION_RADIUS = 90.0f;
-    constexpr float FIREBALL_DAMAGE_SCALE = 2.5f;
-
-    constexpr float BURN_DURATION_SECONDS = 5.0f;
-    constexpr float BURN_TICK_INTERVAL_SECONDS = 0.5f;
-    constexpr float BURN_BASE_DAMAGE_SCALE = 0.1f;
-    constexpr float BURN_PER_STACK_DAMAGE_SCALE = 0.1f;
-}
 
 void KleeSkillSet::initSkills(PlayerCharacter &player)
 {
@@ -40,21 +19,22 @@ void KleeSkillSet::initSkills(PlayerCharacter &player)
         return;
     }
 
-    auto existing = std::dynamic_pointer_cast<ActiveSkill>(skillComp->findLearnedSkillById(FIREBALL_SKILL_ID));
+    auto existing = std::dynamic_pointer_cast<ActiveSkill>(
+        skillComp->findLearnedSkillById(GameConfig::Fireball::FIREBALL_ID));
     std::shared_ptr<ActiveSkill> fireballSkill = existing;
     if (!fireballSkill)
     {
         fireballSkill = std::make_shared<ActiveSkill>();
-        fireballSkill->id = FIREBALL_SKILL_ID;
+        fireballSkill->id = GameConfig::Fireball::FIREBALL_ID;
         fireballSkill->name = "火球";
         fireballSkill->description = "发射火球，命中后爆炸造成范围伤害";
-        fireballSkill->manaCost = FIREBALL_SKILL_MP_COST;
-        fireballSkill->cooldown = FIREBALL_SKILL_COOLDOWN;
+        fireballSkill->manaCost = GameConfig::Fireball::FIREBALL_MP;
+        fireballSkill->cooldown = GameConfig::Fireball::FIREBALL_CD;
         fireballSkill->currentCooldown = 0.0f;
         skillComp->learnSkill(fireballSkill);
     }
 
-    skillComp->equipActiveSkill(fireballSkill, FIREBALL_SKILL_SLOT);
+    skillComp->equipActiveSkill(fireballSkill, GameConfig::Klee::FireballSkill::SKILL_SLOT);
 }
 
 bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<void()> &onFinished)
@@ -73,7 +53,8 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
         []()
         { return true; },
         [&player, castPaths](const std::function<void()> &done)
-        { player.playOneShotAnimation(castPaths, 0.13f, PlayerCharacter::ACTION_TAG_ATTACK_ANIM, done); },
+        { player.playOneShotAnimation(castPaths, GameConfig::Klee::NormalAttack::ANIM_FRAME_DELAY,
+                                      PlayerCharacter::ACTION_TAG_ATTACK_ANIM, done); },
         [&player, defaultDir]()
         {
             auto bomb = Bomb::create(defaultDir + "/TNT.png");
@@ -82,19 +63,29 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
                 return;
             }
 
-            bomb->setScale(0.5f);
-            bomb->setPosition(player.getProjectileSpawnPosition(0.35f, 20.0f, 0.15f, 0.0f));
+            bomb->setScale(GameConfig::Klee::NormalAttack::PROJECTILE_SCALE);
+            bomb->setPosition(player.getProjectileSpawnPosition(
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_X_RATIO,
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_X,
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_Y_RATIO,
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_Y));
             bomb->setAttacker(&player);
             bomb->setBaseDamage(0.0f);
-            bomb->setAttackPowerDamageScale(BOMB_DAMAGE_SCALE);
-            bomb->setExplosionRadius(BOMB_EXPLOSION_RADIUS);
-            bomb->setExplosionSpriteVfx(defaultDir + "/BOOM_1.png", 0.8f, 0.2f, 1.2f, 0.3f);
+            bomb->setAttackPowerDamageScale(GameConfig::Bomb::DAMAGE_SCALE);
+            bomb->setExplosionRadius(GameConfig::Bomb::EXPLOSION_RADIUS);
+            bomb->setExplosionSpriteVfx(
+                defaultDir + "/BOOM_1.png",
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE,
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE_UP_DURATION,
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE_UP_FACTOR,
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_FADE_OUT_DURATION);
             bomb->setExplodeOnContact(true);
 
             player.addToCombatLayer(bomb, 4);
 
             float dirX = player.isFlippedX() ? -1.0f : 1.0f;
-            bomb->throwAt(Vec2(dirX * BOMB_THROW_SPEED_X, BOMB_THROW_SPEED_Y));
+            bomb->throwAt(Vec2(dirX * GameConfig::Bomb::THROW_SPEED_X,
+                               GameConfig::Bomb::THROW_SPEED_Y));
         },
         [onFinished]()
         {
@@ -127,7 +118,7 @@ bool KleeSkillSet::tryUseSkill(PlayerCharacter &player, size_t slotIndex, const 
     }
 
     const ActiveSkill &skill = *slots[slotIndex];
-    if (skill.id == FIREBALL_SKILL_ID)
+    if (skill.id == GameConfig::Fireball::FIREBALL_ID)
     {
         return tryCastFireball(player, slotIndex, skill, onFinished);
     }
@@ -180,7 +171,8 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
             return true;
         },
         [&player, castPaths](const std::function<void()> &done)
-        { player.playOneShotAnimation(castPaths, 0.04f, PlayerCharacter::ACTION_TAG_SKILL_ANIM, done); },
+        { player.playOneShotAnimation(castPaths, GameConfig::Klee::FireballSkill::CAST_ANIM_FRAME_DELAY,
+                                      PlayerCharacter::ACTION_TAG_SKILL_ANIM, done); },
         [&player, skillDir]()
         {
             Bomb::PhysicsConfig physics;
@@ -194,13 +186,17 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
                 return;
             }
 
-            rocket->setScale(1.10f);
-            rocket->setPosition(player.getProjectileSpawnPosition(0.40f, 25.0f, 0.20f, 0.0f));
+            rocket->setScale(GameConfig::Klee::FireballSkill::PROJECTILE_SCALE);
+            rocket->setPosition(player.getProjectileSpawnPosition(
+                GameConfig::Klee::FireballSkill::SPAWN_OFFSET_X_RATIO,
+                GameConfig::Klee::FireballSkill::SPAWN_OFFSET_X,
+                GameConfig::Klee::FireballSkill::SPAWN_OFFSET_Y_RATIO,
+                GameConfig::Klee::FireballSkill::SPAWN_OFFSET_Y));
             rocket->setFlippedX(player.isFlippedX());
             rocket->setAttacker(&player);
             rocket->setBaseDamage(0.0f);
-            rocket->setAttackPowerDamageScale(FIREBALL_DAMAGE_SCALE);
-            rocket->setExplosionRadius(FIREBALL_EXPLOSION_RADIUS);
+            rocket->setAttackPowerDamageScale(GameConfig::Fireball::DAMAGE_SCALE);
+            rocket->setExplosionRadius(GameConfig::Fireball::EXPLOSION_RADIUS);
             rocket->setExplodeOnContact(true);
 
             rocket->setLoopAnimation(
@@ -210,7 +206,7 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
                     skillDir + "/spr_vfx_rocket_trail_long_3.png",
                     skillDir + "/spr_vfx_rocket_trail_long_4.png",
                 },
-                0.08f);
+                GameConfig::Klee::FireballSkill::LOOP_ANIM_DELAY);
 
             rocket->setExplosionFrameVfx(
                 {
@@ -220,26 +216,26 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
                     skillDir + "/spr_vfx_explosion_flash_3.png",
                     skillDir + "/spr_vfx_explosion_flash_4.png",
                 },
-                0.05f,
-                0.9f);
+                GameConfig::Klee::FireballSkill::EXPLOSION_FRAME_DELAY,
+                GameConfig::Klee::FireballSkill::EXPLOSION_FRAME_SCALE);
 
             // 命中/爆炸附加燃烧：持续5秒，每0.5秒一次，叠层并刷新
             Bomb::StatusEffectTemplate burn;
             burn.type = StatusEffectType::BURNING;
-            burn.duration = BURN_DURATION_SECONDS;
+            burn.duration = GameConfig::StatusEffect::Burning::DURATION_SECONDS;
             burn.stacks = 1;
             burn.maxStacks = 0;
             burn.stackable = true;
             burn.refreshOnAdd = true;
-            burn.tickInterval = BURN_TICK_INTERVAL_SECONDS;
-            burn.baseDamageScale = BURN_BASE_DAMAGE_SCALE;
-            burn.perStackDamageScale = BURN_PER_STACK_DAMAGE_SCALE;
+            burn.tickInterval = GameConfig::StatusEffect::Burning::TICK_INTERVAL_SECONDS;
+            burn.baseDamageScale = GameConfig::StatusEffect::Burning::BASE_DAMAGE_SCALE;
+            burn.perStackDamageScale = GameConfig::StatusEffect::Burning::PER_STACK_DAMAGE_SCALE;
             rocket->addOnHitStatusEffect(burn);
 
             player.addToCombatLayer(rocket, 4);
 
             float dirX = player.isFlippedX() ? -1.0f : 1.0f;
-            rocket->setVelocity(Vec2(dirX * FIREBALL_SPEED_X, 0.0f));
+            rocket->setVelocity(Vec2(dirX * GameConfig::Fireball::SPEED_X, 0.0f));
         },
         [onFinished, skill]()
         {

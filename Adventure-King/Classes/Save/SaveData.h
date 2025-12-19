@@ -12,6 +12,7 @@ struct AttributesSaveData
 {
     std::map<int, float> values; // AttributeType -> value (使用 int 便于 JSON 序列化)
 
+    // 默认构造：保持空属性集合
     AttributesSaveData() = default;
 };
 
@@ -34,6 +35,7 @@ struct EquipmentSaveData
     std::string attackAnimationPrefix;
     int attackFrameCount = 3;
 
+    // 默认构造：保持默认装备字段
     EquipmentSaveData() = default;
 };
 
@@ -53,6 +55,7 @@ struct SkillSaveData
     // 被动技能属性
     AttributesSaveData attributeBonus;
 
+    // 默认构造：保持默认技能字段
     SkillSaveData() = default;
 };
 
@@ -79,6 +82,7 @@ struct PlayerSaveData
     std::vector<SkillSaveData> learnedSkills;
     std::vector<int> activeSlotSkillIds; // 主动技能槽位（最多 4 个）
 
+    // 默认构造：使用初始玩家数据
     PlayerSaveData() = default;
 };
 
@@ -96,6 +100,7 @@ struct GameProgressSaveData
     // 游戏时长（秒）
     int64_t playTimeSeconds = 0;
 
+    // 默认构造：保持默认进度
     GameProgressSaveData() = default;
 };
 
@@ -113,6 +118,7 @@ struct SaveSlotData
     // 游戏进度
     GameProgressSaveData progressData;
 
+    // 默认构造：保持默认存档槽位数据
     SaveSlotData() = default;
 };
 
@@ -124,5 +130,6 @@ struct SettingsSaveData
     bool musicEnabled = true;
     bool sfxEnabled = true;
 
+    // 默认构造：使用默认设置
     SettingsSaveData() = default;
 };

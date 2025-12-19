@@ -2,6 +2,7 @@
 #define __SCENE_TRANSITION_MANAGER_H__
 
 #include "cocos2d.h"
+#include "Configs/GameConfigs.h"
 #include <functional>
 #include <string>
 
@@ -22,8 +23,8 @@ public:
         cocos2d::Scene* currentScene,
         cocos2d::Scene* targetScene,
         const std::string& message = "",
-        float delayBeforeFadeOut = 1.0f,
-        float fadeDuration = 0.8f
+        float delayBeforeFadeOut = GameConfig::Scene::TRANSITION_MESSAGE_DELAY,
+        float fadeDuration = GameConfig::Scene::TRANSITION_FADE_DURATION
     );
 };
 

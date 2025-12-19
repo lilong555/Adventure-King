@@ -34,6 +34,7 @@ public:
 
     // 投掷方法 (由外部调用，给予初始速度)
     void throwAt(const cocos2d::Vec2& velocity);
+    // 直接设置线速度
     void setVelocity(const cocos2d::Vec2& velocity);
 
     static constexpr float DEFAULT_THROW_SPEED_X = GameConfig::Bomb::THROW_SPEED_X;

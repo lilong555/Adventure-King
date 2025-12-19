@@ -5,14 +5,15 @@
 
 #include "Scenes/GameInputController.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Configs/GameConfigs.h"
 #include <cmath>
 
 USING_NS_CC;
 
 namespace
 {
-    constexpr float GROUND_VELOCITY_THRESHOLD = 5.0f;
-    constexpr float GROUND_NORMAL_THRESHOLD = -0.3f;
+    constexpr float GROUND_VELOCITY_THRESHOLD = GameConfig::Player::GROUND_VELOCITY_THRESHOLD;
+    constexpr float GROUND_NORMAL_THRESHOLD = GameConfig::Player::GROUND_NORMAL_THRESHOLD;
 }
 
 void GameInputController::bindPlayer(PlayerCharacter *player)
@@ -68,6 +69,7 @@ void GameInputController::onKeyPressed(EventKeyboard::KeyCode keyCode)
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
+        // 优先门区交互，其次执行跳跃。
         if (_isAtGate && _isAtGate())
         {
             if (_enterGate)
@@ -148,6 +150,7 @@ void GameInputController::update(float dt)
     auto physicsBody = _player->getPhysicsBody();
     Vec2 velocity = physicsBody->getVelocity();
 
+    // 直接控制物理速度，保证移动与重力/碰撞一致。
     float currentSpeed = _runPressed ? GameConfig::Player::RUNSPEED : GameConfig::Player::WALKSPEED;
     float targetVelocityX = 0.0f;
     if (_movingLeft)
@@ -175,6 +178,7 @@ void GameInputController::update(float dt)
 
 void GameInputController::onGroundContactBegin(float normalY)
 {
+    // normalY 足够小才算“地面”，避免墙面/斜面触发落地。
     if (normalY >= GROUND_NORMAL_THRESHOLD)
     {
         return;

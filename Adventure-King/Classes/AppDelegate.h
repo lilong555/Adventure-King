@@ -11,9 +11,12 @@ Private inheritance here hides part of interface from Director.
 class AppDelegate : private cocos2d::Application
 {
 public:
+    // 创建应用代理实例
     AppDelegate();
+    // 析构时清理音频系统
     virtual ~AppDelegate();
 
+    // 初始化 OpenGL 上下文参数
     virtual void initGLContextAttrs();
 
     /**

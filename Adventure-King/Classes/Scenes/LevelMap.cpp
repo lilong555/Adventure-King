@@ -6,6 +6,7 @@
 #include "Scenes/LevelMap.h"
 #include "Character/Monster/MonsterBase.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Configs/GameConfigs.h"
 #include "Configs/GamePhysicsCategory.h"
 #include <algorithm>
 #include <cctype>
@@ -17,17 +18,16 @@ USING_NS_CC;
 
 namespace
 {
-    const Vec2 DEFAULT_SPAWN_POINT(100.0f, 200.0f);
-    const PhysicsMaterial COLLISION_PHYSICS_MATERIAL(1.0f, 0.0f, 0.8f); // 密度, 弹性, 摩擦
+    const Vec2 DEFAULT_SPAWN_POINT = GameConfig::LevelMap::DEFAULT_SPAWN_POINT;
+    const PhysicsMaterial COLLISION_PHYSICS_MATERIAL = GameConfig::LevelMap::COLLISION_PHYSICS_MATERIAL; // 密度, 弹性, 摩擦
 
-    constexpr float DEFAULT_GATE_INTERACT_DISTANCE = 100.0f;
-
-    constexpr float SPAWN_SPACING_X = 80.0f;
-    constexpr float SPAWN_INTERVAL_SECONDS = 0.4f;
-    constexpr int DEFAULT_CHARACTER_Z_ORDER = 5;
+    constexpr float DEFAULT_GATE_INTERACT_DISTANCE = GameConfig::LevelMap::DEFAULT_GATE_INTERACT_DISTANCE;
+    constexpr float SPAWN_SPACING_X = GameConfig::LevelMap::SPAWN_SPACING_X;
+    constexpr float SPAWN_INTERVAL_SECONDS = GameConfig::LevelMap::SPAWN_INTERVAL_SECONDS;
+    constexpr int DEFAULT_CHARACTER_Z_ORDER = GameConfig::LevelMap::DEFAULT_CHARACTER_Z_ORDER;
 
     // 敌人生成点检测频率：不需要每帧检测，降低 CPU 开销
-    constexpr float ENEMY_SPAWN_CHECK_INTERVAL_SECONDS = 0.1f;
+    constexpr float ENEMY_SPAWN_CHECK_INTERVAL_SECONDS = GameConfig::LevelMap::ENEMY_SPAWN_CHECK_INTERVAL_SECONDS;
 }
 
 bool LevelMap::load(Node *gameLayer, const std::string &tmxPath)
@@ -511,6 +511,7 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
                                     minX,
                                     [](const EnemySpawnPoint &spawnPoint, float x)
                                     { return spawnPoint.position.x < x; });
+    // 刷怪点已按 X 排序，利用 lower_bound 限定视野内遍历区间。
 
     for (auto it = startIt; it != _enemySpawnPoints.end(); ++it)
     {
@@ -538,6 +539,7 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
             const Vec2 monsterPos = spawnPoint.position + Vec2(offsetX, 0.0f);
 
             const float delaySeconds = static_cast<float>(i) * SPAWN_INTERVAL_SECONDS;
+            // 分批延迟生成，避免同一帧刷出过多怪物造成卡顿。
             gameLayer->runAction(Sequence::create(
                 DelayTime::create(delaySeconds),
                 CallFunc::create([createMonsterByType, player, gameLayer, monsterType, monsterPos]()

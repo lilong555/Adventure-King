@@ -6,11 +6,13 @@
 
 namespace SpriteFrameCacheHelper
 {
+    // 判断是否为文件路径（而非 plist 帧名）
     inline bool isFilePath(const std::string &nameOrPath)
     {
         return nameOrPath.find('/') != std::string::npos || nameOrPath.find('\\') != std::string::npos;
     }
 
+    // 从缓存获取帧；若为文件路径则在首次使用时创建并缓存
     inline cocos2d::SpriteFrame *getOrCreateSpriteFrame(const std::string &frameNameOrFile)
     {
         auto cache = cocos2d::SpriteFrameCache::getInstance();

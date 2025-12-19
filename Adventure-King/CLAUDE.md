@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 战斗闭环打通：`GameScene::onContactBegin` 处理 `MONSTER_ATTACK ↔ PLAYER` 与 `PLAYER_ATTACK ↔ MONSTER`；投掷物命中/落地爆炸由 `PlayerCharacter::handleProjectileContact` 处理。
 - 玩家 Klee（KELL）：普攻为扔炸弹（`spawnBombProjectile`），技能1 发射导弹（`spawnFireballProjectile`），爆炸使用 `spr_vfx_explosion_flash_x`；受击飘字在 `CharacterBase::showDamageNumber`。
 - 刷怪落地：读取 TMX 对象组 `enemy_g`（`class/type`=怪物类型，`name`=数量），首次进入视野触发，并按约 `0.4s/只` 分批生成。
+- 状态效果：导弹命中附加燃烧 DOT（可叠层、刷新持续时间），DOT 伤害不触发硬直；燃烧特效由 `StatusEffectVfxComponent` 驱动。
+- 数值同步：导弹爆炸按 `2.5x` 攻击力结算、炸弹按 `1.0x`；哥布林 HP 按玩家等级缩放并放大血条显示。
 - 性能优化：新增 `SpriteFrameCacheHelper::getOrCreateSpriteFrame`，对文件路径帧按需加载并写入 `SpriteFrameCache` 复用；`CharacterBase/Player/Monster/Goblin` 已接入；`CharacterBase` 使用 `scheduleUpdateWithPriority(1)` 保证更新且避免重复 schedule 警告。
 - 开发体验：`.vscode/c_cpp_properties.json` 增加 `Linux` 配置，修复 WSL2 下 IntelliSense 头文件解析问题。
 
@@ -68,6 +70,7 @@ Adventure-King/proj.win32/Debug.win32/Adventure-King.exe
 - **`AttributeComponent`** - 属性组件，计算战斗数值 (基础/装备/技能/状态效果)
 - **`StateMachineComponent`** - 状态机组件，管理角色状态和动画播放
 - **`SkillComponent`** - 技能组件，管理技能学习、装备、使用和冷却
+- **`StatusEffectVfxComponent`** - 状态效果表现组件（燃烧等 DOT 视觉）
 
 ### 怪物系统
 - **`MonsterBase`** (`Classes/Character/Monster/MonsterBase.{h,cpp}`) - 组件化怪物基类，内置 `_target`、攻击计时与移动/攻击距离；`update()` 调用 `updateAI`/`updateMovement`/`updateAttack`，默认攻击走技能槽，`takeDamage`/`die` 会切换 HURT/DEAD 状态并可延迟移除；工具函数 `faceTarget`/`distanceTo`/`inAttackRange`。
@@ -108,7 +111,7 @@ Adventure-King/proj.win32/Debug.win32/Adventure-King.exe
 
 ### 物理系统
 
-使用 Cocos2d-x 内置物理引擎，碰撞类型定义在 `GamePhysicsCategory` 枚举：
+使用 Cocos2d-x 内置物理引擎，碰撞类型定义在 `GamePhysicsCategory` 枚举（`Classes/Configs/GamePhysicsCategory.h`）：
 - `PLAYER` - 玩家
 - `PLATFORM` - 平台/地面
 - `COLLISION` - 碰撞体 (多边形)

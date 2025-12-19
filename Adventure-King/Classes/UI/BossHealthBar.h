@@ -24,6 +24,9 @@ public:
      */
     static BossHealthBar *create();
 
+    /**
+     * @brief 初始化 Boss 血条节点
+     */
     virtual bool init() override;
 
     /**
@@ -71,10 +74,15 @@ public:
     void playPhaseTransitionAnimation();
 
 protected:
+    /// @brief 创建背景容器
     void createBackground();
+    /// @brief 创建血条（含底/填充/伤害条）
     void createHealthBar();
+    /// @brief 创建 Boss 名称文本
     void createNameLabel();
+    /// @brief 创建阶段指示器
     void createPhaseIndicators(int phaseCount);
+    /// @brief 更新血条填充显示
     void updateHealthBar(float current, float max);
 
 protected:

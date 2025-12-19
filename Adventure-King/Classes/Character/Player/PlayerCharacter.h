@@ -19,58 +19,82 @@ public:
     // =============================================================
     // 生命周期与创建
     // =============================================================
+    /// @brief 创建玩家实例
     static PlayerCharacter* create(CharacterRole role, const std::string& spriteFrameName);
+    /// @brief 析构玩家实例
     virtual ~PlayerCharacter();
 
+    /// @brief 初始化玩家（角色、资源、组件）
     bool init(CharacterRole role, const std::string& spriteFrameName);
 
+    /// @brief 进入场景回调
     virtual void onEnter() override;
+    /// @brief 离开场景回调
     virtual void onExit() override;
+    /// @brief 每帧更新
     virtual void update(float dt) override;
 
     // =============================================================
     // 角色状态与属性 (Level, Exp, HP/MP)
     // =============================================================
+    /// @brief 增加经验并处理升级
     void addExperience(int amount);
 
     // 存档与数据访问
+    /// @brief 获取职业
     CharacterRole getRole() const { return _role; }
+    /// @brief 设置职业
     void setRole(CharacterRole role) { _role = role; }
 
+    /// @brief 获取技能点
     int getSkillPoints() const { return _skillPoints; }
+    /// @brief 设置技能点
     void setSkillPoints(int points) { _skillPoints = points; }
 
     // =============================================================
     // 装备系统 (Equipment)
     // =============================================================
+    /// @brief 装备物品
     void equip(const std::shared_ptr<Equipment>& item);
+    /// @brief 卸下指定槽位装备
     void unequip(EquipmentSlot slot);
 
+    /// @brief 获取指定槽位装备
     std::shared_ptr<Equipment> getEquipment(EquipmentSlot slot) const;
+    /// @brief 获取当前武器
     std::shared_ptr<Weapon> getEquippedWeapon() const;
+    /// @brief 获取当前武器类型
     WeaponType getCurrentWeaponType() const;
 
     // 获取当前装备列表（用于存档）
+    /// @brief 获取当前装备列表
     const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& getEquippedItems() const { return _equippedItems; }
+    /// @brief 设置装备列表（读档用）
     void setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& items) { _equippedItems = items; }
 
     using EquipmentChangeCallback = std::function<void(EquipmentSlot, const std::shared_ptr<Equipment>&)>;
+    /// @brief 设置装备变更回调
     void setEquipmentChangeCallback(const EquipmentChangeCallback& callback) { _equipmentChangeCallback = callback; }
 
     // =============================================================
     // 动作控制 (Movement & Animation)
     // =============================================================
     // 场景输入层调用：切换跑动/待机状态
+    /// @brief 切换移动/跑步状态
     void setMoving(bool moving, bool running = false);
 
     // 播放攻击/技能动画（场景侧调用，用于同步状态）
+    /// @brief 播放攻击动画
     void attackAnimated(const std::function<void()>& onFinished = nullptr);
+    /// @brief 播放技能动画
     void castSkillAnimated(const std::function<void()>& onFinished = nullptr);
 
     // 辅助：统一播放一次性动画
+    /// @brief 播放一次性动画序列
     void playOneShotAnimation(const std::vector<std::string>& paths, float delayPerUnit, int actionTag, const std::function<void()>& onFinished);
 
     // 动作锁查询
+    /// @brief 是否处于动作锁定
     bool isActionLocked() const { return _actionLocked; }
 
     // =============================================================
@@ -83,26 +107,37 @@ public:
     // 战斗系统 (Combat & Skills)
     // =============================================================
     // 核心攻击接口
+    /// @brief 普通攻击入口
     virtual void attack() override; // 普攻
+    /// @brief 受击处理（打断动作/播放受击）
     virtual void takeDamage(const DamageInfo& info) override; // 受击（打断动作/播放受击）
+    /// @brief 计算攻击力（用于 DOT 等）
     virtual float getAttackPower() override; // 攻击力（用于 DOT 等计算）
+    /// @brief 使用技能槽位
     void useSkill(size_t slotIndex); // 技能
 
     // 尝试执行攻击/技能（包含资源检查、CD检查、动作锁检查）
+    /// @brief 尝试普攻
     bool tryNormalAttack(const std::function<void()>& onFinished = nullptr);
+    /// @brief 尝试释放技能
     bool tryUseSkill(size_t slotIndex, const std::function<void()>& onFinished = nullptr);
 
     // SkillComponent 回调
+    /// @brief 技能组件使用技能回调
     virtual void onUseActiveSkill(const ActiveSkill& skill) override;
 
     // 战斗辅助：设置投掷物挂载的父节点
+    /// @brief 设置战斗层（投掷物挂载层）
     void setCombatLayer(cocos2d::Node* gameLayer) { _combatLayer = gameLayer; }
+    /// @brief 添加节点到战斗层
     void addToCombatLayer(cocos2d::Node* node, int zOrder = 4);
 
     // 计算投掷物生成位置
+    /// @brief 计算投掷物生成坐标
     cocos2d::Vec2 getProjectileSpawnPosition(float spawnOffsetXRatio, float spawnOffsetX, float spawnOffsetYRatio, float spawnOffsetY) const;
 
     // 统一的“动作锁”流程控制
+    /// @brief 动作锁封装（前置检查/动画/效果/回调）
     bool runActionLocked(const std::function<bool()>& preCheck,
         const std::function<void(const std::function<void()>&)>& playAnimation,
         const std::function<void()>& performEffect,
@@ -111,8 +146,11 @@ public:
     // =============================================================
     // 资源路径信息 (供 SkillSet 使用)
     // =============================================================
+    /// @brief 获取默认资源目录
     const std::string& getDefaultSpriteDir() const { return _defaultSpriteDir; }
+    /// @brief 获取技能资源目录
     const std::string& getSkillSpriteDir() const { return _skillSpriteDir; }
+    /// @brief 获取角色关键字
     const std::string& getCharacterKey() const { return _characterKey; }
 
 private:
@@ -120,22 +158,32 @@ private:
     PlayerCharacter() = default;
 
     // 内部初始化流程
+    /// @brief 根据职业初始化属性
     void initAttributesByRole(CharacterRole role);
+    /// @brief 根据属性刷新 HP/MP
     void refreshHpMpFromAttributes();
+    /// @brief 初始化资源路径
     void initAssetPaths(const std::string& spriteFrameName);
+    /// @brief 创建技能集
     void createSkillSet();
 
     // 动画管理
+    /// @brief 缓存移动动画
     void ensureMoveAnimations();
+    /// @brief 缓存状态机动画
     void ensureStateAnimations();
     // ensureMoveAnimationCached 已移至 .cpp 内部实现，不再暴露
 
     // 战斗逻辑
+    /// @brief 获取战斗层节点
     cocos2d::Node* getCombatLayer();
+    /// @brief 武器变更回调
     void onWeaponChanged(const std::shared_ptr<Weapon>& weapon);
+    /// @brief 升级处理
     void levelUp();
 
     // 物理回调
+    /// @brief 投掷物碰撞回调
     bool onProjectileContactBegin(cocos2d::PhysicsContact& contact);
 
     // ------------------- 成员变量 -------------------

@@ -1,6 +1,7 @@
 
 #include "AppDelegate.h"
 #include "Scenes/HelloWorldScene.h"
+#include "Configs/GameConfigs.h"
 #include <cstdlib>
 
 #if USE_AUDIO_ENGINE && USE_SIMPLE_AUDIO_ENGINE
@@ -17,10 +18,10 @@ using namespace CocosDenshion;
 
 USING_NS_CC;
 
-static cocos2d::Size designResolutionSize = cocos2d::Size(1520, 840);
-static cocos2d::Size smallResolutionSize = cocos2d::Size(480, 320);
-static cocos2d::Size mediumResolutionSize = cocos2d::Size(1024, 768);
-static cocos2d::Size largeResolutionSize = cocos2d::Size(2048, 1536);
+static const auto &designResolutionSize = GameConfig::App::DESIGN_RESOLUTION_SIZE;
+static const auto &smallResolutionSize = GameConfig::App::SMALL_RESOLUTION_SIZE;
+static const auto &mediumResolutionSize = GameConfig::App::MEDIUM_RESOLUTION_SIZE;
+static const auto &largeResolutionSize = GameConfig::App::LARGE_RESOLUTION_SIZE;
 
 AppDelegate::AppDelegate()
 {
@@ -45,8 +46,7 @@ void AppDelegate::initGLContextAttrs()
     GLView::setGLContextAttrs(glContextAttrs);
 }
 
-// if you want to use the package manager to install more packages,
-// don't modify or remove this function
+// 包管理器注册入口（保持默认实现即可）
 static int register_all_packages()
 {
     return 0; // flag for packages manager
@@ -68,17 +68,17 @@ bool AppDelegate::applicationDidFinishLaunching()
     }
 
     // turn on display FPS
-    director->setDisplayStats(true);
+    director->setDisplayStats(GameConfig::App::SHOW_FPS);
 
     // set FPS. the default value is 1.0/60 if you don't call this
     // 开发默认使用 144FPS 便于观察波动；可通过环境变量 ADVENTURE_KING_FPS 覆盖
-    float targetFps = 144.0f;
-    if (const char *fpsEnv = std::getenv("ADVENTURE_KING_FPS"))
+    float targetFps = GameConfig::App::DEFAULT_FPS;
+    if (const char *fpsEnv = std::getenv(GameConfig::App::FPS_ENV_NAME))
     {
         const int fps = std::atoi(fpsEnv);
         if (fps > 0)
         {
-            const int cappedFps = (fps > 300) ? 300 : fps;
+            const int cappedFps = (fps > GameConfig::App::MAX_FPS) ? GameConfig::App::MAX_FPS : fps;
             targetFps = static_cast<float>(cappedFps);
         }
     }

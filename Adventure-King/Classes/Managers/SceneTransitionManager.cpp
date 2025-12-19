@@ -1,5 +1,6 @@
 #include "SceneTransitionManager.h"
 #include "MusicManager.h"
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
@@ -10,6 +11,7 @@ void SceneTransitionManager::transitionToScene(
     float delayBeforeFadeOut,
     float fadeDuration)
 {
+    // 统一封装：遮罩淡入+文字提示+淡出切场景
     if (!currentScene || !targetScene)
         return;
 
@@ -35,7 +37,7 @@ void SceneTransitionManager::transitionToScene(
     // 2. 提示文字
     if (!message.empty())
     {
-        auto label = Label::createWithTTF(message, "fonts/ZCOOLKuaiLe-Regular.ttf", 48);
+        auto label = Label::createWithTTF(message, GameConfig::Scene::DEFAULT_FONT_PATH, 48);
         label->setPosition(center);
         label->setOpacity(0);
         overlay->addChild(label);

@@ -37,24 +37,28 @@ enum class GamePhysicsCategory : int
 // 位运算操作符重载（让 enum class 支持 | 和 &）
 // ============================================================
 
+// 按位或：组合类别
 inline GamePhysicsCategory operator|(GamePhysicsCategory a, GamePhysicsCategory b)
 {
     using T = std::underlying_type_t<GamePhysicsCategory>;
     return static_cast<GamePhysicsCategory>(static_cast<T>(a) | static_cast<T>(b));
 }
 
+// 按位与：筛选类别
 inline GamePhysicsCategory operator&(GamePhysicsCategory a, GamePhysicsCategory b)
 {
     using T = std::underlying_type_t<GamePhysicsCategory>;
     return static_cast<GamePhysicsCategory>(static_cast<T>(a) & static_cast<T>(b));
 }
 
+// 按位或并赋值
 inline GamePhysicsCategory& operator|=(GamePhysicsCategory& a, GamePhysicsCategory b)
 {
     a = a | b;
     return a;
 }
 
+// 按位与并赋值
 inline GamePhysicsCategory& operator&=(GamePhysicsCategory& a, GamePhysicsCategory b)
 {
     a = a & b;
@@ -64,15 +68,16 @@ inline GamePhysicsCategory& operator&=(GamePhysicsCategory& a, GamePhysicsCatego
 // 辅助函数：将枚举转为 int (Cocos2d-x API 需要 int)
 // ============================================================
 
+// 将类别转换为 Cocos2d-x 使用的 bitmask
 inline int ToMask(GamePhysicsCategory c)
 {
     return static_cast<int>(c);
 }
 
 // Allow checking bitmasks returned by Cocos2d-x APIs (int) against categories.
+// 便于将 int bitmask 与枚举类别进行按位与
 inline int operator&(int a, GamePhysicsCategory b)
 {
     return a & ToMask(b);
 }
-
 

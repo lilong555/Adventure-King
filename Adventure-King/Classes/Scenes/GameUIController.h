@@ -16,6 +16,7 @@ struct SaveSlotData;
 class GameUIController
 {
 public:
+    /// @brief 初始化 UI 管理器与回调
     bool init(cocos2d::Scene *scene,
               PlayerCharacter *player,
               const std::string &levelName,
@@ -24,11 +25,15 @@ public:
               const std::function<bool()> &isPlayerAtGate,
               const std::function<void(const SaveSlotData &)> &onLoadSuccess);
 
+    /// @brief 每帧刷新 UI（带节流）
     void update(float dt);
 
+    /// @brief 切换暂停菜单显示
     void togglePauseMenu();
+    /// @brief 当前是否暂停
     bool isPaused() const { return _paused; }
 
+    /// @brief 获取 GameUI 对象
     GameUI *getGameUI() const { return _gameUI; }
 
 private:

@@ -7,8 +7,9 @@
 USING_NS_CC;
 
 // 辅助函数：序列化 AttributesSaveData
+// 序列化属性集合
 static void serializeAttributes(rapidjson::Value &jsonObj, const AttributesSaveData &attrs,
-                                  rapidjson::Document::AllocatorType &allocator)
+                                rapidjson::Document::AllocatorType &allocator)
 {
     for (const auto &kv : attrs.values)
     {
@@ -18,6 +19,7 @@ static void serializeAttributes(rapidjson::Value &jsonObj, const AttributesSaveD
 }
 
 // 辅助函数：反序列化 AttributesSaveData
+// 反序列化属性集合
 static void deserializeAttributes(const rapidjson::Value &jsonObj, AttributesSaveData &attrs)
 {
     attrs.values.clear();
@@ -44,8 +46,9 @@ static void deserializeAttributes(const rapidjson::Value &jsonObj, AttributesSav
 }
 
 // 辅助函数：序列化 EquipmentSaveData
+// 序列化装备数据
 static rapidjson::Value serializeEquipment(const EquipmentSaveData &equip,
-                                            rapidjson::Document::AllocatorType &allocator)
+                                           rapidjson::Document::AllocatorType &allocator)
 {
     rapidjson::Value obj(rapidjson::kObjectType);
     obj.AddMember("id", equip.id, allocator);
@@ -73,6 +76,7 @@ static rapidjson::Value serializeEquipment(const EquipmentSaveData &equip,
 }
 
 // 辅助函数：反序列化 EquipmentSaveData
+// 反序列化装备数据
 static void deserializeEquipment(const rapidjson::Value &jsonObj, EquipmentSaveData &equip)
 {
     if (!jsonObj.IsObject())
@@ -119,8 +123,9 @@ static void deserializeEquipment(const rapidjson::Value &jsonObj, EquipmentSaveD
 }
 
 // 辅助函数：序列化 SkillSaveData
+// 序列化技能数据
 static rapidjson::Value serializeSkill(const SkillSaveData &skill,
-                                        rapidjson::Document::AllocatorType &allocator)
+                                       rapidjson::Document::AllocatorType &allocator)
 {
     rapidjson::Value obj(rapidjson::kObjectType);
     obj.AddMember("id", skill.id, allocator);
@@ -139,6 +144,7 @@ static rapidjson::Value serializeSkill(const SkillSaveData &skill,
 }
 
 // 辅助函数：反序列化 SkillSaveData
+// 反序列化技能数据
 static void deserializeSkill(const rapidjson::Value &jsonObj, SkillSaveData &skill)
 {
     if (!jsonObj.IsObject())

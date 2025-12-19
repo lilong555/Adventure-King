@@ -11,9 +11,11 @@ public:
     // 获取单例
     static MusicManager* getInstance();
 
+    // 是否启用背景音乐
     bool isEnabled() const;
 
-	void setEnabled(bool enabled);
+    // 启用/关闭背景音乐
+    void setEnabled(bool enabled);
     // 播放背景音乐，自动停止之前的音乐
     void playBGM(const std::string& filePath, bool loop = true, float volume = 0.5f);
 
@@ -33,7 +35,9 @@ public:
     float getVolume() const;
 
 private:
+    // 私有构造，外部不可实例化
     MusicManager();
+    // 私有析构，由单例生命周期管理
     ~MusicManager();
 
     static MusicManager* _instance;
