@@ -10,8 +10,8 @@
 
 // 前向声明，减少头文件依赖
 class PlayerSkillSet;
-class Equipment;
-class Weapon;
+struct Equipment;
+struct Weapon;
 
 class PlayerCharacter : public CharacterBase
 {

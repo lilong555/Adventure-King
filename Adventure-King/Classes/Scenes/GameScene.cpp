@@ -15,7 +15,9 @@
 #include "Scenes/LevelMap.h"
 #include "Character/Base/CharacterBase.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
+#include "Character/Monster/Monsters/GobluMonster.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "GameUI.h"
 #include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
@@ -410,7 +412,7 @@ float GameScene::getEnemySpawnViewDistance() const
     return visibleSize.width * 0.5f;
 }
 
-MonsterBase *GameScene::createMonsterByType(const std::string &monsterType) const
+MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
 {
     std::string key = monsterType;
     std::transform(key.begin(), key.end(), key.begin(),
@@ -425,6 +427,25 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType) cons
             goblin->applyHpScalingForPlayerLevel(_player->getLevel());
         }
         return goblin;
+    }
+
+    if (key == "goblu" || key == "gobluboss")
+    {
+        auto goblu = GobluMonster::create();
+        if (goblu)
+        {
+            goblu->setAutoRemoveOnDeath(false);
+        }
+
+        if (goblu && _uiController)
+        {
+            if (auto ui = _uiController->getGameUI())
+            {
+                ui->bindBoss(goblu, "Goblu", 1);
+            }
+            _boss = goblu;
+        }
+        return goblu;
     }
 
     CCLOG("Warning: Unknown monster type '%s'", monsterType.c_str());
@@ -609,6 +630,18 @@ void GameScene::update(float dt)
     if (_uiController)
     {
         _uiController->update(dt);
+    }
+
+    if (_boss && _boss->isDead())
+    {
+        if (_uiController)
+        {
+            if (auto ui = _uiController->getGameUI())
+            {
+                ui->unbindBoss();
+            }
+        }
+        _boss = nullptr;
     }
 
     if (_levelMap && _player)

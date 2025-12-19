@@ -3,9 +3,10 @@
 // ============================================================================
 // 1. 游戏数值配置 (Game Constants)
 // ============================================================================
-//namespace中存的都是写死的常量配置，方便全局调用
+// namespace中存的都是写死的常量配置，方便全局调用
 
-namespace GameConfig{
+namespace GameConfig
+{
     // --- App/Engine 配置 ---
     namespace App
     {
@@ -24,19 +25,19 @@ namespace GameConfig{
     // --- 技能系统配置 ---
     namespace Skill
     {
-        inline constexpr size_t SLOT_BOMB = 0;       // 炸弹技能槽位
-        inline constexpr size_t SLOT_FIREBALL = 0;   // 火球技能槽位（当前 Klee 技能1）
+        inline constexpr size_t SLOT_BOMB = 0;     // 炸弹技能槽位
+        inline constexpr size_t SLOT_FIREBALL = 0; // 火球技能槽位（当前 Klee 技能1）
     }
 
     // --- 炸弹属性配置 ---
     namespace Bomb
     {
-        const int BOMB_ID = 1001;          // 炸弹技能ID
-        const float BOMB_CD = 1.0f;       // 炸弹冷却时间
-        const float BOMB_MP = 10.0f; // 炸弹蓝耗
-        const float SPRITE_SCALE = 0.6f;  // 缩放比例
-        const float THROW_SPEED_X = 300.0f; // 水平投掷速度
-        const float THROW_SPEED_Y = 350.0f; // 垂直投掷速度
+        const int BOMB_ID = 1001;             // 炸弹技能ID
+        const float BOMB_CD = 1.0f;           // 炸弹冷却时间
+        const float BOMB_MP = 10.0f;          // 炸弹蓝耗
+        const float SPRITE_SCALE = 0.6f;      // 缩放比例
+        const float THROW_SPEED_X = 300.0f;   // 水平投掷速度
+        const float THROW_SPEED_Y = 350.0f;   // 垂直投掷速度
         const float EXPLOSION_RADIUS = 80.0f; // 爆炸半径
         const float BASE_DAMAGE = 150.0f;     // 基础伤害
         const float EXPLOSION_DELAY = 0.0f;   // 碰撞后延迟多久爆炸(秒)
@@ -44,8 +45,8 @@ namespace GameConfig{
     }
     namespace Fireball
     {
-        const int FIREBALL_ID = 1002;          // 火球技能ID
-        const float FIREBALL_CD = 1.2f;       // 火球冷却时间
+        const int FIREBALL_ID = 1002;    // 火球技能ID
+        const float FIREBALL_CD = 1.2f;  // 火球冷却时间
         const float FIREBALL_MP = 15.0f; // 火球蓝耗
 
         const float SPRITE_SCALE = 0.5f;      // 缩放比例
@@ -59,12 +60,12 @@ namespace GameConfig{
     namespace Player
     {
         inline constexpr float WALKSPEED = 220.0f;
-        inline constexpr float RUNSPEED = 350.0f;              ///< 跑步速度
+        inline constexpr float RUNSPEED = 350.0f; ///< 跑步速度
         inline constexpr float JUMP_FORCE = 400.0f;
         inline constexpr int MAX_JUMP_COUNT = 2;
-        inline constexpr float JUMP_IMPULSE = 650.0f;           ///< 跳跃冲量
+        inline constexpr float JUMP_IMPULSE = 650.0f; ///< 跳跃冲量
         inline constexpr float SCALE = 0.25f;
-        inline constexpr float COLLISION_BOX_RATIO_W = 0.8f;  ///< 碰撞盒宽度比例
+        inline constexpr float COLLISION_BOX_RATIO_W = 0.8f; ///< 碰撞盒宽度比例
         inline constexpr float COLLISION_BOX_RATIO_H = 0.9f; ///< 碰撞盒高度比例
         inline constexpr float ANIM_DELAY_RUN = 0.15f;
         inline constexpr float ANIM_DELAY_WALK = 0.25f;
@@ -73,6 +74,7 @@ namespace GameConfig{
         inline constexpr float STRENGTH_DAMAGE_MULTIPLIER = 1.5f;
         inline constexpr float GROUND_VELOCITY_THRESHOLD = 5.0f;
         inline constexpr float GROUND_NORMAL_THRESHOLD = -0.3f;
+        inline constexpr float DEFAULT_MAX_MP = 1000.0f;
     }
     namespace Monster
     {
@@ -102,19 +104,19 @@ namespace GameConfig{
         {
             // 基础属性
             inline constexpr float MAX_HP = 1000.0f;
-            inline constexpr float MAX_MP = 0.0f;       // 哥布林可能没蓝条
+            inline constexpr float MAX_MP = 0.0f; // 哥布林可能没蓝条
             inline constexpr float STRENGTH = 10.0f;
             inline constexpr float DEFENSE = 2.0f;
             inline constexpr float CRITICAL_RATE = 0.05f;
 
             // 移动与战斗
-            inline constexpr float MOVE_SPEED = 200.0f;      // 基础移速
-            inline constexpr float ATTACK_INTERVAL = 2.0f;   // 攻击间隔 (秒)
-            inline constexpr float ATTACK_RANGE = 150.0f;    // 攻击距离 (像素)
+            inline constexpr float MOVE_SPEED = 200.0f;    // 基础移速
+            inline constexpr float ATTACK_INTERVAL = 2.0f; // 攻击间隔 (秒)
+            inline constexpr float ATTACK_RANGE = 150.0f;  // 攻击距离 (像素)
 
             // 视野/AI相关 (可选，建议也放在这)
-            inline constexpr float VISION_RANGE = 700.0f;    // 索敌范围
-            inline constexpr float CHASE_RANGE = 0.0f;     // 追击范围 (0=不返回)
+            inline constexpr float VISION_RANGE = 700.0f; // 索敌范围
+            inline constexpr float CHASE_RANGE = 0.0f;    // 追击范围 (0=不返回)
             inline constexpr bool PATROL_ENABLED = true;
 
             // HP 缩放
@@ -134,6 +136,46 @@ namespace GameConfig{
             inline constexpr float HITBOX_HEIGHT = 20.0f;
             inline constexpr float HITBOX_LIFE_SECONDS = 0.1f;
             inline constexpr float WALK_ANIM_FRAME_DELAY = 0.15f;
+        }
+
+        // --- 哥布鲁 (Goblu) Boss 配置 ---
+        namespace Goblu
+        {
+            // 基础属性
+            inline constexpr float MAX_HP = 1500.0f;
+            inline constexpr float MAX_MP = 0.0f;
+            inline constexpr float STRENGTH = 25.0f;
+            inline constexpr float DEFENSE = 6.0f;
+            inline constexpr float CRITICAL_RATE = 0.08f;
+
+            // 移动与战斗
+            inline constexpr float MOVE_SPEED = 160.0f;
+            inline constexpr float ATTACK_INTERVAL = 1.5f;
+            inline constexpr float ATTACK_RANGE = 220.0f;
+
+            // 视野/AI 相关
+            inline constexpr float VISION_RANGE = 900.0f;
+            inline constexpr float CHASE_RANGE = 0.0f;
+            inline constexpr bool PATROL_ENABLED = true;
+
+            // Boss 体型/血条
+            inline constexpr float SCALE = 0.72f;
+            inline constexpr float SCALE_MULTIPLIER = 2.0f;
+            inline constexpr float HP_BAR_SCALE = 1.5f;
+            inline constexpr float PHYSICS_BOX_RATIO_W = 0.135f;
+
+            // 攻击动画/判定
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.3f;
+            inline constexpr float ATTACK_NEAR_GAP_THRESHOLD = 30.0f;
+            inline constexpr int ATTACK_HIT_FRAME_INDEX = 2;
+            inline constexpr float ATTACK_HIT_FALLBACK_TIME = ATTACK_ANIM_FRAME_DELAY * ATTACK_HIT_FRAME_INDEX;
+            inline constexpr float HITBOX_TUNE_SCALE = SCALE;
+            inline constexpr float HITBOX_OFFSET_X = 160.0f;
+            inline constexpr float HITBOX_OFFSET_Y = 170.0f;
+            inline constexpr float HITBOX_WIDTH = 380.0f;
+            inline constexpr float HITBOX_HEIGHT = 30.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.12f;
+            inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
         }
 
         // --- 以后加 Boss 或者其他怪物 ---

@@ -33,6 +33,11 @@ SkillComponent* CharacterBase::getSkillComponent()
     return static_cast<SkillComponent*>(this->getComponent("SkillComponent"));
 }
 
+cocos2d::Sprite* CharacterBase::getVisualSprite() const
+{
+    return _visualSprite ? _visualSprite : const_cast<CharacterBase*>(this);
+}
+
 float CharacterBase::getAttackPower()
 {
     auto attr = getAttributeComponent();
@@ -59,6 +64,8 @@ bool CharacterBase::initWithSpriteFrameName(const std::string& spriteFrameName)
         return false;
     }
 
+    setVisualSprite(this);
+
     _level = 1;
     _experience = 0;
     _currentHP = 0.0f;
@@ -79,6 +86,8 @@ bool CharacterBase::initWithFile(const std::string& filename)
 
     // 将文件贴图加入 SpriteFrameCache，便于后续复用
     SpriteFrameCacheHelper::getOrCreateSpriteFrame(filename);
+
+    setVisualSprite(this);
 
     _level = 1;
     _experience = 0;
@@ -228,6 +237,27 @@ void CharacterBase::showDamageNumber(float damage, bool isCritical)
         RemoveSelf::create(),
         nullptr
     ));
+}
+
+void CharacterBase::setVisualSprite(cocos2d::Sprite* sprite)
+{
+    _visualSprite = sprite ? sprite : this;
+    if (_visualSprite)
+    {
+        _visualBaseScaleX = _visualSprite->getScaleX();
+        _visualBaseScaleY = _visualSprite->getScaleY();
+    }
+}
+
+void CharacterBase::stopVisualActions()
+{
+    auto visual = getVisualSprite();
+    if (visual && visual != this)
+    {
+        visual->stopAllActions();
+        visual->setScaleX(_visualBaseScaleX);
+        visual->setScaleY(_visualBaseScaleY);
+    }
 }
 
 void CharacterBase::die()

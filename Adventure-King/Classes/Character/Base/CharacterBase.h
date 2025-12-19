@@ -42,6 +42,9 @@ public:
     /// @brief 获取技能组件
     SkillComponent* getSkillComponent();
 
+    /// @brief 获取用于播放动画的精灵（默认是自身）
+    cocos2d::Sprite* getVisualSprite() const;
+
     // 核心战斗接口
     /// @brief 普通攻击（子类必须实现）
     virtual void attack() = 0;                           // 普通攻击（子类必须实现）
@@ -113,6 +116,11 @@ protected:
     /// @brief 显示受击飘字
     void showDamageNumber(float damage, bool isCritical);
 
+    /// @brief 设置用于播放动画的精灵（默认是自身）
+    void setVisualSprite(cocos2d::Sprite* sprite);
+    /// @brief 停止视觉层动画（用于打断攻击/技能）
+    void stopVisualActions();
+
     // ------------------------------------------------------------
     // 成员变量
     // ------------------------------------------------------------
@@ -126,4 +134,7 @@ protected:
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
 
     bool _damageNumbersEnabled = false; ///< 是否启用受击飘字
+    cocos2d::Sprite* _visualSprite = nullptr; ///< 实际播放动画的精灵
+    float _visualBaseScaleX = 1.0f;
+    float _visualBaseScaleY = 1.0f;
 };
