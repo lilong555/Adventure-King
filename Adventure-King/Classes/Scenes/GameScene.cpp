@@ -17,6 +17,7 @@
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "GameUI.h"
 #include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
