@@ -182,13 +182,24 @@ bool HelloWorld::init()
         origin.y + visibleSize.height * 0.75f};
     for (float y : particleYPositions)
     {
-        auto particleSystem = ParticleSystem::create("Particle/par_warfire.plist");
+        auto particleSystem = ParticleSystemQuad::create("Particle/par_warfire.plist");
         if (!particleSystem)
         {
             problemLoading("Particle/par_warfire.plist");
             continue;
         }
+        auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
+        if (!particleTexture)
+        {
+            problemLoading("Particle/particle_texture.png");
+        }
+        else
+        {
+            particleSystem->setTexture(particleTexture);
+        }
         particleSystem->setPosition(Vec2(particleBaseX, y));
+        particleSystem->setPositionType(ParticleSystem::PositionType::FREE);
+        particleSystem->resetSystem();
         this->addChild(particleSystem, contentZOrder + 1);
     }
 
