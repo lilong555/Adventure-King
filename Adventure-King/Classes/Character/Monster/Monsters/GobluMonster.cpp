@@ -10,8 +10,9 @@ USING_NS_CC;
 
 namespace
 {
-    void ensureSingleFrameAnimationCached(const std::string& animationKey,
-                                          const std::string& framePath,
+
+    void ensureSingleFrameAnimationCached(const std::string &animationKey,
+                                          const std::string &framePath,
                                           float delayPerUnit = 0.2f)
     {
         auto cache = AnimationCache::getInstance();
@@ -26,14 +27,14 @@ namespace
             return;
         }
 
-        Vector<SpriteFrame*> frames;
+        Vector<SpriteFrame *> frames;
         frames.pushBack(frame);
         auto anim = Animation::createWithSpriteFrames(frames, delayPerUnit);
         cache->addAnimation(anim, animationKey);
     }
 
-    void ensureLoopAnimationCached(const std::string& key,
-                                   const std::string& formatStr,
+    void ensureLoopAnimationCached(const std::string &key,
+                                   const std::string &formatStr,
                                    int frameCount,
                                    float delay)
     {
@@ -43,7 +44,7 @@ namespace
             return;
         }
 
-        Vector<SpriteFrame*> frames;
+        Vector<SpriteFrame *> frames;
         for (int i = 1; i <= frameCount; i++)
         {
             std::string path = StringUtils::format(formatStr.c_str(), i);
@@ -66,11 +67,11 @@ GobluMonster::GobluMonster() = default;
 
 GobluMonster::~GobluMonster()
 {
-    CC_SAFE_RELEASE(_attackAnimateA);
-    CC_SAFE_RELEASE(_attackAnimateB);
+    CC_SAFE_RELEASE(_attackAnimateNear);
+    CC_SAFE_RELEASE(_attackAnimateFar);
 }
 
-GobluMonster* GobluMonster::create(const std::string& spriteFrameName)
+GobluMonster *GobluMonster::create(const std::string &spriteFrameName)
 {
     auto ret = new (std::nothrow) GobluMonster();
     if (ret && ret->init(spriteFrameName))
@@ -82,23 +83,44 @@ GobluMonster* GobluMonster::create(const std::string& spriteFrameName)
     return nullptr;
 }
 
-bool GobluMonster::init(const std::string& spriteFrameName)
+bool GobluMonster::init(const std::string &spriteFrameName)
 {
     if (!MonsterBase::init(spriteFrameName))
     {
         return false;
     }
 
-    setScale(GameConfig::Monster::Goblu::SCALE);
-    _baseScaleX = GameConfig::Monster::Goblu::SCALE;
+    const float visualScale = GameConfig::Monster::Goblu::SCALE *
+                              GameConfig::Monster::Goblu::SCALE_MULTIPLIER;
+    setScale(visualScale);
+    _baseScaleX = visualScale;
 
     setAIConfig(GameConfig::Monster::Goblu::VISION_RANGE,
                 GameConfig::Monster::Goblu::CHASE_RANGE,
                 GameConfig::Monster::Goblu::PATROL_ENABLED);
 
-    _baseFrameSize = getContentSize();
+    {
+        const Size size = getContentSize();
+        const Size bodySize(size.width * GameConfig::Monster::Goblu::PHYSICS_BOX_RATIO_W,
+                            size.height * GameConfig::Monster::Base::PHYSICS_BOX_RATIO_H);
+        auto body = PhysicsBody::createBox(bodySize, GameConfig::Material::MONSTER);
+        body->setDynamic(true);
+        body->setRotationEnable(false);
+        body->setGravityEnable(true);
+
+        body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER));
+        body->setCollisionBitmask(
+            ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK |
+                   GamePhysicsCategory::BOMB | GamePhysicsCategory::COLLISION));
+        body->setContactTestBitmask(
+            ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::PLAYER_ATTACK | GamePhysicsCategory::BOMB));
+
+        _physicsBody = body;
+        setPhysicsBody(_physicsBody);
+    }
 
     initAttributes();
+    _baseAttackRange = _attackRange;
     setHpBarScale(GameConfig::Monster::Goblu::HP_BAR_SCALE);
     setCurrentHP(_maxHP);
     _currentMP = 0;
@@ -148,94 +170,279 @@ void GobluMonster::initStateAnimations()
 
 void GobluMonster::initAnimations()
 {
-    auto buildAttackAnimation = [this](int startIndex, int endIndex) -> Animate*
+    CC_SAFE_RELEASE(_attackAnimateNear);
+    CC_SAFE_RELEASE(_attackAnimateFar);
+    _attackAnimateNear = nullptr;
+    _attackAnimateFar = nullptr;
+
+    cocos2d::Vector<cocos2d::SpriteFrame *> nearFrames;
+    for (int i = 1; i <= 4; ++i)
     {
-        Vector<SpriteFrame*> frames;
-        for (int i = startIndex; i <= endIndex; ++i)
+        std::string path = StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i);
+        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+        if (!frame)
         {
-            std::string path = StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i);
-            auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrameWithOriginalSize(
-                path,
-                _baseFrameSize,
-                true);
-            if (!frame)
+            break;
+        }
+        nearFrames.pushBack(frame);
+    }
+
+    if (!nearFrames.empty())
+    {
+        auto animation = cocos2d::Animation::createWithSpriteFrames(
+            nearFrames, GameConfig::Monster::Goblu::ATTACK_ANIM_FRAME_DELAY);
+        _attackAnimateNear = cocos2d::Animate::create(animation);
+        _attackAnimateNear->retain();
+    }
+
+    cocos2d::Vector<cocos2d::SpriteFrame *> farFrames;
+    for (int i = 11; i <= 15; ++i)
+    {
+        std::string path = StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i);
+        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+        if (!frame)
+        {
+            break;
+        }
+        farFrames.pushBack(frame);
+    }
+
+    if (!farFrames.empty())
+    {
+        auto animation = cocos2d::Animation::createWithSpriteFrames(
+            farFrames, GameConfig::Monster::Goblu::ATTACK_ANIM_FRAME_DELAY);
+        _attackAnimateFar = cocos2d::Animate::create(animation);
+        _attackAnimateFar->retain();
+    }
+}
+
+void GobluMonster::update(float dt)
+{
+    if (_target)
+    {
+        const float myHalfWidth = getNodeHalfWidth(this);
+        const float targetHalfWidth = getNodeHalfWidth(_target);
+        const float farReach = getAttackReachX(false);
+        _attackRange = farReach + myHalfWidth + targetHalfWidth;
+    }
+    else
+    {
+        _attackRange = _baseAttackRange;
+    }
+
+    MonsterBase::update(dt);
+}
+
+float GobluMonster::getNodeHalfWidth(cocos2d::Node *node)
+{
+    if (!node)
+    {
+        return 0.0f;
+    }
+
+    if (auto body = node->getPhysicsBody())
+    {
+        if (auto shape = body->getFirstShape())
+        {
+            if (auto box = dynamic_cast<PhysicsShapeBox *>(shape))
             {
-                break;
+                return 0.5f * box->getSize().width * std::fabs(node->getScaleX());
             }
-            frames.pushBack(frame);
         }
+    }
 
-        if (frames.empty())
+    return 0.5f * node->getContentSize().width * std::fabs(node->getScaleX());
+}
+
+cocos2d::Size GobluMonster::getBodyWorldSize() const
+{
+    Size bodySize = getContentSize();
+    if (auto body = getPhysicsBody())
+    {
+        if (auto shape = body->getFirstShape())
         {
-            return nullptr;
+            if (auto box = dynamic_cast<PhysicsShapeBox *>(shape))
+            {
+                bodySize = box->getSize();
+            }
         }
+    }
 
-        auto animation = Animation::createWithSpriteFrames(
-            frames,
-            GameConfig::Monster::Goblu::ATTACK_ANIM_FRAME_DELAY);
-        auto animate = Animate::create(animation);
-        animate->retain();
-        return animate;
-    };
+    const float scaleX = std::fabs(getScaleX()) * GameConfig::Monster::Goblu::SCALE;
+    const float scaleY = std::fabs(getScaleY()) * GameConfig::Monster::Goblu::SCALE;
+    return Size(bodySize.width * scaleX,
+                bodySize.height * scaleY);
+}
 
-    _attackAnimateA = buildAttackAnimation(1, 4);
-    _attackAnimateB = buildAttackAnimation(11, 15);
+cocos2d::Size GobluMonster::getNodeBodyWorldSize(const cocos2d::Node* node) const
+{
+    if (!node)
+    {
+        return Size::ZERO;
+    }
+
+    Size size = node->getContentSize();
+    if (auto body = node->getPhysicsBody())
+    {
+        if (auto shape = body->getFirstShape())
+        {
+            if (auto box = dynamic_cast<PhysicsShapeBox*>(shape))
+            {
+                size = box->getSize();
+            }
+        }
+    }
+
+    return Size(size.width * std::fabs(node->getScaleX()),
+                size.height * std::fabs(node->getScaleY()));
+}
+
+bool GobluMonster::canHitTarget(bool useNear) const
+{
+    if (!_target)
+    {
+        return false;
+    }
+
+    const Size bodySize = getBodyWorldSize();
+    const Size targetSize = getNodeBodyWorldSize(_target);
+    if (bodySize.width <= 0.0f || bodySize.height <= 0.0f ||
+        targetSize.width <= 0.0f || targetSize.height <= 0.0f)
+    {
+        return false;
+    }
+
+    const float direction = (getScaleX() > 0.0f) ? 1.0f : -1.0f;
+    const float bodyWidth = bodySize.width;
+    const float bodyHeight = bodySize.height;
+    const float hitboxWidth = useNear ? bodyWidth * 0.8f : bodyWidth * 3.5f;
+    const float hitboxHeight = useNear ? bodyHeight * 0.8f : bodyHeight;
+    const float offsetX = useNear ? 0.5f * bodyWidth : bodyWidth * 2.0f;
+
+    Vec2 hitboxCenter = getWorldPosition(this) + Vec2(offsetX * direction, 0.5f * hitboxHeight);
+    Rect hitboxRect(hitboxCenter.x - hitboxWidth * 0.5f,
+                    hitboxCenter.y - hitboxHeight * 0.5f,
+                    hitboxWidth,
+                    hitboxHeight);
+
+    Vec2 targetCenter = getWorldPosition(_target);
+    Rect targetRect(targetCenter.x - targetSize.width * 0.5f,
+                    targetCenter.y - targetSize.height * 0.5f,
+                    targetSize.width,
+                    targetSize.height);
+
+    return hitboxRect.intersectsRect(targetRect);
+}
+
+float GobluMonster::getGapXToTarget(cocos2d::Node *target)
+{
+    if (!target)
+    {
+        return 999999.0f;
+    }
+    const float myHalfWidth = getNodeHalfWidth(this);
+    const float targetHalfWidth = getNodeHalfWidth(target);
+    const float centerGap = std::fabs(getWorldPosition(this).x - getWorldPosition(target).x);
+    return std::max(0.0f, centerGap - (myHalfWidth + targetHalfWidth));
+}
+
+float GobluMonster::getAttackReachX(bool useNear)
+{
+    const float bodyWidth = getBodyWorldSize().width;
+    if (bodyWidth <= 0.0f)
+    {
+        return _baseAttackRange;
+    }
+
+    const float hitboxWidth = useNear ? bodyWidth * 0.8f : bodyWidth * 3.5f;
+    const float offsetX = useNear ? 0.5f * bodyWidth : bodyWidth * 2.0f;
+    const float reachFromEdge = (offsetX + 0.5f * hitboxWidth) - 0.5f * bodyWidth;
+    return std::max(0.0f, reachFromEdge);
 }
 
 void GobluMonster::attack()
 {
     CCLOG("Goblu Attack Triggered!");
 
-    FiniteTimeAction* animateAction = nullptr;
-    Animate* sourceAnimate = nullptr;
+    FiniteTimeAction *animateAction = nullptr;
+    cocos2d::Animate *selectedAnimate = nullptr;
 
-    if (_attackAnimateA && _attackAnimateB)
+    float gapX = -1.0f;
+    bool canNear = false;
+    bool canFar = false;
+    bool useNearHitbox = false;
+    if (_target)
     {
-        sourceAnimate = (cocos2d::random(0, 1) == 0) ? _attackAnimateA : _attackAnimateB;
-    }
-    else
-    {
-        sourceAnimate = _attackAnimateA ? _attackAnimateA : _attackAnimateB;
+        gapX = getGapXToTarget(_target);
+        canNear = canHitTarget(true);
+        canFar = canHitTarget(false);
+
+        if (canNear)
+        {
+            useNearHitbox = true;
+            selectedAnimate = _attackAnimateNear;
+        }
+        else if (canFar)
+        {
+            useNearHitbox = false;
+            selectedAnimate = _attackAnimateFar;
+        }
     }
 
-    if (sourceAnimate)
+    if (gapX >= 0.0f)
     {
-        animateAction = sourceAnimate->clone();
+        CCLOG("Goblu Attack Select: gap=%.1f, useNear=%s",
+              gapX,
+              useNearHitbox ? "true" : "false");
     }
-    else
+
+    if (!canNear && !canFar)
     {
-        animateAction = DelayTime::create(1.0f);
+        auto sm = getStateMachineComponent();
+        if (sm && sm->getCurrentState() == CharacterState::ATTACKING)
+        {
+            sm->changeState(CharacterState::IDLE);
+        }
+        return;
     }
+
+    if (!selectedAnimate)
+    {
+        selectedAnimate = _attackAnimateNear ? _attackAnimateNear : _attackAnimateFar;
+    }
+
+    animateAction = selectedAnimate ? static_cast<FiniteTimeAction *>(selectedAnimate->clone())
+                                    : static_cast<FiniteTimeAction *>(DelayTime::create(1.0f));
 
     float hitTime = GameConfig::Monster::Goblu::ATTACK_HIT_FALLBACK_TIME;
-    if (sourceAnimate)
+    if (selectedAnimate)
     {
-        int frameCount = sourceAnimate->getAnimation()->getFrames().size();
+        int frameCount = selectedAnimate->getAnimation()->getFrames().size();
         if (frameCount > 0)
         {
-            float frameTime = sourceAnimate->getDuration() / frameCount;
-            float hitFrame = static_cast<float>(GameConfig::Monster::Goblu::ATTACK_HIT_FRAME_INDEX);
-            hitTime = frameTime * hitFrame;
+            const int preferredHitFrame = useNearHitbox ? 3 : 4;
+            const int hitFrameIndex = std::min(preferredHitFrame, frameCount);
+            float frameTime = selectedAnimate->getDuration() / frameCount;
+            const int startIndex = std::max(0, hitFrameIndex - 1);
+            hitTime = frameTime * static_cast<float>(startIndex);
         }
     }
 
     auto logicSequence = Sequence::create(
         DelayTime::create(hitTime),
-        CallFunc::create([this]()
+        CallFunc::create([this, useNearHitbox]()
                          {
                              float direction = (getScaleX() > 0.0f) ? 1.0f : -1.0f;
+                             const Size worldBodySize = getBodyWorldSize();
+                             const float bodyWidth = worldBodySize.width;
+                             const float bodyHeight = worldBodySize.height;
 
-                             constexpr float kGobluHitboxTuneScale = GameConfig::Monster::Goblu::HITBOX_TUNE_SCALE;
-                             float scaleRatio = 1.0f;
-                             if (kGobluHitboxTuneScale > 0.0f)
-                             {
-                                 scaleRatio = std::fabs(getScaleX()) / kGobluHitboxTuneScale;
-                             }
+                             float hitboxWidth = useNearHitbox ? bodyWidth * 0.8f : bodyWidth * 3.5f;
+                             float hitboxHeight = useNearHitbox ? bodyHeight * 0.8f : bodyHeight;
+                             float offsetX = useNearHitbox ? 0.5f * bodyWidth : bodyWidth * 2.0f;
 
-                             Vec2 offset(GameConfig::Monster::Goblu::HITBOX_OFFSET_X * direction * scaleRatio,
-                                         GameConfig::Monster::Goblu::HITBOX_OFFSET_Y * scaleRatio);
-                             Size hitboxSize(GameConfig::Monster::Goblu::HITBOX_WIDTH * scaleRatio,
-                                             GameConfig::Monster::Goblu::HITBOX_HEIGHT * scaleRatio);
+                             Size hitboxSize(hitboxWidth, hitboxHeight);
+                             Vec2 offset(offsetX * direction, 0.5f * hitboxSize.height);
 
                              int damageTag = 1;
                              if (auto attr = getAttributeComponent())
@@ -251,8 +458,7 @@ void GobluMonster::attack()
                                  offset,
                                  hitboxSize,
                                  std::max(1, damageTag),
-                                 GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS);
-                         }),
+                                 GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS); }),
         nullptr);
 
     auto spawn = Spawn::create(animateAction, logicSequence, nullptr);
@@ -264,8 +470,7 @@ void GobluMonster::attack()
                              if (sm && sm->getCurrentState() != CharacterState::DEAD)
                              {
                                  sm->changeState(CharacterState::IDLE);
-                             }
-                         }),
+                             } }),
         nullptr);
 
     runAction(finalSequence);

@@ -366,6 +366,11 @@ void MonsterBase::updateAI(float dt)
         return;
     }
 
+    if (sm->getCurrentState() == CharacterState::ATTACKING)
+    {
+        return;
+    }
+
     // 重新索敌：当 _target 因超出仇恨范围被清空时，玩家重新进入仇恨范围应当恢复
     // 注意：若正在 leash 回家（_returningHome），不允许立即重新索敌，避免永远回不了家。
     if (!_target && !_returningHome && _primaryTarget)
@@ -618,6 +623,7 @@ void MonsterBase::takeDamage(const DamageInfo& info)
 
     // 受击：打断当前动作（尤其是攻击），并进入受击状态
     stopAllActions();
+    stopVisualActions();
     _hasMoveGoal = false;
     _returningHome = false;
 

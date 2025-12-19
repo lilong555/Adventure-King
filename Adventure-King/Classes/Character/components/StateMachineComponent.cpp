@@ -82,6 +82,10 @@ void StateMachineComponent::playAnimationForState(CharacterState state)
     if (!_cachedOwner)
         return;
 
+    auto renderSprite = _cachedOwner->getVisualSprite();
+    if (!renderSprite)
+        return;
+
     auto it = _stateAnimationNames.find(state);
     if (it == _stateAnimationNames.end())
     {
@@ -89,7 +93,7 @@ void StateMachineComponent::playAnimationForState(CharacterState state)
         // 此时也需要停止状态机上一次的循环动画，避免并发动作争抢 SpriteFrame。
         if (state == CharacterState::DEAD || state == CharacterState::ATTACKING || state == CharacterState::HURT)
         {
-            _cachedOwner->stopActionByTag(ACTION_TAG_STATE_ANIM);
+            renderSprite->stopActionByTag(ACTION_TAG_STATE_ANIM);
         }
         return;
     }
@@ -107,7 +111,7 @@ void StateMachineComponent::playAnimationForState(CharacterState state)
     auto animate = Animate::create(animation);
 
     // 2. 【关键优化】只停止之前的动画 Action，保留移动/闪烁等其他 Action
-    _cachedOwner->stopActionByTag(ACTION_TAG_STATE_ANIM);
+    renderSprite->stopActionByTag(ACTION_TAG_STATE_ANIM);
 
     Action* finalAction = nullptr;
 
@@ -122,5 +126,5 @@ void StateMachineComponent::playAnimationForState(CharacterState state)
 
     // 3. 设置 Tag，以便下次能精确停止它
     finalAction->setTag(ACTION_TAG_STATE_ANIM);
-    _cachedOwner->runAction(finalAction);
+    renderSprite->runAction(finalAction);
 }
