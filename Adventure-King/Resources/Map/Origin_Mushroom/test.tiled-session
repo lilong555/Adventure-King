@@ -16,7 +16,7 @@
             "selectedLayer": 0,
             "viewCenter": {
                 "x": 5850.486312399356,
-                "y": 646.3896940418681
+                "y": 633.1980676328494
             }
         },
         "E:/code/fansqim/Adventure-King/Resources/Map/Origin_Mushroom/s1.tsx": {
@@ -36,9 +36,9 @@
         },
         "Origin_Mushroom.tmx": {
             "scale": 0.25,
-            "selectedLayer": 6,
+            "selectedLayer": 5,
             "viewCenter": {
-                "x": 9590,
+                "x": 8520,
                 "y": 172
             }
         },
