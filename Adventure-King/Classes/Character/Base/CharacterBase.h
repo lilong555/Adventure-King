@@ -35,22 +35,33 @@ public:
     // 直接使用 Cocos2d-x 的泛型方法获取组件
     // 这些方法会遍历 Node 的组件列表，不需要我们自己维护指针变量
 
+    /// @brief 获取属性组件
     AttributeComponent* getAttributeComponent();
+    /// @brief 获取状态机组件
     StateMachineComponent* getStateMachineComponent();
+    /// @brief 获取技能组件
     SkillComponent* getSkillComponent();
 
     // 核心战斗接口
+    /// @brief 普通攻击（子类必须实现）
     virtual void attack() = 0;                           // 普通攻击（子类必须实现）
+    /// @brief 受击处理
     virtual void takeDamage(const DamageInfo& info);     // 受击
+    /// @brief 死亡处理
     virtual void die();                                  // 死亡
 
     // HP / MP
+    /// @brief 获取当前 HP
     float getCurrentHP() const { return _currentHP; }
+    /// @brief 获取当前 MP
     float getCurrentMP() const { return _currentMP; }
 
+    /// @brief 设置当前 HP
     void setCurrentHP(float hp);
+    /// @brief 设置当前 MP
     void setCurrentMP(float mp);
 
+    /// @brief 是否已死亡
     bool isDead() const { return _currentHP <= 0.0f; }
 
     /**
@@ -61,14 +72,20 @@ public:
     bool getAutoRemoveOnDeath() const { return _autoRemoveOnDeath; }
 
     // 受击飘字
+    /// @brief 启用/关闭受击飘字
     void setDamageNumbersEnabled(bool enabled) { _damageNumbersEnabled = enabled; }
+    /// @brief 是否启用受击飘字
     bool getDamageNumbersEnabled() const { return _damageNumbersEnabled; }
 
     // 等级/经验
+    /// @brief 获取角色等级
     int getLevel() const { return _level; }
+    /// @brief 设置角色等级
     void setLevel(int level) { _level = level; }
 
+    /// @brief 获取经验值
     int getExperience() const { return _experience; }
+    /// @brief 设置经验值
     void setExperience(int exp) { _experience = exp; }
 
     // SkillComponent 使用技能时的回调
@@ -76,19 +93,24 @@ public:
 
     // 角色攻击力（用于 DOT 等需要“来源攻击力”计算的场景）
     // 默认实现：返回 STRENGTH；玩家角色可覆写为“武器伤害 + 力量加成”等更贴近手感的计算
+    /// @brief 获取攻击力（用于 DOT 计算）
     virtual float getAttackPower();
 
 protected:
     CharacterBase();
 
     // 子类在 create 中调用，用于初始化贴图和组件
+    /// @brief 使用精灵帧名初始化角色
     bool initWithSpriteFrameName(const std::string& spriteFrameName);
     // 使用普通文件路径初始化（用于调试或没有精灵帧缓存时）
+    /// @brief 使用文件路径初始化角色
     bool initWithFile(const std::string& filename);
 
+    /// @brief 每帧更新
     virtual void update(float dt) override;
 
     // 显示受击飘字（添加到角色父节点上，避免跟随角色移动）
+    /// @brief 显示受击飘字
     void showDamageNumber(float damage, bool isCritical);
 
     // ------------------------------------------------------------

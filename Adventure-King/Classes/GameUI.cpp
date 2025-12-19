@@ -10,6 +10,7 @@
 #include "UI/PauseMenu.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/Base/CharacterBase.h"
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
@@ -36,25 +37,31 @@ bool GameUI::init()
     auto origin = Director::getInstance()->getVisibleOrigin();
 
     // 计算 UI 元素相对于屏幕的位置
-    float padding = 20.0f;
+    float padding = GameConfig::UI::PADDING;
 
     // 玩家状态栏位置：左上角
-    _statusBarPos = Vec2(origin.x + padding + 50, origin.y + visibleSize.height - padding);
+    _statusBarPos = Vec2(origin.x + padding + GameConfig::UI::STATUS_BAR_OFFSET_X,
+                         origin.y + visibleSize.height - padding);
 
     // 技能栏位置：屏幕底部中央偏右
-    _skillBarPos = Vec2(origin.x + visibleSize.width - 150, origin.y + 80);
+    _skillBarPos = Vec2(origin.x + visibleSize.width - GameConfig::UI::SKILL_BAR_OFFSET_X,
+                        origin.y + GameConfig::UI::SKILL_BAR_OFFSET_Y);
 
     // Boss血条位置：屏幕顶部中央
-    _bossHealthBarPos = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - 60);
+    _bossHealthBarPos = Vec2(origin.x + visibleSize.width / 2,
+                             origin.y + visibleSize.height - GameConfig::UI::BOSS_BAR_OFFSET_Y);
 
     // 地图按钮位置：右上角
-    _mapButtonPos = Vec2(origin.x + visibleSize.width - padding - 40, origin.y + visibleSize.height - padding - 40);
+    _mapButtonPos = Vec2(origin.x + visibleSize.width - padding - GameConfig::UI::MAP_BUTTON_OFFSET,
+                         origin.y + visibleSize.height - padding - GameConfig::UI::MAP_BUTTON_OFFSET);
 
     // 交互提示位置：屏幕底部中央
-    _interactionHintPos = Vec2(origin.x + visibleSize.width / 2, origin.y + 80);
+    _interactionHintPos = Vec2(origin.x + visibleSize.width / 2,
+                               origin.y + GameConfig::UI::INTERACTION_HINT_OFFSET_Y);
 
     // 关卡名称位置：右上角（地图按钮下方）
-    _levelNamePos = Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 100);
+    _levelNamePos = Vec2(origin.x + visibleSize.width - GameConfig::UI::LEVEL_NAME_OFFSET_X,
+                         origin.y + visibleSize.height - GameConfig::UI::LEVEL_NAME_OFFSET_Y);
 
     // 创建 UI 元素
     createPlayerStatusBar();
@@ -81,7 +88,7 @@ void GameUI::createPlayerStatusBar()
 
 void GameUI::createSkillBar()
 {
-    _skillBar = SkillBar::create(4); // 4个技能槽位
+    _skillBar = SkillBar::create(GameConfig::UI::SKILL_BAR_SLOT_COUNT);
     if (_skillBar)
     {
         _skillBar->setPosition(_skillBarPos);

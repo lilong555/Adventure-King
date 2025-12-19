@@ -15,17 +15,25 @@ class PlayerCharacter;
 class GameInputController
 {
 public:
+    /// @brief 绑定玩家对象
     void bindPlayer(PlayerCharacter *player);
 
+    /// @brief 设置暂停切换回调
     void setPauseToggle(const std::function<void()> &togglePause) { _togglePause = togglePause; }
+    /// @brief 设置暂停状态查询
     void setIsPausedGetter(const std::function<bool()> &isPaused) { _isPaused = isPaused; }
 
+    /// @brief 设置门区检测回调
     void setGateQuery(const std::function<bool()> &isAtGate) { _isAtGate = isAtGate; }
+    /// @brief 设置门区进入回调
     void setGateEnter(const std::function<void()> &enterGate) { _enterGate = enterGate; }
 
+    /// @brief 按键按下事件
     void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode);
+    /// @brief 按键释放事件
     void onKeyReleased(cocos2d::EventKeyboard::KeyCode keyCode);
 
+    /// @brief 每帧更新输入与移动
     void update(float dt);
 
     // 由物理碰撞回调转发：仅在“玩家脚下平台接触/分离”时调用
@@ -33,7 +41,9 @@ public:
     void onGroundContactEnd(float normalY);
 
 private:
+    /// @brief 处理跳跃逻辑
     void handleJump();
+    /// @brief 若未移动则恢复待机/跑动动画
     void resumeMoveAnimationIfIdle();
 
     PlayerCharacter *_player = nullptr;

@@ -8,7 +8,7 @@
 #include "Character/components/StatusEffectVfxComponent.h"
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfigs.h"
-#include"Configs/GamePhysicsCategory.h"
+#include "Configs/GamePhysicsCategory.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 
@@ -28,13 +28,13 @@ namespace
     constexpr int ACTION_TAG_HURT_FACING = 400;
 
     // Animation Delays
-    constexpr float ANIM_DELAY_RUN = 0.15f;
-    constexpr float ANIM_DELAY_WALK = 0.25f;
-    constexpr float HURT_DURATION_SECONDS = 0.3f;
+    constexpr float ANIM_DELAY_RUN = GameConfig::Player::ANIM_DELAY_RUN;
+    constexpr float ANIM_DELAY_WALK = GameConfig::Player::ANIM_DELAY_WALK;
+    constexpr float HURT_DURATION_SECONDS = GameConfig::Player::HURT_DURATION_SECONDS;
 
     // Combat
-    constexpr float DEFAULT_WEAPON_DAMAGE = 5.0f;
-    constexpr float STRENGTH_DAMAGE_MULTIPLIER = 1.5f;
+    constexpr float DEFAULT_WEAPON_DAMAGE = GameConfig::Player::DEFAULT_WEAPON_DAMAGE;
+    constexpr float STRENGTH_DAMAGE_MULTIPLIER = GameConfig::Player::STRENGTH_DAMAGE_MULTIPLIER;
 
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths, float delayPerUnit)
@@ -468,6 +468,7 @@ bool PlayerCharacter::runActionLocked(const std::function<bool()>& preCheck,
     if (_actionLocked) return false;
     if (preCheck && !preCheck()) return false;
 
+    // 统一的动作锁：防止攻击/技能并发打断动画状态。
     if (auto sm = getStateMachineComponent())
     {
         sm->changeState(CharacterState::ATTACKING);

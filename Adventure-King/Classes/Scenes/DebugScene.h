@@ -20,6 +20,7 @@
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
 #include "Objects/Projectiles/Bomb.h"
+#include "Configs/GameConfigs.h"
 #include "Character/Base/CharacterData.h"
 #include <memory>
 
@@ -313,10 +314,10 @@ private:
     int _jumpCount = 0;          ///< 当前空中已跳次数（落地重置）
 
     /// 跳跃冲量（数值越大跳得越高）
-    static constexpr float JUMP_IMPULSE = 350.0f;
+    static constexpr float JUMP_IMPULSE = GameConfig::Debug::JUMP_IMPULSE;
 
     /// 地面Y坐标基准线
-    static constexpr float GROUND_Y = 100.0f;
+    static constexpr float GROUND_Y = GameConfig::Debug::GROUND_Y;
 
     /// 平台列表（存储平台的矩形区域，用于可视化）
     std::vector<cocos2d::Rect> _platforms;
@@ -327,19 +328,19 @@ private:
 
     std::vector<Bomb> _bombs; ///< 当前场景中的炸弹列表
 
-    static constexpr float BOMB_THROW_SPEED_X = 300.0f;   ///< 炸弹水平初速度
-    static constexpr float BOMB_THROW_SPEED_Y = 350.0f;   ///< 炸弹垂直初速度
-    static constexpr float BOMB_DAMAGE = 150.0f;          ///< 炸弹基础伤害
-    static constexpr float BOMB_EXPLOSION_RADIUS = 80.0f; ///< 爆炸范围半径
+    static constexpr float BOMB_THROW_SPEED_X = GameConfig::Bomb::THROW_SPEED_X;   ///< 炸弹水平初速度
+    static constexpr float BOMB_THROW_SPEED_Y = GameConfig::Bomb::THROW_SPEED_Y;   ///< 炸弹垂直初速度
+    static constexpr float BOMB_DAMAGE = GameConfig::Bomb::BASE_DAMAGE;            ///< 炸弹基础伤害
+    static constexpr float BOMB_EXPLOSION_RADIUS = GameConfig::Bomb::EXPLOSION_RADIUS; ///< 爆炸范围半径
 
     //=========================================================================
     // 成员变量 - 技能配置
     //=========================================================================
 
-    static constexpr size_t BOMB_SKILL_SLOT = 0;       ///< 炸弹技能所在槽位索引
-    static constexpr int BOMB_SKILL_ID = 1001;         ///< 炸弹技能唯一ID
-    static constexpr float BOMB_SKILL_MP_COST = 10.0f; ///< 炸弹技能MP消耗
-    static constexpr float BOMB_SKILL_COOLDOWN = 1.0f; ///< 炸弹技能冷却时间（秒）
+    static constexpr size_t BOMB_SKILL_SLOT = GameConfig::Skill::SLOT_BOMB;       ///< 炸弹技能所在槽位索引
+    static constexpr int BOMB_SKILL_ID = GameConfig::Bomb::BOMB_ID;               ///< 炸弹技能唯一ID
+    static constexpr float BOMB_SKILL_MP_COST = GameConfig::Bomb::BOMB_MP;        ///< 炸弹技能MP消耗
+    static constexpr float BOMB_SKILL_COOLDOWN = GameConfig::Bomb::BOMB_CD;       ///< 炸弹技能冷却时间（秒）
 
     //=========================================================================
     // 成员变量 - 木桩（测试靶子）
@@ -399,7 +400,7 @@ private:
     //=========================================================================
 
     std::vector<std::string> _damageLog;   ///< 伤害日志记录
-    static const size_t MAX_LOG_LINES = 5; ///< 日志最大显示行数
+    static constexpr size_t MAX_LOG_LINES = GameConfig::Debug::MAX_LOG_LINES; ///< 日志最大显示行数
 
     //=========================================================================
     // 成员变量 - 死亡重置系统
@@ -407,5 +408,5 @@ private:
 
     bool _isDeathResetPending = false;               ///< 是否正在等待死亡重置
     float _deathResetTimer = 0.0f;                   ///< 死亡重置倒计时
-    static constexpr float DEATH_RESET_DELAY = 2.0f; ///< 死亡后重置延迟（秒）
+    static constexpr float DEATH_RESET_DELAY = GameConfig::Debug::DEATH_RESET_DELAY; ///< 死亡后重置延迟（秒）
 };

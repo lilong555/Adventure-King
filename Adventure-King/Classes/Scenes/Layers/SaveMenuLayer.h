@@ -32,6 +32,9 @@ public:
                                   const std::string &sceneName = "",
                                   const cocos2d::Vec2 &playerPos = cocos2d::Vec2::ZERO);
 
+    /**
+     * @brief 初始化存档菜单
+     */
     virtual bool init(Mode mode,
                       PlayerCharacter *player,
                       const std::string &sceneName,
@@ -55,29 +58,39 @@ private:
 
     LoadSuccessCallback _loadSuccessCallback = nullptr;
 
-    const float TARGET_HEIGHT_RATIO = 0.7f; // 背景高度占屏幕比例
-
     // 初始化方法
+    /// @brief 初始化背景图
     bool initBackground();
+    /// @brief 初始化标题
     bool initTitle();
+    /// @brief 初始化存档槽位
     bool initSlots();
+    /// @brief 初始化关闭按钮
     bool initCloseButton();
+    /// @brief 布局 UI 元素
     void layoutUI();
 
     // 槽位操作
+    /// @brief 点击存档槽位
     void onSlotClicked(int slotIndex);
+    /// @brief 点击删除存档
     void onDeleteClicked(int slotIndex);
 
     // 确认对话框
+    /// @brief 弹出确认对话框
     void showConfirmDialog(const std::string &message, const std::function<void()> &onConfirm);
 
     // 关闭按钮
+    /// @brief 关闭存档菜单
     void onClose(cocos2d::Ref *sender);
 
     // 触摸事件
+    /// @brief 吞噬触摸，保持模态
     virtual bool onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event) override;
 
     // 辅助方法
+    /// @brief 创建单个槽位节点
     cocos2d::Node *createSlotNode(int slotIndex, const SaveSlotData &slotData);
+    /// @brief 格式化时间戳
     std::string formatTimestamp(int64_t timestamp) const;
 };

@@ -14,12 +14,17 @@ public:
     // 3. 添加标准创建宏 (解决 create 报错的核心)
     CREATE_FUNC(SkillComponent);
 
+    // 初始化技能组件
     SkillComponent();
+    // 释放技能组件
     virtual ~SkillComponent();
 
     // 4. 覆盖 Component 的生命周期方法
+    // 初始化技能槽位
     virtual bool init() override;
+    // 每帧更新冷却与被动效果
     virtual void update(float dt) override;
+    // 组件挂载时缓存 Owner
     virtual void onAdd() override; // 当组件被添加到节点时调用
 
     // 学习技能（解锁）
@@ -32,7 +37,9 @@ public:
     // 使用主动技能（成功返回 true）
     bool useActiveSkill(size_t slotIndex);
 
+    // 获取主动技能槽位
     const std::vector<std::shared_ptr<ActiveSkill>>& getActiveSlots() const { return _activeSlots; }
+    // 获取被动技能槽位
     const std::vector<std::shared_ptr<PassiveSkill>>& getPassiveSlots() const { return _passiveSlots; }
 
     //================== 存档系统支持 ==================
@@ -64,6 +71,8 @@ private:
     std::vector<std::shared_ptr<ActiveSkill>> _activeSlots;
     std::vector<std::shared_ptr<PassiveSkill>> _passiveSlots;
 
+    // 应用被动技能效果
     void applyPassiveSkill(const std::shared_ptr<PassiveSkill>& skill);
+    // 移除被动技能效果
     void removePassiveSkill(const std::shared_ptr<PassiveSkill>& skill);
 };

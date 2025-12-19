@@ -80,27 +80,32 @@ struct Attributes
 {
     std::map<AttributeType, float> values;
 
+    // 获取指定属性值（不存在则返回默认值）
     float get(AttributeType type, float defaultValue = 0.0f) const
     {
         auto it = values.find(type);
         return (it != values.end()) ? it->second : defaultValue;
     }
 
+    // 设置指定属性值
     void set(AttributeType type, float value)
     {
         values[type] = value;
     }
 
+    // 增加指定属性值
     void add(AttributeType type, float delta)
     {
         values[type] = get(type) + delta;
     }
 
+    // 清空所有属性
     void clear()
     {
         values.clear();
     }
 
+    // 叠加另一组属性
     Attributes &operator+=(const Attributes &other)
     {
         for (const auto &kv : other.values)
@@ -110,6 +115,7 @@ struct Attributes
         return *this;
     }
 
+    // 生成叠加后的新属性对象
     Attributes operator+(const Attributes &other) const
     {
         Attributes result = *this;
@@ -127,6 +133,7 @@ struct Skill
     std::string description;
     bool isPassive = false; // 是否为被动技能
 
+    // 虚析构，确保派生类正确释放
     virtual ~Skill() = default;
 };
 
@@ -137,6 +144,7 @@ struct ActiveSkill : public Skill
     float manaCost = 0.0f;        // 消耗 MP
     float currentCooldown = 0.0f; // 当前冷却剩余时间
 
+    // 初始化为主动技能
     ActiveSkill()
     {
         isPassive = false;
@@ -148,6 +156,7 @@ struct PassiveSkill : public Skill
 {
     Attributes attributeBonus; // 提供的属性加成
 
+    // 初始化为被动技能
     PassiveSkill()
     {
         isPassive = true;
@@ -166,6 +175,7 @@ struct Equipment
     Attributes attributeBonus;                  // 装备提供的属性加成
     std::string spritePath;                     // 装备对应的角色贴图路径（可选）
 
+    // 虚析构，确保派生类正确释放
     virtual ~Equipment() = default;
 };
 
@@ -179,6 +189,7 @@ struct Weapon : public Equipment
     std::string attackAnimationPrefix;   // 攻击动画前缀（如 "spr_klee_attack"）
     int attackFrameCount = 3;            // 攻击动画帧数
 
+    // 初始化为武器装备
     Weapon()
     {
         slot = EquipmentSlot::WEAPON;

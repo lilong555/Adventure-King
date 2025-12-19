@@ -12,6 +12,7 @@ Scene *HomeScene::createScene()
     return HomeScene::create();
 }
 // 当文件不存在时，打印有用的错误消息而不是错误。
+// 统一的资源缺失提示
 static void problemLoading(const char *filename)
 {
     printf("Error while loading: %s\n", filename);

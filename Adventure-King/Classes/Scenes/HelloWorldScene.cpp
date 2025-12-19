@@ -7,6 +7,7 @@
 #include "Scenes/Layers/SetMenuLayer.h"
 #include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
+#include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
 #include "SimpleAudioEngine.h"
@@ -19,6 +20,7 @@ Scene *HelloWorld::createScene()
 }
 
 // 当文件不存在时，打印有用的错误消息而不是段错误。
+// 统一的资源缺失提示
 static void problemLoading(const char *filename)
 {
     printf("Error while loading: %s\n", filename);
@@ -54,9 +56,12 @@ bool HelloWorld::init()
     // 屏幕中心点
     Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
-    // 按钮之间的水平和垂直间距
-    const float BUTTON_HORIZONTAL_SPACING = 180.0f; // 存档-地图-设置 之间的间距
-    const float BUTTON_GROUP_OFFSET_Y = 100.0f;     // Start按钮和下方按钮组的垂直偏移量
+    // 按钮之间的水平间距
+    const float buttonHorizontalSpacing = GameConfig::UI::MainMenu::BUTTON_HORIZONTAL_SPACING;
+    const float subMenuYMultiplier = GameConfig::UI::MainMenu::SUB_MENU_Y_MULTIPLIER;
+    const float menuOffsetYDivisor = GameConfig::UI::MainMenu::MENU_OFFSET_Y_DIVISOR;
+    const int contentZOrder = GameConfig::UI::MainMenu::CONTENT_Z_ORDER;
+    const int menuZOrder = GameConfig::UI::MainMenu::MENU_Z_ORDER;
 
     // ===============================================
     // 内容容器节点，用于统一缩放和定位
@@ -65,7 +70,7 @@ bool HelloWorld::init()
     auto contentContainer = Node::create();
     contentContainer->setTag(TAG_CONTENT_CONTAINER);
     // 将容器节点添加到场景中
-    this->addChild(contentContainer, 5); // 确保 z-order 高于背景 (背景 z=0)
+    this->addChild(contentContainer, contentZOrder); // 确保 z-order 高于背景 (背景 z=0)
     // 将容器节点定位
     contentContainer->setPosition(center);
 
@@ -114,7 +119,7 @@ bool HelloWorld::init()
     }
 
     // 下方按钮组的 Y 坐标
-    float sub_menu_y = -(1.2) * StartItem->getContentSize().height;
+    float sub_menu_y = -subMenuYMultiplier * StartItem->getContentSize().height;
 
     if (MapItem)
     {
@@ -125,13 +130,13 @@ bool HelloWorld::init()
     if (SetItem)
     {
         // SetItem 在 MapItem 左侧
-        SetItem->setPosition(Vec2(-BUTTON_HORIZONTAL_SPACING, sub_menu_y));
+        SetItem->setPosition(Vec2(-buttonHorizontalSpacing, sub_menu_y));
     }
 
     if (SaveItem)
     {
         // SaveItem 在 MapItem 右侧
-        SaveItem->setPosition(Vec2(BUTTON_HORIZONTAL_SPACING, sub_menu_y));
+        SaveItem->setPosition(Vec2(buttonHorizontalSpacing, sub_menu_y));
     }
 
     // ==========================================================
@@ -139,8 +144,8 @@ bool HelloWorld::init()
     // ==========================================================
 
     auto menu = Menu::create(StartItem, SetItem, SaveItem, MapItem, NULL);
-    menu->setPosition(Vec2(0, -visibleSize.height / 20));
-    contentContainer->addChild(menu, 1);
+    menu->setPosition(Vec2(0, -visibleSize.height / menuOffsetYDivisor));
+    contentContainer->addChild(menu, menuZOrder);
 
     // ==========================================================
     // 5. 添加背景精灵
@@ -166,13 +171,13 @@ bool HelloWorld::init()
         contentContainer->setScale(scaleFactor);
     }
     std::string musicFile = "Scene/MusicOfScene/Music_HelloWorldScene.mp3";
-    float musicVolume = 0.5f;
+    float musicVolume = GameConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
         [musicFile, musicVolume](float dt)
         {
             MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
         },
-        0.1f, // 必须加一定延迟否则会被场景切换截断
+        GameConfig::UI::MainMenu::BGM_DELAY_SECONDS, // 必须加一定延迟否则会被场景切换截断
         "PlayMusicAfterSceneChange");
     return true;
 }
@@ -257,7 +262,7 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
             }
 
             // 切换到目标场景
-            auto transition = TransitionFade::create(0.5f, targetScene, Color3B::BLACK);
+            auto transition = TransitionFade::create(GameConfig::Scene::TRANSITION_DURATION, targetScene, Color3B::BLACK);
             Director::getInstance()->replaceScene(transition);
         }
         else
@@ -266,7 +271,7 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
         } });
 
     // 直接添加到场景而不是 contentContainer，避免受容器缩放影响
-    this->addChild(saveMenu, 100);
+    this->addChild(saveMenu, GameConfig::UI::Z_ORDER);
 }
 
 void HelloWorld::menuMapCallback(Ref *pSender)
@@ -278,8 +283,7 @@ void HelloWorld::menuMapCallback(Ref *pSender)
         return;
     }
 
-    const float TRANSITION_DURATION = 0.6f;
-    auto transition = TransitionFade::create(TRANSITION_DURATION, mapScene, Color3B::BLACK);
+    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION, mapScene, Color3B::BLACK);
     Director::getInstance()->pushScene(transition);
 }
 void HelloWorld::menuSetCallback(Ref *pSender)
@@ -287,5 +291,5 @@ void HelloWorld::menuSetCallback(Ref *pSender)
     auto setMenu = SettingMenuLayer::create();
 
     // 直接添加到场景而不是 contentContainer，避免受容器缩放影响
-    this->addChild(setMenu, 100);
+    this->addChild(setMenu, GameConfig::UI::Z_ORDER);
 }

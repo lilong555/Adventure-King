@@ -50,8 +50,17 @@ class GameInputController;
 class GameScene : public cocos2d::Scene
 {
 public:
+    /**
+     * @brief 初始化基础场景（入口）
+     */
     virtual bool init() override;
+    /**
+     * @brief 析构：释放场景资源
+     */
     virtual ~GameScene();
+    /**
+     * @brief 创建 GameScene 场景
+     */
     static cocos2d::Scene *createScene();
 
     /**
@@ -73,6 +82,9 @@ public:
     };
 
 protected:
+    /**
+     * @brief 构造：由派生类 create 调用
+     */
     GameScene();
 
     // -------------------------------
@@ -109,11 +121,11 @@ protected:
     // -------------------------------
     // 常量定义
     // -------------------------------
-    static constexpr float SCENE_TRANSITION_DURATION = 0.5f;        ///< 场景切换时间
-    static constexpr int UI_Z_ORDER = 100;                          ///< UI 层级
-    static constexpr int BACKGROUND_Z_ORDER = -1;                   ///< 背景层级
-    static constexpr int PLAYER_Z_ORDER = 5;                        ///< 玩家层级
-    static constexpr int COLLISION_DEBUG_Z_ORDER = 100;             ///< 碰撞调试层级
+    static constexpr float SCENE_TRANSITION_DURATION = GameConfig::Scene::TRANSITION_DURATION;        ///< 场景切换时间
+    static constexpr int UI_Z_ORDER = GameConfig::UI::Z_ORDER;                                       ///< UI 层级
+    static constexpr int BACKGROUND_Z_ORDER = GameConfig::Scene::BACKGROUND_Z_ORDER;                 ///< 背景层级
+    static constexpr int PLAYER_Z_ORDER = GameConfig::Scene::PLAYER_Z_ORDER;                         ///< 玩家层级
+    static constexpr int COLLISION_DEBUG_Z_ORDER = GameConfig::Scene::COLLISION_DEBUG_Z_ORDER;       ///< 碰撞调试层级
 
     // ===================================================================
     // 初始化方法
@@ -237,12 +249,16 @@ private:
 class OriginMushroomScene : public GameScene
 {
 public:
+    /// @brief 创建起源之菇场景
     static cocos2d::Scene *createScene();
+    /// @brief 初始化起源之菇场景
     virtual bool init() override;
     CREATE_FUNC(OriginMushroomScene);
 
 protected:
+    /// @brief 关卡名
     virtual std::string getLevelName() const override { return "起源之菇"; }
+    /// @brief 关卡配置
     virtual LevelConfig getLevelConfig() const override;
 };
 
@@ -253,12 +269,16 @@ protected:
 class MysteryForestScene : public GameScene
 {
 public:
+    /// @brief 创建神秘之森场景
     static cocos2d::Scene *createScene();
+    /// @brief 初始化神秘之森场景
     virtual bool init() override;
     CREATE_FUNC(MysteryForestScene);
 
 protected:
+    /// @brief 关卡名
     virtual std::string getLevelName() const override { return "神秘之森"; }
+    /// @brief 关卡配置
     virtual LevelConfig getLevelConfig() const override;
 };
 

@@ -15,6 +15,7 @@ namespace
             return std::string();
         }
 
+        // 默认约定：爆炸帧与投掷物同目录，文件名为 BOOM_1.png
         std::string normalized = projectileSpritePath;
         std::replace(normalized.begin(), normalized.end(), '\\', '/');
 
@@ -70,6 +71,7 @@ bool Bomb::initPhysics()
 
 bool Bomb::initPhysics(const PhysicsConfig &config)
 {
+    // 重新构建物理体以应用最新配置。
     removeComponent(getPhysicsBody());
 
     auto physicsBody = PhysicsBody::createCircle(config.radius, config.material);

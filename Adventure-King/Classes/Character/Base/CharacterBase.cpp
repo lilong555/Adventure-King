@@ -2,6 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
+#include "Configs/GameConfigs.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -133,8 +134,8 @@ void CharacterBase::takeDamage(const DamageInfo& info)
         float effectiveDefense = std::max(0.0f, defense - info.penetration);
 
         // 使用乘法公式：防御越高，减伤越高
-        const float ARMOR_CONST = 100.0f;
-        float reductionFactor = ARMOR_CONST / (ARMOR_CONST + effectiveDefense);
+        float reductionFactor = GameConfig::Combat::ARMOR_CONST /
+                                (GameConfig::Combat::ARMOR_CONST + effectiveDefense);
 
         finalDamage *= reductionFactor;
     }

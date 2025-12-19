@@ -42,6 +42,9 @@ public:
      */
     static SkillBar *create(int slotCount = 4);
 
+    /**
+     * @brief 初始化技能栏节点
+     */
     virtual bool init() override;
 
     /**
@@ -94,8 +97,11 @@ public:
     int getSlotCount() const { return static_cast<int>(_slots.size()); }
 
 protected:
+    /// @brief 创建单个技能槽位
     void createSlot(int index);
+    /// @brief 更新槽位冷却显示
     void updateSlotCooldown(size_t index, float currentCD, float maxCD);
+    /// @brief 设置槽位是否为空
     void updateSlotEmpty(size_t index, bool isEmpty);
 
 protected:

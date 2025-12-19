@@ -11,6 +11,7 @@ public:
 
     // 初始化方法：用于设置场景内容
     virtual bool init();
+    // 返回主菜单回调
     void menuReturnCallback(Ref *pSender);
     // 创建宏
     CREATE_FUNC(HomeScene);

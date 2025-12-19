@@ -1,6 +1,6 @@
 # GameScene 完善实现指南（现状版）
 
-> 更新于 2025-12-16  
+> 更新于 2025-12-18  
 > 本文档最初用于指导将 DebugScene 的战斗/技能迁移到 GameScene。当前 main 已完成迁移并进一步重构：  
 > - 动画与投掷物/爆炸判定已下沉到 `PlayerCharacter`  
 > - `GameScene` 负责地图/输入/碰撞结算/刷怪与 UI  
@@ -9,7 +9,7 @@
 - `Adventure-King/Classes/Scenes/GameScene.cpp`
 - `Adventure-King/Classes/Character/Player/PlayerCharacter.cpp`
 - `Adventure-King/Classes/Character/Base/CharacterBase.cpp`
-- `Adventure-King/Classes/Physics/GamePhysicsCategory.h`
+- `Adventure-King/Classes/Configs/GamePhysicsCategory.h`
 - `Adventure-King/Classes/Utils/SpriteFrameCacheHelper.h`
 
 ## 输入与技能（默认）
@@ -30,6 +30,7 @@
 - 技能1：`spawnFireballProjectile(gameLayer)` 创建导弹并循环播放尾迹动画
 - 命中/落地爆炸：`handleProjectileContact(...)` + `explodeProjectile(...)`
   - 爆炸范围伤害会遍历 `gameLayer` 下的 `CharacterBase` 子节点并调用 `takeDamage`
+- 导弹命中附带燃烧 DOT：配置在 `KleeSkillSet`，通过投掷物的 on-hit 状态模板触发
 
 ### 场景侧（GameScene）
 - `onContactBegin` 负责：
@@ -64,6 +65,7 @@
   - 技能1施放动画 `spr_klee_attack_x`
   - 导弹尾迹 `spr_vfx_rocket_trail_long_x`
   - 爆炸闪光 `spr_vfx_explosion_flash_x`
+  - 燃烧 DOT 可视化由 `StatusEffectVfxComponent` 的火焰粒子实现
 
 ## 性能：SpriteFrameCacheHelper
 - 规则：对文件路径（`Sprites/...`）用 `SpriteFrameCacheHelper::getOrCreateSpriteFrame` 获取 `SpriteFrame*`，再用 `Sprite::createWithSpriteFrame` 创建精灵
@@ -73,3 +75,4 @@
 - 投掷物体积/判定：`PlayerCharacter::spawnBombProjectile` / `spawnFireballProjectile` 中的 `PhysicsBody::createCircle(...)` 半径
 - 刷怪节奏：`GameScene::updateEnemySpawns` 的 `SPAWN_INTERVAL_SECONDS` / `SPAWN_SPACING_X`
 - 新增怪物：实现 `MonsterBase` 子类，并在 `GameScene::createMonsterByType` 增加映射
+- DOT 伤害/叠层：`AttributeComponent::addStatusEffect` 合并策略、`updateStatusEffectsLogic` 的 tick 结算

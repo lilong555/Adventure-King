@@ -2,7 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
-
+#include "Configs/GameConfigs.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -76,7 +76,9 @@ GoblinMonster::~GoblinMonster()
 void GoblinMonster::applyHpScalingForPlayerLevel(int playerLevel)
 {
     int level = std::max(0, playerLevel);
-    int maxHp = 200 + level * 100 + (level / 10) * 1000;
+    int maxHp = GameConfig::Monster::Goblin::HP_SCALE_BASE +
+                level * GameConfig::Monster::Goblin::HP_SCALE_PER_LEVEL +
+                (level / 10) * GameConfig::Monster::Goblin::HP_SCALE_PER_10_LEVEL;
 
     auto attr = getAttributeComponent();
     if (attr)
@@ -85,7 +87,7 @@ void GoblinMonster::applyHpScalingForPlayerLevel(int playerLevel)
     }
 
     refreshCacheAttributes();
-    setHpBarScale(2.0f);
+    setHpBarScale(GameConfig::Monster::Goblin::HP_BAR_SCALE);
     ensureHpBar();
     setCurrentHP(_maxHP);
     updateHpBar();
@@ -110,13 +112,15 @@ bool GoblinMonster::init(const std::string &spriteFrameName)
         return false;
 
     // 2. 初始化 AI 参数 (关卡策划关注这一块)
-    setAIConfig(700, 0, true);
+    setAIConfig(GameConfig::Monster::Goblin::VISION_RANGE,
+                GameConfig::Monster::Goblin::CHASE_RANGE,
+                GameConfig::Monster::Goblin::PATROL_ENABLED);
 
     // === 设置怪物属性 ===
     initAttributes();
 
     // 哥布林血条放大一倍
-    setHpBarScale(2.0f);
+    setHpBarScale(GameConfig::Monster::Goblin::HP_BAR_SCALE);
 
     // === 刷新 HP / MP ===
     setCurrentHP(_maxHP);
@@ -169,7 +173,7 @@ void GoblinMonster::initStateAnimations()
         "goblin_walk",                                      // 缓存Key
         "Sprites/Enemies/Goblin/Goblin_walk_%d.png",         // 路径格式化字符串
         4,                                                  // 帧数
-        0.15f                                               // 帧间隔时间(越小跑得越快)
+        GameConfig::Monster::Goblin::WALK_ANIM_FRAME_DELAY   // 帧间隔时间(越小跑得越快)
     );
     if (auto sm = getStateMachineComponent())
     {
@@ -216,7 +220,8 @@ void GoblinMonster::initAnimations()
     }
 
     // 4. 创建动画
-    auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.1f);
+    auto animation = cocos2d::Animation::createWithSpriteFrames(
+        frames, GameConfig::Monster::Goblin::ATTACK_ANIM_FRAME_DELAY);
     _attackAnimate = cocos2d::Animate::create(animation);
     _attackAnimate->retain();
 }
@@ -249,14 +254,14 @@ void GoblinMonster::attack()
     // -----------------------------------------------------------
     // 2. 计算出刀时间
     // -----------------------------------------------------------
-    float hitTime = 0.4f; // 默认值
+    float hitTime = GameConfig::Monster::Goblin::ATTACK_HIT_FALLBACK_TIME;
     if (_attackAnimate)
     {
         int frameCount = _attackAnimate->getAnimation()->getFrames().size();
         if (frameCount > 0)
         {
             float frameTime = _attackAnimate->getDuration() / frameCount;
-            float hitFrame = 3; // 第4帧 (索引3)
+            float hitFrame = static_cast<float>(GameConfig::Monster::Goblin::ATTACK_HIT_FRAME_INDEX);
             hitTime = frameTime * hitFrame;
         }
     }
@@ -271,8 +276,8 @@ void GoblinMonster::attack()
                                       // 计算朝向
                                       float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
 
-                                      // 缩放适配：攻击判定最初按 0.6 的缩放手感调过，这里按当前缩放同比例缩放偏移/尺寸
-                                      constexpr float kGoblinHitboxTuneScale = 0.6f;
+                                      // 缩放适配：攻击判定最初按配置缩放手感调过，这里按当前缩放同比例缩放偏移/尺寸
+                                      constexpr float kGoblinHitboxTuneScale = GameConfig::Monster::Goblin::HITBOX_TUNE_SCALE;
                                       float scaleRatio = 1.0f;
                                       if (kGoblinHitboxTuneScale > 0.0f)
                                       {
@@ -280,8 +285,10 @@ void GoblinMonster::attack()
                                       }
 
                                       // 计算偏移
-                                      cocos2d::Vec2 offset(100.f * direction * scaleRatio, 170.f * scaleRatio);
-                                      cocos2d::Size hitboxSize(300.0f * scaleRatio, 20.0f * scaleRatio);
+                                      cocos2d::Vec2 offset(GameConfig::Monster::Goblin::HITBOX_OFFSET_X * direction * scaleRatio,
+                                                          GameConfig::Monster::Goblin::HITBOX_OFFSET_Y * scaleRatio);
+                                      cocos2d::Size hitboxSize(GameConfig::Monster::Goblin::HITBOX_WIDTH * scaleRatio,
+                                                               GameConfig::Monster::Goblin::HITBOX_HEIGHT * scaleRatio);
 
                                       int damageTag = 1;
                                       if (auto attr = getAttributeComponent())
@@ -293,7 +300,10 @@ void GoblinMonster::attack()
                                           }
                                       }
 
-                                      spawnMeleeHitbox(offset, hitboxSize, std::max(1, damageTag), 0.1f);
+                                      spawnMeleeHitbox(offset,
+                                                       hitboxSize,
+                                                       std::max(1, damageTag),
+                                                       GameConfig::Monster::Goblin::HITBOX_LIFE_SECONDS);
 
                                       // 调试日志
                                       // CCLOG("Hitbox spawned at: %.1f, %.1f", worldPos.x, worldPos.y);

@@ -10,14 +10,15 @@
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Save/SaveData.h"
 #include "UI/PauseMenu.h"
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
 namespace
 {
-    const char *const GATE_INTERACTION_HINT = "Press W to enter gate";
-    constexpr int UI_Z_ORDER = 100;
-    constexpr float UI_UPDATE_INTERVAL_SECONDS = 0.05f;
+    const char *const GATE_INTERACTION_HINT = GameConfig::UI::GATE_INTERACTION_HINT;
+    constexpr int UI_Z_ORDER = GameConfig::UI::Z_ORDER;
+    constexpr float UI_UPDATE_INTERVAL_SECONDS = GameConfig::UI::UPDATE_INTERVAL_SECONDS;
 }
 
 bool GameUIController::init(Scene *scene,
@@ -171,6 +172,7 @@ void GameUIController::update(float dt)
     _wasAtGate = atGate;
 
     _updateAccumulator += dt;
+    // UI 更新节流，避免每帧刷新造成开销。
     if (_updateAccumulator < UI_UPDATE_INTERVAL_SECONDS)
     {
         return;

@@ -5,6 +5,7 @@
 - `Adventure-King/Classes/` holds all gameplay C++ code:
   - `Character/` (player, monsters, component system)
   - `Scenes/` (HelloWorldScene, GameScene, MapScene, etc.)
+  - `Configs/` (GameConfigs, GamePhysicsCategory, GameSceneConfig)
   - `UI/`, `Managers/`, `Save/`
 - `Adventure-King/Resources/` stores runtime assets (sprites, TMX maps, audio, fonts).
 - `Adventure-King/proj.*` are platform projects (`proj.win32`, `proj.android`, `proj.linux`, `proj.ios_mac`).
@@ -26,6 +27,13 @@
 - Keep new logic inside `Adventure-King/Classes/` and reuse existing components (Attribute/StateMachine/Skill) where possible.
 - Player animations are managed by `PlayerCharacter`; scenes should call `setMoving`, `attackAnimated`, and `castSkillAnimated` instead of running actions directly.
 - 贴图加载：对文件路径（`Sprites/...`）优先用 `Adventure-King/Classes/Utils/SpriteFrameCacheHelper.h` 走 `SpriteFrameCache` 复用，避免重复创建与 “Frame isn't found” 日志噪音。
+- 物理分类定义：使用 `Adventure-King/Classes/Configs/GamePhysicsCategory.h` 中的枚举，避免在其它位置重复定义掩码。
+- 可调参数统一放在 `Adventure-King/Classes/Configs/GameConfigs.h`（包含 App/Save/UI/MainMenu/Debug 等），代码中避免重复写死数值。
+
+## Combat & Status Effects
+- 伤害统一走 `DamageInfo`；持续伤害（DOT）必须设置 `causesHitStun=false`，避免锁玩家操作。
+- 状态效果（燃烧等）通过 `AttributeComponent` 的叠层/结算逻辑管理，表现走 `StatusEffectVfxComponent`。
+- 投掷物/爆炸附加状态效果请使用 `ExplosiveProjectile::addOnHitStatusEffect`，避免在 Scene 内硬编码。
 
 ## Map (TMX) Conventions
 - `collisions` 图层：多边形/折线/矩形对象用于生成物理碰撞体

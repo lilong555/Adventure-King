@@ -148,6 +148,7 @@ void ExplosiveProjectile::explode()
         return;
     }
 
+    // 爆炸只结算一次，避免重复伤害/VFX。
     _isExploded = true;
 
     stopActionByTag(LOOP_ANIMATION_TAG);
@@ -234,11 +235,8 @@ void ExplosiveProjectile::applyAoEDamage()
         return;
     }
 
-    Vec2 explosionWorld = getPosition();
-    if (root)
-    {
-        explosionWorld = root->convertToWorldSpace(getPosition());
-    }
+    // 统一转为世界坐标，避免父节点缩放/偏移影响判定。
+    Vec2 explosionWorld = root->convertToWorldSpace(getPosition());
 
     float sourceAttackPower = 0.0f;
     if (_attacker)
@@ -299,6 +297,7 @@ void ExplosiveProjectile::applyAoEDamage()
         }
     };
 
+    // 递归遍历场景树，后续用距离做过滤。
     collectTargets(root);
 
     const float radiusSq = _explosionRadius * _explosionRadius;
@@ -352,6 +351,7 @@ void ExplosiveProjectile::applyAoEDamage()
 
         if (!hasHitRectWorld)
         {
+            // 没有物理形状时，用包围盒作为近似判定。
             Rect bboxParent = target->getBoundingBox();
             Vec2 originWorld = bboxParent.origin;
             Vec2 topRightWorld = bboxParent.origin + bboxParent.size;
@@ -368,6 +368,7 @@ void ExplosiveProjectile::applyAoEDamage()
                 std::fabs(topRightWorld.y - originWorld.y));
         }
 
+        // 圆-矩形距离判定：用最近点距离比较。
         float dx = 0.0f;
         if (explosionWorld.x < hitRectWorld.getMinX())
             dx = hitRectWorld.getMinX() - explosionWorld.x;

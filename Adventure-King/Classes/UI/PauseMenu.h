@@ -23,6 +23,9 @@ public:
      */
     static PauseMenu *create();
 
+    /**
+     * @brief 初始化暂停菜单节点
+     */
     virtual bool init() override;
 
     /**
@@ -47,27 +50,43 @@ public:
     void updatePosition(const cocos2d::Vec2 &cameraOffset);
 
     // 回调设置
+    /// @brief 设置“继续游戏”回调
     void setResumeCallback(const std::function<void()> &callback) { _resumeCallback = callback; }
+    /// @brief 设置“保存游戏”回调
     void setSaveCallback(const std::function<void()> &callback) { _saveCallback = callback; }
+    /// @brief 设置“加载游戏”回调
     void setLoadCallback(const std::function<void()> &callback) { _loadCallback = callback; }
+    /// @brief 设置“设置”回调
     void setSettingsCallback(const std::function<void()> &callback) { _settingsCallback = callback; }
+    /// @brief 设置“主菜单”回调
     void setMainMenuCallback(const std::function<void()> &callback) { _mainMenuCallback = callback; }
+    /// @brief 设置“退出游戏”回调
     void setQuitCallback(const std::function<void()> &callback) { _quitCallback = callback; }
 
 protected:
+    /// @brief 创建菜单背景
     void createBackground();
+    /// @brief 创建标题文本
     void createTitle();
+    /// @brief 创建功能按钮列表
     void createMenuButtons();
 
     // 按钮回调
+    /// @brief 点击“继续”
     void onResumeClicked(cocos2d::Ref *sender);
+    /// @brief 点击“保存”
     void onSaveClicked(cocos2d::Ref *sender);
+    /// @brief 点击“加载”
     void onLoadClicked(cocos2d::Ref *sender);
+    /// @brief 点击“设置”
     void onSettingsClicked(cocos2d::Ref *sender);
+    /// @brief 点击“主菜单”
     void onMainMenuClicked(cocos2d::Ref *sender);
+    /// @brief 点击“退出”
     void onQuitClicked(cocos2d::Ref *sender);
 
     // 创建菜单按钮
+    /// @brief 创建一个带回调的菜单按钮
     cocos2d::MenuItemLabel *createButton(const std::string &text,
                                          const cocos2d::ccMenuCallback &callback);
 

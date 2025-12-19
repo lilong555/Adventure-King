@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SaveData.h"
+#include "Configs/GameConfigs.h"
 #include "cocos2d.h"
 #include <chrono>
 #include <functional>
@@ -17,11 +18,13 @@ class PlayerCharacter;
 class SaveManager
 {
 public:
+    // 获取全局单例
     static SaveManager *getInstance();
+    // 销毁单例（程序退出时调用）
     static void destroyInstance();
 
     // 存档槽位数量
-    static constexpr int MAX_SAVE_SLOTS = 5;
+    static constexpr int MAX_SAVE_SLOTS = GameConfig::Save::MAX_SLOTS;
     static constexpr int AUTO_SAVE_SLOT = MAX_SAVE_SLOTS - 1; // 预留自动存档槽
 
     //================== 核心存档操作 ==================
@@ -126,21 +129,26 @@ public:
     void applyPlayerData(PlayerCharacter *player, const PlayerSaveData &data) const;
 
 private:
+    // 私有构造，外部不可实例化
     SaveManager();
+    // 私有析构，由 destroyInstance 释放
     ~SaveManager();
 
     static SaveManager *_instance;
 
     // 自动存档相关
     bool _autoSaveEnabled = false;
-    float _autoSaveInterval = 300.0f; // 默认 5 分钟
+    float _autoSaveInterval = GameConfig::Save::AUTO_SAVE_INTERVAL_SECONDS; // 默认 5 分钟
     float _autoSaveTimer = 0.0f;
     int _lastAutoSaveSlot = -1; // 上次自动存档的槽位
 
-    // 辅助方法
+    // 构建存档文件路径
     std::string getSaveFilePath(int slotIndex) const;
+    // 构建设置文件路径
     std::string getSettingsFilePath() const;
+    // 写入文本到文件
     bool writeToFile(const std::string &filePath, const std::string &content);
+    // 从文件读取文本
     bool readFromFile(const std::string &filePath, std::string &outContent) const;
 
     std::chrono::steady_clock::time_point _sessionStartTime;

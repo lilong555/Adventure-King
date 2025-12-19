@@ -1,7 +1,7 @@
 # GameScene 完善工作总结（现状版）
 
 ## 最后更新
-2025-12-16
+2025-12-18
 
 ## 工作概述
 `GameScene` 已形成可跑通的“地图 → 刷怪 → 战斗 → 受击反馈”的闭环：场景侧负责地图/输入/碰撞与刷怪，角色侧（`PlayerCharacter`）负责动画与投掷物逻辑，怪物侧（`MonsterBase`/`GoblinMonster`）负责 AI/攻击。
@@ -32,8 +32,14 @@
 - 普攻（`J/4`）：扔炸弹（TNT），落地/命中爆炸并对范围内敌人造成伤害
 - 技能1（`E/K`）：发射导弹（素材在 `Klee/rpg`），命中爆炸（`spr_vfx_explosion_flash_x`）
 - 动画统一：行走/攻击/技能动画在 `PlayerCharacter` 内管理，`GameScene` 仅做状态与回调
+- 爆炸伤害倍率：普攻炸弹按 `1.0x` 攻击力，导弹爆炸按 `2.5x` 攻击力
+- 状态效果：导弹命中施加燃烧 DOT（可叠层、刷新持续时间，DOT 不触发硬直）
 
-### 5) 性能与日志优化
+### 5) 敌人（Goblin）
+- HP 计算：`200 + level*100 + floor(level/10)*1000`（在生成时按玩家等级初始化）
+- 血条显示：哥布林血条 UI 放大 2x
+
+### 6) 性能与日志优化
 - 引入 `SpriteFrameCacheHelper::getOrCreateSpriteFrame`：对文件路径帧按需加载并写入 `SpriteFrameCache`，后续复用，减少重复创建与日志噪音
 - `CharacterBase` 使用 `scheduleUpdateWithPriority(1)` 保证基类更新执行且避免重复 schedule warning
 
@@ -60,5 +66,5 @@
 - `Adventure-King/Classes/Character/Player/PlayerCharacter.cpp`
 - `Adventure-King/Classes/Character/Monster/MonsterBase.cpp`
 - `Adventure-King/Classes/Character/Monster/Monsters/GoblinMonster.cpp`
-- `Adventure-King/Classes/Physics/GamePhysicsCategory.h`
+- `Adventure-King/Classes/Configs/GamePhysicsCategory.h`
 - `Adventure-King/Classes/Utils/SpriteFrameCacheHelper.h`
