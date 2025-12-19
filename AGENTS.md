@@ -48,3 +48,4 @@
 ## Commit & Pull Request Guidelines
 - Commits loosely follow Conventional Commits seen in history: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:` plus a short summary (Chinese or English).
 - PRs should include: purpose, linked issue/feature, scenes affected, and screenshots/GIFs for gameplay/UI changes. Note any new assets and their paths under `Resources/`.
+- `Adventure-King/Resources/` 下的任何改动都需要保留并提交。
