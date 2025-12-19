@@ -170,6 +170,28 @@ bool HelloWorld::init()
         // 将相同的缩放比例应用到 X 和 Y 轴
         contentContainer->setScale(scaleFactor);
     }
+
+    // ==========================================================
+    // 6. 右侧火星粒子效果
+    // ==========================================================
+    const float particleMarginX = 40.0f;
+    const float particleBaseX = origin.x + visibleSize.width - particleMarginX;
+    const float particleYPositions[] = {
+        origin.y + visibleSize.height * 0.25f,
+        origin.y + visibleSize.height * 0.5f,
+        origin.y + visibleSize.height * 0.75f};
+    for (float y : particleYPositions)
+    {
+        auto particleSystem = ParticleSystem::create("Particle/par_warfire.plist");
+        if (!particleSystem)
+        {
+            problemLoading("Particle/par_warfire.plist");
+            continue;
+        }
+        particleSystem->setPosition(Vec2(particleBaseX, y));
+        this->addChild(particleSystem, contentZOrder + 1);
+    }
+
     std::string musicFile = "Scene/MusicOfScene/Music_HelloWorldScene.mp3";
     float musicVolume = GameConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
