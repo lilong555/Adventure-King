@@ -1,7 +1,11 @@
 ﻿#include "MapScene.h"
 #include "GameScene.h"
 #include "DebugScene.h"
+#include "Character/Monster/Monsters/GoblinMonster.h"
+#include "Character/Monster/Monsters/GobluMonster.h"
 #include "Configs/GameConfigs.h"
+#include <algorithm>
+#include <unordered_set>
 USING_NS_CC;
 
 // 统一的资源缺失提示
@@ -18,6 +22,15 @@ Scene *MapScene::createScene()
 
 MapScene::~MapScene()
 {
+    // 场景被销毁时解绑异步贴图回调，避免回调访问已释放的 MapScene
+    if (!_preloadCallbackKey.empty())
+    {
+        if (auto cache = Director::getInstance()->getTextureCache())
+        {
+            cache->unbindImageAsync(_preloadCallbackKey);
+        }
+    }
+
     for (auto marker : _mapMarkers)
     {
         auto selectedImage = static_cast<std::string *>(marker->getUserData());
@@ -40,6 +53,8 @@ bool MapScene::init()
     {
         return false;
     }
+
+    _preloadCallbackKey = StringUtils::format("MapScenePreload_%p", this);
     auto visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
     Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
@@ -177,26 +192,15 @@ bool MapScene::init()
         this->addChild(closeMenu, TAG_MAP_MENU);
     }
 
+    // 在地图选择界面期间后台预加载常用资源，减少“点击进入地图”和“首次刷怪”的卡顿
+    startPreloadOriginMushroom(false);
     return true;
 }
 
 void MapScene::onMapMarkerClicked(int mapId)
 {
     CCLOG("Clicked map: %d", mapId);
-
-    auto destinationScene = createDestinationScene(mapId);
-    if (!destinationScene)
-    {
-        CCLOG("Failed to create destination scene for map: %d", mapId);
-        return;
-    }
-
-    auto director = Director::getInstance();
-    // 清空场景栈，回到根场景
-    director->popToRootScene();
-    // 用 replaceScene 替换当前场景（这样返回时才能回到 MapScene）
-    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION, destinationScene, Color3B::BLACK);
-    director->replaceScene(transition);
+    ensurePreloadedThenEnter(mapId);
 }
 
 void MapScene::mapCloseCallback(cocos2d::Ref *pSender)
@@ -229,4 +233,204 @@ cocos2d::Scene *MapScene::createDestinationScene(int mapId)
     }
 
     return scene;
+}
+
+void MapScene::ensurePreloadedThenEnter(int mapId)
+{
+    // 目前只有起源之菇是真正的 TMX 关卡，优先把它的贴图/怪物资源预加载掉
+    if (mapId == 1 && !_originMushroomAssetsReady)
+    {
+        _pendingEnterMapId = mapId;
+        startPreloadOriginMushroom(true);
+        return;
+    }
+
+    enterMap(mapId);
+}
+
+void MapScene::enterMap(int mapId)
+{
+    auto destinationScene = createDestinationScene(mapId);
+    if (!destinationScene)
+    {
+        CCLOG("Failed to create destination scene for map: %d", mapId);
+        return;
+    }
+
+    auto director = Director::getInstance();
+    director->popToRootScene();
+    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION, destinationScene, Color3B::BLACK);
+    director->replaceScene(transition);
+}
+
+void MapScene::startPreloadOriginMushroom(bool showUI)
+{
+    if (_originMushroomAssetsReady)
+    {
+        return;
+    }
+
+    if (showUI)
+    {
+        if (!_preloadLabel)
+        {
+            auto visibleSize = Director::getInstance()->getVisibleSize();
+            auto origin = Director::getInstance()->getVisibleOrigin();
+            Vec2 pos(origin.x + visibleSize.width * 0.5f,
+                     origin.y + visibleSize.height * 0.08f);
+            _preloadLabel = Label::createWithTTF("加载中...", "fonts/ZCOOLKuaiLe-Regular.ttf", 28);
+            if (_preloadLabel)
+            {
+                _preloadLabel->setPosition(pos);
+                _preloadLabel->setColor(Color3B(240, 240, 240));
+                addChild(_preloadLabel, 9999);
+            }
+        }
+        if (_preloadLabel)
+        {
+            _preloadLabel->setVisible(true);
+        }
+    }
+
+    if (_originMushroomPreloading)
+    {
+        updatePreloadLabel();
+        return;
+    }
+
+    _originMushroomPreloading = true;
+    _originMushroomFinishScheduled = false;
+    _preloadLoaded = 0;
+
+    std::unordered_set<std::string> uniq;
+    std::vector<std::string> paths;
+    paths.reserve(64);
+
+    auto addPath = [&uniq, &paths](const std::string& path)
+    {
+        if (path.empty())
+        {
+            return;
+        }
+        if (uniq.insert(path).second)
+        {
+            paths.push_back(path);
+        }
+    };
+
+    // 地图背景序列
+    for (int i = 0; i < GameConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
+    {
+        addPath(StringUtils::format("%s%02d.png", GameConfig::Map::OriginMushroom::BACKGROUND_PREFIX, i));
+    }
+    // TMX tileset 贴图（Origin_Mushroom.tmx 引用的 tsx）
+    addPath("Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png");
+    addPath("Map/Origin_Mushroom/s1.png");
+    addPath("Map/Origin_Mushroom/s2.png");
+    addPath("Map/Origin_Mushroom/s3.png");
+    addPath("Map/Origin_Mushroom/s4.png");
+
+    // UI：地标选中态贴图（避免第一次 hover 卡一下）
+    for (const auto& info : _markerInfos)
+    {
+        addPath(info.selectedImage);
+    }
+
+    // 常用粒子贴图：避免首次受击/爆炸时加载造成卡顿
+    addPath("Particle/particle_texture.png");
+
+    // 哥布林资源（首刷会卡）：贴图先入 TextureCache
+    addPath("Sprites/Enemies/Goblin/Goblin_idle.png");
+    addPath("Sprites/Enemies/Goblin/Goblin_beattacked.png");
+    for (int i = 1; i <= 4; ++i)
+    {
+        addPath(StringUtils::format("Sprites/Enemies/Goblin/Goblin_walk_%d.png", i));
+        addPath(StringUtils::format("Sprites/Enemies/Goblin/Goblin_attack_%d.png", i));
+    }
+
+    // Boss（Goblu）资源：提前热身，避免第一次出现卡顿
+    addPath("Sprites/Enemies/Goblu/Goblu.png");
+    for (int i = 1; i <= 4; ++i)
+    {
+        addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_walk_%d.png", i));
+        addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i));
+    }
+    for (int i = 11; i <= 15; ++i)
+    {
+        addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i));
+    }
+
+    _preloadTotal = static_cast<int>(paths.size());
+    updatePreloadLabel();
+
+    if (_preloadTotal <= 0)
+    {
+        onOriginMushroomPreloadFinished();
+        return;
+    }
+
+    auto textureCache = Director::getInstance()->getTextureCache();
+    for (const auto& path : paths)
+    {
+        textureCache->addImageAsync(path,
+                                    [this](Texture2D* texture)
+                                    {
+                                        this->onPreloadTextureLoaded(texture);
+                                    },
+                                    _preloadCallbackKey);
+    }
+}
+
+void MapScene::onPreloadTextureLoaded(Texture2D* /*texture*/)
+{
+    _preloadLoaded = std::min(_preloadLoaded + 1, _preloadTotal);
+    updatePreloadLabel();
+
+    if (_preloadLoaded >= _preloadTotal && !_originMushroomFinishScheduled)
+    {
+        _originMushroomFinishScheduled = true;
+        // 避免在 addImageAsync 的同步回调路径里直接触发换场景，延后一帧执行
+        runAction(Sequence::create(DelayTime::create(0.0f),
+                                   CallFunc::create([this]()
+                                                    { this->onOriginMushroomPreloadFinished(); }),
+                                   nullptr));
+    }
+}
+
+void MapScene::onOriginMushroomPreloadFinished()
+{
+    _originMushroomAssetsReady = true;
+    _originMushroomPreloading = false;
+    _originMushroomFinishScheduled = false;
+
+    if (_preloadLabel)
+    {
+        _preloadLabel->setVisible(false);
+    }
+
+    // 预热动画缓存：贴图已进 TextureCache，这里主要是填充 AnimationCache
+    GoblinMonster::preloadResources();
+    GobluMonster::preloadResources();
+
+    if (_pendingEnterMapId != -1)
+    {
+        const int mapId = _pendingEnterMapId;
+        _pendingEnterMapId = -1;
+        enterMap(mapId);
+    }
+}
+
+void MapScene::updatePreloadLabel()
+{
+    if (!_preloadLabel || !_preloadLabel->isVisible())
+    {
+        return;
+    }
+
+    if (_preloadTotal <= 0)
+    {
+        _preloadLabel->setString("加载中...");
+        return;
+    }
+    _preloadLabel->setString(StringUtils::format("加载中... (%d/%d)", _preloadLoaded, _preloadTotal));
 }

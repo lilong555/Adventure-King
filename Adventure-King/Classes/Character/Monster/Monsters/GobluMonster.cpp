@@ -10,6 +10,8 @@ USING_NS_CC;
 
 namespace
 {
+    const char* const GOBLU_ATTACK_NEAR_ANIMATION_KEY = "goblu_attack_near";
+    const char* const GOBLU_ATTACK_FAR_ANIMATION_KEY = "goblu_attack_far";
 
     void ensureSingleFrameAnimationCached(const std::string &animationKey,
                                           const std::string &framePath,
@@ -60,6 +62,35 @@ namespace
             auto anim = Animation::createWithSpriteFrames(frames, delay);
             cache->addAnimation(anim, key);
         }
+    }
+
+    void ensureGobluAttackAnimationCached(const char* animationKey, int startIndex, int endIndex)
+    {
+        auto cache = AnimationCache::getInstance();
+        if (cache->getAnimation(animationKey))
+        {
+            return;
+        }
+
+        Vector<SpriteFrame*> frames;
+        for (int i = startIndex; i <= endIndex; ++i)
+        {
+            std::string path = StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i);
+            auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+            if (!frame)
+            {
+                break;
+            }
+            frames.pushBack(frame);
+        }
+
+        if (frames.empty())
+        {
+            return;
+        }
+
+        auto animation = Animation::createWithSpriteFrames(frames, GameConfig::Monster::Goblu::ATTACK_ANIM_FRAME_DELAY);
+        cache->addAnimation(animation, animationKey);
     }
 }
 
@@ -131,6 +162,21 @@ bool GobluMonster::init(const std::string &spriteFrameName)
     return true;
 }
 
+void GobluMonster::preloadResources()
+{
+    // 预缓存状态动画（AnimationCache），并预加载远近攻击动画帧，避免首次生成卡顿
+    ensureSingleFrameAnimationCached("goblu_idle", "Sprites/Enemies/Goblu/Goblu.png");
+    ensureSingleFrameAnimationCached("goblu_hurt", "Sprites/Enemies/Goblu/Goblu.png");
+    ensureLoopAnimationCached(
+        "goblu_walk",
+        "Sprites/Enemies/Goblu/Goblu_walk_%d.png",
+        4,
+        GameConfig::Monster::Goblu::WALK_ANIM_FRAME_DELAY);
+
+    ensureGobluAttackAnimationCached(GOBLU_ATTACK_NEAR_ANIMATION_KEY, 1, 4);
+    ensureGobluAttackAnimationCached(GOBLU_ATTACK_FAR_ANIMATION_KEY, 11, 15);
+}
+
 void GobluMonster::initAttributes()
 {
     namespace Conf = GameConfig::Monster::Goblu;
@@ -175,43 +221,17 @@ void GobluMonster::initAnimations()
     _attackAnimateNear = nullptr;
     _attackAnimateFar = nullptr;
 
-    cocos2d::Vector<cocos2d::SpriteFrame *> nearFrames;
-    for (int i = 1; i <= 4; ++i)
-    {
-        std::string path = StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i);
-        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
-        if (!frame)
-        {
-            break;
-        }
-        nearFrames.pushBack(frame);
-    }
+    ensureGobluAttackAnimationCached(GOBLU_ATTACK_NEAR_ANIMATION_KEY, 1, 4);
+    ensureGobluAttackAnimationCached(GOBLU_ATTACK_FAR_ANIMATION_KEY, 11, 15);
 
-    if (!nearFrames.empty())
+    if (auto nearAnim = AnimationCache::getInstance()->getAnimation(GOBLU_ATTACK_NEAR_ANIMATION_KEY))
     {
-        auto animation = cocos2d::Animation::createWithSpriteFrames(
-            nearFrames, GameConfig::Monster::Goblu::ATTACK_ANIM_FRAME_DELAY);
-        _attackAnimateNear = cocos2d::Animate::create(animation);
+        _attackAnimateNear = Animate::create(nearAnim);
         _attackAnimateNear->retain();
     }
-
-    cocos2d::Vector<cocos2d::SpriteFrame *> farFrames;
-    for (int i = 11; i <= 15; ++i)
+    if (auto farAnim = AnimationCache::getInstance()->getAnimation(GOBLU_ATTACK_FAR_ANIMATION_KEY))
     {
-        std::string path = StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i);
-        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
-        if (!frame)
-        {
-            break;
-        }
-        farFrames.pushBack(frame);
-    }
-
-    if (!farFrames.empty())
-    {
-        auto animation = cocos2d::Animation::createWithSpriteFrames(
-            farFrames, GameConfig::Monster::Goblu::ATTACK_ANIM_FRAME_DELAY);
-        _attackAnimateFar = cocos2d::Animate::create(animation);
+        _attackAnimateFar = Animate::create(farAnim);
         _attackAnimateFar->retain();
     }
 }

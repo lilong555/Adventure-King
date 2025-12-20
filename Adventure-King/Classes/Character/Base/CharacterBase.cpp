@@ -300,7 +300,16 @@ void CharacterBase::showDamageNumber(float damage, bool isCritical)
 
     // 使用 createWithSystemFont 作为备选，防止 TTF 文件缺失导致崩溃
     Label* label = nullptr;
-    if (FileUtils::getInstance()->isFileExist(DEFAULT_DAMAGE_FONT_PATH)) {
+    // 避免每次受击都做一次文件存在性检查（可能触发 IO）
+    static bool s_damageFontChecked = false;
+    static bool s_damageFontExists = false;
+    if (!s_damageFontChecked)
+    {
+        s_damageFontExists = FileUtils::getInstance()->isFileExist(DEFAULT_DAMAGE_FONT_PATH);
+        s_damageFontChecked = true;
+    }
+
+    if (s_damageFontExists) {
         label = Label::createWithTTF(damageText, DEFAULT_DAMAGE_FONT_PATH, isCritical ? 28 : 22);
     }
     else {
