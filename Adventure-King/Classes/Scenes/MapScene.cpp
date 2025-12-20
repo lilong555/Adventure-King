@@ -238,11 +238,21 @@ cocos2d::Scene *MapScene::createDestinationScene(int mapId)
 
 void MapScene::enterMap(int mapId)
 {
-    // 统一进入加载场景，加载完成后再切到目标关卡
-    auto destinationScene = LoadingScene::createScene(mapId);
+    // 如果目标关卡资源已在地图界面预热完毕，则直接进入关卡，避免多一次 LoadingScene 过渡
+    // 目前仅起源之菇做了完整预加载（贴图 + 动画缓存预热）
+    Scene* destinationScene = nullptr;
+    if (mapId == 1 && _originMushroomAssetsReady)
+    {
+        destinationScene = createDestinationScene(mapId);
+    }
+    else
+    {
+        // 统一进入加载场景，加载完成后再切到目标关卡
+        destinationScene = LoadingScene::createScene(mapId);
+    }
     if (!destinationScene)
     {
-        CCLOG("Failed to create loading scene for map: %d", mapId);
+        CCLOG("Failed to create destination scene for map: %d", mapId);
         return;
     }
 
