@@ -4,6 +4,7 @@
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include "Configs/GameConfigs.h"
+#include "Scenes/LoadingScene.h"
 #include <algorithm>
 #include <unordered_set>
 USING_NS_CC;
@@ -200,7 +201,7 @@ bool MapScene::init()
 void MapScene::onMapMarkerClicked(int mapId)
 {
     CCLOG("Clicked map: %d", mapId);
-    ensurePreloadedThenEnter(mapId);
+    enterMap(mapId);
 }
 
 void MapScene::mapCloseCallback(cocos2d::Ref *pSender)
@@ -235,25 +236,13 @@ cocos2d::Scene *MapScene::createDestinationScene(int mapId)
     return scene;
 }
 
-void MapScene::ensurePreloadedThenEnter(int mapId)
-{
-    // 目前只有起源之菇是真正的 TMX 关卡，优先把它的贴图/怪物资源预加载掉
-    if (mapId == 1 && !_originMushroomAssetsReady)
-    {
-        _pendingEnterMapId = mapId;
-        startPreloadOriginMushroom(true);
-        return;
-    }
-
-    enterMap(mapId);
-}
-
 void MapScene::enterMap(int mapId)
 {
-    auto destinationScene = createDestinationScene(mapId);
+    // 统一进入加载场景，加载完成后再切到目标关卡
+    auto destinationScene = LoadingScene::createScene(mapId);
     if (!destinationScene)
     {
-        CCLOG("Failed to create destination scene for map: %d", mapId);
+        CCLOG("Failed to create loading scene for map: %d", mapId);
         return;
     }
 
@@ -411,13 +400,6 @@ void MapScene::onOriginMushroomPreloadFinished()
     // 预热动画缓存：贴图已进 TextureCache，这里主要是填充 AnimationCache
     GoblinMonster::preloadResources();
     GobluMonster::preloadResources();
-
-    if (_pendingEnterMapId != -1)
-    {
-        const int mapId = _pendingEnterMapId;
-        _pendingEnterMapId = -1;
-        enterMap(mapId);
-    }
 }
 
 void MapScene::updatePreloadLabel()

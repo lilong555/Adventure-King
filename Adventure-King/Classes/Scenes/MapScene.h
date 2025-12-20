@@ -66,7 +66,6 @@ private:
     bool _originMushroomFinishScheduled = false;// 防止重复触发完成回调
     int _preloadTotal = 0;                      // 预加载总数（贴图数量）
     int _preloadLoaded = 0;                     // 已完成预加载数量
-    int _pendingEnterMapId = -1;                // 预加载完成后要进入的地图 ID（-1 表示无）
     cocos2d::Label* _preloadLabel = nullptr;    // 加载提示 UI
     std::string _preloadCallbackKey;            // TextureCache 回调解绑 key
 
@@ -74,8 +73,6 @@ private:
     /// @brief 根据 mapId 创建目标关卡场景
     cocos2d::Scene *createDestinationScene(int mapId);
 
-    /// @brief 确保资源预加载后再进入地图
-    void ensurePreloadedThenEnter(int mapId);
     /// @brief 进入地图（保持原有 replaceScene 逻辑）
     void enterMap(int mapId);
     /// @brief 启动起源之菇关卡资源预加载
