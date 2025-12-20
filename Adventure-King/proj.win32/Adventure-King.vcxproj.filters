@@ -105,6 +105,9 @@
     <ClCompile Include="..\Classes\Scenes\HomeScene.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\LoadingScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Scenes\MapScene.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
@@ -190,6 +193,9 @@
       <Filter>src\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\HomeScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\LoadingScene.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\MapScene.h">

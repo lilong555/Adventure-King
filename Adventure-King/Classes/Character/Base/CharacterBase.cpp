@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <mutex>
 
 USING_NS_CC;
 
@@ -16,6 +17,10 @@ namespace
     const char* const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
     const char* const HURT_PARTICLE_LEFT_PATH = "Particle/par_chararcter_hurt_L.plist";
     const char* const HURT_PARTICLE_RIGHT_PATH = "Particle/par_chararcter_hurt_R.plist";
+
+    // 受击飘字字体存在性缓存：使用 call_once，避免每次受击触发 IO，同时保证线程安全
+    std::once_flag s_damageFontCheckOnce;
+    bool s_damageFontExists = false;
 }
 
 CharacterBase::CharacterBase() = default;
@@ -300,7 +305,11 @@ void CharacterBase::showDamageNumber(float damage, bool isCritical)
 
     // 使用 createWithSystemFont 作为备选，防止 TTF 文件缺失导致崩溃
     Label* label = nullptr;
-    if (FileUtils::getInstance()->isFileExist(DEFAULT_DAMAGE_FONT_PATH)) {
+    // 避免每次受击都做一次文件存在性检查（可能触发 IO）
+    std::call_once(s_damageFontCheckOnce, []()
+                   { s_damageFontExists = FileUtils::getInstance()->isFileExist(DEFAULT_DAMAGE_FONT_PATH); });
+
+    if (s_damageFontExists) {
         label = Label::createWithTTF(damageText, DEFAULT_DAMAGE_FONT_PATH, isCritical ? 28 : 22);
     }
     else {

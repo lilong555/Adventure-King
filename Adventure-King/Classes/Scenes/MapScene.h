@@ -58,13 +58,31 @@ public:
     };
 
 private:
-    int _currentMapIndex;                       // 当前选中的地图索引
     std::vector<cocos2d::Sprite *> _mapMarkers; // 地标精灵列表
     std::vector<MapMarkerInfo> _markerInfos;    // 地图标记数据列表
+    bool _isTransitioning = false;              // 是否正在切场景（避免重复点击触发多次切换）
+    bool _originMushroomAssetsReady = false;    // 起源之菇资源是否已预加载
+    bool _originMushroomPreloading = false;     // 起源之菇资源是否正在预加载
+    bool _originMushroomFinishScheduled = false;// 防止重复触发完成回调
+    int _preloadTotal = 0;                      // 预加载总数（贴图数量）
+    int _preloadLoaded = 0;                     // 已完成预加载数量
+    cocos2d::Label* _preloadLabel = nullptr;    // 加载提示 UI
+    std::string _preloadCallbackKey;            // TextureCache 回调解绑 key
 
     // 创建目标场景（进入地图后的场景）
     /// @brief 根据 mapId 创建目标关卡场景
     cocos2d::Scene *createDestinationScene(int mapId);
+
+    /// @brief 进入地图（保持原有 replaceScene 逻辑）
+    void enterMap(int mapId);
+    /// @brief 启动起源之菇关卡资源预加载
+    void startPreloadOriginMushroom(bool showUI);
+    /// @brief 预加载进度回调（单个贴图完成）
+    void onPreloadTextureLoaded(cocos2d::Texture2D* texture);
+    /// @brief 起源之菇预加载全部完成
+    void onOriginMushroomPreloadFinished();
+    /// @brief 更新加载提示文字
+    void updatePreloadLabel();
 };
 
 #endif // __MAP_SCENE_H__

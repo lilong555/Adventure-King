@@ -15,6 +15,9 @@ public:
     // 创建哥布林角色
     static GoblinMonster* create(const std::string& spriteFrameName = "Sprites/Enemies/Goblin/Goblin_idle.png");
 
+    // 预加载哥布林相关资源（贴图/动画缓存），用于避免首次生成卡顿
+    static void preloadResources();
+
     // 初始化哥布林资源与数据
     virtual bool init(const std::string& spriteFrameName);
 

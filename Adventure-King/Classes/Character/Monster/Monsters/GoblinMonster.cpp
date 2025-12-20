@@ -11,6 +11,8 @@ USING_NS_CC;
 
 namespace
 {
+    const char* const GOBLIN_ATTACK_ANIMATION_KEY = "goblin_attack";
+
     void ensureSingleFrameAnimationCached(const std::string &animationKey,
                                           const std::string &framePath,
                                           float delayPerUnit = 0.2f)
@@ -61,6 +63,44 @@ namespace
             auto anim = cocos2d::Animation::createWithSpriteFrames(frames, delay);
             cache->addAnimation(anim, key);
         }
+    }
+
+    void ensureGoblinAttackAnimationCached()
+    {
+        auto cache = cocos2d::AnimationCache::getInstance();
+        if (cache->getAnimation(GOBLIN_ATTACK_ANIMATION_KEY))
+        {
+            return;
+        }
+
+        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+
+        // 按序加载攻击帧：从 1 开始，遇到缺失文件就停止（避免刷屏报错）
+        auto fileUtils = cocos2d::FileUtils::getInstance();
+        bool oldPopupNotify = fileUtils->isPopupNotify();
+        fileUtils->setPopupNotify(false);
+
+        for (int i = 1; i <= 20; i++)
+        {
+            std::string path = cocos2d::StringUtils::format("Sprites/Enemies/Goblin/Goblin_attack_%d.png", i);
+            auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+            if (!frame)
+            {
+                break;
+            }
+            frames.pushBack(frame);
+        }
+
+        fileUtils->setPopupNotify(oldPopupNotify);
+
+        if (frames.empty())
+        {
+            return;
+        }
+
+        auto animation = cocos2d::Animation::createWithSpriteFrames(
+            frames, GameConfig::Monster::Goblin::ATTACK_ANIM_FRAME_DELAY);
+        cache->addAnimation(animation, GOBLIN_ATTACK_ANIMATION_KEY);
     }
 }
 
@@ -134,6 +174,19 @@ bool GoblinMonster::init(const std::string &spriteFrameName)
     return true;
 }
 
+void GoblinMonster::preloadResources()
+{
+    // 预缓存状态动画（AnimationCache），并预加载攻击动画帧，避免首次生成卡顿
+    ensureSingleFrameAnimationCached("goblin_idle", "Sprites/Enemies/Goblin/Goblin_idle.png");
+    ensureSingleFrameAnimationCached("goblin_hurt", "Sprites/Enemies/Goblin/Goblin_beattacked.png");
+    ensureLoopAnimationCached(
+        "goblin_walk",
+        "Sprites/Enemies/Goblin/Goblin_walk_%d.png",
+        4,
+        GameConfig::Monster::Goblin::WALK_ANIM_FRAME_DELAY);
+    ensureGoblinAttackAnimationCached();
+}
+
 #pragma region 属性初始化
 void GoblinMonster::initAttributes()
 {
@@ -187,41 +240,17 @@ void GoblinMonster::initStateAnimations()
 #pragma region 攻击动画初始化
 void GoblinMonster::initAnimations()
 {
-    cocos2d::Vector<cocos2d::SpriteFrame *> frames;
-    char str[200] = {0};
+    CC_SAFE_RELEASE(_attackAnimate);
+    _attackAnimate = nullptr;
 
-    // 按序加载攻击帧：从 1 开始，遇到缺失文件就停止（避免刷屏报错）
-    auto fileUtils = cocos2d::FileUtils::getInstance();
-    bool oldPopupNotify = fileUtils->isPopupNotify();
-    fileUtils->setPopupNotify(false);
-
-    for (int i = 1; i <= 20; i++)
+    ensureGoblinAttackAnimationCached();
+    auto animation = cocos2d::AnimationCache::getInstance()->getAnimation(GOBLIN_ATTACK_ANIMATION_KEY);
+    if (!animation)
     {
-        // 1. 拼接路径
-        // 你的资源根目录是 Resources，所以路径从 Sprites/... 开始
-        std::sprintf(str, "Sprites/Enemies/Goblin/Goblin_attack_%d.png", i);
-
-        // 2. 优先从 SpriteFrameCache 获取；缺失时按文件加载并加入缓存
-        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(str);
-        if (!frame)
-        {
-            break;
-        }
-
-        frames.pushBack(frame);
-    }
-
-    fileUtils->setPopupNotify(oldPopupNotify);
-
-    if (frames.empty())
-    {
-        CCLOG("ERROR: Goblin attack frames not found under Sprites/Enemies/Goblin/");
+        CCLOG("ERROR: Goblin attack animation cache missing");
         return;
     }
 
-    // 4. 创建动画
-    auto animation = cocos2d::Animation::createWithSpriteFrames(
-        frames, GameConfig::Monster::Goblin::ATTACK_ANIM_FRAME_DELAY);
     _attackAnimate = cocos2d::Animate::create(animation);
     _attackAnimate->retain();
 }
