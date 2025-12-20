@@ -1,6 +1,7 @@
 #include "SkillComponent.h"
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h" // 确保包含属性组件头文件
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
@@ -20,7 +21,7 @@ bool SkillComponent::init()
         return false;
     }
     // 初始化槽位大小，防止越界 (假设默认3个槽位)
-    _activeSlots.resize(3, nullptr);
+    _activeSlots.resize(GameConfig::UI::SKILL_BAR_SLOT_COUNT, nullptr);
     _passiveSlots.resize(3, nullptr);
     return true;
 }
@@ -46,6 +47,12 @@ void SkillComponent::learnSkill(const std::shared_ptr<Skill>& skill)
 {
     if (!skill)
         return;
+
+    // 去重：同 ID 的技能不重复加入
+    if (findLearnedSkillById(skill->id))
+    {
+        return;
+    }
     _learnedSkills.push_back(skill);
 }
 
@@ -86,6 +93,31 @@ bool SkillComponent::equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skil
     // 应用新技能加成
     applyPassiveSkill(skill);
 
+    return true;
+}
+
+bool SkillComponent::unequipActiveSkill(size_t slotIndex)
+{
+    if (slotIndex >= _activeSlots.size())
+    {
+        return false;
+    }
+    _activeSlots[slotIndex] = nullptr;
+    return true;
+}
+
+bool SkillComponent::unequipPassiveSkill(size_t slotIndex)
+{
+    if (slotIndex >= _passiveSlots.size())
+    {
+        return false;
+    }
+
+    if (_passiveSlots[slotIndex])
+    {
+        removePassiveSkill(_passiveSlots[slotIndex]);
+    }
+    _passiveSlots[slotIndex] = nullptr;
     return true;
 }
 

@@ -139,6 +139,7 @@
     <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
     <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
     <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
+    <ClCompile Include="..\Classes\UI\InventoryLayer.cpp" />
     <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
       <Filter>src\Character\Player\Players</Filter>
     </ClCompile>
@@ -229,6 +230,7 @@
     <ClInclude Include="..\Classes\UI\SkillBar.h" />
     <ClInclude Include="..\Classes\UI\BossHealthBar.h" />
     <ClInclude Include="..\Classes\UI\PauseMenu.h" />
+    <ClInclude Include="..\Classes\UI\InventoryLayer.h" />
     <ClInclude Include="..\Classes\Save\SaveData.h" />
     <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
     <ClInclude Include="..\Classes\Save\SaveManager.h" />
@@ -251,6 +253,9 @@
       <Filter>src\UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\UI\SkillBar.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\InventoryLayer.h">
       <Filter>src\UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Save\SaveData.h">

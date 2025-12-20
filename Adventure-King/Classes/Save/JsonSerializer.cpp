@@ -219,6 +219,14 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     }
     playerObj.AddMember("equippedItems", equippedItemsObj, allocator);
 
+    // 背包（装备/武器）
+    rapidjson::Value inventoryArr(rapidjson::kArrayType);
+    for (const auto &equip : data.playerData.inventoryItems)
+    {
+        inventoryArr.PushBack(serializeEquipment(equip, allocator), allocator);
+    }
+    playerObj.AddMember("inventoryItems", inventoryArr, allocator);
+
     // 技能
     rapidjson::Value learnedSkillsArr(rapidjson::kArrayType);
     for (const auto &skill : data.playerData.learnedSkills)
@@ -234,6 +242,14 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
         activeSlotSkillIdsArr.PushBack(skillId, allocator);
     }
     playerObj.AddMember("activeSlotSkillIds", activeSlotSkillIdsArr, allocator);
+
+    // 被动技能槽位
+    rapidjson::Value passiveSlotSkillIdsArr(rapidjson::kArrayType);
+    for (int skillId : data.playerData.passiveSlotSkillIds)
+    {
+        passiveSlotSkillIdsArr.PushBack(skillId, allocator);
+    }
+    playerObj.AddMember("passiveSlotSkillIds", passiveSlotSkillIdsArr, allocator);
 
     doc.AddMember("player", playerObj, allocator);
 
@@ -361,6 +377,20 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
                 }
             }
 
+            // 背包（装备/武器）
+            if (player.HasMember("inventoryItems") && player["inventoryItems"].IsArray())
+            {
+                const auto &inventoryItems = player["inventoryItems"];
+                for (rapidjson::SizeType i = 0; i < inventoryItems.Size(); ++i)
+                {
+                    if (!inventoryItems[i].IsObject())
+                        continue;
+                    EquipmentSaveData equip;
+                    deserializeEquipment(inventoryItems[i], equip);
+                    outData.playerData.inventoryItems.push_back(equip);
+                }
+            }
+
             // 技能
             if (player.HasMember("learnedSkills") && player["learnedSkills"].IsArray())
             {
@@ -384,6 +414,19 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
                     if (activeSlotSkillIds[i].IsInt())
                     {
                         outData.playerData.activeSlotSkillIds.push_back(activeSlotSkillIds[i].GetInt());
+                    }
+                }
+            }
+
+            // 被动技能槽位
+            if (player.HasMember("passiveSlotSkillIds") && player["passiveSlotSkillIds"].IsArray())
+            {
+                const auto &passiveSlotSkillIds = player["passiveSlotSkillIds"];
+                for (rapidjson::SizeType i = 0; i < passiveSlotSkillIds.Size(); ++i)
+                {
+                    if (passiveSlotSkillIds[i].IsInt())
+                    {
+                        outData.playerData.passiveSlotSkillIds.push_back(passiveSlotSkillIds[i].GetInt());
                     }
                 }
             }

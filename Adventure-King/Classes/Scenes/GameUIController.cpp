@@ -10,6 +10,7 @@
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Save/SaveData.h"
 #include "UI/PauseMenu.h"
+#include "UI/InventoryLayer.h"
 #include "Configs/GameConfigs.h"
 
 USING_NS_CC;
@@ -140,6 +141,37 @@ bool GameUIController::init(Scene *scene,
                                           }
                                       }
                                       CCLOG("GameScene - 打开加载游戏菜单"); });
+
+        pauseMenu->setInventoryCallback([this]()
+                                       {
+                                           if (!_gameUI)
+                                               return;
+
+                                           // 打开背包时保持暂停状态：隐藏暂停菜单，展示背包界面
+                                           _gameUI->hidePauseMenu();
+                                           _paused = true;
+                                           if (_onPauseChanged)
+                                           {
+                                               _onPauseChanged(true);
+                                           }
+                                           _gameUI->showInventory();
+                                       });
+    }
+
+    // 背包关闭后回到暂停菜单（仍保持暂停）
+    if (auto inventory = _gameUI->getInventoryLayer())
+    {
+        inventory->setCloseCallback([this]()
+                                    {
+                                        if (!_gameUI)
+                                            return;
+                                        _paused = true;
+                                        if (_onPauseChanged)
+                                        {
+                                            _onPauseChanged(true);
+                                        }
+                                        _gameUI->showPauseMenu();
+                                    });
     }
 
     _scene->addChild(_gameUI, UI_Z_ORDER);
@@ -186,6 +218,19 @@ void GameUIController::togglePauseMenu()
 {
     if (!_gameUI)
         return;
+
+    // 若背包界面正在显示，Esc 优先关闭背包并回到暂停菜单
+    if (_gameUI->isInventoryShowing())
+    {
+        _gameUI->hideInventory();
+        _gameUI->showPauseMenu();
+        _paused = true;
+        if (_onPauseChanged)
+        {
+            _onPauseChanged(true);
+        }
+        return;
+    }
 
     if (_gameUI->isPauseMenuShowing())
     {

@@ -5,6 +5,7 @@
 #include "Character/components/SkillComponent.h"
 #include "cocos2d.h"
 #include <chrono>
+#include <unordered_map>
 
 USING_NS_CC;
 
@@ -419,29 +420,29 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
     }
 
     // 装备
-    const std::map<EquipmentSlot, std::shared_ptr<Equipment>> &equippedItems = player->getEquippedItems();
-    for (std::map<EquipmentSlot, std::shared_ptr<Equipment>>::const_iterator it = equippedItems.begin();
-         it != equippedItems.end(); ++it)
+    auto buildEquipmentSaveData = [](const std::shared_ptr<Equipment> &equipment) -> EquipmentSaveData
     {
-        if (!it->second)
-            continue;
-
         EquipmentSaveData equipData;
-        equipData.id = it->second->id;
-        equipData.name = it->second->name;
-        equipData.description = it->second->description;
-        equipData.slot = static_cast<int>(it->second->slot);
-        equipData.spritePath = it->second->spritePath;
+        if (!equipment)
+        {
+            return equipData;
+        }
+
+        equipData.id = equipment->id;
+        equipData.name = equipment->name;
+        equipData.description = equipment->description;
+        equipData.slot = static_cast<int>(equipment->slot);
+        equipData.spritePath = equipment->spritePath;
 
         // 属性加成
-        for (std::map<AttributeType, float>::const_iterator attrIt = it->second->attributeBonus.values.begin();
-             attrIt != it->second->attributeBonus.values.end(); ++attrIt)
+        for (std::map<AttributeType, float>::const_iterator attrIt = equipment->attributeBonus.values.begin();
+             attrIt != equipment->attributeBonus.values.end(); ++attrIt)
         {
             equipData.attributeBonus.values[static_cast<int>(attrIt->first)] = attrIt->second;
         }
 
         // 检查是否为武器
-        std::shared_ptr<Weapon> weapon = std::dynamic_pointer_cast<Weapon>(it->second);
+        std::shared_ptr<Weapon> weapon = std::dynamic_pointer_cast<Weapon>(equipment);
         if (weapon)
         {
             equipData.isWeapon = true;
@@ -453,7 +454,28 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
             equipData.attackFrameCount = weapon->attackFrameCount;
         }
 
-        data.equippedItems[static_cast<int>(it->first)] = equipData;
+        return equipData;
+    };
+
+    const std::map<EquipmentSlot, std::shared_ptr<Equipment>> &equippedItems = player->getEquippedItems();
+    for (std::map<EquipmentSlot, std::shared_ptr<Equipment>>::const_iterator it = equippedItems.begin();
+         it != equippedItems.end(); ++it)
+    {
+        if (!it->second)
+            continue;
+
+        data.equippedItems[static_cast<int>(it->first)] = buildEquipmentSaveData(it->second);
+    }
+
+    // 背包（装备/武器）
+    const auto &inventoryItems = player->getInventoryItems();
+    for (const auto &item : inventoryItems)
+    {
+        if (!item)
+        {
+            continue;
+        }
+        data.inventoryItems.push_back(buildEquipmentSaveData(item));
     }
 
     // 技能
@@ -511,6 +533,21 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
                 data.activeSlotSkillIds.push_back(-1); // 空槽位
             }
         }
+
+        // 被动技能槽位
+        const std::vector<std::shared_ptr<PassiveSkill>> &passiveSlots = skillComp->getPassiveSlots();
+        for (size_t i = 0; i < passiveSlots.size(); ++i)
+        {
+            const std::shared_ptr<PassiveSkill> &skill = passiveSlots[i];
+            if (skill)
+            {
+                data.passiveSlotSkillIds.push_back(skill->id);
+            }
+            else
+            {
+                data.passiveSlotSkillIds.push_back(-1);
+            }
+        }
     }
 
     CCLOG("SaveManager::extractPlayerData - 成功提取玩家数据");
@@ -560,16 +597,14 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         player->unequip(slot);
     }
 
-    // 装备
-    for (std::map<int, EquipmentSaveData>::const_iterator it = data.equippedItems.begin();
-         it != data.equippedItems.end(); ++it)
-    {
-        const EquipmentSaveData &equipData = it->second;
-        std::shared_ptr<Equipment> equipment;
+    // 清空背包（读档时以存档为准）
+    player->clearInventory();
 
+    auto createEquipmentFromSaveData = [](const EquipmentSaveData &equipData) -> std::shared_ptr<Equipment>
+    {
+        std::shared_ptr<Equipment> equipment;
         if (equipData.isWeapon)
         {
-            // 创建武器
             auto weapon = std::make_shared<Weapon>();
             weapon->id = equipData.id;
             weapon->name = equipData.name;
@@ -583,18 +618,15 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
             weapon->attackAnimationPrefix = equipData.attackAnimationPrefix;
             weapon->attackFrameCount = equipData.attackFrameCount;
 
-            // 属性加成
             for (std::map<int, float>::const_iterator attrIt = equipData.attributeBonus.values.begin();
                  attrIt != equipData.attributeBonus.values.end(); ++attrIt)
             {
                 weapon->attributeBonus.values[static_cast<AttributeType>(attrIt->first)] = attrIt->second;
             }
-
             equipment = weapon;
         }
         else
         {
-            // 创建普通装备
             equipment = std::make_shared<Equipment>();
             equipment->id = equipData.id;
             equipment->name = equipData.name;
@@ -602,11 +634,48 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
             equipment->slot = static_cast<EquipmentSlot>(equipData.slot);
             equipment->spritePath = equipData.spritePath;
 
-            // 属性加成
             for (std::map<int, float>::const_iterator attrIt = equipData.attributeBonus.values.begin();
                  attrIt != equipData.attributeBonus.values.end(); ++attrIt)
             {
                 equipment->attributeBonus.values[static_cast<AttributeType>(attrIt->first)] = attrIt->second;
+            }
+        }
+        return equipment;
+    };
+
+    // 先恢复背包，再恢复穿戴：保证同一件装备在 UI 上不会出现两份对象
+    std::unordered_map<int, std::shared_ptr<Equipment>> inventoryById;
+    for (size_t i = 0; i < data.inventoryItems.size(); ++i)
+    {
+        const EquipmentSaveData &equipData = data.inventoryItems[i];
+        auto equipment = createEquipmentFromSaveData(equipData);
+        if (!equipment)
+        {
+            continue;
+        }
+        player->addToInventory(equipment);
+        inventoryById[equipment->id] = equipment;
+    }
+
+    // 装备（穿戴）
+    for (std::map<int, EquipmentSaveData>::const_iterator it = data.equippedItems.begin();
+         it != data.equippedItems.end(); ++it)
+    {
+        const EquipmentSaveData &equipData = it->second;
+        std::shared_ptr<Equipment> equipment;
+
+        auto found = inventoryById.find(equipData.id);
+        if (found != inventoryById.end())
+        {
+            equipment = found->second;
+        }
+        else
+        {
+            equipment = createEquipmentFromSaveData(equipData);
+            if (equipment)
+            {
+                player->addToInventory(equipment);
+                inventoryById[equipment->id] = equipment;
             }
         }
 
@@ -662,10 +731,17 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         }
 
         // 恢复主动技能槽位
+        const size_t requiredActiveSlots = static_cast<size_t>(GameConfig::UI::SKILL_BAR_SLOT_COUNT);
         std::vector<std::shared_ptr<ActiveSkill>> activeSlots;
-        for (size_t i = 0; i < data.activeSlotSkillIds.size(); ++i)
+        activeSlots.reserve(requiredActiveSlots);
+        for (size_t i = 0; i < requiredActiveSlots; ++i)
         {
-            int skillId = data.activeSlotSkillIds[i];
+            int skillId = -1;
+            if (i < data.activeSlotSkillIds.size())
+            {
+                skillId = data.activeSlotSkillIds[i];
+            }
+
             if (skillId == -1)
             {
                 activeSlots.push_back(std::shared_ptr<ActiveSkill>()); // 空槽位
@@ -678,6 +754,31 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
             }
         }
         skillComp->clearAndSetActiveSlots(activeSlots);
+
+        // 恢复被动技能槽位
+        const size_t requiredPassiveSlots = 3;
+        std::vector<std::shared_ptr<PassiveSkill>> passiveSlots;
+        passiveSlots.reserve(requiredPassiveSlots);
+        for (size_t i = 0; i < requiredPassiveSlots; ++i)
+        {
+            int skillId = -1;
+            if (i < data.passiveSlotSkillIds.size())
+            {
+                skillId = data.passiveSlotSkillIds[i];
+            }
+
+            if (skillId == -1)
+            {
+                passiveSlots.push_back(std::shared_ptr<PassiveSkill>());
+            }
+            else
+            {
+                std::shared_ptr<Skill> skill = skillComp->findLearnedSkillById(skillId);
+                std::shared_ptr<PassiveSkill> passiveSkill = std::dynamic_pointer_cast<PassiveSkill>(skill);
+                passiveSlots.push_back(passiveSkill);
+            }
+        }
+        skillComp->clearAndSetPassiveSlots(passiveSlots);
     }
 
     // 根据最终上限夹取 HP/MP

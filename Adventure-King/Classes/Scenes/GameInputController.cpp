@@ -99,6 +99,21 @@ void GameInputController::onKeyPressed(EventKeyboard::KeyCode keyCode)
                                  { resumeMoveAnimationIfIdle(); });
         break;
 
+    case EventKeyboard::KeyCode::KEY_Q:
+        _player->tryUseSkill(1, [this]()
+                                 { resumeMoveAnimationIfIdle(); });
+        break;
+
+    case EventKeyboard::KeyCode::KEY_R:
+        _player->tryUseSkill(2, [this]()
+                                 { resumeMoveAnimationIfIdle(); });
+        break;
+
+    case EventKeyboard::KeyCode::KEY_F:
+        _player->tryUseSkill(3, [this]()
+                                 { resumeMoveAnimationIfIdle(); });
+        break;
+
     default:
         break;
     }

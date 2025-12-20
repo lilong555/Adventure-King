@@ -34,6 +34,10 @@ public:
     bool equipActiveSkill(const std::shared_ptr<ActiveSkill>& skill, size_t slotIndex);
     bool equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill, size_t slotIndex);
 
+    // 卸下技能（将对应槽位置空；被动技能会移除属性加成）
+    bool unequipActiveSkill(size_t slotIndex);
+    bool unequipPassiveSkill(size_t slotIndex);
+
     // 使用主动技能（成功返回 true）
     bool useActiveSkill(size_t slotIndex);
 

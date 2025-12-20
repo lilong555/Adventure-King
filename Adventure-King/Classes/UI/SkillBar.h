@@ -103,10 +103,13 @@ protected:
     void updateSlotCooldown(size_t index, float currentCD, float maxCD);
     /// @brief 设置槽位是否为空
     void updateSlotEmpty(size_t index, bool isEmpty);
+    /// @brief 根据技能 ID 获取图标路径（占位映射）
+    std::string getIconPathForSkillId(int skillId) const;
 
 protected:
     PlayerCharacter *_player = nullptr;
     std::vector<SkillSlotUI> _slots;
+    std::vector<int> _cachedSkillIds;
 
     // 配置参数
     float _slotSize = 50.0f;

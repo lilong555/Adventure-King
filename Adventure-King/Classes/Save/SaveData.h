@@ -26,7 +26,7 @@ struct EquipmentSaveData
     AttributesSaveData attributeBonus;
     std::string spritePath;
 
-    // 武���特有属性
+    // 武器特有属性
     bool isWeapon = false;
     int weaponType = 0;           // WeaponType
     float attackDamage = 0.0f;
@@ -78,9 +78,13 @@ struct PlayerSaveData
     // 装备（槽位 -> 装备数据）
     std::map<int, EquipmentSaveData> equippedItems;
 
+    // 背包（仅存装备/武器，图标可后续补充）
+    std::vector<EquipmentSaveData> inventoryItems;
+
     // 技能
     std::vector<SkillSaveData> learnedSkills;
     std::vector<int> activeSlotSkillIds; // 主动技能槽位（最多 4 个）
+    std::vector<int> passiveSlotSkillIds; // 被动技能槽位（当前默认 3）
 
     // 默认构造：使用初始玩家数据
     PlayerSaveData() = default;

@@ -4,6 +4,7 @@
  */
 
 #include "PauseMenu.h"
+#include <vector>
 
 USING_NS_CC;
 
@@ -66,7 +67,7 @@ void PauseMenu::createBackground()
 
     // 中央面板
     float panelWidth = 300;
-    float panelHeight = 450;
+    float panelHeight = 500;
     Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
     auto panel = DrawNode::create();
@@ -105,26 +106,37 @@ void PauseMenu::createMenuButtons()
 
     // 创建菜单按钮
     auto resumeBtn = createButton("继续游戏", CC_CALLBACK_1(PauseMenu::onResumeClicked, this));
+    auto inventoryBtn = createButton("背包 / 技能", CC_CALLBACK_1(PauseMenu::onInventoryClicked, this));
     auto saveBtn = createButton("保存游戏", CC_CALLBACK_1(PauseMenu::onSaveClicked, this));
     auto loadBtn = createButton("加载游戏", CC_CALLBACK_1(PauseMenu::onLoadClicked, this));
     auto settingsBtn = createButton("设置", CC_CALLBACK_1(PauseMenu::onSettingsClicked, this));
     auto mainMenuBtn = createButton("返回主菜单", CC_CALLBACK_1(PauseMenu::onMainMenuClicked, this));
     auto quitBtn = createButton("退出游戏", CC_CALLBACK_1(PauseMenu::onQuitClicked, this));
 
+    std::vector<MenuItemLabel *> buttons = {
+        resumeBtn,
+        inventoryBtn,
+        saveBtn,
+        loadBtn,
+        settingsBtn,
+        mainMenuBtn,
+        quitBtn,
+    };
+
     // 设置按钮位置
-    float buttonSpacing = 50;
-    float startY = center.y + 100;
+    float buttonSpacing = 46.0f;
+    float startY = center.y + 110.0f;
+    for (size_t i = 0; i < buttons.size(); ++i)
+    {
+        buttons[i]->setPosition(Vec2(center.x, startY - buttonSpacing * static_cast<float>(i)));
+    }
 
-    resumeBtn->setPosition(Vec2(center.x, startY));
-    saveBtn->setPosition(Vec2(center.x, startY - buttonSpacing));
-    loadBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 2));
-    settingsBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 3));
-    mainMenuBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 4));
-    quitBtn->setPosition(Vec2(center.x, startY - buttonSpacing * 5));
-
-    // 创建菜单
-    _menu = Menu::create(resumeBtn, saveBtn, loadBtn, settingsBtn, mainMenuBtn, quitBtn, nullptr);
+    _menu = Menu::create();
     _menu->setPosition(Vec2::ZERO);
+    for (auto btn : buttons)
+    {
+        _menu->addChild(btn);
+    }
     _container->addChild(_menu, 2);
 }
 
@@ -205,6 +217,14 @@ void PauseMenu::onLoadClicked(Ref *sender)
     if (_loadCallback)
     {
         _loadCallback();
+    }
+}
+
+void PauseMenu::onInventoryClicked(Ref *sender)
+{
+    if (_inventoryCallback)
+    {
+        _inventoryCallback();
     }
 }
 

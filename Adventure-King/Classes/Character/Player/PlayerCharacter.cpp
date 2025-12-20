@@ -167,6 +167,9 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
         _skillSet->initSkills(*this);
     }
 
+    // 8. 默认背包物品（占位）：用于背包系统初期调试
+    ensureDefaultInventory();
+
     return true;
 }
 
@@ -321,6 +324,38 @@ void PlayerCharacter::refreshHpMpFromAttributes()
 // 装备系统
 // =================================================================
 
+void PlayerCharacter::addToInventory(const std::shared_ptr<Equipment>& item)
+{
+    if (!item)
+    {
+        return;
+    }
+
+    // 按 id 去重，避免重复插入
+    for (const auto& existing : _inventoryItems)
+    {
+        if (existing && existing->id == item->id)
+        {
+            return;
+        }
+    }
+    _inventoryItems.push_back(item);
+}
+
+void PlayerCharacter::clearInventory()
+{
+    _inventoryItems.clear();
+}
+
+void PlayerCharacter::setInventoryItems(const std::vector<std::shared_ptr<Equipment>>& items)
+{
+    _inventoryItems.clear();
+    for (const auto& item : items)
+    {
+        addToInventory(item);
+    }
+}
+
 void PlayerCharacter::equip(const std::shared_ptr<Equipment>& item)
 {
     if (!item) return;
@@ -400,6 +435,84 @@ void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon>& weapon)
     {
         _attackAnimationPrefix = _defaultAttackAnimationPrefix;
         _attackFrameCount = 3;
+    }
+}
+
+void PlayerCharacter::ensureDefaultInventory()
+{
+    if (!_inventoryItems.empty())
+    {
+        return;
+    }
+
+    // 说明：这里只放少量“占位物品”，用于背包/装备系统的基本交互验证
+    // 后续可替换为掉落/商店/任务等真实产出逻辑
+
+    // 新手剑（武器）
+    {
+        auto weapon = std::make_shared<Weapon>();
+        weapon->id = 5001;
+        weapon->name = "新手剑";
+        weapon->description = "一把趁手的练习用短剑";
+        weapon->slot = EquipmentSlot::WEAPON;
+        weapon->type = WeaponType::SWORD;
+        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE;
+        weapon->attackRange = 60.0f;
+        weapon->attackSpeed = 1.0f;
+        weapon->attackAnimationPrefix = ""; // 为空则沿用角色默认攻击动画
+        weapon->attackFrameCount = 3;
+        weapon->attributeBonus.add(AttributeType::STRENGTH, 2.0f);
+        addToInventory(weapon);
+    }
+
+    // 训练法杖（武器）
+    {
+        auto weapon = std::make_shared<Weapon>();
+        weapon->id = 5002;
+        weapon->name = "训练法杖";
+        weapon->description = "木制法杖，适合练习施法";
+        weapon->slot = EquipmentSlot::WEAPON;
+        weapon->type = WeaponType::STAFF;
+        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE;
+        weapon->attackRange = 80.0f;
+        weapon->attackSpeed = 0.9f;
+        weapon->attackAnimationPrefix = "";
+        weapon->attackFrameCount = 3;
+        weapon->attributeBonus.add(AttributeType::MAX_MP, 20.0f);
+        addToInventory(weapon);
+    }
+
+    // 皮帽（头盔）
+    {
+        auto equip = std::make_shared<Equipment>();
+        equip->id = 5101;
+        equip->name = "皮帽";
+        equip->description = "简单的皮制头盔";
+        equip->slot = EquipmentSlot::HELMET;
+        equip->attributeBonus.add(AttributeType::MAX_HP, 20.0f);
+        addToInventory(equip);
+    }
+
+    // 皮甲（护甲）
+    {
+        auto equip = std::make_shared<Equipment>();
+        equip->id = 5102;
+        equip->name = "皮甲";
+        equip->description = "轻便护甲，提供基础防护";
+        equip->slot = EquipmentSlot::ARMOR;
+        equip->attributeBonus.add(AttributeType::DEFENSE, 1.0f);
+        addToInventory(equip);
+    }
+
+    // 轻便靴（靴子）
+    {
+        auto equip = std::make_shared<Equipment>();
+        equip->id = 5103;
+        equip->name = "轻便靴";
+        equip->description = "更轻的鞋子，跑得更快";
+        equip->slot = EquipmentSlot::BOOTS;
+        equip->attributeBonus.add(AttributeType::MOVE_SPEED, 20.0f);
+        addToInventory(equip);
     }
 }
 

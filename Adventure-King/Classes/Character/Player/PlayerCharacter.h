@@ -59,6 +59,16 @@ public:
     /// @brief 卸下指定槽位装备
     void unequip(EquipmentSlot slot);
 
+    // 背包（当前仅管理装备/武器；图标资源可后续补齐）
+    /// @brief 获取背包物品列表
+    const std::vector<std::shared_ptr<Equipment>>& getInventoryItems() const { return _inventoryItems; }
+    /// @brief 添加物品到背包（按 id 去重）
+    void addToInventory(const std::shared_ptr<Equipment>& item);
+    /// @brief 清空背包（读档/重置用）
+    void clearInventory();
+    /// @brief 设置背包物品列表（读档用，会按 id 去重）
+    void setInventoryItems(const std::vector<std::shared_ptr<Equipment>>& items);
+
     /// @brief 获取指定槽位装备
     std::shared_ptr<Equipment> getEquipment(EquipmentSlot slot) const;
     /// @brief 获取当前武器
@@ -166,6 +176,8 @@ private:
     void initAssetPaths(const std::string& spriteFrameName);
     /// @brief 创建技能集
     void createSkillSet();
+    /// @brief 初始化默认背包物品（用于占位与测试）
+    void ensureDefaultInventory();
 
     // 动画管理
     /// @brief 缓存移动动画
@@ -206,6 +218,7 @@ private:
 
     // 组件与对象
     std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;
+    std::vector<std::shared_ptr<Equipment>> _inventoryItems;
     std::unique_ptr<PlayerSkillSet> _skillSet;
 
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;

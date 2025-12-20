@@ -20,4 +20,10 @@ private:
                          size_t slotIndex,
                          const ActiveSkill &skill,
                          const std::function<void()> &onFinished);
+
+    // 释放炸弹技能并绑定完成回调
+    bool tryCastBomb(PlayerCharacter &player,
+                     size_t slotIndex,
+                     const ActiveSkill &skill,
+                     const std::function<void()> &onFinished);
 };
