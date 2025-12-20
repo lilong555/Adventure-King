@@ -7,12 +7,140 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <vector>
 
 USING_NS_CC;
 
 namespace
 {
     const char* const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
+    const char* const HURT_PARTICLE_LEFT_PATH = "Particle/par_chararcter_hurt_L.plist";
+    const char* const HURT_PARTICLE_RIGHT_PATH = "Particle/par_chararcter_hurt_R.plist";
+    const float HURT_PARTICLE_BURST_DURATION = 0.2f;
+
+    struct BodyLocalInfo
+    {
+        Size size = Size::ZERO;
+        Vec2 center = Vec2::ZERO;
+    };
+
+    void updateBounds(const Vec2& point, bool& hasPoint, Vec2& minPoint, Vec2& maxPoint)
+    {
+        if (!hasPoint)
+        {
+            minPoint = point;
+            maxPoint = point;
+            hasPoint = true;
+            return;
+        }
+        minPoint.x = std::min(minPoint.x, point.x);
+        minPoint.y = std::min(minPoint.y, point.y);
+        maxPoint.x = std::max(maxPoint.x, point.x);
+        maxPoint.y = std::max(maxPoint.y, point.y);
+    }
+
+    void addLocalPointFromWorld(const Node* owner,
+                                const Vec2& worldPoint,
+                                bool& hasPoint,
+                                Vec2& minPoint,
+                                Vec2& maxPoint)
+    {
+        if (!owner)
+        {
+            return;
+        }
+        Vec2 localPoint = owner->convertToNodeSpace(worldPoint);
+        updateBounds(localPoint, hasPoint, minPoint, maxPoint);
+    }
+
+    void addLocalPointFromBody(const Node* owner,
+                               PhysicsBody* body,
+                               const Vec2& bodyLocalPoint,
+                               bool& hasPoint,
+                               Vec2& minPoint,
+                               Vec2& maxPoint)
+    {
+        if (!owner || !body)
+        {
+            return;
+        }
+        Vec2 worldPoint = body->local2World(bodyLocalPoint);
+        addLocalPointFromWorld(owner, worldPoint, hasPoint, minPoint, maxPoint);
+    }
+
+    BodyLocalInfo getBodyLocalInfo(const Node* owner)
+    {
+        BodyLocalInfo info;
+        if (!owner)
+        {
+            return info;
+        }
+
+        bool hasPoint = false;
+        Vec2 minPoint;
+        Vec2 maxPoint;
+
+        if (auto body = owner->getPhysicsBody())
+        {
+            const auto& shapes = body->getShapes();
+            for (auto shape : shapes)
+            {
+                if (!shape)
+                {
+                    continue;
+                }
+
+                if (auto circle = dynamic_cast<PhysicsShapeCircle*>(shape))
+                {
+                    const Vec2 center = circle->getCenter();
+                    const float radius = circle->getRadius();
+                    addLocalPointFromBody(owner, body, center + Vec2(radius, 0.0f), hasPoint, minPoint, maxPoint);
+                    addLocalPointFromBody(owner, body, center + Vec2(-radius, 0.0f), hasPoint, minPoint, maxPoint);
+                    addLocalPointFromBody(owner, body, center + Vec2(0.0f, radius), hasPoint, minPoint, maxPoint);
+                    addLocalPointFromBody(owner, body, center + Vec2(0.0f, -radius), hasPoint, minPoint, maxPoint);
+                    continue;
+                }
+
+                if (auto poly = dynamic_cast<PhysicsShapePolygon*>(shape))
+                {
+                    const int count = poly->getPointsCount();
+                    if (count <= 0)
+                    {
+                        continue;
+                    }
+                    std::vector<Vec2> points(static_cast<size_t>(count));
+                    poly->getPoints(points.data());
+                    for (const auto& point : points)
+                    {
+                        addLocalPointFromBody(owner, body, point, hasPoint, minPoint, maxPoint);
+                    }
+                }
+            }
+        }
+
+        if (!hasPoint)
+        {
+            Rect bbox = owner->getBoundingBox();
+            Vec2 originWorld = bbox.origin;
+            Vec2 topRightWorld = bbox.origin + bbox.size;
+            if (auto parent = owner->getParent())
+            {
+                originWorld = parent->convertToWorldSpace(bbox.origin);
+                topRightWorld = parent->convertToWorldSpace(bbox.origin + bbox.size);
+            }
+            addLocalPointFromWorld(owner, originWorld, hasPoint, minPoint, maxPoint);
+            addLocalPointFromWorld(owner, topRightWorld, hasPoint, minPoint, maxPoint);
+        }
+
+        if (hasPoint)
+        {
+            info.size = Size(std::max(0.0f, maxPoint.x - minPoint.x),
+                             std::max(0.0f, maxPoint.y - minPoint.y));
+            info.center = Vec2((minPoint.x + maxPoint.x) * 0.5f,
+                               (minPoint.y + maxPoint.y) * 0.5f);
+        }
+        return info;
+    }
 }
 
 CharacterBase::CharacterBase() = default;
@@ -163,6 +291,7 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     finalDamage = std::max(1.0f, std::floor(finalDamage));
 
     showDamageNumber(finalDamage, info.isCritical);
+    spawnHurtVfx(info);
 
     _currentHP -= finalDamage;
 
@@ -187,6 +316,96 @@ void CharacterBase::takeDamage(const DamageInfo& info)
                 sm->changeState(CharacterState::HURT);
             }
         }
+    }
+}
+
+void CharacterBase::spawnHurtVfx(const DamageInfo& info)
+{
+    if (!info.causesHitStun)
+    {
+        return;
+    }
+
+    bool attackerOnLeft = false;
+    if (info.hasHitWorldPos || (info.attacker && info.attacker != this))
+    {
+        auto parent = getParent();
+        Vec2 myWorldPos = parent ? parent->convertToWorldSpace(getPosition()) : getPosition();
+
+        if (info.hasHitWorldPos)
+        {
+            attackerOnLeft = info.hitWorldPos.x < myWorldPos.x;
+        }
+        else
+        {
+            auto attackerParent = info.attacker->getParent();
+            Vec2 attackerWorldPos = attackerParent ?
+                attackerParent->convertToWorldSpace(info.attacker->getPosition()) :
+                info.attacker->getPosition();
+            attackerOnLeft = attackerWorldPos.x < myWorldPos.x;
+        }
+    }
+
+    const char* particlePath = attackerOnLeft ? HURT_PARTICLE_LEFT_PATH : HURT_PARTICLE_RIGHT_PATH;
+    auto particle = ParticleSystemQuad::create(particlePath);
+    if (!particle)
+    {
+#if COCOS2D_DEBUG > 0
+        CCLOG("spawnHurtVfx: 粒子创建失败 (%s)", particlePath);
+#endif
+        return;
+    }
+
+    const auto bodyInfo = getBodyLocalInfo(this);
+    auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
+    if (particleTexture)
+    {
+        particle->setTexture(particleTexture);
+    }
+
+    // 增强可见性：增加数量与寿命，扩大粒子尺寸
+    particle->setTotalParticles(15);
+    particle->setLife(0.3f);
+    particle->setLifeVar(0.1f);
+    particle->setStartSize(20.0f);
+    particle->setStartSizeVar(8.0f);
+    particle->setBlendAdditive(true);
+
+    particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+    auto vfxParent = getParent();
+    Vec2 particlePos = bodyInfo.center;
+    Size posVarSize = bodyInfo.size;
+    if (vfxParent)
+    {
+        Vec2 worldCenter = convertToWorldSpace(bodyInfo.center);
+        particlePos = vfxParent->convertToNodeSpace(worldCenter);
+
+        Vec2 scaleAbs(std::fabs(getScaleX()), std::fabs(getScaleY()));
+        posVarSize = Size(bodyInfo.size.width * scaleAbs.x,
+                          bodyInfo.size.height * scaleAbs.y);
+    }
+    particle->setPosition(particlePos);
+    particle->setPosVar(Vec2(posVarSize.width * 0.5f, posVarSize.height * 0.5f));
+    // 受击方向：强制修正水平发射方向，避免左右效果看不出差异
+    particle->setAngle(attackerOnLeft ? 0.0f : 180.0f);
+    auto gravity = particle->getGravity();
+    gravity.x = std::fabs(gravity.x);
+    gravity.x = attackerOnLeft ? gravity.x : -gravity.x;
+    particle->setGravity(gravity);
+    particle->setDuration(HURT_PARTICLE_BURST_DURATION);
+    const float burstRate = particle->getTotalParticles() /
+                            std::max(0.01f, HURT_PARTICLE_BURST_DURATION);
+    particle->setEmissionRate(std::max(particle->getEmissionRate(), burstRate));
+    particle->setAutoRemoveOnFinish(true);
+    particle->resetSystem();
+
+    if (vfxParent)
+    {
+        vfxParent->addChild(particle, 999);
+    }
+    else
+    {
+        addChild(particle, 999);
     }
 }
 

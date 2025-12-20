@@ -271,6 +271,8 @@ void ExplosiveProjectile::applyAoEDamage()
     dmg.amount = damageAmount;
     dmg.attacker = _attacker;
     dmg.isCritical = isCrit;
+    dmg.hitWorldPos = explosionWorld;
+    dmg.hasHitWorldPos = true;
 
     std::vector<CharacterBase *> targets;
     targets.reserve(8);
