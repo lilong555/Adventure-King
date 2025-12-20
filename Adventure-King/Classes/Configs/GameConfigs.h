@@ -75,6 +75,21 @@ namespace GameConfig
         inline constexpr float GROUND_VELOCITY_THRESHOLD = 5.0f;
         inline constexpr float GROUND_NORMAL_THRESHOLD = -0.3f;
         inline constexpr float DEFAULT_MAX_MP = 1000.0f;
+
+        // 等级/经验曲线配置（避免逻辑与 UI 里各写一份）
+        namespace Leveling
+        {
+            inline constexpr int REQUIRED_EXP_PER_LEVEL = 100; // 线性：每级 *100
+
+            inline int getRequiredExp(int level)
+            {
+                if (level < 1)
+                {
+                    level = 1;
+                }
+                return level * REQUIRED_EXP_PER_LEVEL;
+            }
+        }
     }
     namespace Monster
     {
@@ -108,6 +123,10 @@ namespace GameConfig
             inline constexpr float STRENGTH = 10.0f;
             inline constexpr float DEFENSE = 2.0f;
             inline constexpr float CRITICAL_RATE = 0.05f;
+
+            // 经验奖励（按玩家等级简单缩放）
+            inline constexpr int EXP_REWARD_BASE = 20;
+            inline constexpr int EXP_REWARD_PER_LEVEL = 3;
 
             // 移动与战斗
             inline constexpr float MOVE_SPEED = 200.0f;    // 基础移速
@@ -147,6 +166,10 @@ namespace GameConfig
             inline constexpr float STRENGTH = 25.0f;
             inline constexpr float DEFENSE = 6.0f;
             inline constexpr float CRITICAL_RATE = 0.08f;
+
+            // 经验奖励（Boss）
+            inline constexpr int EXP_REWARD_BASE = 200;
+            inline constexpr int EXP_REWARD_PER_LEVEL = 12;
 
             // 移动与战斗
             inline constexpr float MOVE_SPEED = 160.0f;

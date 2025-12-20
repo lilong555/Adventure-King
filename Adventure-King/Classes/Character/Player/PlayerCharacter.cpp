@@ -229,11 +229,18 @@ void PlayerCharacter::update(float dt)
 
 void PlayerCharacter::addExperience(int amount)
 {
-    _experience += amount;
-    while (_experience >= _level * 100)
+    if (amount <= 0)
     {
-        _experience -= _level * 100;
+        return;
+    }
+
+    _experience += amount;
+    int requiredExp = GameConfig::Player::Leveling::getRequiredExp(_level);
+    while (_experience >= requiredExp)
+    {
+        _experience -= requiredExp;
         levelUp();
+        requiredExp = GameConfig::Player::Leveling::getRequiredExp(_level);
     }
 }
 

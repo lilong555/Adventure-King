@@ -28,6 +28,9 @@ public:
     virtual void attack() override;
 
 protected:
+    // 经验奖励：按玩家等级缩放
+    virtual int getExpReward(int playerLevel) const override;
+
     // 初始化攻击动画
     void initAnimations();
 

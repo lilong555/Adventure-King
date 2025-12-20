@@ -113,6 +113,17 @@ GoblinMonster::~GoblinMonster()
     CC_SAFE_RELEASE(_attackAnimate);
 }
 
+int GoblinMonster::getExpReward(int playerLevel) const
+{
+    if (playerLevel < 1)
+    {
+        playerLevel = 1;
+    }
+
+    return GameConfig::Monster::Goblin::EXP_REWARD_BASE +
+           (playerLevel - 1) * GameConfig::Monster::Goblin::EXP_REWARD_PER_LEVEL;
+}
+
 void GoblinMonster::applyHpScalingForPlayerLevel(int playerLevel)
 {
     int level = std::max(0, playerLevel);

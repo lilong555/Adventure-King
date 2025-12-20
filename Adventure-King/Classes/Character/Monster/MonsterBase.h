@@ -60,6 +60,11 @@ public:
     void setActiveUpdateDistanceX(float distanceX);
 protected:
 
+    // 经验奖励：由各怪物子类覆写（默认不奖励）
+    virtual int getExpReward(int playerLevel) const;
+    // 击杀结算：在死亡前只触发一次
+    void grantKillExperience(const DamageInfo& info);
+
     /// @brief 初始化并缓存基础属性
     void setupCharacterStats(const Attributes& stats);
     /// @brief 刷新缓存属性到成员变量
@@ -148,4 +153,6 @@ protected:
     cocos2d::DrawNode *_hpBar = nullptr;
     float _hpBarScale = 1.0f;
 
-};
+    bool _expGranted = false; // 防止同一只怪多次发放经验（例如 DOT 多 tick 结算）
+
+	};
