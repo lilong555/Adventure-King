@@ -10,6 +10,8 @@
 
 #include "GameScene.h"
 #include "MapScene.h"
+#include"Scenes/LevelScenes/OriginMushroomScene.h"
+#include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"
 #include "Scenes/LevelMap.h"
@@ -691,96 +693,5 @@ void GameScene::showMapLoadFailedUI()
     }
 }
 
-// ============================================================
-// OriginMushroomScene 实现（起源之菇）
-// ============================================================
 
-Scene *OriginMushroomScene::createScene()
-{
-    return OriginMushroomScene::create();
-}
 
-LevelConfig OriginMushroomScene::getLevelConfig() const
-{
-    LevelConfig config;
-    config.tmxMapPath = "Map/Origin_Mushroom/Origin_Mushroom.tmx";
-    config.backgroundPath = "";
-    config.backgroundSeriesPaths.reserve(GameConfig::Map::OriginMushroom::BACKGROUND_COUNT);
-    for (int i = 0; i < GameConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
-    {
-        config.backgroundSeriesPaths.emplace_back(
-            StringUtils::format("%s%02d.png",
-                                GameConfig::Map::OriginMushroom::BACKGROUND_PREFIX,
-                                i));
-    }
-    config.playerSpritePath = DEFAULT_PLAYER_SPRITE;
-    config.collisionLayerName = "collisions";
-    config.bornLayerName = "born";
-    config.gateLayerName = "gate";
-    config.gravity = -1000.0f;
-    config.enablePhysicsDebug = true;
-    return config;
-}
-
-bool OriginMushroomScene::init()
-{
-    LevelConfig config = getLevelConfig();
-    if (!initWithPhysicsConfig(config))
-    {
-        return false;
-    }
-    CCLOG("OriginMushroomScene initialized");
-    return true;
-}
-
-// ============================================================
-// MysteryForestScene 实现（神秘之森）
-// ============================================================
-
-Scene *MysteryForestScene::createScene()
-{
-    return MysteryForestScene::create();
-}
-
-LevelConfig MysteryForestScene::getLevelConfig() const
-{
-    LevelConfig config;
-    config.tmxMapPath = "";
-    config.backgroundPath = "";
-    config.gravity = -800.0f;
-    config.enablePhysicsDebug = false;
-    return config;
-}
-
-bool MysteryForestScene::init()
-{
-    if (!GameScene::init())
-    {
-        return false;
-    }
-
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    auto origin = Director::getInstance()->getVisibleOrigin();
-    Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
-
-    auto titleLabel = Label::createWithTTF(getLevelName(), DEFAULT_FONT_PATH, 72);
-    if (titleLabel)
-    {
-        titleLabel->setPosition(center);
-        titleLabel->setColor(Color3B::WHITE);
-        addChild(titleLabel, 1);
-    }
-
-    auto hintLabel = Label::createWithTTF("Click map button to return", DEFAULT_FONT_PATH, 32);
-    if (hintLabel)
-    {
-        hintLabel->setPosition(Vec2(center.x, center.y - 80));
-        hintLabel->setColor(Color3B(200, 200, 200));
-        addChild(hintLabel, 1);
-    }
-
-    initUIController();
-
-    CCLOG("MysteryForestScene initialized (placeholder)");
-    return true;
-}

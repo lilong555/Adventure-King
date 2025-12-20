@@ -1,44 +1,126 @@
-Adventure-King/Classes/
-├── AppDelegate.cpp
-├── AppDelegate.h
-├── GameUI.cpp
-├── GameUI.h
-├── Character/
-│   ├── Base/
-│   │   ├── CharacterBase.h/.cpp
-│   │   └── CharacterData.h
-│   ├── Player/
-│   │   └── PlayerCharacter.h/.cpp
-│   ├── Monster/
-│   │   ├── MonsterBase.h/.cpp
-│   │   └── Monsters/
-│   │       └── GoblinMonster.h/.cpp
-│   └── components/
-│       ├── AttributeComponent.h/.cpp
-│       ├── SkillComponent.h/.cpp
-│       └── StateMachineComponent.h/.cpp
-├── Managers/
-│   ├── MusicManager.h/.cpp
-│   └── SceneTransitionManager.h/.cpp
-├── Physics/
-│   └── GamePhysicsCategory.h
-├── Save/
-│   ├── SaveManager.h/.cpp
-│   ├── SaveData.h/.cpp
-│   └── JsonSerializer.h/.cpp
-├── Scenes/
-│   ├── GameScene.h/.cpp（含 OriginMushroomScene / MysteryForestScene）
-│   ├── DebugScene.h/.cpp
-│   ├── HelloWorldScene.h/.cpp
-│   ├── MapScene.h/.cpp
-│   ├── HomeScene.h/.cpp
-│   └── Layers/
-│       ├── SaveMenuLayer.h/.cpp
-│       └── SetMenuLayer.h/.cpp
-├── UI/
-│   ├── PlayerStatusBar.h/.cpp
-│   ├── SkillBar.h/.cpp
-│   ├── BossHealthBar.h/.cpp
-│   └── PauseMenu.h/.cpp
-└── Utils/
-    └── SpriteFrameCacheHelper.h
+�ļ��� PATH �б�
+�����к�Ϊ DE7F-4EEE
+D:.
+|   AppDelegate.cpp
+|   AppDelegate.h
+|   GameUI.cpp
+|   GameUI.h
+|   project_tree.txt
+|   
++---Character
+|   +---Base
+|   |       CharacterBase.cpp
+|   |       CharacterBase.h
+|   |       CharacterData.h
+|   |       
+|   +---components
+|   |       AttributeComponent.cpp
+|   |       AttributeComponent.h
+|   |       SkillComponent.cpp
+|   |       SkillComponent.h
+|   |       StateMachineComponent.cpp
+|   |       StateMachineComponent.h
+|   |       StatusEffectVfxComponent.cpp
+|   |       StatusEffectVfxComponent.h
+|   |       
+|   +---Monster
+|   |   |   MonsterBase.cpp
+|   |   |   MonsterBase.h
+|   |   |   
+|   |   \---Monsters
+|   |           GoblinMonster.cpp
+|   |           GoblinMonster.h
+|   |           GobluMonster.cpp
+|   |           GobluMonster.h
+|   |           
+|   \---Player
+|       |   PlayerCharacter.cpp
+|       |   PlayerCharacter.h
+|       |   
+|       +---Players
+|       |       PlayerKlee.cpp
+|       |       PlayerKlee.h
+|       |       
+|       \---SkillSets
+|               KleeSkillSet.cpp
+|               KleeSkillSet.h
+|               PlayerSkillSet.h
+|               
++---Configs
+|       GameConfigs.h
+|       GamePhysicsCategory.h
+|       GameSceneConfig.h
+|       
++---Managers
+|       MusicManager.cpp
+|       MusicManager.h
+|       SceneRegistry.cpp
+|       SceneRegistry.h
+|       SceneTransitionManager.cpp
+|       SceneTransitionManager.h
+|       
++---Objects
+|   \---Projectiles
+|           Bomb.cpp
+|           Bomb.h
+|           ExplosiveProjectile.cpp
+|           ExplosiveProjectile.h
+|           Fireball.cpp
+|           Fireball.h
+|           ProjectilesBase.cpp
+|           ProjectilesBase.h
+|           
++---Save
+|       JsonSerializer.cpp
+|       JsonSerializer.h
+|       SaveData.cpp
+|       SaveData.h
+|       SaveManager.cpp
+|       SaveManager.h
+|       
++---Scenes
+|   |   DebugScene.cpp
+|   |   DebugScene.h
+|   |   GameInputController.cpp
+|   |   GameInputController.h
+|   |   GameScene.cpp
+|   |   GameScene.h
+|   |   GameUIController.cpp
+|   |   GameUIController.h
+|   |   HelloWorldScene.cpp
+|   |   HelloWorldScene.h
+|   |   HomeScene.cpp
+|   |   HomeScene.h
+|   |   LevelMap.cpp
+|   |   LevelMap.h
+|   |   LoadingScene.cpp
+|   |   LoadingScene.h
+|   |   MapScene.cpp
+|   |   MapScene.h
+|   |   
+|   +---Layers
+|   |       SaveMenuLayer.cpp
+|   |       SaveMenuLayer.h
+|   |       SetMenuLayer.cpp
+|   |       SetMenuLayer.h
+|   |       
+|   \---LevelScenes
+|           MysteryForestScene.cpp
+|           MysteryForestScene.h
+|           OriginMushroomScene.cpp
+|           OriginMushroomScene.h
+|           
++---UI
+|       BossHealthBar.cpp
+|       BossHealthBar.h
+|       PauseMenu.cpp
+|       PauseMenu.h
+|       PlayerStatusBar.cpp
+|       PlayerStatusBar.h
+|       SkillBar.cpp
+|       SkillBar.h
+|       
+\---Utils
+        PhysicsBodyLocalInfoHelper.h
+        SpriteFrameCacheHelper.h
+        

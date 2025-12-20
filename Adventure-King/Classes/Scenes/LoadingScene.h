@@ -1,5 +1,19 @@
+//createScene(mapId)
+//↓
+//init()
+//↓
+//initWithMapId(mapId)
+//↓
+//startPreload()
+//↓
+//onTextureLoaded()   ← 多次回调
+//↓
+//finishPreload()
+//↓
+//createDestinationScene()
+//↓
+//切换到真正关卡
 #pragma once
-
 #include "cocos2d.h"
 #include <string>
 #include <vector>
