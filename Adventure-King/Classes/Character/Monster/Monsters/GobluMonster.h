@@ -20,6 +20,7 @@ public:
     virtual void update(float dt) override;
 
     virtual void attack() override;
+    virtual void die() override;
 
 protected:
     void initAnimations();
@@ -35,4 +36,5 @@ protected:
     cocos2d::Animate* _attackAnimateNear = nullptr;
     cocos2d::Animate* _attackAnimateFar = nullptr;
     float _baseAttackRange = 0.0f;
+    bool _deathSequenceStarted = false;
 };

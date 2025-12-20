@@ -313,6 +313,12 @@ std::vector<std::string> LoadingScene::buildPreloadList(int mapId) const
         {
             addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i));
         }
+
+        // Goblu 死亡动画：避免首次死亡时加载卡顿
+        for (int i = 1; i <= 6; ++i)
+        {
+            addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
+        }
     }
 
     // 其它 mapId 目前多为占位场景，可在后续按需补充
