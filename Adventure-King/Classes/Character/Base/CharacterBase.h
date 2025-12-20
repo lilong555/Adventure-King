@@ -111,8 +111,9 @@ protected:
         static constexpr int TOTAL_PARTICLES = 15;
         static constexpr float LIFE_SECONDS = 0.3f;
         static constexpr float LIFE_VAR_SECONDS = 0.1f;
-        static constexpr float START_SIZE = 20.0f;
-        static constexpr float START_SIZE_VAR = 8.0f;
+        // 粒子尺寸：原值偏大，缩小为原来的 1/4
+        static constexpr float START_SIZE = 5.0f;
+        static constexpr float START_SIZE_VAR = 2.0f;
     };
 
     // 子类在 create 中调用，用于初始化贴图和组件

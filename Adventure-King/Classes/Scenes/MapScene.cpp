@@ -400,6 +400,11 @@ void MapScene::startPreloadOriginMushroom(bool showUI)
     {
         addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i));
     }
+    // Goblu 死亡动画：避免首次死亡时加载卡顿
+    for (int i = 1; i <= 6; ++i)
+    {
+        addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
+    }
 
     _preloadTotal = static_cast<int>(paths.size());
     updatePreloadLabel();

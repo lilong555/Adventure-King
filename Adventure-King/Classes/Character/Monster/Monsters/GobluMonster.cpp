@@ -12,6 +12,14 @@ namespace
 {
     const char* const GOBLU_ATTACK_NEAR_ANIMATION_KEY = "goblu_attack_near";
     const char* const GOBLU_ATTACK_FAR_ANIMATION_KEY = "goblu_attack_far";
+    const char* const GOBLU_DEATH_ANIMATION_KEY = "goblu_death";
+
+    // 远程攻击命中框偏大：宽度缩小为当前的 0.8（即 3.5 * 0.8 = 2.8）
+    constexpr float kGobluNearHitboxWidthRatio = 0.8f;
+    constexpr float kGobluFarHitboxWidthRatio = 2.8f;
+    constexpr float kGobluFarHitboxHeightRatio = 1.0f;
+    constexpr float kGobluFarHitboxOffsetRatioX = 2.0f;
+    constexpr float kGobluDeathAnimFrameDelay = 0.12f;
 
     void ensureSingleFrameAnimationCached(const std::string &animationKey,
                                           const std::string &framePath,
@@ -172,6 +180,11 @@ void GobluMonster::preloadResources()
         "Sprites/Enemies/Goblu/Goblu_walk_%d.png",
         4,
         GameConfig::Monster::Goblu::WALK_ANIM_FRAME_DELAY);
+    ensureLoopAnimationCached(
+        GOBLU_DEATH_ANIMATION_KEY,
+        "Sprites/Enemies/Goblu/Goblu_death_%d.png",
+        6,
+        kGobluDeathAnimFrameDelay);
 
     ensureGobluAttackAnimationCached(GOBLU_ATTACK_NEAR_ANIMATION_KEY, 1, 4);
     ensureGobluAttackAnimationCached(GOBLU_ATTACK_FAR_ANIMATION_KEY, 11, 15);
@@ -205,12 +218,18 @@ void GobluMonster::initStateAnimations()
         "Sprites/Enemies/Goblu/Goblu_walk_%d.png",
         4,
         GameConfig::Monster::Goblu::WALK_ANIM_FRAME_DELAY);
+    ensureLoopAnimationCached(
+        GOBLU_DEATH_ANIMATION_KEY,
+        "Sprites/Enemies/Goblu/Goblu_death_%d.png",
+        6,
+        kGobluDeathAnimFrameDelay);
 
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, "goblu_idle");
         sm->registerStateAnimation(CharacterState::HURT, "goblu_hurt");
         sm->registerStateAnimation(CharacterState::WALKING, "goblu_walk");
+        sm->registerStateAnimation(CharacterState::DEAD, GOBLU_DEATH_ANIMATION_KEY);
     }
 }
 
@@ -335,9 +354,9 @@ bool GobluMonster::canHitTarget(bool useNear) const
     const float direction = (getScaleX() > 0.0f) ? 1.0f : -1.0f;
     const float bodyWidth = bodySize.width;
     const float bodyHeight = bodySize.height;
-    const float hitboxWidth = useNear ? bodyWidth * 0.8f : bodyWidth * 3.5f;
-    const float hitboxHeight = useNear ? bodyHeight * 0.8f : bodyHeight;
-    const float offsetX = useNear ? 0.5f * bodyWidth : bodyWidth * 2.0f;
+    const float hitboxWidth = useNear ? bodyWidth * kGobluNearHitboxWidthRatio : bodyWidth * kGobluFarHitboxWidthRatio;
+    const float hitboxHeight = useNear ? bodyHeight * 0.8f : bodyHeight * kGobluFarHitboxHeightRatio;
+    const float offsetX = useNear ? 0.5f * bodyWidth : bodyWidth * kGobluFarHitboxOffsetRatioX;
 
     Vec2 hitboxCenter = getWorldPosition(this) + Vec2(offsetX * direction, 0.5f * hitboxHeight);
     Rect hitboxRect(hitboxCenter.x - hitboxWidth * 0.5f,
@@ -374,8 +393,8 @@ float GobluMonster::getAttackReachX(bool useNear)
         return _baseAttackRange;
     }
 
-    const float hitboxWidth = useNear ? bodyWidth * 0.8f : bodyWidth * 3.5f;
-    const float offsetX = useNear ? 0.5f * bodyWidth : bodyWidth * 2.0f;
+    const float hitboxWidth = useNear ? bodyWidth * kGobluNearHitboxWidthRatio : bodyWidth * kGobluFarHitboxWidthRatio;
+    const float offsetX = useNear ? 0.5f * bodyWidth : bodyWidth * kGobluFarHitboxOffsetRatioX;
     const float reachFromEdge = (offsetX + 0.5f * hitboxWidth) - 0.5f * bodyWidth;
     return std::max(0.0f, reachFromEdge);
 }
@@ -457,9 +476,9 @@ void GobluMonster::attack()
                              const float bodyWidth = worldBodySize.width;
                              const float bodyHeight = worldBodySize.height;
 
-                             float hitboxWidth = useNearHitbox ? bodyWidth * 0.8f : bodyWidth * 3.5f;
-                             float hitboxHeight = useNearHitbox ? bodyHeight * 0.8f : bodyHeight;
-                             float offsetX = useNearHitbox ? 0.5f * bodyWidth : bodyWidth * 2.0f;
+                             float hitboxWidth = useNearHitbox ? bodyWidth * kGobluNearHitboxWidthRatio : bodyWidth * kGobluFarHitboxWidthRatio;
+                             float hitboxHeight = useNearHitbox ? bodyHeight * 0.8f : bodyHeight * kGobluFarHitboxHeightRatio;
+                             float offsetX = useNearHitbox ? 0.5f * bodyWidth : bodyWidth * kGobluFarHitboxOffsetRatioX;
 
                              Size hitboxSize(hitboxWidth, hitboxHeight);
                              Vec2 offset(offsetX * direction, 0.5f * hitboxSize.height);
@@ -494,4 +513,59 @@ void GobluMonster::attack()
         nullptr);
 
     runAction(finalSequence);
+}
+
+void GobluMonster::die()
+{
+    if (_deathSequenceStarted)
+    {
+        return;
+    }
+    _deathSequenceStarted = true;
+
+    // 禁用物理与移动
+    if (_physicsBody)
+    {
+        _physicsBody->setVelocity(Vec2::ZERO);
+        _physicsBody->setDynamic(false);
+        _physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::NONE));
+        _physicsBody->setCollisionBitmask(0);
+        _physicsBody->setContactTestBitmask(0);
+    }
+
+    if (_hpBar)
+    {
+        _hpBar->setVisible(false);
+    }
+
+    // 先停止当前攻击/移动等逻辑动作，再播放死亡动画
+    stopAllActions();
+    if (auto visual = getVisualSprite())
+    {
+        visual->stopAllActions();
+    }
+
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::DEAD);
+    }
+
+    float deathAnimDuration = 0.0f;
+    if (auto anim = AnimationCache::getInstance()->getAnimation(GOBLU_DEATH_ANIMATION_KEY))
+    {
+        deathAnimDuration = anim->getDuration();
+    }
+    if (deathAnimDuration <= 0.0f)
+    {
+        // 兜底：避免动画丢失导致不移除
+        deathAnimDuration = 0.6f;
+    }
+
+    // 播放完死亡动画后再淡出并移除（避免 0.5s 直接淡出导致动画看不全）
+    setCascadeOpacityEnabled(true);
+    runAction(Sequence::create(
+        DelayTime::create(deathAnimDuration),
+        FadeOut::create(0.5f),
+        RemoveSelf::create(),
+        nullptr));
 }
