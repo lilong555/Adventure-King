@@ -2,9 +2,9 @@
 
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
+#include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 USING_NS_CC;
 
@@ -40,6 +40,8 @@ namespace
         float posVarXMax = StatusEffectVfxComponent::BurningVfxParams::POS_VAR_X_MAX;
         float posVarYMax = StatusEffectVfxComponent::BurningVfxParams::POS_VAR_Y_MAX;
         float maxStartSize = StatusEffectVfxComponent::BurningVfxParams::MAX_START_SIZE;
+        float startSizeHeightRatio = StatusEffectVfxComponent::BurningVfxParams::START_SIZE_HEIGHT_RATIO;
+        float minStartSize = StatusEffectVfxComponent::BurningVfxParams::MIN_START_SIZE;
 
         float baseEmission = 55.0f;
         float perStackEmission = 25.0f;
@@ -47,129 +49,7 @@ namespace
 
     const BurningParticleConfig kBurningParticleConfig;
 
-    struct BodyLocalInfo
-    {
-        Size size = Size::ZERO;
-        Vec2 center = Vec2::ZERO;
-    };
-
-    void updateBounds(const Vec2& point, bool& hasPoint, Vec2& minPoint, Vec2& maxPoint)
-    {
-        if (!hasPoint)
-        {
-            minPoint = point;
-            maxPoint = point;
-            hasPoint = true;
-            return;
-        }
-        minPoint.x = std::min(minPoint.x, point.x);
-        minPoint.y = std::min(minPoint.y, point.y);
-        maxPoint.x = std::max(maxPoint.x, point.x);
-        maxPoint.y = std::max(maxPoint.y, point.y);
-    }
-
-    void addLocalPointFromWorld(const Node* owner,
-                                const Vec2& worldPoint,
-                                bool& hasPoint,
-                                Vec2& minPoint,
-                                Vec2& maxPoint)
-    {
-        if (!owner)
-        {
-            return;
-        }
-        Vec2 localPoint = owner->convertToNodeSpace(worldPoint);
-        updateBounds(localPoint, hasPoint, minPoint, maxPoint);
-    }
-
-    void addLocalPointFromBody(const Node* owner,
-                               PhysicsBody* body,
-                               const Vec2& bodyLocalPoint,
-                               bool& hasPoint,
-                               Vec2& minPoint,
-                               Vec2& maxPoint)
-    {
-        if (!owner || !body)
-        {
-            return;
-        }
-        Vec2 worldPoint = body->local2World(bodyLocalPoint);
-        addLocalPointFromWorld(owner, worldPoint, hasPoint, minPoint, maxPoint);
-    }
-
-    BodyLocalInfo getBodyLocalInfo(Node* owner)
-    {
-        BodyLocalInfo info;
-        if (!owner)
-        {
-            return info;
-        }
-
-        bool hasPoint = false;
-        Vec2 minPoint;
-        Vec2 maxPoint;
-
-        if (auto body = owner->getPhysicsBody())
-        {
-            const auto& shapes = body->getShapes();
-            for (auto shape : shapes)
-            {
-                if (!shape)
-                {
-                    continue;
-                }
-
-                if (auto circle = dynamic_cast<PhysicsShapeCircle*>(shape))
-                {
-                    const Vec2 center = circle->getCenter();
-                    const float radius = circle->getRadius();
-                    addLocalPointFromBody(owner, body, center + Vec2(radius, 0.0f), hasPoint, minPoint, maxPoint);
-                    addLocalPointFromBody(owner, body, center + Vec2(-radius, 0.0f), hasPoint, minPoint, maxPoint);
-                    addLocalPointFromBody(owner, body, center + Vec2(0.0f, radius), hasPoint, minPoint, maxPoint);
-                    addLocalPointFromBody(owner, body, center + Vec2(0.0f, -radius), hasPoint, minPoint, maxPoint);
-                    continue;
-                }
-
-                if (auto poly = dynamic_cast<PhysicsShapePolygon*>(shape))
-                {
-                    const int count = poly->getPointsCount();
-                    if (count <= 0)
-                    {
-                        continue;
-                    }
-                    std::vector<Vec2> points(static_cast<size_t>(count));
-                    poly->getPoints(points.data());
-                    for (const auto& point : points)
-                    {
-                        addLocalPointFromBody(owner, body, point, hasPoint, minPoint, maxPoint);
-                    }
-                }
-            }
-        }
-
-        if (!hasPoint)
-        {
-            Rect bbox = owner->getBoundingBox();
-            Vec2 originWorld = bbox.origin;
-            Vec2 topRightWorld = bbox.origin + bbox.size;
-            if (auto parent = owner->getParent())
-            {
-                originWorld = parent->convertToWorldSpace(bbox.origin);
-                topRightWorld = parent->convertToWorldSpace(bbox.origin + bbox.size);
-            }
-            addLocalPointFromWorld(owner, originWorld, hasPoint, minPoint, maxPoint);
-            addLocalPointFromWorld(owner, topRightWorld, hasPoint, minPoint, maxPoint);
-        }
-
-        if (hasPoint)
-        {
-            info.size = Size(std::max(0.0f, maxPoint.x - minPoint.x),
-                             std::max(0.0f, maxPoint.y - minPoint.y));
-            info.center = Vec2((minPoint.x + maxPoint.x) * 0.5f,
-                               (minPoint.y + maxPoint.y) * 0.5f);
-        }
-        return info;
-    }
+    using BodyLocalInfo = PhysicsBodyLocalInfoHelper::BodyLocalInfo;
 
     Texture2D* getWhiteParticleTexture()
     {
@@ -259,9 +139,9 @@ namespace
                                        kBurningParticleConfig.posVarYMax);
         particle->setPosVar(Vec2(posVarX, posVarY));
 
-        const float rawSize = bodyInfo.size.height * 0.08f;
+        const float rawSize = bodyInfo.size.height * kBurningParticleConfig.startSizeHeightRatio;
         const float baseSize = std::min(kBurningParticleConfig.maxStartSize,
-                                        std::max(6.0f, rawSize));
+                                        std::max(kBurningParticleConfig.minStartSize, rawSize));
         particle->setStartSize(baseSize);
         particle->setStartSizeVar(baseSize * 0.5f);
         particle->setEndSize(0.0f);
@@ -328,7 +208,7 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
     }
 
     const int stacks = getStacks(attr, StatusEffectType::BURNING);
-    const auto bodyInfo = getBodyLocalInfo(owner);
+    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(owner);
 
     if (!existing)
     {

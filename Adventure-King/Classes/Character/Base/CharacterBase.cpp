@@ -3,11 +3,11 @@
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Configs/GameConfigs.h"
+#include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <vector>
 
 USING_NS_CC;
 
@@ -16,131 +16,6 @@ namespace
     const char* const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
     const char* const HURT_PARTICLE_LEFT_PATH = "Particle/par_chararcter_hurt_L.plist";
     const char* const HURT_PARTICLE_RIGHT_PATH = "Particle/par_chararcter_hurt_R.plist";
-    const float HURT_PARTICLE_BURST_DURATION = 0.2f;
-
-    struct BodyLocalInfo
-    {
-        Size size = Size::ZERO;
-        Vec2 center = Vec2::ZERO;
-    };
-
-    void updateBounds(const Vec2& point, bool& hasPoint, Vec2& minPoint, Vec2& maxPoint)
-    {
-        if (!hasPoint)
-        {
-            minPoint = point;
-            maxPoint = point;
-            hasPoint = true;
-            return;
-        }
-        minPoint.x = std::min(minPoint.x, point.x);
-        minPoint.y = std::min(minPoint.y, point.y);
-        maxPoint.x = std::max(maxPoint.x, point.x);
-        maxPoint.y = std::max(maxPoint.y, point.y);
-    }
-
-    void addLocalPointFromWorld(const Node* owner,
-                                const Vec2& worldPoint,
-                                bool& hasPoint,
-                                Vec2& minPoint,
-                                Vec2& maxPoint)
-    {
-        if (!owner)
-        {
-            return;
-        }
-        Vec2 localPoint = owner->convertToNodeSpace(worldPoint);
-        updateBounds(localPoint, hasPoint, minPoint, maxPoint);
-    }
-
-    void addLocalPointFromBody(const Node* owner,
-                               PhysicsBody* body,
-                               const Vec2& bodyLocalPoint,
-                               bool& hasPoint,
-                               Vec2& minPoint,
-                               Vec2& maxPoint)
-    {
-        if (!owner || !body)
-        {
-            return;
-        }
-        Vec2 worldPoint = body->local2World(bodyLocalPoint);
-        addLocalPointFromWorld(owner, worldPoint, hasPoint, minPoint, maxPoint);
-    }
-
-    BodyLocalInfo getBodyLocalInfo(const Node* owner)
-    {
-        BodyLocalInfo info;
-        if (!owner)
-        {
-            return info;
-        }
-
-        bool hasPoint = false;
-        Vec2 minPoint;
-        Vec2 maxPoint;
-
-        if (auto body = owner->getPhysicsBody())
-        {
-            const auto& shapes = body->getShapes();
-            for (auto shape : shapes)
-            {
-                if (!shape)
-                {
-                    continue;
-                }
-
-                if (auto circle = dynamic_cast<PhysicsShapeCircle*>(shape))
-                {
-                    const Vec2 center = circle->getCenter();
-                    const float radius = circle->getRadius();
-                    addLocalPointFromBody(owner, body, center + Vec2(radius, 0.0f), hasPoint, minPoint, maxPoint);
-                    addLocalPointFromBody(owner, body, center + Vec2(-radius, 0.0f), hasPoint, minPoint, maxPoint);
-                    addLocalPointFromBody(owner, body, center + Vec2(0.0f, radius), hasPoint, minPoint, maxPoint);
-                    addLocalPointFromBody(owner, body, center + Vec2(0.0f, -radius), hasPoint, minPoint, maxPoint);
-                    continue;
-                }
-
-                if (auto poly = dynamic_cast<PhysicsShapePolygon*>(shape))
-                {
-                    const int count = poly->getPointsCount();
-                    if (count <= 0)
-                    {
-                        continue;
-                    }
-                    std::vector<Vec2> points(static_cast<size_t>(count));
-                    poly->getPoints(points.data());
-                    for (const auto& point : points)
-                    {
-                        addLocalPointFromBody(owner, body, point, hasPoint, minPoint, maxPoint);
-                    }
-                }
-            }
-        }
-
-        if (!hasPoint)
-        {
-            Rect bbox = owner->getBoundingBox();
-            Vec2 originWorld = bbox.origin;
-            Vec2 topRightWorld = bbox.origin + bbox.size;
-            if (auto parent = owner->getParent())
-            {
-                originWorld = parent->convertToWorldSpace(bbox.origin);
-                topRightWorld = parent->convertToWorldSpace(bbox.origin + bbox.size);
-            }
-            addLocalPointFromWorld(owner, originWorld, hasPoint, minPoint, maxPoint);
-            addLocalPointFromWorld(owner, topRightWorld, hasPoint, minPoint, maxPoint);
-        }
-
-        if (hasPoint)
-        {
-            info.size = Size(std::max(0.0f, maxPoint.x - minPoint.x),
-                             std::max(0.0f, maxPoint.y - minPoint.y));
-            info.center = Vec2((minPoint.x + maxPoint.x) * 0.5f,
-                               (minPoint.y + maxPoint.y) * 0.5f);
-        }
-        return info;
-    }
 }
 
 CharacterBase::CharacterBase() = default;
@@ -356,7 +231,7 @@ void CharacterBase::spawnHurtVfx(const DamageInfo& info)
         return;
     }
 
-    const auto bodyInfo = getBodyLocalInfo(this);
+    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
     auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
     if (particleTexture)
     {
@@ -364,11 +239,11 @@ void CharacterBase::spawnHurtVfx(const DamageInfo& info)
     }
 
     // 增强可见性：增加数量与寿命，扩大粒子尺寸
-    particle->setTotalParticles(15);
-    particle->setLife(0.3f);
-    particle->setLifeVar(0.1f);
-    particle->setStartSize(20.0f);
-    particle->setStartSizeVar(8.0f);
+    particle->setTotalParticles(HurtVfxParams::TOTAL_PARTICLES);
+    particle->setLife(HurtVfxParams::LIFE_SECONDS);
+    particle->setLifeVar(HurtVfxParams::LIFE_VAR_SECONDS);
+    particle->setStartSize(HurtVfxParams::START_SIZE);
+    particle->setStartSizeVar(HurtVfxParams::START_SIZE_VAR);
     particle->setBlendAdditive(true);
 
     particle->setPositionType(ParticleSystem::PositionType::GROUPED);
@@ -392,9 +267,9 @@ void CharacterBase::spawnHurtVfx(const DamageInfo& info)
     gravity.x = std::fabs(gravity.x);
     gravity.x = attackerOnLeft ? gravity.x : -gravity.x;
     particle->setGravity(gravity);
-    particle->setDuration(HURT_PARTICLE_BURST_DURATION);
+    particle->setDuration(HurtVfxParams::BURST_DURATION_SECONDS);
     const float burstRate = particle->getTotalParticles() /
-                            std::max(0.01f, HURT_PARTICLE_BURST_DURATION);
+                            std::max(0.01f, HurtVfxParams::BURST_DURATION_SECONDS);
     particle->setEmissionRate(std::max(particle->getEmissionRate(), burstRate));
     particle->setAutoRemoveOnFinish(true);
     particle->resetSystem();

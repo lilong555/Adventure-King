@@ -104,6 +104,17 @@ public:
 protected:
     CharacterBase();
 
+    // 受击特效调参（在头文件修改即可生效）
+    struct HurtVfxParams
+    {
+        static constexpr float BURST_DURATION_SECONDS = 0.2f;
+        static constexpr int TOTAL_PARTICLES = 15;
+        static constexpr float LIFE_SECONDS = 0.3f;
+        static constexpr float LIFE_VAR_SECONDS = 0.1f;
+        static constexpr float START_SIZE = 20.0f;
+        static constexpr float START_SIZE_VAR = 8.0f;
+    };
+
     // 子类在 create 中调用，用于初始化贴图和组件
     /// @brief 使用精灵帧名初始化角色
     bool initWithSpriteFrameName(const std::string& spriteFrameName);

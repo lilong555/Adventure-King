@@ -20,6 +20,8 @@ public:
         static constexpr float POS_VAR_X_MAX = 70.0f;
         static constexpr float POS_VAR_Y_MAX = 110.0f;
         static constexpr float MAX_START_SIZE = 18.0f;
+        static constexpr float START_SIZE_HEIGHT_RATIO = 0.08f;
+        static constexpr float MIN_START_SIZE = 6.0f;
     };
 
     /// @brief 构造函数
