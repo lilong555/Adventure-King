@@ -6,6 +6,7 @@
 #include "PlayerStatusBar.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/AttributeComponent.h"
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
@@ -216,7 +217,7 @@ void PlayerStatusBar::updateDisplay()
     // 更新经验条
     int currentExp = _player->getExperience();
     int level = _player->getLevel();
-    int requiredExp = 100 * level; // 升级所需经验
+    int requiredExp = GameConfig::Player::Leveling::getRequiredExp(level);
     updateExpBar(currentExp, requiredExp);
 
     // 更新等级

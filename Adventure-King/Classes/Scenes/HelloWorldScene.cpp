@@ -277,6 +277,12 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
                 auto playerData = saveData.playerData;
                 auto playerPos = Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
 
+                // 同步运行时数据：保证新场景创建玩家时即可拿到正确的等级/经验等（避免先用旧数据刷怪/显示）
+                if (saveManager)
+                {
+                    saveManager->setRuntimePlayerData(playerData);
+                }
+
                 gameScene->scheduleOnce([saveManager, playerData, playerPos](float dt) {
                     auto currentScene = Director::getInstance()->getRunningScene();
                     auto currentGameScene = dynamic_cast<GameScene*>(currentScene);

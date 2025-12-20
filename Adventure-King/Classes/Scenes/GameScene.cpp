@@ -205,6 +205,15 @@ void GameScene::initPlayer(const Vec2 &startPos)
     _player->setTag(TAG_PLAYER);
     _player->setAutoRemoveOnDeath(false);
 
+    // 如果存在运行时玩家数据（从上一张地图离开时缓存），则在进图时自动恢复
+    if (auto saveManager = SaveManager::getInstance())
+    {
+        if (saveManager->hasRuntimePlayerData())
+        {
+            saveManager->applyPlayerData(_player, saveManager->getRuntimePlayerData());
+        }
+    }
+
     if (_gameLayer)
     {
         _gameLayer->addChild(_player, PLAYER_Z_ORDER);
@@ -337,6 +346,12 @@ void GameScene::initUIController()
                 auto playerData = saveData.playerData;
                 auto playerPos = Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
 
+                // 同步运行时数据：保证新场景创建玩家时即可拿到正确的等级/经验等（避免先用旧数据刷怪/显示）
+                if (saveManager)
+                {
+                    saveManager->setRuntimePlayerData(playerData);
+                }
+
                 gameScene->scheduleOnce([saveManager, playerData, playerPos](float dt)
                                         {
                                             auto currentScene = Director::getInstance()->getRunningScene();
@@ -388,6 +403,15 @@ void GameScene::initCameraFollow()
 void GameScene::returnToMapScene()
 {
     CCLOG("Returning to map scene from: %s", getLevelName().c_str());
+
+    // 关卡离开时缓存玩家进度：避免再次进图时等级/经验被重置
+    if (_player)
+    {
+        if (auto saveManager = SaveManager::getInstance())
+        {
+            saveManager->cacheRuntimePlayerData(_player);
+        }
+    }
 
     auto mapScene = MapScene::createScene();
     if (!mapScene)

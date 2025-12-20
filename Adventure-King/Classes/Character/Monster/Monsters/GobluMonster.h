@@ -23,6 +23,9 @@ public:
     virtual void die() override;
 
 protected:
+    // 经验奖励：按玩家等级缩放
+    virtual int getExpReward(int playerLevel) const override;
+
     void initAnimations();
     void initStateAnimations();
     void initAttributes();
