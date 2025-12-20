@@ -168,10 +168,9 @@ void PauseMenu::show()
     _container->setOpacity(0);
     _container->runAction(FadeIn::create(0.2f));
 
-    // 面板从上方滑入
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    _container->setPositionY(50);
-    _container->runAction(EaseBackOut::create(MoveTo::create(0.3f, Vec2::ZERO)));
+    // 之前这里有“从上方滑入”的位移动画：在动画过程中点击按钮，MenuItem 可能因节点位移被判定为拖动而取消点击。
+    // 为了保证按钮点击稳定，这里仅保留淡入效果（不做位移）。
+    _container->setPosition(Vec2::ZERO);
 }
 
 void PauseMenu::hide()
