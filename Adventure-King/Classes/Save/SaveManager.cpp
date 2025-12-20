@@ -45,6 +45,39 @@ SaveManager::~SaveManager()
 {
 }
 
+//================== 运行时进度（不落盘） ==================
+
+void SaveManager::cacheRuntimePlayerData(PlayerCharacter *player)
+{
+    if (!player)
+    {
+        CCLOG("SaveManager::cacheRuntimePlayerData - 玩家指针为空");
+        return;
+    }
+
+    _runtimePlayerData = extractPlayerData(player);
+    _hasRuntimePlayerData = true;
+    CCLOG("SaveManager::cacheRuntimePlayerData - 已缓存运行时玩家数据（Lv.%d, Exp=%d）",
+          _runtimePlayerData.level,
+          _runtimePlayerData.experience);
+}
+
+void SaveManager::setRuntimePlayerData(const PlayerSaveData &data)
+{
+    _runtimePlayerData = data;
+    _hasRuntimePlayerData = true;
+    CCLOG("SaveManager::setRuntimePlayerData - 已设置运行时玩家数据（Lv.%d, Exp=%d）",
+          _runtimePlayerData.level,
+          _runtimePlayerData.experience);
+}
+
+void SaveManager::clearRuntimePlayerData()
+{
+    _hasRuntimePlayerData = false;
+    _runtimePlayerData = PlayerSaveData();
+    CCLOG("SaveManager::clearRuntimePlayerData - 已清空运行时玩家数据");
+}
+
 //================== 辅助方法 ==================
 
 std::string SaveManager::getSaveFilePath(int slotIndex) const

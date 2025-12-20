@@ -110,6 +110,17 @@ GobluMonster::~GobluMonster()
     CC_SAFE_RELEASE(_attackAnimateFar);
 }
 
+int GobluMonster::getExpReward(int playerLevel) const
+{
+    if (playerLevel < 1)
+    {
+        playerLevel = 1;
+    }
+
+    return GameConfig::Monster::Goblu::EXP_REWARD_BASE +
+           (playerLevel - 1) * GameConfig::Monster::Goblu::EXP_REWARD_PER_LEVEL;
+}
+
 GobluMonster *GobluMonster::create(const std::string &spriteFrameName)
 {
     auto ret = new (std::nothrow) GobluMonster();

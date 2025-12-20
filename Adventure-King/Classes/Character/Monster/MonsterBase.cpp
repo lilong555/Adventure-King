@@ -1,12 +1,54 @@
 #include "MonsterBase.h"
 #include "Character/components/StatusEffectVfxComponent.h"
+#include "Character/Player/PlayerCharacter.h"
 #include "Configs/GameConfigs.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <cmath>
 USING_NS_CC;
 
+int MonsterBase::getExpReward(int /*playerLevel*/) const
+{
+    return 0;
+}
+
+void MonsterBase::grantKillExperience(const DamageInfo& info)
+{
+    if (_expGranted)
+    {
+        return;
+    }
+    _expGranted = true;
+
+    PlayerCharacter* player = nullptr;
+    if (info.attacker)
+    {
+        player = dynamic_cast<PlayerCharacter*>(info.attacker);
+    }
+    if (!player && _primaryTarget)
+    {
+        player = dynamic_cast<PlayerCharacter*>(_primaryTarget);
+    }
+    if (!player && _target)
+    {
+        player = dynamic_cast<PlayerCharacter*>(_target);
+    }
+    if (!player)
+    {
+        return;
+    }
+
+    int reward = getExpReward(player->getLevel());
+    if (reward <= 0)
+    {
+        return;
+    }
+
+    player->addExperience(reward);
+}
+
 MonsterBase::MonsterBase()
+    : _expGranted(false)
 {
 }
 
@@ -599,6 +641,12 @@ void MonsterBase::attack()
 
 void MonsterBase::takeDamage(const DamageInfo& info)
 {
+    // 防止死亡后被重复结算（例如 DOT 同帧多 tick、或多次接触回调）
+    if (isDead())
+    {
+        return;
+    }
+
     float dmg = info.amount;
 
     float hp = getCurrentHP();
@@ -612,6 +660,8 @@ void MonsterBase::takeDamage(const DamageInfo& info)
 
     if (hp <= 0)
     {
+        // 先结算经验，再执行死亡逻辑（部分 Boss 的 die() 不会走 MonsterBase::die）
+        grantKillExperience(info);
         die();
         return;
     }

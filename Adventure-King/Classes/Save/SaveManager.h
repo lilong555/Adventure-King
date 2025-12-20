@@ -128,6 +128,34 @@ public:
      */
     void applyPlayerData(PlayerCharacter *player, const PlayerSaveData &data) const;
 
+    //================== 运行时进度（不落盘） ==================
+
+    /**
+     * 缓存当前玩家数据（用于关卡 <-> 地图切换时保持等级/经验/装备等）
+     * @note 不会写入磁盘，仅保存在内存中
+     */
+    void cacheRuntimePlayerData(PlayerCharacter *player);
+
+    /**
+     * 直接设置运行时玩家数据（例如从读档结果写入）
+     */
+    void setRuntimePlayerData(const PlayerSaveData &data);
+
+    /**
+     * 当前是否存在运行时玩家数据
+     */
+    bool hasRuntimePlayerData() const { return _hasRuntimePlayerData; }
+
+    /**
+     * 获取运行时玩家数据（调用前请先判断 hasRuntimePlayerData）
+     */
+    const PlayerSaveData &getRuntimePlayerData() const { return _runtimePlayerData; }
+
+    /**
+     * 清空运行时玩家数据（例如返回主菜单重新开始时使用）
+     */
+    void clearRuntimePlayerData();
+
 private:
     // 私有构造，外部不可实例化
     SaveManager();
@@ -141,6 +169,10 @@ private:
     float _autoSaveInterval = GameConfig::Save::AUTO_SAVE_INTERVAL_SECONDS; // 默认 5 分钟
     float _autoSaveTimer = 0.0f;
     int _lastAutoSaveSlot = -1; // 上次自动存档的槽位
+
+    // 运行时玩家数据：用于关卡切换时保持进度，不落盘
+    bool _hasRuntimePlayerData = false;
+    PlayerSaveData _runtimePlayerData;
 
     // 构建存档文件路径
     std::string getSaveFilePath(int slotIndex) const;
