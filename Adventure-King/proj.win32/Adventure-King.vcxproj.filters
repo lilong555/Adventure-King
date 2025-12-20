@@ -58,6 +58,9 @@
     <Filter Include="src\Configs">
       <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Scenes\LevelScenes">
+      <UniqueIdentifier>{49342bb6-151c-4a1b-9b8c-d9af38d23459}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -132,13 +135,6 @@
     <ClCompile Include="..\Classes\GameUI.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Save\SaveData.cpp" />
-    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
-    <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
-    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp" />
-    <ClCompile Include="..\Classes\UI\SkillBar.cpp" />
-    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp" />
-    <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
     <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
       <Filter>src\Character\Player\Players</Filter>
     </ClCompile>
@@ -150,6 +146,42 @@
     </ClCompile>
     <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp">
       <Filter>src\Character\Player\SkillSets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Managers\SceneRegistry.cpp">
+      <Filter>src\Managers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\LevelScenes\OriginMushroomScene.cpp">
+      <Filter>src\Scenes\LevelScenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\LevelScenes\MysteryForestScene.cpp">
+      <Filter>src\Scenes\LevelScenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Save\SaveManager.cpp">
+      <Filter>src\Save</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Save\SaveData.cpp">
+      <Filter>src\Save</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Save\JsonSerializer.cpp">
+      <Filter>src\Save</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\BossHealthBar.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\PauseMenu.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\SkillBar.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\components\StatusEffectVfxComponent.cpp">
+      <Filter>src\Character\components</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -279,6 +311,21 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Configs\GameSceneConfig.h">
       <Filter>src\Configs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Managers\SceneRegistry.h">
+      <Filter>src\Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\LevelScenes\OriginMushroomScene.h">
+      <Filter>src\Scenes\LevelScenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\LevelScenes\MysteryForestScene.h">
+      <Filter>src\Scenes\LevelScenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\components\StatusEffectVfxComponent.h">
+      <Filter>src\Character\components</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -180,26 +180,27 @@ bool GobluMonster::init(const std::string &spriteFrameName)
     initAnimations();
     return true;
 }
+//此部分仍需重构
 
-void GobluMonster::preloadResources()
-{
-    // 预缓存状态动画（AnimationCache），并预加载远近攻击动画帧，避免首次生成卡顿
-    ensureSingleFrameAnimationCached("goblu_idle", "Sprites/Enemies/Goblu/Goblu.png");
-    ensureSingleFrameAnimationCached("goblu_hurt", "Sprites/Enemies/Goblu/Goblu.png");
-    ensureLoopAnimationCached(
-        "goblu_walk",
-        "Sprites/Enemies/Goblu/Goblu_walk_%d.png",
-        4,
-        GameConfig::Monster::Goblu::WALK_ANIM_FRAME_DELAY);
-    ensureLoopAnimationCached(
-        GOBLU_DEATH_ANIMATION_KEY,
-        "Sprites/Enemies/Goblu/Goblu_death_%d.png",
-        6,
-        kGobluDeathAnimFrameDelay);
-
-    ensureGobluAttackAnimationCached(GOBLU_ATTACK_NEAR_ANIMATION_KEY, 1, 4);
-    ensureGobluAttackAnimationCached(GOBLU_ATTACK_FAR_ANIMATION_KEY, 11, 15);
-}
+//void GobluMonster::preloadResources()
+//{
+//    // 预缓存状态动画（AnimationCache），并预加载远近攻击动画帧，避免首次生成卡顿
+//    ensureSingleFrameAnimationCached("goblu_idle", "Sprites/Enemies/Goblu/Goblu.png");
+//    ensureSingleFrameAnimationCached("goblu_hurt", "Sprites/Enemies/Goblu/Goblu.png");
+//    ensureLoopAnimationCached(
+//        "goblu_walk",
+//        "Sprites/Enemies/Goblu/Goblu_walk_%d.png",
+//        4,
+//        GameConfig::Monster::Goblu::WALK_ANIM_FRAME_DELAY);
+//    ensureLoopAnimationCached(
+//        GOBLU_DEATH_ANIMATION_KEY,
+//        "Sprites/Enemies/Goblu/Goblu_death_%d.png",
+//        6,
+//        kGobluDeathAnimFrameDelay);
+//
+//    ensureGobluAttackAnimationCached(GOBLU_ATTACK_NEAR_ANIMATION_KEY, 1, 4);
+//    ensureGobluAttackAnimationCached(GOBLU_ATTACK_FAR_ANIMATION_KEY, 11, 15);
+//}
 
 void GobluMonster::initAttributes()
 {

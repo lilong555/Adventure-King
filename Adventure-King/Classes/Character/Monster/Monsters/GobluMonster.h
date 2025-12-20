@@ -14,7 +14,7 @@ public:
     static GobluMonster* create(const std::string& spriteFrameName = "Sprites/Enemies/Goblu/Goblu.png");
 
     // 预加载 Goblu（Boss）相关资源（贴图/动画缓存），用于避免首次生成卡顿
-    static void preloadResources();
+    /*static void preloadResources();*/
 
     virtual bool init(const std::string& spriteFrameName) override;
     virtual void update(float dt) override;

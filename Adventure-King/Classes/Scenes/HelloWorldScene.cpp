@@ -3,6 +3,8 @@
 #include "MapScene.h"
 #include "GameScene.h"
 #include "Character/Player/PlayerCharacter.h"
+#include"Scenes/LevelScenes/OriginMushroomScene.h"
+#include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Scenes/Layers/SetMenuLayer.h"
 #include "Managers/SceneTransitionManager.h"
@@ -10,7 +12,6 @@
 #include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
-#include "SimpleAudioEngine.h"
 
 USING_NS_CC;
 
