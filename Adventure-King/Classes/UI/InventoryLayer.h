@@ -89,6 +89,9 @@ private:
     size_t _selectedActiveSlotIndex = 0;
     size_t _selectedPassiveSlotIndex = 0;
 
+    // 当前选中的装备槽位（-1 表示未选中）
+    int _selectedEquipSlotIndex = -1;
+
     std::function<void()> _closeCallback;
 
     cocos2d::Node *_container = nullptr;
