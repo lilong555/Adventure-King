@@ -20,6 +20,8 @@ struct DamageInfo
     bool isCritical = false;           // 是否暴击
     float critMultiplier = 1.5f;       // 暴击倍率
     CharacterBase* attacker = nullptr; // 攻击来源（用于反伤或仇恨统计）
+    bool hasHitWorldPos = false;       // 是否提供命中点（世界坐标）
+    cocos2d::Vec2 hitWorldPos = cocos2d::Vec2::ZERO; // 命中点（世界坐标）
     bool causesHitStun = true;         // 是否触发受击硬直/打断（DOT 等持续伤害应为 false）
 };
 
@@ -102,6 +104,17 @@ public:
 protected:
     CharacterBase();
 
+    // 受击特效调参（在头文件修改即可生效）
+    struct HurtVfxParams
+    {
+        static constexpr float BURST_DURATION_SECONDS = 0.2f;
+        static constexpr int TOTAL_PARTICLES = 15;
+        static constexpr float LIFE_SECONDS = 0.3f;
+        static constexpr float LIFE_VAR_SECONDS = 0.1f;
+        static constexpr float START_SIZE = 20.0f;
+        static constexpr float START_SIZE_VAR = 8.0f;
+    };
+
     // 子类在 create 中调用，用于初始化贴图和组件
     /// @brief 使用精灵帧名初始化角色
     bool initWithSpriteFrameName(const std::string& spriteFrameName);
@@ -120,6 +133,8 @@ protected:
     void setVisualSprite(cocos2d::Sprite* sprite);
     /// @brief 停止视觉层动画（用于打断攻击/技能）
     void stopVisualActions();
+    /// @brief 生成受击粒子特效（按攻击方向选择 L/R）
+    void spawnHurtVfx(const DamageInfo& info);
 
     // ------------------------------------------------------------
     // 成员变量

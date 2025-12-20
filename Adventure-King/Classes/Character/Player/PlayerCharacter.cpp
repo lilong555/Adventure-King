@@ -579,7 +579,7 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     _hurtMirrorActive = false;
     setScaleX(std::fabs(getScaleX()));
 
-    if (info.attacker && info.attacker != this)
+    if (info.hasHitWorldPos || (info.attacker && info.attacker != this))
     {
         auto getWorldX = [](const Node* node) -> float {
             if (!node)
@@ -591,7 +591,7 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
         };
 
         float myX = getWorldX(this);
-        float attackerX = getWorldX(info.attacker);
+        float attackerX = info.hasHitWorldPos ? info.hitWorldPos.x : getWorldX(info.attacker);
         bool attackerOnLeft = attackerX < myX;
 
         // beattacked png 有方向：以“攻击来源在左侧”为基准决定最终镜像状态。

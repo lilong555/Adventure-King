@@ -3,6 +3,7 @@
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Configs/GameConfigs.h"
+#include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -13,6 +14,8 @@ USING_NS_CC;
 namespace
 {
     const char* const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
+    const char* const HURT_PARTICLE_LEFT_PATH = "Particle/par_chararcter_hurt_L.plist";
+    const char* const HURT_PARTICLE_RIGHT_PATH = "Particle/par_chararcter_hurt_R.plist";
 }
 
 CharacterBase::CharacterBase() = default;
@@ -163,6 +166,7 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     finalDamage = std::max(1.0f, std::floor(finalDamage));
 
     showDamageNumber(finalDamage, info.isCritical);
+    spawnHurtVfx(info);
 
     _currentHP -= finalDamage;
 
@@ -187,6 +191,96 @@ void CharacterBase::takeDamage(const DamageInfo& info)
                 sm->changeState(CharacterState::HURT);
             }
         }
+    }
+}
+
+void CharacterBase::spawnHurtVfx(const DamageInfo& info)
+{
+    if (!info.causesHitStun)
+    {
+        return;
+    }
+
+    bool attackerOnLeft = false;
+    if (info.hasHitWorldPos || (info.attacker && info.attacker != this))
+    {
+        auto parent = getParent();
+        Vec2 myWorldPos = parent ? parent->convertToWorldSpace(getPosition()) : getPosition();
+
+        if (info.hasHitWorldPos)
+        {
+            attackerOnLeft = info.hitWorldPos.x < myWorldPos.x;
+        }
+        else
+        {
+            auto attackerParent = info.attacker->getParent();
+            Vec2 attackerWorldPos = attackerParent ?
+                attackerParent->convertToWorldSpace(info.attacker->getPosition()) :
+                info.attacker->getPosition();
+            attackerOnLeft = attackerWorldPos.x < myWorldPos.x;
+        }
+    }
+
+    const char* particlePath = attackerOnLeft ? HURT_PARTICLE_LEFT_PATH : HURT_PARTICLE_RIGHT_PATH;
+    auto particle = ParticleSystemQuad::create(particlePath);
+    if (!particle)
+    {
+#if COCOS2D_DEBUG > 0
+        CCLOG("spawnHurtVfx: 粒子创建失败 (%s)", particlePath);
+#endif
+        return;
+    }
+
+    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
+    auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
+    if (particleTexture)
+    {
+        particle->setTexture(particleTexture);
+    }
+
+    // 增强可见性：增加数量与寿命，扩大粒子尺寸
+    particle->setTotalParticles(HurtVfxParams::TOTAL_PARTICLES);
+    particle->setLife(HurtVfxParams::LIFE_SECONDS);
+    particle->setLifeVar(HurtVfxParams::LIFE_VAR_SECONDS);
+    particle->setStartSize(HurtVfxParams::START_SIZE);
+    particle->setStartSizeVar(HurtVfxParams::START_SIZE_VAR);
+    particle->setBlendAdditive(true);
+
+    particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+    auto vfxParent = getParent();
+    Vec2 particlePos = bodyInfo.center;
+    Size posVarSize = bodyInfo.size;
+    if (vfxParent)
+    {
+        Vec2 worldCenter = convertToWorldSpace(bodyInfo.center);
+        particlePos = vfxParent->convertToNodeSpace(worldCenter);
+
+        Vec2 scaleAbs(std::fabs(getScaleX()), std::fabs(getScaleY()));
+        posVarSize = Size(bodyInfo.size.width * scaleAbs.x,
+                          bodyInfo.size.height * scaleAbs.y);
+    }
+    particle->setPosition(particlePos);
+    particle->setPosVar(Vec2(posVarSize.width * 0.5f, posVarSize.height * 0.5f));
+    // 受击方向：强制修正水平发射方向，避免左右效果看不出差异
+    particle->setAngle(attackerOnLeft ? 0.0f : 180.0f);
+    auto gravity = particle->getGravity();
+    gravity.x = std::fabs(gravity.x);
+    gravity.x = attackerOnLeft ? gravity.x : -gravity.x;
+    particle->setGravity(gravity);
+    particle->setDuration(HurtVfxParams::BURST_DURATION_SECONDS);
+    const float burstRate = particle->getTotalParticles() /
+                            std::max(0.01f, HurtVfxParams::BURST_DURATION_SECONDS);
+    particle->setEmissionRate(std::max(particle->getEmissionRate(), burstRate));
+    particle->setAutoRemoveOnFinish(true);
+    particle->resetSystem();
+
+    if (vfxParent)
+    {
+        vfxParent->addChild(particle, 999);
+    }
+    else
+    {
+        addChild(particle, 999);
     }
 }
 

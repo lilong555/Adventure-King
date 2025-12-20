@@ -2,7 +2,9 @@
 
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
+#include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include <algorithm>
+#include <cmath>
 
 USING_NS_CC;
 
@@ -32,15 +34,22 @@ namespace
         Color4F endColorVar = Color4F(0.10f, 0.10f, 0.10f, 0.00f);
 
         // 位置：使用 Owner 的本地坐标，避免受 scaleX 翻转影响出现偏移
-        float emitterOffsetYRatio = 0.15f;
-        float posVarXRatio = 0.18f;
-        float posVarYRatio = 0.12f;
+        float emitterOffsetYRatio = StatusEffectVfxComponent::BurningVfxParams::EMITTER_OFFSET_Y_RATIO;
+        float posVarXRatio = StatusEffectVfxComponent::BurningVfxParams::POS_VAR_X_RATIO;
+        float posVarYRatio = StatusEffectVfxComponent::BurningVfxParams::POS_VAR_Y_RATIO;
+        float posVarXMax = StatusEffectVfxComponent::BurningVfxParams::POS_VAR_X_MAX;
+        float posVarYMax = StatusEffectVfxComponent::BurningVfxParams::POS_VAR_Y_MAX;
+        float maxStartSize = StatusEffectVfxComponent::BurningVfxParams::MAX_START_SIZE;
+        float startSizeHeightRatio = StatusEffectVfxComponent::BurningVfxParams::START_SIZE_HEIGHT_RATIO;
+        float minStartSize = StatusEffectVfxComponent::BurningVfxParams::MIN_START_SIZE;
 
         float baseEmission = 55.0f;
         float perStackEmission = 25.0f;
     };
 
     const BurningParticleConfig kBurningParticleConfig;
+
+    using BodyLocalInfo = PhysicsBodyLocalInfoHelper::BodyLocalInfo;
 
     Texture2D* getWhiteParticleTexture()
     {
@@ -108,27 +117,34 @@ namespace
         particle->setPosition(Vec2::ZERO);
     }
 
-    Vec2 getBurningEmitterLocalPos(Node* owner)
+    Vec2 getBurningEmitterLocalPos(const BodyLocalInfo& bodyInfo)
     {
-        if (!owner)
-        {
-            return Vec2::ZERO;
-        }
-
-        const auto size = owner->getContentSize();
-        return Vec2(size.width * 0.5f, size.height * kBurningParticleConfig.emitterOffsetYRatio);
+        float bottomY = bodyInfo.center.y - bodyInfo.size.height * 0.5f;
+        return Vec2(bodyInfo.center.x,
+                    bottomY + bodyInfo.size.height * kBurningParticleConfig.emitterOffsetYRatio);
     }
 
-    void updateBurningParticleIntensity(ParticleSystemQuad* particle, Node* owner, int stacks)
+    void updateBurningParticleIntensity(ParticleSystemQuad* particle,
+                                        const BodyLocalInfo& bodyInfo,
+                                        int stacks)
     {
-        if (!particle || !owner)
+        if (!particle)
         {
             return;
         }
 
-        const auto size = owner->getContentSize();
-        particle->setPosVar(Vec2(size.width * kBurningParticleConfig.posVarXRatio,
-                                 size.height * kBurningParticleConfig.posVarYRatio));
+        const float posVarX = std::min(bodyInfo.size.width * kBurningParticleConfig.posVarXRatio,
+                                       kBurningParticleConfig.posVarXMax);
+        const float posVarY = std::min(bodyInfo.size.height * kBurningParticleConfig.posVarYRatio,
+                                       kBurningParticleConfig.posVarYMax);
+        particle->setPosVar(Vec2(posVarX, posVarY));
+
+        const float rawSize = bodyInfo.size.height * kBurningParticleConfig.startSizeHeightRatio;
+        const float baseSize = std::min(kBurningParticleConfig.maxStartSize,
+                                        std::max(kBurningParticleConfig.minStartSize, rawSize));
+        particle->setStartSize(baseSize);
+        particle->setStartSizeVar(baseSize * 0.5f);
+        particle->setEndSize(0.0f);
 
         stacks = std::max(1, stacks);
         particle->setEmissionRate(kBurningParticleConfig.baseEmission +
@@ -192,6 +208,7 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
     }
 
     const int stacks = getStacks(attr, StatusEffectType::BURNING);
+    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(owner);
 
     if (!existing)
     {
@@ -203,14 +220,14 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
         particle->setName(BURNING_PARTICLE_NAME);
         existing->addChild(particle);
         applyBurningParticleStyle(particle);
-        updateBurningParticleIntensity(particle, owner, stacks);
+        updateBurningParticleIntensity(particle, bodyInfo, stacks);
     }
 
-    existing->setPosition(getBurningEmitterLocalPos(owner));
+    existing->setPosition(getBurningEmitterLocalPos(bodyInfo));
 
     if (auto particle = dynamic_cast<ParticleSystemQuad*>(existing->getChildByName(BURNING_PARTICLE_NAME)))
     {
-        updateBurningParticleIntensity(particle, owner, stacks);
+        updateBurningParticleIntensity(particle, bodyInfo, stacks);
     }
 }
 

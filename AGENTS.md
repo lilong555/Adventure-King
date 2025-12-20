@@ -3,11 +3,19 @@
 ## Project Structure & Module Organization
 - Root contains the Cocos2d-x game under `Adventure-King/`.
 - `Adventure-King/Classes/` holds all gameplay C++ code:
-  - `Character/` (player, monsters, component system)
-  - `Scenes/` (HelloWorldScene, GameScene, MapScene, etc.)
-  - `Configs/` (GameConfigs, GamePhysicsCategory, GameSceneConfig)
-  - `UI/`, `Managers/`, `Save/`
-- `Adventure-King/Resources/` stores runtime assets (sprites, TMX maps, audio, fonts).
+  - `Character/` - 角色系统（组件化架构）
+    - `Base/` - 角色基类 `CharacterBase`
+    - `Player/` - 玩家角色 `PlayerCharacter`
+    - `Monster/` - 怪物系统 `MonsterBase` 及具体怪物 (GoblinMonster, GobluMonster)
+    - `components/` - 核心组件（AttributeComponent, StateMachineComponent, SkillComponent, StatusEffectVfxComponent）
+  - `Scenes/` - 场景系统（HelloWorldScene, GameScene, MapScene, OriginMushroomScene, MysteryForestScene）
+  - `Configs/` - 配置文件（GameConfigs, GamePhysicsCategory, GameSceneConfig）
+  - `Objects/` - 游戏对象（投掷物 ExplosiveProjectile 等）
+  - `UI/` - 界面组件（PlayerStatusBar, SkillBar, BossHealthBar, PauseMenu, SaveMenuLayer）
+  - `Managers/` - 全局管理器（SceneTransitionManager, MusicManager）
+  - `Save/` - 存档系统（SaveManager, SaveData, JsonSerializer）
+  - `Utils/` - 工具类（SpriteFrameCacheHelper）
+- `Adventure-King/Resources/` stores runtime assets (sprites, TMX maps, audio, fonts, particles).
 - `Adventure-King/proj.*` are platform projects (`proj.win32`, `proj.android`, `proj.linux`, `proj.ios_mac`).
 - `Adventure-King/cocos2d/` is the vendored engine; do not edit unless upgrading engine.
 - `tempresource/` is for raw/WIP art; only move finalized assets into `Adventure-King/Resources/`.
@@ -26,14 +34,22 @@
 - Classes and files use `PascalCase` (`PlayerCharacter.h/.cpp`); methods/vars use `camelCase`; private members use leading `_`.
 - Keep new logic inside `Adventure-King/Classes/` and reuse existing components (Attribute/StateMachine/Skill) where possible.
 - Player animations are managed by `PlayerCharacter`; scenes should call `setMoving`, `attackAnimated`, and `castSkillAnimated` instead of running actions directly.
-- 贴图加载：对文件路径（`Sprites/...`）优先用 `Adventure-King/Classes/Utils/SpriteFrameCacheHelper.h` 走 `SpriteFrameCache` 复用，避免重复创建与 “Frame isn't found” 日志噪音。
+- 贴图加载：对文件路径（`Sprites/...`）优先用 `Adventure-King/Classes/Utils/SpriteFrameCacheHelper.h` 走 `SpriteFrameCache` 复用，避免重复创建与 "Frame isn't found" 日志噪音。
 - 物理分类定义：使用 `Adventure-King/Classes/Configs/GamePhysicsCategory.h` 中的枚举，避免在其它位置重复定义掩码。
 - 可调参数统一放在 `Adventure-King/Classes/Configs/GameConfigs.h`（包含 App/Save/UI/MainMenu/Debug 等），代码中避免重复写死数值。
+- 粒子特效参数：燃烧特效参数放在 `StatusEffectVfxComponent.h` 的 `BurningVfxParams` 结构体中，便于调参。
 
 ## Combat & Status Effects
 - 伤害统一走 `DamageInfo`；持续伤害（DOT）必须设置 `causesHitStun=false`，避免锁玩家操作。
 - 状态效果（燃烧等）通过 `AttributeComponent` 的叠层/结算逻辑管理，表现走 `StatusEffectVfxComponent`。
 - 投掷物/爆炸附加状态效果请使用 `ExplosiveProjectile::addOnHitStatusEffect`，避免在 Scene 内硬编码。
+- 受击粒子（`CharacterBase::spawnHurtVfx`）仅在 `causesHitStun=true` 时触发。
+
+## Particle Effects
+- 粒子资源位于 `Resources/Particle/`，使用 plist 格式配置。
+- 燃烧特效由 `StatusEffectVfxComponent` 代码生成，参数在头文件 `BurningVfxParams` 中调整。
+- 受击粒子使用 `par_chararcter_hurt_L/R.plist`，根据攻击方向选择。
+- 主菜单战火背景使用 `par_warfire.plist`。
 
 ## Map (TMX) Conventions
 - `collisions` 图层：多边形/折线/矩形对象用于生成物理碰撞体

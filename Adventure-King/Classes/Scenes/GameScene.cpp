@@ -462,6 +462,15 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
     if (!nodeA || !nodeB)
         return true;
 
+    auto getWorldPos = [](Node* node) -> Vec2 {
+        if (!node)
+        {
+            return Vec2::ZERO;
+        }
+        auto parent = node->getParent();
+        return parent ? parent->convertToWorldSpace(node->getPosition()) : node->getPosition();
+    };
+
     int categoryA = bodyA->getCategoryBitmask();
     int categoryB = bodyB->getCategoryBitmask();
 
@@ -511,6 +520,9 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
             if (auto attackNode = attackBody->getNode())
             {
                 dmg.attacker = dynamic_cast<CharacterBase *>(attackNode->getUserObject());
+                // 记录命中位置（世界坐标），用于受击方向判断
+                dmg.hitWorldPos = getWorldPos(attackNode);
+                dmg.hasHitWorldPos = true;
             }
 
             // 避免在物理回调中直接修改角色/物理状态（可能导致物理引擎内部状态被破坏）。
@@ -554,6 +566,12 @@ bool GameScene::onContactBegin(PhysicsContact &contact)
                 DamageInfo dmg{};
                 dmg.amount = rawDamage;
                 dmg.attacker = _player;
+                if (auto attackNode = attackBody->getNode())
+                {
+                    // 记录命中位置（世界坐标），用于受击方向判断
+                    dmg.hitWorldPos = getWorldPos(attackNode);
+                    dmg.hasHitWorldPos = true;
+                }
 
                 // 避免在物理回调中直接修改角色/物理状态（可能导致物理引擎内部状态被破坏）。
                 // 延迟到下一帧执行伤害结算。

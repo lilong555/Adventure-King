@@ -605,6 +605,7 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     hp -= dmg;
 
     showDamageNumber(dmg, info.isCritical);
+    spawnHurtVfx(info);
 
     setCurrentHP(hp);
     updateHpBar();
@@ -636,10 +637,10 @@ void MonsterBase::takeDamage(const DamageInfo& info)
 
     // 受击方向：beattacked png 有方向；
     // 当攻击来自“面向方向”（正向受击）时，需要镜像受击图。
-    if (info.attacker && info.attacker != this)
+    if (info.hasHitWorldPos || (info.attacker && info.attacker != this))
     {
         float myX = getWorldPosition(this).x;
-        float attackerX = getWorldPosition(info.attacker).x;
+        float attackerX = info.hasHitWorldPos ? info.hitWorldPos.x : getWorldPosition(info.attacker).x;
         bool attackerOnLeft = attackerX < myX;
 
         bool facingLeft = getScaleX() < 0.0f;
