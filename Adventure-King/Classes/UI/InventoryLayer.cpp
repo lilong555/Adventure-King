@@ -28,6 +28,11 @@ namespace
     constexpr float ICON_ITEM = 34.0f;
     constexpr float ICON_ACTION = 28.0f;
 
+    // 详情图预览面板：放在右侧，不遮挡页面主体
+    constexpr float DETAIL_PANEL_W = 260.0f;
+    constexpr float DETAIL_PANEL_H = 260.0f;
+    constexpr float DETAIL_PANEL_PADDING = 12.0f;
+
     constexpr int Z_BACKGROUND = 0;
     constexpr int Z_PANEL = 1;
     constexpr int Z_TEXT = 2;
@@ -432,34 +437,40 @@ void InventoryLayer::createDetailOverlay()
     }
 
     _detailOverlay = Node::create();
-    _detailOverlay->setContentSize(Size(PANEL_WIDTH, PANEL_HEIGHT));
+    _detailOverlay->setContentSize(Size(DETAIL_PANEL_W, DETAIL_PANEL_H));
     _detailOverlay->setAnchorPoint(Vec2::ZERO);
-    _detailOverlay->setPosition(Vec2::ZERO);
+    // 放到面板右侧空白区域：与列表并排，不遮挡主要交互区域
+    const float contentTop = PANEL_HEIGHT - 130.0f;
+    const float x = PANEL_WIDTH - PANEL_INNER_PADDING_X - DETAIL_PANEL_W;
+    const float y = std::max(PANEL_INNER_PADDING_BOTTOM, contentTop - DETAIL_PANEL_H);
+    _detailOverlay->setPosition(Vec2(x, y));
     _detailOverlay->setVisible(false);
     _panelRoot->addChild(_detailOverlay, Z_MENU + 50);
 
     _detailOverlayBg = DrawNode::create();
-    _detailOverlayBg->drawSolidRect(Vec2::ZERO, Vec2(PANEL_WIDTH, PANEL_HEIGHT), Color4F(0, 0, 0, 0.65f));
+    _detailOverlayBg->drawSolidRect(Vec2::ZERO, Vec2(DETAIL_PANEL_W, DETAIL_PANEL_H), Color4F(0.12f, 0.12f, 0.18f, 0.95f));
+    _detailOverlayBg->drawRect(Vec2::ZERO, Vec2(DETAIL_PANEL_W, DETAIL_PANEL_H), PANEL_BORDER_COLOR);
     _detailOverlay->addChild(_detailOverlayBg, 0);
 
     _detailOverlaySprite = Sprite::create(PLACEHOLDER_ICON_PATH);
     if (_detailOverlaySprite)
     {
-        _detailOverlaySprite->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT / 2));
+        _detailOverlaySprite->setPosition(Vec2(DETAIL_PANEL_W / 2, DETAIL_PANEL_H / 2));
         _detailOverlay->addChild(_detailOverlaySprite, 1);
     }
 
-    // 点击弹层任意位置关闭（避免与底层按钮交互冲突）
+    // 仅吞噬预览面板区域内的触摸，避免点击穿透到背包列表
     _detailOverlayListener = EventListenerTouchOneByOne::create();
     _detailOverlayListener->setSwallowTouches(true);
-    _detailOverlayListener->onTouchBegan = [this](Touch *, Event *) -> bool
+    _detailOverlayListener->onTouchBegan = [this](Touch *touch, Event *) -> bool
     {
         if (!_detailOverlay || !_detailOverlay->isVisible())
         {
             return false;
         }
-        hideDetailOverlay();
-        return true;
+        const Vec2 local = _detailOverlay->convertToNodeSpace(touch->getLocation());
+        const Rect rect(0, 0, _detailOverlay->getContentSize().width, _detailOverlay->getContentSize().height);
+        return rect.containsPoint(local);
     };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(_detailOverlayListener, _detailOverlay);
     _detailOverlayListener->setEnabled(false);
@@ -480,15 +491,15 @@ void InventoryLayer::showDetailOverlay()
 
     if (_detailOverlaySprite)
     {
-        // 后续可替换为真实的“详情图”；目前仅用占位图放大展示。
+        // 后续可替换为真实的“详情图”；目前仅用占位图展示。
         auto texture = Director::getInstance()->getTextureCache()->addImage(PLACEHOLDER_ICON_PATH);
         if (texture)
         {
             _detailOverlaySprite->setTexture(texture);
         }
 
-        const float targetW = PANEL_WIDTH * 0.65f;
-        const float targetH = PANEL_HEIGHT * 0.65f;
+        const float targetW = DETAIL_PANEL_W - DETAIL_PANEL_PADDING * 2.0f;
+        const float targetH = DETAIL_PANEL_H - DETAIL_PANEL_PADDING * 2.0f;
         const auto size = _detailOverlaySprite->getContentSize();
         float scale = 1.0f;
         if (size.width > 0.0f && size.height > 0.0f)
@@ -496,7 +507,7 @@ void InventoryLayer::showDetailOverlay()
             scale = std::min(targetW / size.width, targetH / size.height);
         }
         _detailOverlaySprite->setScale(scale);
-        _detailOverlaySprite->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT / 2));
+        _detailOverlaySprite->setPosition(Vec2(DETAIL_PANEL_W / 2, DETAIL_PANEL_H / 2));
     }
 }
 
@@ -578,7 +589,6 @@ void InventoryLayer::refreshEquipmentPage()
     };
 
     const float slotHeight = 42.0f;
-    const float detailHeight = 60.0f;
 
     for (size_t i = 0; i < slotOrder.size(); ++i)
     {
@@ -629,27 +639,6 @@ void InventoryLayer::refreshEquipmentPage()
         }
 
         yEquip -= slotHeight;
-
-        // 如果选中，显示详细信息
-        if (isSelected && eq)
-        {
-            // 绘制详情背景
-            auto detailBg = DrawNode::create();
-            detailBg->drawSolidRect(
-                Vec2(leftColX, yEquip - detailHeight + 10),
-                Vec2(leftColX + colWidth - 10, yEquip + 5),
-                Color4F(0.15f, 0.15f, 0.2f, 0.8f));
-            _equipmentPage->addChild(detailBg, Z_TEXT);
-
-            // 详情区域：点击后才显示更详细的图片（目前仍使用占位图）
-            if (auto detailSprite = createPlaceholderSprite(Size(colWidth - 40, detailHeight - 10), Color3B::WHITE))
-            {
-                detailSprite->setPosition(Vec2(leftColX + (colWidth - 10) / 2, yEquip - detailHeight / 2 + 8));
-                _equipmentPage->addChild(detailSprite, Z_TEXT + 1);
-            }
-
-            yEquip -= detailHeight;
-        }
 
         yEquip -= 6.0f;
     }
@@ -867,7 +856,8 @@ void InventoryLayer::refreshSkillPage()
             }, Color3B(255, 120, 120));
             if (unequipBtn)
             {
-                unequipBtn->setPosition(Vec2(rightColX + colWidth - ICON_ACTION / 2, yPassive));
+                // 右侧预览面板占用了右栏的一部分宽度，这里把“卸下”按钮左移避免被覆盖
+                unequipBtn->setPosition(Vec2(rightColX + (colWidth - DETAIL_PANEL_W) - ICON_ACTION / 2, yPassive));
                 menu->addChild(unequipBtn);
             }
         }
