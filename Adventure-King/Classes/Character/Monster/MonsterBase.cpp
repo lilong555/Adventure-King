@@ -48,6 +48,7 @@ void MonsterBase::grantKillExperience(const DamageInfo& info)
 }
 
 MonsterBase::MonsterBase()
+    : _expGranted(false)
 {
 }
 

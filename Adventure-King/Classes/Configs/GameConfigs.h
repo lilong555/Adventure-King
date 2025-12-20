@@ -81,6 +81,8 @@ namespace GameConfig
         {
             inline constexpr int REQUIRED_EXP_PER_LEVEL = 100; // 线性：每级 *100
 
+            /// @brief 获取“当前等级 -> 下一等级”所需经验值
+            /// @details 等级会被夹取到至少为 1，避免出现 0 或负数导致的异常计算。
             inline int getRequiredExp(int level)
             {
                 if (level < 1)

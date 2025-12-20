@@ -49,7 +49,7 @@ public:
     /// @brief 当前是否有仇恨目标
     bool hasAggro() const;
     /// @brief 一次性设置索敌/追击/巡逻参数
-	void setAIConfig(float AR, float LR, bool PTL);//设置索敌、追击、巡逻
+    void setAIConfig(float AR, float LR, bool PTL);//设置索敌、追击、巡逻
 
     // 性能：降低 AI/移动/攻击逻辑的更新频率（物理仍由引擎每帧推进）
     /// @brief 设置 AI/移动/攻击 更新间隔
@@ -60,9 +60,17 @@ public:
     void setActiveUpdateDistanceX(float distanceX);
 protected:
 
-    // 经验奖励：由各怪物子类覆写（默认不奖励）
+    /// @brief 计算击杀该怪物时给予玩家的经验奖励。
+    /// @param playerLevel 玩家等级；若小于 1，本基类实现仍返回 0，调用方应尽量传入 >= 1 的合法等级。
+    /// @return 本基类始终返回 0（不奖励经验），具体奖励逻辑应由各怪物子类根据需要重写。
     virtual int getExpReward(int playerLevel) const;
-    // 击杀结算：在死亡前只触发一次
+
+    /// @brief 击杀经验结算入口
+    /// @details
+    /// - 本函数应在每次怪物死亡时最多调用一次，以避免对同一击杀重复发放经验。
+    /// - 参数 info 用于识别造成最后一击的攻击者，从而将经验奖励正确归属到对应玩家。
+    /// - 当无法解析出有效玩家时，不会发放经验（安全地执行空操作作为回退）。
+    /// - 解析玩家优先级：info.attacker -> _primaryTarget -> _target。
     void grantKillExperience(const DamageInfo& info);
 
     /// @brief 初始化并缓存基础属性
@@ -129,8 +137,8 @@ protected:
     float _attackRange = 50.0f;    // 攻击距离
     float _aggroRadius = 0.0f;     // 仇恨半径
     float _leashRadius = 0.0f;     // 牵引半径（超过就返回出生点）
-	float _attackInterval = 1.5f; // 攻击间隔（秒）
-	float _moveSpeed = 150.0f;     // 移动速度
+    float _attackInterval = 1.5f;  // 攻击间隔（秒）
+    float _moveSpeed = 150.0f;     // 移动速度
     float _baseScaleX = 1.0f;     // 记录基础水平缩放，用于翻转朝向
     bool _patrolEnabled = false;   // 是否允许巡逻
     cocos2d::Vec2 _moveGoalPos;    // 当前移动目标（父节点坐标系）
@@ -155,4 +163,4 @@ protected:
 
     bool _expGranted = false; // 防止同一只怪多次发放经验（例如 DOT 多 tick 结算）
 
-	};
+};
