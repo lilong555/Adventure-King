@@ -58,9 +58,9 @@ public:
     };
 
 private:
-    int _currentMapIndex;                       // 当前选中的地图索引
     std::vector<cocos2d::Sprite *> _mapMarkers; // 地标精灵列表
     std::vector<MapMarkerInfo> _markerInfos;    // 地图标记数据列表
+    bool _isTransitioning = false;              // 是否正在切场景（避免重复点击触发多次切换）
     bool _originMushroomAssetsReady = false;    // 起源之菇资源是否已预加载
     bool _originMushroomPreloading = false;     // 起源之菇资源是否正在预加载
     bool _originMushroomFinishScheduled = false;// 防止重复触发完成回调

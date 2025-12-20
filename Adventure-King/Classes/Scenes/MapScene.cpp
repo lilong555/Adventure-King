@@ -75,18 +75,17 @@ bool MapScene::init()
     if (sprite == nullptr)
     {
         problemLoading("'Scene/Backgrounds/MapBackground.png'");
+        return false;
     }
-    else
-    {
-        sprite->setPosition(Vec2::ZERO);
-        contentContainer->addChild(sprite, 0);
 
-        Size textureSize = sprite->getContentSize();
-        float scaleX = visibleSize.width / textureSize.width;
-        float scaleY = visibleSize.height / textureSize.height;
-        float scaleFactor = std::min(scaleX, scaleY);
-        contentContainer->setScale(scaleFactor);
-    }
+    sprite->setPosition(Vec2::ZERO);
+    contentContainer->addChild(sprite, 0);
+
+    Size textureSize = sprite->getContentSize();
+    float scaleX = visibleSize.width / textureSize.width;
+    float scaleY = visibleSize.height / textureSize.height;
+    float scaleFactor = std::min(scaleX, scaleY);
+    contentContainer->setScale(scaleFactor);
 
     // ==========================================================
     // 3. 初始化地图标记数据
@@ -136,6 +135,11 @@ bool MapScene::init()
 
     mouseListener->onMouseMove = [this](EventMouse *event)
     {
+        if (_isTransitioning)
+        {
+            return;
+        }
+
         Vec2 mousePos = Vec2(event->getCursorX(), event->getCursorY());
 
         for (auto marker : _mapMarkers)
@@ -158,6 +162,11 @@ bool MapScene::init()
 
     mouseListener->onMouseDown = [this](EventMouse *event)
     {
+        if (_isTransitioning)
+        {
+            return;
+        }
+
         Vec2 mousePos = Vec2(event->getCursorX(), event->getCursorY());
 
         for (auto marker : _mapMarkers)
@@ -206,6 +215,17 @@ void MapScene::onMapMarkerClicked(int mapId)
 
 void MapScene::mapCloseCallback(cocos2d::Ref *pSender)
 {
+    // 关闭地图时也主动解绑回调，避免回调在场景切换过程中触发造成不必要的逻辑执行
+    if (!_preloadCallbackKey.empty())
+    {
+        if (auto cache = Director::getInstance()->getTextureCache())
+        {
+            // 注意：这里解绑的是 callbackKey（addImageAsync 第三个参数），不是文件路径
+            cache->unbindImageAsync(_preloadCallbackKey);
+        }
+    }
+    _originMushroomPreloading = false;
+
     cocos2d::Director::getInstance()->popScene();
 }
 
@@ -238,6 +258,12 @@ cocos2d::Scene *MapScene::createDestinationScene(int mapId)
 
 void MapScene::enterMap(int mapId)
 {
+    if (_isTransitioning)
+    {
+        return;
+    }
+    _isTransitioning = true;
+
     // 如果目标关卡资源已在地图界面预热完毕，则直接进入关卡，避免多一次 LoadingScene 过渡
     // 目前仅起源之菇做了完整预加载（贴图 + 动画缓存预热）
     Scene* destinationScene = nullptr;
@@ -253,7 +279,23 @@ void MapScene::enterMap(int mapId)
     if (!destinationScene)
     {
         CCLOG("Failed to create destination scene for map: %d", mapId);
+        _isTransitioning = false;
         return;
+    }
+
+    // 即将离开地图场景：解绑预加载回调，避免切换过程继续触发回调
+    if (!_preloadCallbackKey.empty())
+    {
+        if (auto cache = Director::getInstance()->getTextureCache())
+        {
+            // 注意：这里解绑的是 callbackKey（addImageAsync 第三个参数），不是文件路径
+            cache->unbindImageAsync(_preloadCallbackKey);
+        }
+    }
+    _originMushroomPreloading = false;
+    if (_preloadLabel)
+    {
+        _preloadLabel->setVisible(false);
     }
 
     auto director = Director::getInstance();
@@ -382,6 +424,11 @@ void MapScene::startPreloadOriginMushroom(bool showUI)
 
 void MapScene::onPreloadTextureLoaded(Texture2D* /*texture*/)
 {
+    if (!_originMushroomPreloading)
+    {
+        return;
+    }
+
     _preloadLoaded = std::min(_preloadLoaded + 1, _preloadTotal);
     updatePreloadLabel();
 
