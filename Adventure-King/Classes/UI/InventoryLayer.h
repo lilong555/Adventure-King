@@ -69,12 +69,16 @@ private:
     void refreshSkillPage();
 
     // 工具
-    std::string getEquipmentSlotName(EquipmentSlot slot) const;
-    std::string formatAttributes(const Attributes &attrs) const;
+    cocos2d::Sprite *createPlaceholderSprite(const cocos2d::Size &targetSize,
+                                             const cocos2d::Color3B &tint = cocos2d::Color3B::WHITE);
 
-    cocos2d::MenuItemLabel *createMenuButton(const std::string &text,
-                                             const cocos2d::ccMenuCallback &callback,
-                                             int fontSize = 22);
+    cocos2d::MenuItemSprite *createIconButton(const cocos2d::Size &targetSize,
+                                              const cocos2d::ccMenuCallback &callback,
+                                              const cocos2d::Color3B &tint = cocos2d::Color3B::WHITE);
+
+    void createDetailOverlay();
+    void showDetailOverlay();
+    void hideDetailOverlay();
 
     void onCloseClicked(cocos2d::Ref *sender);
     void onTabEquipmentClicked(cocos2d::Ref *sender);
@@ -98,11 +102,11 @@ private:
     cocos2d::DrawNode *_background = nullptr;
     cocos2d::Node *_panelRoot = nullptr;
     cocos2d::DrawNode *_panel = nullptr;
-    cocos2d::Label *_titleLabel = nullptr;
+    cocos2d::Sprite *_titleSprite = nullptr;
 
     cocos2d::Menu *_tabMenu = nullptr;
-    cocos2d::MenuItemLabel *_tabEquipment = nullptr;
-    cocos2d::MenuItemLabel *_tabSkill = nullptr;
+    cocos2d::MenuItemSprite *_tabEquipment = nullptr;
+    cocos2d::MenuItemSprite *_tabSkill = nullptr;
 
     cocos2d::Menu *_closeMenu = nullptr;
 
@@ -110,7 +114,12 @@ private:
     cocos2d::Node *_skillPage = nullptr;
 
     cocos2d::EventListenerTouchOneByOne *_touchListener = nullptr;
+    cocos2d::EventListenerTouchOneByOne *_detailOverlayListener = nullptr;
 
     std::vector<SkillTemplate> _skillTemplates;
-};
 
+    // 详情图弹层：用于在点击后显示“更详细”的图片（目前用占位图）
+    cocos2d::Node *_detailOverlay = nullptr;
+    cocos2d::DrawNode *_detailOverlayBg = nullptr;
+    cocos2d::Sprite *_detailOverlaySprite = nullptr;
+};

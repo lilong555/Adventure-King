@@ -13,13 +13,20 @@ USING_NS_CC;
 
 namespace
 {
-    const char *const FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
+    const char *const PLACEHOLDER_ICON_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
     constexpr float PANEL_WIDTH = 1000.0f;
     constexpr float PANEL_HEIGHT = 650.0f;
     constexpr float PANEL_INNER_PADDING_X = 50.0f;      // 面板左右内边距
     constexpr float PANEL_INNER_PADDING_BOTTOM = 80.0f; // 给"返回"按钮预留空间
     constexpr float COLUMN_GAP = 30.0f;                 // 双栏间距
     constexpr float PANEL_CORNER_RADIUS = 12.0f;        // 面板圆角
+
+    // 图标尺寸（占位）
+    constexpr float ICON_TITLE_W = 240.0f;
+    constexpr float ICON_TITLE_H = 42.0f;
+    constexpr float ICON_TAB = 46.0f;
+    constexpr float ICON_ITEM = 34.0f;
+    constexpr float ICON_ACTION = 28.0f;
 
     constexpr int Z_BACKGROUND = 0;
     constexpr int Z_PANEL = 1;
@@ -58,35 +65,6 @@ namespace
         Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
         return Rect(center.x - PANEL_WIDTH / 2, center.y - PANEL_HEIGHT / 2, PANEL_WIDTH, PANEL_HEIGHT);
     }
-
-    MenuItemLabel *createFixedWidthMenuItem(const std::string &text,
-                                            float width,
-                                            int fontSize,
-                                            const ccMenuCallback &callback)
-    {
-        auto label = Label::createWithTTF(text, FONT_PATH, fontSize);
-        if (!label)
-        {
-            return nullptr;
-        }
-
-        label->setColor(Color3B::WHITE);
-        label->enableOutline(Color4B::BLACK, 2);
-        label->setAlignment(TextHAlignment::LEFT, TextVAlignment::CENTER);
-        label->setOverflow(Label::Overflow::RESIZE_HEIGHT);
-        label->setDimensions(width, 0);
-
-        auto item = MenuItemLabel::create(label, callback);
-        if (!item)
-        {
-            return nullptr;
-        }
-
-        // 让点击区域与文本区域一致，并把文本放在中间（文本本身左对齐）
-        item->setContentSize(label->getContentSize());
-        label->setPosition(Vec2(item->getContentSize().width / 2, item->getContentSize().height / 2));
-        return item;
-    }
 }
 
 InventoryLayer *InventoryLayer::create()
@@ -117,11 +95,13 @@ bool InventoryLayer::init()
     buildSkillTemplates();
 
     // 关闭按钮
-    auto closeBtn = createMenuButton("返回", CC_CALLBACK_1(InventoryLayer::onCloseClicked, this), 24);
+    auto closeBtn = createIconButton(Size(ICON_TAB, ICON_TAB), CC_CALLBACK_1(InventoryLayer::onCloseClicked, this),
+                                     Color3B(220, 220, 220));
     _closeMenu = Menu::create(closeBtn, nullptr);
     _closeMenu->setPosition(Vec2::ZERO);
     _panelRoot->addChild(_closeMenu, Z_MENU);
     createPages();
+    createDetailOverlay();
 
     // 触摸吞噬：防止事件穿透到底层
     // 使用固定优先级，确保 Menu 的事件优先级更高（Menu 默认优先级为 -128）
@@ -193,6 +173,7 @@ void InventoryLayer::hide()
         return;
     }
     _isShowing = false;
+    hideDetailOverlay();
     if (_touchListener)
     {
         _touchListener->setEnabled(false);
@@ -245,11 +226,12 @@ void InventoryLayer::createPanel()
         Color4F(0.15f, 0.12f, 0.08f, 0.9f));
     _panelRoot->addChild(titleBg, Z_PANEL);
 
-    _titleLabel = Label::createWithTTF("背包 / 技能", FONT_PATH, 36);
-    _titleLabel->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT - 36));
-    _titleLabel->setColor(TITLE_COLOR);
-    _titleLabel->enableOutline(Color4B::BLACK, 2);
-    _panelRoot->addChild(_titleLabel, Z_TEXT);
+    _titleSprite = createPlaceholderSprite(Size(ICON_TITLE_W, ICON_TITLE_H), TITLE_COLOR);
+    if (_titleSprite)
+    {
+        _titleSprite->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT - 36));
+        _panelRoot->addChild(_titleSprite, Z_TEXT);
+    }
 
     // 标题下方分隔线
     auto separator = DrawNode::create();
@@ -262,8 +244,8 @@ void InventoryLayer::createPanel()
 void InventoryLayer::createTabs()
 {
     // Tab 按钮样式改进
-    _tabEquipment = createMenuButton("装备", CC_CALLBACK_1(InventoryLayer::onTabEquipmentClicked, this), 26);
-    _tabSkill = createMenuButton("技能", CC_CALLBACK_1(InventoryLayer::onTabSkillClicked, this), 26);
+    _tabEquipment = createIconButton(Size(ICON_TAB, ICON_TAB), CC_CALLBACK_1(InventoryLayer::onTabEquipmentClicked, this));
+    _tabSkill = createIconButton(Size(ICON_TAB, ICON_TAB), CC_CALLBACK_1(InventoryLayer::onTabSkillClicked, this));
 
     float tabY = PANEL_HEIGHT - 100;
     _tabEquipment->setPosition(Vec2(PANEL_WIDTH / 2 - 80, tabY));
@@ -373,18 +355,18 @@ void InventoryLayer::switchTab(Tab tab)
 
     if (_tabEquipment)
     {
-        auto label = dynamic_cast<Label *>(_tabEquipment->getLabel());
-        if (label)
+        auto normal = dynamic_cast<Sprite *>(_tabEquipment->getNormalImage());
+        if (normal)
         {
-            label->setTextColor(equipVisible ? Color4B(255, 220, 100, 255) : Color4B::WHITE);
+            normal->setColor(equipVisible ? SELECTED_COLOR : Color3B::WHITE);
         }
     }
     if (_tabSkill)
     {
-        auto label = dynamic_cast<Label *>(_tabSkill->getLabel());
-        if (label)
+        auto normal = dynamic_cast<Sprite *>(_tabSkill->getNormalImage());
+        if (normal)
         {
-            label->setTextColor(!equipVisible ? Color4B(255, 220, 100, 255) : Color4B::WHITE);
+            normal->setColor(!equipVisible ? SELECTED_COLOR : Color3B::WHITE);
         }
     }
 
@@ -408,83 +390,126 @@ void InventoryLayer::refresh()
     }
 }
 
-std::string InventoryLayer::getEquipmentSlotName(EquipmentSlot slot) const
+Sprite *InventoryLayer::createPlaceholderSprite(const Size &targetSize, const Color3B &tint)
 {
-    switch (slot)
+    auto sprite = Sprite::create(PLACEHOLDER_ICON_PATH);
+    if (!sprite)
     {
-    case EquipmentSlot::WEAPON:
-        return "武器";
-    case EquipmentSlot::HELMET:
-        return "头盔";
-    case EquipmentSlot::ARMOR:
-        return "护甲";
-    case EquipmentSlot::BOOTS:
-        return "靴子";
-    default:
-        return "未知";
+        return nullptr;
+    }
+
+    sprite->setColor(tint);
+    const auto size = sprite->getContentSize();
+    if (size.width > 0.0f && size.height > 0.0f)
+    {
+        float scale = std::min(targetSize.width / size.width, targetSize.height / size.height);
+        sprite->setScale(scale);
+    }
+    return sprite;
+}
+
+MenuItemSprite *InventoryLayer::createIconButton(const Size &targetSize,
+                                                 const ccMenuCallback &callback,
+                                                 const Color3B &tint)
+{
+    auto normal = createPlaceholderSprite(targetSize, tint);
+    auto selected = createPlaceholderSprite(targetSize, tint);
+    if (!normal || !selected)
+    {
+        return nullptr;
+    }
+
+    // 选中态略微放大，提供点击反馈
+    selected->setScale(selected->getScale() * 1.08f);
+    return MenuItemSprite::create(normal, selected, callback);
+}
+
+void InventoryLayer::createDetailOverlay()
+{
+    if (_detailOverlay || !_panelRoot)
+    {
+        return;
+    }
+
+    _detailOverlay = Node::create();
+    _detailOverlay->setContentSize(Size(PANEL_WIDTH, PANEL_HEIGHT));
+    _detailOverlay->setAnchorPoint(Vec2::ZERO);
+    _detailOverlay->setPosition(Vec2::ZERO);
+    _detailOverlay->setVisible(false);
+    _panelRoot->addChild(_detailOverlay, Z_MENU + 50);
+
+    _detailOverlayBg = DrawNode::create();
+    _detailOverlayBg->drawSolidRect(Vec2::ZERO, Vec2(PANEL_WIDTH, PANEL_HEIGHT), Color4F(0, 0, 0, 0.65f));
+    _detailOverlay->addChild(_detailOverlayBg, 0);
+
+    _detailOverlaySprite = Sprite::create(PLACEHOLDER_ICON_PATH);
+    if (_detailOverlaySprite)
+    {
+        _detailOverlaySprite->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT / 2));
+        _detailOverlay->addChild(_detailOverlaySprite, 1);
+    }
+
+    // 点击弹层任意位置关闭（避免与底层按钮交互冲突）
+    _detailOverlayListener = EventListenerTouchOneByOne::create();
+    _detailOverlayListener->setSwallowTouches(true);
+    _detailOverlayListener->onTouchBegan = [this](Touch *, Event *) -> bool
+    {
+        if (!_detailOverlay || !_detailOverlay->isVisible())
+        {
+            return false;
+        }
+        hideDetailOverlay();
+        return true;
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(_detailOverlayListener, _detailOverlay);
+    _detailOverlayListener->setEnabled(false);
+}
+
+void InventoryLayer::showDetailOverlay()
+{
+    if (!_detailOverlay)
+    {
+        return;
+    }
+
+    _detailOverlay->setVisible(true);
+    if (_detailOverlayListener)
+    {
+        _detailOverlayListener->setEnabled(true);
+    }
+
+    if (_detailOverlaySprite)
+    {
+        // 后续可替换为真实的“详情图”；目前仅用占位图放大展示。
+        auto texture = Director::getInstance()->getTextureCache()->addImage(PLACEHOLDER_ICON_PATH);
+        if (texture)
+        {
+            _detailOverlaySprite->setTexture(texture);
+        }
+
+        const float targetW = PANEL_WIDTH * 0.65f;
+        const float targetH = PANEL_HEIGHT * 0.65f;
+        const auto size = _detailOverlaySprite->getContentSize();
+        float scale = 1.0f;
+        if (size.width > 0.0f && size.height > 0.0f)
+        {
+            scale = std::min(targetW / size.width, targetH / size.height);
+        }
+        _detailOverlaySprite->setScale(scale);
+        _detailOverlaySprite->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT / 2));
     }
 }
 
-std::string InventoryLayer::formatAttributes(const Attributes &attrs) const
+void InventoryLayer::hideDetailOverlay()
 {
-    if (attrs.values.empty())
+    if (_detailOverlay)
     {
-        return "";
+        _detailOverlay->setVisible(false);
     }
-
-    std::string out;
-    for (std::map<AttributeType, float>::const_iterator it = attrs.values.begin();
-         it != attrs.values.end(); ++it)
+    if (_detailOverlayListener)
     {
-        if (!out.empty())
-        {
-            out += " ";
-        }
-
-        const AttributeType type = it->first;
-        const float val = it->second;
-        switch (type)
-        {
-        case AttributeType::STRENGTH:
-            out += StringUtils::format("力+%.0f", val);
-            break;
-        case AttributeType::DEFENSE:
-            out += StringUtils::format("防+%.0f", val);
-            break;
-        case AttributeType::MOVE_SPEED:
-            out += StringUtils::format("速+%.0f", val);
-            break;
-        case AttributeType::MAX_HP:
-            out += StringUtils::format("HP+%.0f", val);
-            break;
-        case AttributeType::MAX_MP:
-            out += StringUtils::format("MP+%.0f", val);
-            break;
-        case AttributeType::CRITICAL_RATE:
-            out += StringUtils::format("暴+%.0f%%", val * 100.0f);
-            break;
-        default:
-            out += StringUtils::format("属性%d+%.2f", static_cast<int>(type), val);
-            break;
-        }
+        _detailOverlayListener->setEnabled(false);
     }
-    return out;
-}
-
-MenuItemLabel *InventoryLayer::createMenuButton(const std::string &text,
-                                                const ccMenuCallback &callback,
-                                                int fontSize)
-{
-    auto label = Label::createWithTTF(text, FONT_PATH, fontSize);
-    label->setColor(Color3B::WHITE);
-    label->enableOutline(Color4B::BLACK, 2);
-    auto item = MenuItemLabel::create(label, callback);
-    if (item && label)
-    {
-        item->setContentSize(label->getContentSize());
-        label->setPosition(Vec2(item->getContentSize().width / 2, item->getContentSize().height / 2));
-    }
-    return item;
 }
 
 void InventoryLayer::refreshEquipmentPage()
@@ -509,21 +534,21 @@ void InventoryLayer::refreshEquipmentPage()
     const float leftColX = contentLeft;
     const float rightColX = contentLeft + colWidth + COLUMN_GAP;
 
-    // 左栏：装备槽位
-    auto equipTitle = Label::createWithTTF("当前装备", FONT_PATH, 24);
-    equipTitle->setAnchorPoint(Vec2(0, 0.5f));
-    equipTitle->setColor(SECTION_TITLE_COLOR);
-    equipTitle->enableOutline(Color4B::BLACK, 1);
-    equipTitle->setPosition(Vec2(leftColX, contentTop));
-    _equipmentPage->addChild(equipTitle, Z_TEXT);
+    // 左栏：装备槽位（用图片占位，避免文字排版问题）
+    if (auto equipTitle = createPlaceholderSprite(Size(120, 26), SECTION_TITLE_COLOR))
+    {
+        equipTitle->setAnchorPoint(Vec2(0, 0.5f));
+        equipTitle->setPosition(Vec2(leftColX, contentTop));
+        _equipmentPage->addChild(equipTitle, Z_TEXT);
+    }
 
-    // 右栏：背包物品
-    auto bagTitle = Label::createWithTTF("背包物品", FONT_PATH, 24);
-    bagTitle->setAnchorPoint(Vec2(0, 0.5f));
-    bagTitle->setColor(SECTION_TITLE_COLOR);
-    bagTitle->enableOutline(Color4B::BLACK, 1);
-    bagTitle->setPosition(Vec2(rightColX, contentTop));
-    _equipmentPage->addChild(bagTitle, Z_TEXT);
+    // 右栏：背包物品（用图片占位）
+    if (auto bagTitle = createPlaceholderSprite(Size(120, 26), SECTION_TITLE_COLOR))
+    {
+        bagTitle->setAnchorPoint(Vec2(0, 0.5f));
+        bagTitle->setPosition(Vec2(rightColX, contentTop));
+        _equipmentPage->addChild(bagTitle, Z_TEXT);
+    }
 
     float yEquip = contentTop - 40.0f;
     float yBag = contentTop - 40.0f;
@@ -531,10 +556,12 @@ void InventoryLayer::refreshEquipmentPage()
     // 玩家未绑定
     if (!_player)
     {
-        auto hint = Label::createWithTTF("未绑定玩家", FONT_PATH, 20);
-        hint->setAnchorPoint(Vec2(0, 0.5f));
-        hint->setPosition(Vec2(leftColX, yEquip));
-        _equipmentPage->addChild(hint, Z_TEXT);
+        if (auto hint = createPlaceholderSprite(Size(140, 30), Color3B(180, 180, 180)))
+        {
+            hint->setAnchorPoint(Vec2(0, 0.5f));
+            hint->setPosition(Vec2(leftColX, yEquip));
+            _equipmentPage->addChild(hint, Z_TEXT);
+        }
         return;
     }
 
@@ -550,7 +577,7 @@ void InventoryLayer::refreshEquipmentPage()
         EquipmentSlot::BOOTS,
     };
 
-    const float slotHeight = 36.0f;
+    const float slotHeight = 42.0f;
     const float detailHeight = 60.0f;
 
     for (size_t i = 0; i < slotOrder.size(); ++i)
@@ -558,17 +585,11 @@ void InventoryLayer::refreshEquipmentPage()
         EquipmentSlot slot = slotOrder[i];
         auto eq = _player->getEquipment(slot);
 
-        std::string slotName = getEquipmentSlotName(slot);
-        std::string eqName = eq ? eq->name : "空";
         bool isSelected = (_selectedEquipSlotIndex == static_cast<int>(i));
 
-        // 选中指示符
-        std::string prefix = isSelected ? "▶ " : "   ";
-        std::string displayText = prefix + slotName + "：" + eqName;
-
-        // 创建可点击的槽位按钮
-        auto slotBtn = createFixedWidthMenuItem(displayText, colWidth - 90, 20, [this, i](Ref *)
-                                                {
+        // 创建可点击的槽位按钮：全部用图片占位
+        const Color3B slotTint = isSelected ? SELECTED_COLOR : (eq ? ITEM_TEXT_COLOR : Color3B(120, 120, 120));
+        auto slotBtn = createIconButton(Size(ICON_ITEM, ICON_ITEM), [this, i](Ref *) {
             // 切换选中状态
             if (_selectedEquipSlotIndex == static_cast<int>(i))
             {
@@ -578,45 +599,31 @@ void InventoryLayer::refreshEquipmentPage()
             {
                 _selectedEquipSlotIndex = static_cast<int>(i);
             }
-            refresh(); });
+            showDetailOverlay();
+            refresh();
+        }, slotTint);
 
         if (slotBtn)
         {
-            // 设置颜色
-            if (auto label = dynamic_cast<Label *>(slotBtn->getLabel()))
-            {
-                if (isSelected)
-                {
-                    label->setColor(SELECTED_COLOR);
-                }
-                else if (eq)
-                {
-                    label->setColor(ITEM_TEXT_COLOR);
-                }
-                else
-                {
-                    label->setColor(Color3B(120, 120, 120));
-                }
-            }
-            slotBtn->setAnchorPoint(Vec2(0, 0.5f));
-            slotBtn->setPosition(Vec2(leftColX + (colWidth - 90) / 2, yEquip));
+            slotBtn->setPosition(Vec2(leftColX + ICON_ITEM / 2, yEquip));
             menu->addChild(slotBtn);
         }
 
         // 卸下按钮
         if (eq)
         {
-            auto unequipBtn = createMenuButton("卸下", [this, slot](Ref *)
-                                               {
+            auto unequipBtn = createIconButton(Size(ICON_ACTION, ICON_ACTION), [this, slot](Ref *) {
                 if (_player)
                 {
                     _player->unequip(slot);
                     _selectedEquipSlotIndex = -1;
+                    showDetailOverlay();
                     refresh();
-                } }, 16);
+                }
+            }, Color3B(255, 120, 120));
             if (unequipBtn)
             {
-                unequipBtn->setPosition(Vec2(leftColX + colWidth - 45, yEquip));
+                unequipBtn->setPosition(Vec2(leftColX + colWidth - ICON_ACTION / 2, yEquip));
                 menu->addChild(unequipBtn);
             }
         }
@@ -634,26 +641,11 @@ void InventoryLayer::refreshEquipmentPage()
                 Color4F(0.15f, 0.15f, 0.2f, 0.8f));
             _equipmentPage->addChild(detailBg, Z_TEXT);
 
-            // 属性加成
-            std::string attrs = formatAttributes(eq->attributeBonus);
-            if (!attrs.empty())
+            // 详情区域：点击后才显示更详细的图片（目前仍使用占位图）
+            if (auto detailSprite = createPlaceholderSprite(Size(colWidth - 40, detailHeight - 10), Color3B::WHITE))
             {
-                auto attrLabel = Label::createWithTTF("属性：" + attrs, FONT_PATH, 16);
-                attrLabel->setAnchorPoint(Vec2(0, 0.5f));
-                attrLabel->setColor(ITEM_ATTR_COLOR);
-                attrLabel->setPosition(Vec2(leftColX + 10, yEquip - 15));
-                _equipmentPage->addChild(attrLabel, Z_TEXT + 1);
-            }
-
-            // 描述（如果有）
-            if (!eq->description.empty())
-            {
-                auto descLabel = Label::createWithTTF(eq->description, FONT_PATH, 14);
-                descLabel->setAnchorPoint(Vec2(0, 0.5f));
-                descLabel->setColor(Color3B(180, 180, 180));
-                descLabel->setDimensions(colWidth - 30, 0);
-                descLabel->setPosition(Vec2(leftColX + 10, yEquip - 40));
-                _equipmentPage->addChild(descLabel, Z_TEXT + 1);
+                detailSprite->setPosition(Vec2(leftColX + (colWidth - 10) / 2, yEquip - detailHeight / 2 + 8));
+                _equipmentPage->addChild(detailSprite, Z_TEXT + 1);
             }
 
             yEquip -= detailHeight;
@@ -687,15 +679,8 @@ void InventoryLayer::refreshEquipmentPage()
             isEquipped = true;
         }
 
-        std::string slotTag = "[" + getEquipmentSlotName(item->slot) + "]";
-        std::string text = slotTag + " " + item->name;
-        if (isEquipped)
-        {
-            text += " (已穿戴)";
-        }
-
-        auto btn = createFixedWidthMenuItem(text, colWidth - 10, 18, [this, itemId = item->id](Ref *)
-                                            {
+        const Color3B itemTint = isEquipped ? SELECTED_COLOR : ITEM_TEXT_COLOR;
+        auto btn = createIconButton(Size(ICON_ITEM, ICON_ITEM), [this, itemId = item->id](Ref *) {
             if (!_player)
             {
                 return;
@@ -706,38 +691,32 @@ void InventoryLayer::refreshEquipmentPage()
                 if (it && it->id == itemId)
                 {
                     _player->equip(it);
+                    showDetailOverlay();
                     refresh();
                     break;
                 }
-            } });
+            }
+        }, itemTint);
         if (!btn)
         {
             continue;
         }
 
-        // 已穿戴的物品显示不同颜色
-        if (isEquipped)
-        {
-            if (auto label = dynamic_cast<Label *>(btn->getLabel()))
-            {
-                label->setColor(SELECTED_COLOR);
-            }
-        }
-
-        btn->setPosition(Vec2(rightColX + (colWidth - 10) / 2, yBag));
+        btn->setPosition(Vec2(rightColX + ICON_ITEM / 2, yBag));
         menu->addChild(btn);
 
-        yBag -= btn->getContentSize().height + 8.0f;
+        yBag -= slotHeight;
         shown++;
     }
 
     if (shown == 0)
     {
-        auto empty = Label::createWithTTF("（背包为空）", FONT_PATH, 18);
-        empty->setAnchorPoint(Vec2(0, 0.5f));
-        empty->setColor(Color3B(120, 120, 120));
-        empty->setPosition(Vec2(rightColX, yBag));
-        _equipmentPage->addChild(empty, Z_TEXT);
+        if (auto empty = createPlaceholderSprite(Size(120, 26), Color3B(120, 120, 120)))
+        {
+            empty->setAnchorPoint(Vec2(0, 0.5f));
+            empty->setPosition(Vec2(rightColX, yBag));
+            _equipmentPage->addChild(empty, Z_TEXT);
+        }
     }
 }
 
@@ -765,18 +744,22 @@ void InventoryLayer::refreshSkillPage()
 
     if (!_player)
     {
-        auto hint = Label::createWithTTF("未绑定玩家", FONT_PATH, 20);
-        hint->setPosition(PANEL_WIDTH / 2, PANEL_HEIGHT / 2);
-        _skillPage->addChild(hint, Z_TEXT);
+        if (auto hint = createPlaceholderSprite(Size(140, 30), Color3B(180, 180, 180)))
+        {
+            hint->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT / 2));
+            _skillPage->addChild(hint, Z_TEXT);
+        }
         return;
     }
 
     auto skillComp = _player->getSkillComponent();
     if (!skillComp)
     {
-        auto hint = Label::createWithTTF("玩家缺少 SkillComponent", FONT_PATH, 20);
-        hint->setPosition(PANEL_WIDTH / 2, PANEL_HEIGHT / 2);
-        _skillPage->addChild(hint, Z_TEXT);
+        if (auto hint = createPlaceholderSprite(Size(180, 30), Color3B(180, 180, 180)))
+        {
+            hint->setPosition(Vec2(PANEL_WIDTH / 2, PANEL_HEIGHT / 2));
+            _skillPage->addChild(hint, Z_TEXT);
+        }
         return;
     }
 
@@ -784,21 +767,21 @@ void InventoryLayer::refreshSkillPage()
     menu->setPosition(Vec2::ZERO);
     _skillPage->addChild(menu, Z_MENU);
 
-    // 左栏：主动技能槽位
-    auto activeTitle = Label::createWithTTF("主动技能槽位", FONT_PATH, 24);
-    activeTitle->setAnchorPoint(Vec2(0, 0.5f));
-    activeTitle->setColor(SECTION_TITLE_COLOR);
-    activeTitle->enableOutline(Color4B::BLACK, 1);
-    activeTitle->setPosition(Vec2(leftColX, contentTop));
-    _skillPage->addChild(activeTitle, Z_TEXT);
+    // 左栏：主动技能槽位（图片占位）
+    if (auto activeTitle = createPlaceholderSprite(Size(140, 26), SECTION_TITLE_COLOR))
+    {
+        activeTitle->setAnchorPoint(Vec2(0, 0.5f));
+        activeTitle->setPosition(Vec2(leftColX, contentTop));
+        _skillPage->addChild(activeTitle, Z_TEXT);
+    }
 
-    // 右栏：被动技能槽位
-    auto passiveTitle = Label::createWithTTF("被动技能槽位", FONT_PATH, 24);
-    passiveTitle->setAnchorPoint(Vec2(0, 0.5f));
-    passiveTitle->setColor(SECTION_TITLE_COLOR);
-    passiveTitle->enableOutline(Color4B::BLACK, 1);
-    passiveTitle->setPosition(Vec2(rightColX, contentTop));
-    _skillPage->addChild(passiveTitle, Z_TEXT);
+    // 右栏：被动技能槽位（图片占位）
+    if (auto passiveTitle = createPlaceholderSprite(Size(140, 26), SECTION_TITLE_COLOR))
+    {
+        passiveTitle->setAnchorPoint(Vec2(0, 0.5f));
+        passiveTitle->setPosition(Vec2(rightColX, contentTop));
+        _skillPage->addChild(passiveTitle, Z_TEXT);
+    }
 
     float yActive = contentTop - 40.0f;
     float yPassive = contentTop - 40.0f;
@@ -810,92 +793,86 @@ void InventoryLayer::refreshSkillPage()
     const size_t activeSlotCount = static_cast<size_t>(GameConfig::UI::SKILL_BAR_SLOT_COUNT);
     for (size_t i = 0; i < activeSlotCount; ++i)
     {
-        std::string name = (i < activeSlots.size() && activeSlots[i]) ? activeSlots[i]->name : "空";
-        bool isSelected = (_selectedActiveSlotIndex == i);
-        std::string prefix = isSelected ? "▶ " : "   ";
-        std::string text = StringUtils::format("%s槽位%zu：%s", prefix.c_str(), i + 1, name.c_str());
+        const bool hasSkill = (i < activeSlots.size() && activeSlots[i]);
+        const bool isSelected = (_selectedActiveSlotIndex == i);
+        const Color3B slotTint = isSelected ? SELECTED_COLOR : (hasSkill ? ITEM_TEXT_COLOR : Color3B(120, 120, 120));
 
-        auto btn = createFixedWidthMenuItem(text, colWidth - 90, 18, [this, i](Ref *)
-                                            {
+        auto btn = createIconButton(Size(ICON_ITEM, ICON_ITEM), [this, i](Ref *) {
             _selectedActiveSlotIndex = i;
-            refresh(); });
+            showDetailOverlay();
+            refresh();
+        }, slotTint);
         if (btn)
         {
-            if (auto label = dynamic_cast<Label *>(btn->getLabel()))
-            {
-                label->setColor(isSelected ? SELECTED_COLOR : ITEM_TEXT_COLOR);
-            }
-            btn->setPosition(Vec2(leftColX + (colWidth - 90) / 2, yActive));
+            btn->setPosition(Vec2(leftColX + ICON_ITEM / 2, yActive));
             menu->addChild(btn);
         }
 
         // 卸下按钮
-        if (i < activeSlots.size() && activeSlots[i])
+        if (hasSkill)
         {
-            auto unequipBtn = createMenuButton("卸下", [this, i](Ref *)
-                                               {
+            auto unequipBtn = createIconButton(Size(ICON_ACTION, ICON_ACTION), [this, i](Ref *) {
                 if (_player)
                 {
                     if (auto comp = _player->getSkillComponent())
                     {
                         comp->unequipActiveSkill(i);
                     }
+                    showDetailOverlay();
                     refresh();
-                } }, 14);
+                }
+            }, Color3B(255, 120, 120));
             if (unequipBtn)
             {
-                unequipBtn->setPosition(Vec2(leftColX + colWidth - 45, yActive));
+                unequipBtn->setPosition(Vec2(leftColX + colWidth - ICON_ACTION / 2, yActive));
                 menu->addChild(unequipBtn);
             }
         }
 
-        yActive -= 32.0f;
+        yActive -= 42.0f;
     }
 
     // 被动技能槽位
     const size_t passiveSlotCount = 3;
     for (size_t i = 0; i < passiveSlotCount; ++i)
     {
-        std::string name = (i < passiveSlots.size() && passiveSlots[i]) ? passiveSlots[i]->name : "空";
-        bool isSelected = (_selectedPassiveSlotIndex == i);
-        std::string prefix = isSelected ? "▶ " : "   ";
-        std::string text = StringUtils::format("%s槽位%zu：%s", prefix.c_str(), i + 1, name.c_str());
+        const bool hasSkill = (i < passiveSlots.size() && passiveSlots[i]);
+        const bool isSelected = (_selectedPassiveSlotIndex == i);
+        const Color3B slotTint = isSelected ? SELECTED_COLOR : (hasSkill ? ITEM_TEXT_COLOR : Color3B(120, 120, 120));
 
-        auto btn = createFixedWidthMenuItem(text, colWidth - 90, 18, [this, i](Ref *)
-                                            {
+        auto btn = createIconButton(Size(ICON_ITEM, ICON_ITEM), [this, i](Ref *) {
             _selectedPassiveSlotIndex = i;
-            refresh(); });
+            showDetailOverlay();
+            refresh();
+        }, slotTint);
         if (btn)
         {
-            if (auto label = dynamic_cast<Label *>(btn->getLabel()))
-            {
-                label->setColor(isSelected ? SELECTED_COLOR : ITEM_TEXT_COLOR);
-            }
-            btn->setPosition(Vec2(rightColX + (colWidth - 90) / 2, yPassive));
+            btn->setPosition(Vec2(rightColX + ICON_ITEM / 2, yPassive));
             menu->addChild(btn);
         }
 
         // 卸下按钮
-        if (i < passiveSlots.size() && passiveSlots[i])
+        if (hasSkill)
         {
-            auto unequipBtn = createMenuButton("卸下", [this, i](Ref *)
-                                               {
+            auto unequipBtn = createIconButton(Size(ICON_ACTION, ICON_ACTION), [this, i](Ref *) {
                 if (_player)
                 {
                     if (auto comp = _player->getSkillComponent())
                     {
                         comp->unequipPassiveSkill(i);
                     }
+                    showDetailOverlay();
                     refresh();
-                } }, 14);
+                }
+            }, Color3B(255, 120, 120));
             if (unequipBtn)
             {
-                unequipBtn->setPosition(Vec2(rightColX + colWidth - 45, yPassive));
+                unequipBtn->setPosition(Vec2(rightColX + colWidth - ICON_ACTION / 2, yPassive));
                 menu->addChild(unequipBtn);
             }
         }
 
-        yPassive -= 32.0f;
+        yPassive -= 42.0f;
     }
 
     // 分隔线
@@ -906,20 +883,20 @@ void InventoryLayer::refreshSkillPage()
                   Vec2(contentRight, listTop + 10));
     _skillPage->addChild(separator, Z_TEXT);
 
-    // 下半部分：可学习技能 / 已学习技能
-    auto learnTitle = Label::createWithTTF("可学习技能", FONT_PATH, 22);
-    learnTitle->setAnchorPoint(Vec2(0, 0.5f));
-    learnTitle->setColor(SECTION_TITLE_COLOR);
-    learnTitle->enableOutline(Color4B::BLACK, 1);
-    learnTitle->setPosition(Vec2(leftColX, listTop));
-    _skillPage->addChild(learnTitle, Z_TEXT);
+    // 下半部分：可学习技能 / 已学习技能（图片占位）
+    if (auto learnTitle = createPlaceholderSprite(Size(120, 24), SECTION_TITLE_COLOR))
+    {
+        learnTitle->setAnchorPoint(Vec2(0, 0.5f));
+        learnTitle->setPosition(Vec2(leftColX, listTop));
+        _skillPage->addChild(learnTitle, Z_TEXT);
+    }
 
-    auto learnedTitle = Label::createWithTTF("已学习技能", FONT_PATH, 22);
-    learnedTitle->setAnchorPoint(Vec2(0, 0.5f));
-    learnedTitle->setColor(SECTION_TITLE_COLOR);
-    learnedTitle->enableOutline(Color4B::BLACK, 1);
-    learnedTitle->setPosition(Vec2(rightColX, listTop));
-    _skillPage->addChild(learnedTitle, Z_TEXT);
+    if (auto learnedTitle = createPlaceholderSprite(Size(120, 24), SECTION_TITLE_COLOR))
+    {
+        learnedTitle->setAnchorPoint(Vec2(0, 0.5f));
+        learnedTitle->setPosition(Vec2(rightColX, listTop));
+        _skillPage->addChild(learnedTitle, Z_TEXT);
+    }
 
     float listYLearn = listTop - 35.0f;
     float listYLearned = listTop - 35.0f;
@@ -939,19 +916,8 @@ void InventoryLayer::refreshSkillPage()
             continue;
         }
 
-        std::string extra;
-        if (t.isPassive)
-        {
-            extra = formatAttributes(t.attributeBonus);
-        }
-        else
-        {
-            extra = StringUtils::format("CD%.1f MP%.0f", t.cooldown, t.manaCost);
-        }
-
-        std::string text = t.name;
-        auto btn = createFixedWidthMenuItem(text, colWidth - 10, 18, [this, id = t.id](Ref *)
-                                            {
+        const Color3B skillTint = t.isPassive ? ITEM_ATTR_COLOR : ITEM_TEXT_COLOR;
+        auto btn = createIconButton(Size(ICON_ITEM, ICON_ITEM), [this, id = t.id](Ref *) {
             if (!_player)
             {
                 return;
@@ -994,35 +960,26 @@ void InventoryLayer::refreshSkillPage()
                 break;
             }
 
-            refresh(); });
+            showDetailOverlay();
+            refresh();
+        }, skillTint);
         if (btn)
         {
-            btn->setPosition(Vec2(leftColX + (colWidth - 10) / 2, listYLearn));
+            btn->setPosition(Vec2(leftColX + ICON_ITEM / 2, listYLearn));
             menu->addChild(btn);
         }
-
-        // 显示技能信息
-        if (!extra.empty())
-        {
-            auto infoLabel = Label::createWithTTF(extra, FONT_PATH, 14);
-            infoLabel->setAnchorPoint(Vec2(0, 0.5f));
-            infoLabel->setColor(ITEM_ATTR_COLOR);
-            infoLabel->setPosition(Vec2(leftColX + 10, listYLearn - 22));
-            _skillPage->addChild(infoLabel, Z_TEXT);
-            listYLearn -= 24.0f;
-        }
-
-        listYLearn -= 36.0f;
+        listYLearn -= 44.0f;
         learnShown++;
     }
 
     if (learnShown == 0)
     {
-        auto none = Label::createWithTTF("（暂无）", FONT_PATH, 16);
-        none->setAnchorPoint(Vec2(0, 0.5f));
-        none->setColor(Color3B(120, 120, 120));
-        none->setPosition(Vec2(leftColX, listYLearn));
-        _skillPage->addChild(none, Z_TEXT);
+        if (auto none = createPlaceholderSprite(Size(120, 24), Color3B(120, 120, 120)))
+        {
+            none->setAnchorPoint(Vec2(0, 0.5f));
+            none->setPosition(Vec2(leftColX, listYLearn));
+            _skillPage->addChild(none, Z_TEXT);
+        }
     }
 
     // 已学习技能列表
@@ -1041,24 +998,8 @@ void InventoryLayer::refreshSkillPage()
             continue;
         }
 
-        std::string extra;
-        if (s->isPassive)
-        {
-            auto p = std::dynamic_pointer_cast<PassiveSkill>(s);
-            extra = p ? formatAttributes(p->attributeBonus) : "";
-        }
-        else
-        {
-            auto a = std::dynamic_pointer_cast<ActiveSkill>(s);
-            if (a)
-            {
-                extra = StringUtils::format("CD%.1f MP%.0f", a->cooldown, a->manaCost);
-            }
-        }
-
-        std::string text = s->name;
-        auto btn = createFixedWidthMenuItem(text, colWidth - 10, 18, [this, id = s->id](Ref *)
-                                            {
+        const Color3B skillTint = s->isPassive ? ITEM_ATTR_COLOR : ITEM_TEXT_COLOR;
+        auto btn = createIconButton(Size(ICON_ITEM, ICON_ITEM), [this, id = s->id](Ref *) {
             if (!_player)
             {
                 return;
@@ -1092,35 +1033,26 @@ void InventoryLayer::refreshSkillPage()
                 }
             }
 
-            refresh(); });
+            showDetailOverlay();
+            refresh();
+        }, skillTint);
         if (btn)
         {
-            btn->setPosition(Vec2(rightColX + (colWidth - 10) / 2, listYLearned));
+            btn->setPosition(Vec2(rightColX + ICON_ITEM / 2, listYLearned));
             menu->addChild(btn);
         }
-
-        // 显示技能信息
-        if (!extra.empty())
-        {
-            auto infoLabel = Label::createWithTTF(extra, FONT_PATH, 14);
-            infoLabel->setAnchorPoint(Vec2(0, 0.5f));
-            infoLabel->setColor(ITEM_ATTR_COLOR);
-            infoLabel->setPosition(Vec2(rightColX + 10, listYLearned - 22));
-            _skillPage->addChild(infoLabel, Z_TEXT);
-            listYLearned -= 24.0f;
-        }
-
-        listYLearned -= 36.0f;
+        listYLearned -= 44.0f;
         learnedShown++;
     }
 
     if (learnedShown == 0)
     {
-        auto none = Label::createWithTTF("（暂无）", FONT_PATH, 16);
-        none->setAnchorPoint(Vec2(0, 0.5f));
-        none->setColor(Color3B(120, 120, 120));
-        none->setPosition(Vec2(rightColX, listYLearned));
-        _skillPage->addChild(none, Z_TEXT);
+        if (auto none = createPlaceholderSprite(Size(120, 24), Color3B(120, 120, 120)))
+        {
+            none->setAnchorPoint(Vec2(0, 0.5f));
+            none->setPosition(Vec2(rightColX, listYLearned));
+            _skillPage->addChild(none, Z_TEXT);
+        }
     }
 }
 
