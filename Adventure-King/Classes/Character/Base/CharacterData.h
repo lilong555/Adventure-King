@@ -203,6 +203,7 @@ struct StatusEffectInstance
     StatusEffectType type;
     float duration = 0.0f;     // 持续时间（秒）
     float elapsed = 0.0f;      // 已经过的时间（秒）
+    bool permanent = false;    // 是否为“永久效果”（true 时不会过期，需由代码显式移除）
     Attributes attributeBonus; // 状态对属性的影响（例如 EXCITED 给 MOVE_SPEED +50）
 
     // -------------------------
@@ -222,5 +223,5 @@ struct StatusEffectInstance
     float perStackDamageScale = 0.0f; // 每层额外比例（例如 0.1）；总比例 = base + perStack * stacks
 
     // 是否过期
-    bool isExpired() const { return elapsed >= duration; }
+    bool isExpired() const { return !permanent && elapsed >= duration; }
 };

@@ -143,7 +143,7 @@ public:
     /// @brief 造成伤害回调（用于吸血/命中特效/击杀触发等）
     virtual void onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied) override;
     /// @brief 受到伤害回调（用于反伤/濒死救援等）
-    virtual void onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDie) override;
+    virtual void onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback) override;
     /// @brief 计算攻击力（用于 DOT 等）
     virtual float getAttackPower() override; // 攻击力（用于 DOT 等计算）
     /// @brief 使用技能槽位

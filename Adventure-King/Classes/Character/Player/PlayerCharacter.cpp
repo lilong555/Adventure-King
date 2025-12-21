@@ -36,6 +36,9 @@ namespace
     constexpr float DEFAULT_WEAPON_DAMAGE = GameConfig::Player::DEFAULT_WEAPON_DAMAGE;
     constexpr float STRENGTH_DAMAGE_MULTIPLIER = GameConfig::Player::STRENGTH_DAMAGE_MULTIPLIER;
 
+    // 满血判断的容差：避免浮点误差导致“看似满血却判定不满”
+    constexpr float HP_COMPARISON_EPSILON = 0.01f;
+
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths, float delayPerUnit)
     {
@@ -271,14 +274,15 @@ void PlayerCharacter::updateFullHpCritEffect()
     }
 
     const float maxHp = attr->getAttributeValue(AttributeType::MAX_HP);
-    const bool isFullHp = (getCurrentHP() >= maxHp - 0.01f);
+    const bool isFullHp = (getCurrentHP() >= maxHp - HP_COMPARISON_EPSILON);
 
     if (isFullHp && !_fullHpCritActive)
     {
         StatusEffectInstance fullHpCrit;
         fullHpCrit.type = StatusEffectType::FULL_HP_CRIT;
-        fullHpCrit.duration = 999999.0f; // 超长持续时间（由代码控制移除）
+        fullHpCrit.duration = 0.0f;
         fullHpCrit.elapsed = 0.0f;
+        fullHpCrit.permanent = true; // 由 updateFullHpCritEffect 显式移除
         fullHpCrit.attributeBonus.set(AttributeType::CRITICAL_RATE, GameConfig::Skill::PassiveEffect::FULL_HP_CRIT_BONUS);
         attr->addStatusEffect(fullHpCrit);
         _fullHpCritActive = true;
@@ -1006,7 +1010,7 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     _actionLocked = false;
 }
 
-void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool /*wouldDie*/)
+void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool /*wouldDieBeforeCallback*/)
 {
     (void)info;
 
@@ -1023,15 +1027,13 @@ void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage
         auto thorns = findEquippedItemById(GameConfig::Equipment::Armor::THORNS_ARMOR);
         if (thorns)
         {
-            const int level = std::max(1, thorns->level);
-            float rate = GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_BASE +
-                         GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_PER_LEVEL * static_cast<float>(level - 1);
-            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_MAX));
-
-            float reflect = std::floor(std::max(1.0f, finalDamage * rate));
+            const float rate = GameConfig::EquipmentEffect::ThornsArmor::getReflectRate(thorns->level);
+            // 反伤按比例计算；最小为 1，避免“触发了但没有伤害”的反馈落差
+            float reflect = std::max(1.0f, finalDamage * rate);
             DamageInfo thornDmg;
             thornDmg.amount = reflect;
-            thornDmg.attacker = nullptr;      // 避免反伤链式触发（不走 attacker 回调）
+            // 设置 attacker=nullptr：反伤不触发任何 onDealDamage/吸血/命中特效，避免链式循环
+            thornDmg.attacker = nullptr;
             thornDmg.isCritical = false;
             thornDmg.penetration = 0.0f;
             thornDmg.causesHitStun = false;   // 反伤不打断，避免“互相锁死”
@@ -1054,7 +1056,9 @@ void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage
             if (getCurrentHP() <= triggerHp)
             {
                 const float targetHp = maxHp * GameConfig::EquipmentEffect::EmergencyMask::HEAL_TARGET_HP_RATIO;
-                setCurrentHP(std::max(getCurrentHP(), targetHp));
+                // 显式夹取：避免配置错误导致目标血量超过最大血量（不依赖 setCurrentHP 的内部夹取）
+                const float clampedTargetHp = std::min(targetHp, maxHp);
+                setCurrentHP(std::max(getCurrentHP(), clampedTargetHp));
                 _emergencyMaskCooldownRemaining = GameConfig::EquipmentEffect::EmergencyMask::PROC_COOLDOWN;
             }
         }
@@ -1084,15 +1088,14 @@ void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, con
     {
         if (weapon->id == GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD)
         {
-            const int level = std::max(1, weapon->level);
-            float rate = GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_BASE +
-                         GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_PER_LEVEL * static_cast<float>(level - 1);
-            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_MAX));
-            lifestealRate += rate;
+            // 装备吸血：随装备等级成长
+            lifestealRate += GameConfig::EquipmentEffect::BloodPactSword::getLifestealRate(weapon->level);
         }
     }
     if (lifestealRate > 0.0f && !isDead())
     {
+        // 吸血允许来自“被动 + 装备”叠加，但做总上限夹取，便于后续扩展时控平衡
+        lifestealRate = std::min(lifestealRate, GameConfig::Skill::PassiveEffect::LIFESTEAL_TOTAL_MAX);
         setCurrentHP(getCurrentHP() + finalDamage * lifestealRate);
     }
 
@@ -1101,51 +1104,49 @@ void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, con
     // -----------------------------
     if (_burnProcCooldownRemaining <= 0.0f)
     {
+        const bool hasPassiveEmber = hasPassiveEquipped(GameConfig::Skill::Passive::EMBER_MARK);
+        const auto weapon = getEquippedWeapon();
+        const bool hasEmberStaff = (weapon && weapon->id == GameConfig::Equipment::Weapon::EMBER_STAFF);
+
         float chance = 0.0f;
-        if (hasPassiveEquipped(GameConfig::Skill::Passive::EMBER_MARK))
+        if (hasPassiveEmber)
         {
-            chance = std::max(chance, GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_CHANCE);
+            chance += GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_CHANCE;
         }
-        if (auto weapon = getEquippedWeapon())
+        if (hasEmberStaff)
         {
-            if (weapon->id == GameConfig::Equipment::Weapon::EMBER_STAFF)
-            {
-                chance = std::max(chance, GameConfig::EquipmentEffect::EmberStaff::PROC_CHANCE);
-            }
+            chance += GameConfig::EquipmentEffect::EmberStaff::PROC_CHANCE;
         }
+        chance = clampf(chance, 0.0f, 1.0f);
 
-        if (chance > 0.0f)
+        if (chance > 0.0f && RandomHelper::random_real(0.0f, 1.0f) < chance)
         {
-            float chancePercent = std::max(0.0f, std::min(chance * 100.0f, 100.0f));
-            if ((rand() % 100) < static_cast<int>(chancePercent))
-            {
-                tryApplyDotStatus(target,
-                                  StatusEffectType::BURNING,
-                                  1,
-                                  GameConfig::StatusEffect::Burning::DURATION_SECONDS,
-                                  GameConfig::StatusEffect::Burning::TICK_INTERVAL_SECONDS,
-                                  GameConfig::StatusEffect::Burning::BASE_DAMAGE_SCALE,
-                                  GameConfig::StatusEffect::Burning::PER_STACK_DAMAGE_SCALE);
+            tryApplyDotStatus(target,
+                              StatusEffectType::BURNING,
+                              1,
+                              GameConfig::StatusEffect::Burning::DURATION_SECONDS,
+                              GameConfig::StatusEffect::Burning::TICK_INTERVAL_SECONDS,
+                              GameConfig::StatusEffect::Burning::BASE_DAMAGE_SCALE,
+                              GameConfig::StatusEffect::Burning::PER_STACK_DAMAGE_SCALE);
 
-                // 冷却：取更严格的那个（避免同帧多段伤害刷屏）
-                float cd = GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_COOLDOWN;
-                if (auto weapon = getEquippedWeapon())
-                {
-                    if (weapon->id == GameConfig::Equipment::Weapon::EMBER_STAFF)
-                    {
-                        cd = std::max(cd, GameConfig::EquipmentEffect::EmberStaff::PROC_COOLDOWN);
-                    }
-                }
-                _burnProcCooldownRemaining = std::max(0.0f, cd);
+            // 冷却：取“更长”的冷却（更严格），避免同帧多段伤害刷屏
+            float cd = 0.0f;
+            if (hasPassiveEmber)
+            {
+                cd = std::max(cd, GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_COOLDOWN);
             }
+            if (hasEmberStaff)
+            {
+                cd = std::max(cd, GameConfig::EquipmentEffect::EmberStaff::PROC_COOLDOWN);
+            }
+            _burnProcCooldownRemaining = std::max(0.0f, cd);
         }
     }
 
     if (_poisonProcCooldownRemaining <= 0.0f && hasPassiveEquipped(GameConfig::Skill::Passive::POISON_TOUCH))
     {
-        float chancePercent = GameConfig::Skill::PassiveEffect::POISON_TOUCH_PROC_CHANCE * 100.0f;
-        chancePercent = std::max(0.0f, std::min(chancePercent, 100.0f));
-        if ((rand() % 100) < static_cast<int>(chancePercent))
+        const float chance = clampf(GameConfig::Skill::PassiveEffect::POISON_TOUCH_PROC_CHANCE, 0.0f, 1.0f);
+        if (chance > 0.0f && RandomHelper::random_real(0.0f, 1.0f) < chance)
         {
             tryApplyDotStatus(target,
                               StatusEffectType::POISONED,

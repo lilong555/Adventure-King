@@ -52,9 +52,13 @@ void AttributeComponent::updateStatusEffectsLogic(float dt)
 
     for (auto& effect : _statusEffects)
     {
-        float remaining = effect.duration - effect.elapsed;
-        float activeDt = std::max(0.0f, std::min(dt, remaining));
-        effect.elapsed += activeDt;
+        float activeDt = dt;
+        if (!effect.permanent)
+        {
+            float remaining = effect.duration - effect.elapsed;
+            activeDt = std::max(0.0f, std::min(dt, remaining));
+            effect.elapsed += activeDt;
+        }
 
         // DOT：按 tickInterval 结算；伤害来源攻击力在施加时已写入 effect.sourceAttackPower
         if (owner && !owner->isDead() && effect.tickInterval > 0.0f && effect.sourceAttackPower > 0.0f)

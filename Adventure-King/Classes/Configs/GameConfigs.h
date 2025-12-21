@@ -1,5 +1,6 @@
 #pragma once
 #include "cocos2d.h"
+#include <algorithm>
 // ============================================================================
 // 1. 游戏数值配置 (Game Constants)
 // ============================================================================
@@ -45,6 +46,8 @@ namespace GameConfig
         {
             // 嗜血：按“实际造成伤害”回复生命（比例）
             inline constexpr float BLOODTHIRST_LIFESTEAL = 0.05f;
+            // 吸血上限：避免未来叠加来源过多导致数值失控（当前默认不会触发该上限）
+            inline constexpr float LIFESTEAL_TOTAL_MAX = 0.20f;
 
             // 余烬印记：命中附加燃烧
             inline constexpr float EMBER_MARK_PROC_CHANCE = 0.20f;
@@ -102,6 +105,14 @@ namespace GameConfig
             inline constexpr float REFLECT_RATE_PER_LEVEL = 0.01f; // 每级额外反伤比例
             inline constexpr float REFLECT_RATE_MAX = 0.35f;       // 反伤上限
             inline constexpr float PROC_COOLDOWN = 0.50f;          // 触发间隔（秒）
+
+            // 反伤比例（随装备等级成长并做夹取）
+            inline float getReflectRate(int level)
+            {
+                level = std::max(1, level);
+                float rate = REFLECT_RATE_BASE + REFLECT_RATE_PER_LEVEL * static_cast<float>(level - 1);
+                return std::max(0.0f, std::min(rate, REFLECT_RATE_MAX));
+            }
         }
 
         namespace EmergencyMask
@@ -128,6 +139,14 @@ namespace GameConfig
             inline constexpr float LIFESTEAL_BASE = 0.03f;
             inline constexpr float LIFESTEAL_PER_LEVEL = 0.002f;
             inline constexpr float LIFESTEAL_MAX = 0.10f;
+
+            // 吸血比例（随装备等级成长并做夹取）
+            inline float getLifestealRate(int level)
+            {
+                level = std::max(1, level);
+                float rate = LIFESTEAL_BASE + LIFESTEAL_PER_LEVEL * static_cast<float>(level - 1);
+                return std::max(0.0f, std::min(rate, LIFESTEAL_MAX));
+            }
         }
     }
 

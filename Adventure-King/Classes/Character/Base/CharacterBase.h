@@ -59,7 +59,8 @@ public:
     /// @brief 自己造成伤害后回调（在目标 HP 已扣除、死亡判定完成后触发）
     virtual void onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied) {}
     /// @brief 自己受到伤害后回调（在 HP 扣除后、死亡判定前触发，可用于濒死救援等机制）
-    virtual void onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDie) {}
+    /// @param wouldDieBeforeCallback 表示“扣血后，回调触发前”是否会死亡；回调中可能修改 HP 导致最终结果不同
+    virtual void onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback) {}
 
     // HP / MP
     /// @brief 获取当前 HP

@@ -259,9 +259,7 @@ namespace
         // 武器：血契短剑（吸血，随等级成长）
         if (item->id == GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD)
         {
-            float rate = GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_BASE +
-                         GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_PER_LEVEL * static_cast<float>(level - 1);
-            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_MAX));
+            const float rate = GameConfig::EquipmentEffect::BloodPactSword::getLifestealRate(level);
             return StringUtils::format(" - 吸血：造成伤害的 %.1f%% 转为生命（随装备等级成长）",
                                        rate * 100.0f);
         }
@@ -278,9 +276,7 @@ namespace
         // 护甲：荆棘甲（反伤，随等级成长）
         if (item->id == GameConfig::Equipment::Armor::THORNS_ARMOR)
         {
-            float rate = GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_BASE +
-                         GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_PER_LEVEL * static_cast<float>(level - 1);
-            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_MAX));
+            const float rate = GameConfig::EquipmentEffect::ThornsArmor::getReflectRate(level);
             return StringUtils::format(" - 反伤：反弹 %.0f%% 受到的伤害（%.2fs 冷却，随装备等级成长）",
                                        rate * 100.0f,
                                        GameConfig::EquipmentEffect::ThornsArmor::PROC_COOLDOWN);

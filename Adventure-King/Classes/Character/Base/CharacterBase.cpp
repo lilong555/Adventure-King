@@ -174,11 +174,11 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     spawnHurtVfx(info);
 
     _currentHP -= finalDamage;
-    const bool wouldDie = (_currentHP <= 0.0f);
+    const bool wouldDieBeforeCallback = (_currentHP <= 0.0f);
     setCurrentHP(_currentHP); // 夹取到 [0, maxHP]，避免出现负值或溢出
 
     // 先触发“受击后回调”（可用于濒死救援等机制）
-    onReceiveDamage(info.attacker, finalDamage, info, wouldDie);
+    onReceiveDamage(info.attacker, finalDamage, info, wouldDieBeforeCallback);
 
     const bool died = isDead();
 

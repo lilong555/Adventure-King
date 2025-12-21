@@ -658,8 +658,8 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     setCurrentHP(hp);
     updateHpBar();
 
-    const bool wouldDie = (hp <= 0.0f);
-    onReceiveDamage(info.attacker, dmg, info, wouldDie);
+    const bool wouldDieBeforeCallback = (hp <= 0.0f);
+    onReceiveDamage(info.attacker, dmg, info, wouldDieBeforeCallback);
 
     const bool died = isDead();
     if (info.attacker && info.attacker != this)
