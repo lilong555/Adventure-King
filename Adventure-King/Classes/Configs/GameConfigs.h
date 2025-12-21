@@ -92,6 +92,19 @@ namespace GameConfig
                 return level * REQUIRED_EXP_PER_LEVEL;
             }
         }
+
+        // 属性点配置（用于属性页面的单项加点）
+        namespace AttributePoint
+        {
+            inline constexpr int POINTS_PER_LEVEL = 1; // 每次升级获得的属性点
+
+            // 每点属性的成长数值（当前为占位，可根据数值体验再调整）
+            inline constexpr float MAX_HP_PER_POINT = 10.0f;         // 生命力
+            inline constexpr float STRENGTH_PER_POINT = 2.0f;        // 力量
+            inline constexpr float MOVE_SPEED_PER_POINT = 10.0f;     // 敏捷（当前映射为移动速度）
+            inline constexpr float DEFENSE_PER_POINT = 1.0f;         // 防御
+            inline constexpr float CRITICAL_RATE_PER_POINT = 0.02f;  // 暴击率（+2%）
+        }
     }
     namespace Monster
     {

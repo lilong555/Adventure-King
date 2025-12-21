@@ -67,6 +67,7 @@ struct PlayerSaveData
     int level = 1;
     int experience = 0;
     int skillPoints = 0;
+    int attributePoints = 0;
 
     // 当前状态
     float currentHP = 100.0f;

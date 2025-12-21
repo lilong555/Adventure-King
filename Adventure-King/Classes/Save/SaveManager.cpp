@@ -402,6 +402,7 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
     data.level = player->getLevel();
     data.experience = player->getExperience();
     data.skillPoints = player->getSkillPoints();
+    data.attributePoints = player->getAttributePoints();
 
     // 当前状态
     data.currentHP = player->getCurrentHP();
@@ -571,6 +572,7 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
     player->setLevel(data.level);
     player->setExperience(data.experience);
     player->setSkillPoints(data.skillPoints);
+    player->setAttributePoints(data.attributePoints);
 
     // 基础属性
     AttributeComponent *attrComp = player->getAttributeComponent();

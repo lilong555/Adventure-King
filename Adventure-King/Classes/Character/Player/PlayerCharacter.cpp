@@ -251,6 +251,7 @@ void PlayerCharacter::levelUp()
 {
     _level++;
     // _skillPoints++; 
+    _attributePoints += GameConfig::Player::AttributePoint::POINTS_PER_LEVEL;
 
     if (auto attr = getAttributeComponent())
     {
@@ -265,6 +266,58 @@ void PlayerCharacter::levelUp()
 
     // 升级后恢复状态或刷新上限
     refreshHpMpFromAttributes();
+}
+
+bool PlayerCharacter::upgradeAttribute(AttributeType type)
+{
+    if (_attributePoints <= 0)
+    {
+        return false;
+    }
+
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return false;
+    }
+
+    auto base = attr->getBaseAttributes();
+    bool applied = true;
+    switch (type)
+    {
+    case AttributeType::MAX_HP:
+        base.add(AttributeType::MAX_HP, GameConfig::Player::AttributePoint::MAX_HP_PER_POINT);
+        break;
+    case AttributeType::STRENGTH:
+        base.add(AttributeType::STRENGTH, GameConfig::Player::AttributePoint::STRENGTH_PER_POINT);
+        break;
+    case AttributeType::MOVE_SPEED:
+        base.add(AttributeType::MOVE_SPEED, GameConfig::Player::AttributePoint::MOVE_SPEED_PER_POINT);
+        break;
+    case AttributeType::DEFENSE:
+        base.add(AttributeType::DEFENSE, GameConfig::Player::AttributePoint::DEFENSE_PER_POINT);
+        break;
+    case AttributeType::CRITICAL_RATE:
+        base.add(AttributeType::CRITICAL_RATE, GameConfig::Player::AttributePoint::CRITICAL_RATE_PER_POINT);
+        break;
+    default:
+        applied = false;
+        break;
+    }
+
+    if (!applied)
+    {
+        return false;
+    }
+
+    _attributePoints = std::max(0, _attributePoints - 1);
+    attr->setBaseAttributes(base);
+    attr->recalculateFinalAttributes();
+
+    // 维持当前血量/蓝量的相对状态，只做上限夹取
+    setCurrentHP(getCurrentHP());
+    setCurrentMP(getCurrentMP());
+    return true;
 }
 
 void PlayerCharacter::initAttributesByRole(CharacterRole role)

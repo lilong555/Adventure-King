@@ -51,6 +51,17 @@ public:
     /// @brief 设置技能点
     void setSkillPoints(int points) { _skillPoints = points; }
 
+    /// @brief 获取属性点
+    int getAttributePoints() const { return _attributePoints; }
+    /// @brief 设置属性点
+    void setAttributePoints(int points) { _attributePoints = points; }
+
+    /**
+     * @brief 消耗 1 点属性点提升指定基础属性
+     * @details 仅对玩家基础属性生效；最终属性会在 AttributeComponent 中重新计算。
+     */
+    bool upgradeAttribute(AttributeType type);
+
     // =============================================================
     // 装备系统 (Equipment)
     // =============================================================
@@ -203,6 +214,7 @@ private:
     // 基础数据
     CharacterRole _role = CharacterRole::WARRIOR;
     int _skillPoints = 0;
+    int _attributePoints = 0;
     bool _isGrounded = false;
     int _jumpCount = 0;
     bool _actionLocked = false;

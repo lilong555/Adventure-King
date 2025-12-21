@@ -47,7 +47,8 @@ private:
     enum class Tab
     {
         EQUIPMENT,
-        SKILL,
+        ACTIVE_SKILL,
+        PASSIVE_SKILL,
         ATTRIBUTE
     };
 
@@ -77,6 +78,7 @@ private:
     void refresh();
     void refreshEquipmentPage();
     void refreshSkillPage();
+    void refreshPassiveSkillPage();
     void refreshAttributePage();
 
     // 工具
@@ -94,6 +96,7 @@ private:
     void onCloseClicked(cocos2d::Ref *sender);
     void onTabEquipmentClicked(cocos2d::Ref *sender);
     void onTabSkillClicked(cocos2d::Ref *sender);
+    void onTabPassiveSkillClicked(cocos2d::Ref *sender);
     void onTabAttributeClicked(cocos2d::Ref *sender);
 
 private:
@@ -124,16 +127,19 @@ private:
 
     cocos2d::ui::Button *_tabEquipment = nullptr;
     cocos2d::ui::Button *_tabSkill = nullptr;
+    cocos2d::ui::Button *_tabPassiveSkill = nullptr;
     cocos2d::ui::Button *_tabAttribute = nullptr;
     cocos2d::ui::Button *_closeButton = nullptr;
 
     cocos2d::Label *_tabSkillLabel = nullptr;
+    cocos2d::Label *_tabPassiveSkillLabel = nullptr;
     cocos2d::Label *_tabEquipmentLabel = nullptr;
     cocos2d::Label *_tabAttributeLabel = nullptr;
     cocos2d::Label *_closeHintLabel = nullptr;
 
     cocos2d::Node *_equipmentPage = nullptr;
     cocos2d::Node *_skillPage = nullptr;
+    cocos2d::Node *_passiveSkillPage = nullptr;
     cocos2d::Node *_attributePage = nullptr;
 
     cocos2d::EventListenerTouchOneByOne *_detailOverlayListener = nullptr;

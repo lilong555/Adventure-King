@@ -311,14 +311,17 @@ void InventoryLayer::createTabs()
         return;
     }
 
-    // 顶部“仓库入口”三分支：技能 / 装备 / 属性（布局参考截图）
+    // 顶部“仓库入口”四分支：主动技能 / 被动技能 / 装备 / 属性
     const float tabY = DESIGN_HEIGHT - SAFE_MARGIN_Y * 0.55f;
     const float centerX = DESIGN_WIDTH * 0.5f;
-    const float spacing = 200.0f;
+    const float spacing = 190.0f;
 
     _tabSkill = createIconButton(Size(ICON_TAB, ICON_TAB),
                                  CC_CALLBACK_1(InventoryLayer::onTabSkillClicked, this),
                                  Color3B(200, 220, 255));
+    _tabPassiveSkill = createIconButton(Size(ICON_TAB, ICON_TAB),
+                                        CC_CALLBACK_1(InventoryLayer::onTabPassiveSkillClicked, this),
+                                        Color3B(220, 200, 255));
     _tabEquipment = createIconButton(Size(ICON_TAB, ICON_TAB),
                                      CC_CALLBACK_1(InventoryLayer::onTabEquipmentClicked, this),
                                      Color3B(255, 220, 160));
@@ -328,17 +331,22 @@ void InventoryLayer::createTabs()
 
     if (_tabSkill)
     {
-        _tabSkill->setPosition(Vec2(centerX - spacing, tabY));
+        _tabSkill->setPosition(Vec2(centerX - spacing * 1.5f, tabY));
         _panelRoot->addChild(_tabSkill, Z_UI);
+    }
+    if (_tabPassiveSkill)
+    {
+        _tabPassiveSkill->setPosition(Vec2(centerX - spacing * 0.5f, tabY));
+        _panelRoot->addChild(_tabPassiveSkill, Z_UI);
     }
     if (_tabEquipment)
     {
-        _tabEquipment->setPosition(Vec2(centerX, tabY));
+        _tabEquipment->setPosition(Vec2(centerX + spacing * 0.5f, tabY));
         _panelRoot->addChild(_tabEquipment, Z_UI);
     }
     if (_tabAttribute)
     {
-        _tabAttribute->setPosition(Vec2(centerX + spacing, tabY));
+        _tabAttribute->setPosition(Vec2(centerX + spacing * 1.5f, tabY));
         _panelRoot->addChild(_tabAttribute, Z_UI);
     }
 
@@ -366,9 +374,10 @@ void InventoryLayer::createTabs()
         _panelRoot->addChild(label, Z_UI);
         outLabel = label;
     };
-    addTabLabel(_tabSkillLabel, centerX - spacing, "技能", Color3B(200, 220, 255));
-    addTabLabel(_tabEquipmentLabel, centerX, "装备", Color3B(255, 220, 160));
-    addTabLabel(_tabAttributeLabel, centerX + spacing, "属性", Color3B(200, 255, 200));
+    addTabLabel(_tabSkillLabel, centerX - spacing * 1.5f, "主动技能", Color3B(200, 220, 255));
+    addTabLabel(_tabPassiveSkillLabel, centerX - spacing * 0.5f, "被动技能", Color3B(220, 200, 255));
+    addTabLabel(_tabEquipmentLabel, centerX + spacing * 0.5f, "装备", Color3B(255, 220, 160));
+    addTabLabel(_tabAttributeLabel, centerX + spacing * 1.5f, "属性", Color3B(200, 255, 200));
 }
 
 void InventoryLayer::createPages()
@@ -383,6 +392,11 @@ void InventoryLayer::createPages()
     _skillPage->setAnchorPoint(Vec2::ZERO);
     _skillPage->setPosition(Vec2::ZERO);
 
+    _passiveSkillPage = Node::create();
+    _passiveSkillPage->setContentSize(Size(DESIGN_WIDTH, DESIGN_HEIGHT));
+    _passiveSkillPage->setAnchorPoint(Vec2::ZERO);
+    _passiveSkillPage->setPosition(Vec2::ZERO);
+
     _attributePage = Node::create();
     _attributePage->setContentSize(Size(DESIGN_WIDTH, DESIGN_HEIGHT));
     _attributePage->setAnchorPoint(Vec2::ZERO);
@@ -392,6 +406,7 @@ void InventoryLayer::createPages()
     {
         _panelRoot->addChild(_equipmentPage, Z_PAGE);
         _panelRoot->addChild(_skillPage, Z_PAGE);
+        _panelRoot->addChild(_passiveSkillPage, Z_PAGE);
         _panelRoot->addChild(_attributePage, Z_PAGE);
     }
 }
@@ -462,7 +477,8 @@ void InventoryLayer::switchTab(Tab tab)
 {
     _currentTab = tab;
     bool equipVisible = (tab == Tab::EQUIPMENT);
-    bool skillVisible = (tab == Tab::SKILL);
+    bool activeSkillVisible = (tab == Tab::ACTIVE_SKILL);
+    bool passiveSkillVisible = (tab == Tab::PASSIVE_SKILL);
     bool attrVisible = (tab == Tab::ATTRIBUTE);
 
     if (_equipmentPage)
@@ -471,7 +487,11 @@ void InventoryLayer::switchTab(Tab tab)
     }
     if (_skillPage)
     {
-        _skillPage->setVisible(skillVisible);
+        _skillPage->setVisible(activeSkillVisible);
+    }
+    if (_passiveSkillPage)
+    {
+        _passiveSkillPage->setVisible(passiveSkillVisible);
     }
     if (_attributePage)
     {
@@ -490,7 +510,8 @@ void InventoryLayer::switchTab(Tab tab)
         }
     };
 
-    updateTabStyle(_tabSkill, skillVisible, Color3B(200, 220, 255));
+    updateTabStyle(_tabSkill, activeSkillVisible, Color3B(200, 220, 255));
+    updateTabStyle(_tabPassiveSkill, passiveSkillVisible, Color3B(220, 200, 255));
     updateTabStyle(_tabEquipment, equipVisible, Color3B(255, 220, 160));
     updateTabStyle(_tabAttribute, attrVisible, Color3B(200, 255, 200));
 
@@ -504,7 +525,8 @@ void InventoryLayer::switchTab(Tab tab)
         label->setOpacity(selected ? 255 : 200);
     };
 
-    updateTabLabelStyle(_tabSkillLabel, skillVisible, Color3B(200, 220, 255));
+    updateTabLabelStyle(_tabSkillLabel, activeSkillVisible, Color3B(200, 220, 255));
+    updateTabLabelStyle(_tabPassiveSkillLabel, passiveSkillVisible, Color3B(220, 200, 255));
     updateTabLabelStyle(_tabEquipmentLabel, equipVisible, Color3B(255, 220, 160));
     updateTabLabelStyle(_tabAttributeLabel, attrVisible, Color3B(200, 255, 200));
 
@@ -522,9 +544,13 @@ void InventoryLayer::refresh()
     {
         refreshEquipmentPage();
     }
-    else if (_currentTab == Tab::SKILL)
+    else if (_currentTab == Tab::ACTIVE_SKILL)
     {
         refreshSkillPage();
+    }
+    else if (_currentTab == Tab::PASSIVE_SKILL)
+    {
+        refreshPassiveSkillPage();
     }
     else if (_currentTab == Tab::ATTRIBUTE)
     {
@@ -685,6 +711,7 @@ void InventoryLayer::refreshAttributePage()
     _attributePage->removeAllChildren();
 
     // 布局锚点（设计坐标）
+    const float safeLeft = SAFE_MARGIN_X;
     const float safeRight = DESIGN_WIDTH - SAFE_MARGIN_X;
     const float safeBottom = SAFE_MARGIN_Y;
     const float safeTop = DESIGN_HEIGHT - SAFE_MARGIN_Y;
@@ -703,10 +730,14 @@ void InventoryLayer::refreshAttributePage()
     auto attrComp = _player->getAttributeComponent();
 
     // 中间属性列表面板（参考截图 1 的横条列表）
-    const float characterW = 920.0f;
-    const float attrListW = 960.0f;
+    // 注意：需要避免与右侧“等级/战斗数据”面板重叠
+    const float statsW = 860.0f;
+    const float rightPanelLeft = safeRight - statsW;
+    const float gapX = 60.0f;
+
+    const float attrListW = std::min(900.0f, rightPanelLeft - gapX - safeLeft);
     const float attrListH = 520.0f;
-    const float attrListX = characterW + 80.0f;
+    const float attrListX = rightPanelLeft - gapX - attrListW;
     const float attrListTop = safeTop - 220.0f;
     const Rect attrListRect(attrListX, attrListTop - attrListH, attrListW, attrListH);
 
@@ -714,29 +745,12 @@ void InventoryLayer::refreshAttributePage()
     drawPanelRect(attrBg, attrListRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _attributePage->addChild(attrBg, 1);
 
-    // “现有点数”（当前属性加点系统未实现，先展示 0）
-    const int availablePoints = 0;
+    // “现有点数”
+    const int availablePoints = _player ? _player->getAttributePoints() : 0;
     if (auto points = createUiLabel(StringUtils::format("现有点数 %d", availablePoints), 32.0f, TITLE_COLOR))
     {
         points->setPosition(Vec2(attrListRect.getMidX(), attrListRect.getMaxY() + 60.0f));
         _attributePage->addChild(points, 2);
-    }
-
-    // 属性加点按钮（占位）
-    if (auto addAttrBtn = createTextButton(
-            "提升属性",
-            Size(240.0f, 62.0f),
-            [this](Ref *)
-            {
-                // 当前属性加点系统未接入：先给出明确提示，避免“按钮无反应”的误解
-                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 140.0f), "属性加点功能待实现", Color3B(255, 220, 160));
-            },
-            28.0f,
-            Color3B::WHITE,
-            Color3B(90, 90, 110)))
-    {
-        addAttrBtn->setPosition(Vec2(attrListRect.getMidX(), attrListRect.getMinY() - 70.0f));
-        _attributePage->addChild(addAttrBtn, 3);
     }
 
     // 5 行属性条（使用文字渲染，避免“纯 PNG”导致排版错位）
@@ -748,11 +762,11 @@ void InventoryLayer::refreshAttributePage()
         bool isPercent = false;
     };
     const AttrRowDef rowDefs[kRowCount] = {
-        {"活力", AttributeType::MAX_HP, false},
+        {"生命力", AttributeType::MAX_HP, false},
         {"力量", AttributeType::STRENGTH, false},
         {"敏捷", AttributeType::MOVE_SPEED, false},
         {"防御", AttributeType::DEFENSE, false},
-        {"运气", AttributeType::CRITICAL_RATE, true},
+        {"暴击率", AttributeType::CRITICAL_RATE, true},
     };
 
     const float rowH = 84.0f;
@@ -791,11 +805,38 @@ void InventoryLayer::refreshAttributePage()
                                           ? StringUtils::format("%d%%", static_cast<int>(std::round(rawValue * 100.0f)))
                                           : StringUtils::format("%d", static_cast<int>(std::round(rawValue)));
 
+        // 数值靠右，右侧预留“+”按钮位置
         if (auto value = createUiLabel(valueText, 30.0f, Color3B::WHITE))
         {
             value->setAnchorPoint(Vec2(1.0f, 0.5f));
-            value->setPosition(Vec2(rowRect.getMaxX() - 22.0f, rowRect.getMidY()));
+            value->setPosition(Vec2(rowRect.getMaxX() - 86.0f, rowRect.getMidY()));
             _attributePage->addChild(value, 3);
+        }
+
+        // 单项加点按钮：消耗 1 点属性点
+        auto plusBtn = createTextButton("+", Size(54.0f, 54.0f), [this, type = def.type](Ref *) {
+            if (!_player)
+            {
+                return;
+            }
+            if (_player->getAttributePoints() <= 0)
+            {
+                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "属性点不足", Color3B(255, 220, 160));
+                return;
+            }
+            if (_player->upgradeAttribute(type))
+            {
+                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已提升属性", Color3B(200, 255, 200));
+                refresh();
+            }
+        }, 36.0f, Color3B::WHITE, Color3B(90, 90, 110));
+        if (plusBtn)
+        {
+            const bool enabled = (_player->getAttributePoints() > 0);
+            plusBtn->setEnabled(enabled);
+            plusBtn->setOpacity(enabled ? 255 : 160);
+            plusBtn->setPosition(Vec2(rowRect.getMaxX() - 38.0f, rowRect.getMidY()));
+            _attributePage->addChild(plusBtn, 3);
         }
     }
 
@@ -820,7 +861,6 @@ void InventoryLayer::refreshAttributePage()
     }
 
     // 右侧：战斗数据列表（参考截图 1 的右侧数据列）
-    const float statsW = 860.0f;
     const float statsH = 560.0f;
     float statsY = levelRect.getMinY() - 40.0f - statsH;
     statsY = std::max(statsY, safeBottom + 220.0f);
@@ -1374,15 +1414,25 @@ void InventoryLayer::refreshSkillPage()
     }
     treeScroll->getInnerContainer()->addChild(lines, 0);
 
-    // 技能节点：用 _skillTemplates 前几项填充到固定位置（后续可扩展为真实技能树）
-    const size_t showCount = std::min(nodePositions.size(), _skillTemplates.size());
+    // 主动技能节点：仅展示主动技能模板
+    std::vector<const SkillTemplate *> activeTemplates;
+    activeTemplates.reserve(_skillTemplates.size());
+    for (const auto &t : _skillTemplates)
+    {
+        if (!t.isPassive)
+        {
+            activeTemplates.push_back(&t);
+        }
+    }
+
+    const size_t showCount = std::min(nodePositions.size(), activeTemplates.size());
     for (size_t i = 0; i < showCount; ++i)
     {
-        const auto &tpl = _skillTemplates[i];
+        const auto &tpl = *activeTemplates[i];
         const bool learned = (skillComp->findLearnedSkillById(tpl.id) != nullptr);
         const bool selected = (_selectedSkillId == tpl.id);
 
-        Color3B tint = learned ? (tpl.isPassive ? ITEM_ATTR_COLOR : ITEM_TEXT_COLOR) : Color3B(120, 120, 120);
+        Color3B tint = learned ? ITEM_TEXT_COLOR : Color3B(120, 120, 120);
         if (selected)
         {
             tint = SELECTED_COLOR;
@@ -1402,56 +1452,32 @@ void InventoryLayer::refreshSkillPage()
             auto skill = comp->findLearnedSkillById(id);
             if (!skill)
             {
-                // 未学习：点击学习（占位逻辑，后续接入技能点消耗）
+                // 未学习：点击学习（只学习，不直接装备，符合“已学习才能装备”的规则）
                 for (const auto &t : _skillTemplates)
                 {
                     if (t.id != id)
                     {
                         continue;
                     }
-                    if (t.isPassive)
-                    {
-                        auto s = std::make_shared<PassiveSkill>();
-                        s->id = t.id;
-                        s->name = t.name;
-                        s->description = t.description;
-                        s->isPassive = true;
-                        s->attributeBonus = t.attributeBonus;
-                        comp->learnSkill(s);
-                    }
-                    else
-                    {
-                        auto s = std::make_shared<ActiveSkill>();
-                        s->id = t.id;
-                        s->name = t.name;
-                        s->description = t.description;
-                        s->isPassive = false;
-                        s->cooldown = t.cooldown;
-                        s->manaCost = t.manaCost;
-                        s->currentCooldown = 0.0f;
-                        comp->learnSkill(s);
-                    }
+                    auto s = std::make_shared<ActiveSkill>();
+                    s->id = t.id;
+                    s->name = t.name;
+                    s->description = t.description;
+                    s->isPassive = false;
+                    s->cooldown = t.cooldown;
+                    s->manaCost = t.manaCost;
+                    s->currentCooldown = 0.0f;
+                    comp->learnSkill(s);
                     break;
                 }
             }
             else
             {
                 // 已学习：点击装备到当前选中槽位
-                if (skill->isPassive)
+                auto active = std::dynamic_pointer_cast<ActiveSkill>(skill);
+                if (active)
                 {
-                    auto passive = std::dynamic_pointer_cast<PassiveSkill>(skill);
-                    if (passive)
-                    {
-                        comp->equipPassiveSkill(passive, _selectedPassiveSlotIndex);
-                    }
-                }
-                else
-                {
-                    auto active = std::dynamic_pointer_cast<ActiveSkill>(skill);
-                    if (active)
-                    {
-                        comp->equipActiveSkill(active, _selectedActiveSlotIndex);
-                    }
+                    comp->equipActiveSkill(active, _selectedActiveSlotIndex);
                 }
             }
 
@@ -1490,7 +1516,6 @@ void InventoryLayer::refreshSkillPage()
     float slotY = treeRect.getMaxY() - 140.0f;
 
     const auto &activeSlots = skillComp->getActiveSlots();
-    const auto &passiveSlots = skillComp->getPassiveSlots();
     const size_t activeSlotCount = static_cast<size_t>(GameConfig::UI::SKILL_BAR_SLOT_COUNT);
 
     for (size_t i = 0; i < activeSlotCount; ++i)
@@ -1532,6 +1557,235 @@ void InventoryLayer::refreshSkillPage()
 
         slotY -= 90.0f;
     }
+}
+
+void InventoryLayer::refreshPassiveSkillPage()
+{
+    if (!_passiveSkillPage)
+    {
+        return;
+    }
+    _passiveSkillPage->removeAllChildren();
+
+    // 布局锚点（设计坐标）
+    const float safeLeft = SAFE_MARGIN_X;
+    const float safeRight = DESIGN_WIDTH - SAFE_MARGIN_X;
+    const float safeBottom = SAFE_MARGIN_Y;
+    const float contentTop = DESIGN_HEIGHT - 240.0f;
+
+    if (!_player)
+    {
+        if (auto hint = createUiLabel("请先绑定玩家", 32.0f, Color3B(200, 200, 200)))
+        {
+            hint->setPosition(Vec2(DESIGN_WIDTH * 0.5f, DESIGN_HEIGHT * 0.5f));
+            _passiveSkillPage->addChild(hint, 1);
+        }
+        return;
+    }
+
+    auto skillComp = _player->getSkillComponent();
+    if (!skillComp)
+    {
+        if (auto hint = createUiLabel("技能组件未初始化", 32.0f, Color3B(200, 200, 200)))
+        {
+            hint->setPosition(Vec2(DESIGN_WIDTH * 0.5f, DESIGN_HEIGHT * 0.5f));
+            _passiveSkillPage->addChild(hint, 1);
+        }
+        return;
+    }
+
+    // 右侧信息栏（与详情预览对齐）
+    const float rightW = DETAIL_PANEL_W;
+    const float rightX = safeRight - rightW;
+
+    // 详情预览面板位置对齐右栏
+    if (_detailOverlay)
+    {
+        _detailOverlay->setPosition(Vec2(rightX, safeBottom + 220.0f));
+    }
+
+    // 右上：技能点面板
+    const float pointsH = 240.0f;
+    const Rect pointsRect(rightX, contentTop - pointsH, rightW, pointsH);
+    auto pointsBg = DrawNode::create();
+    drawPanelRect(pointsBg, pointsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
+    _passiveSkillPage->addChild(pointsBg, 1);
+    if (auto pointsTitle = createUiLabel("现有技能点数", 30.0f, TITLE_COLOR, true, 3))
+    {
+        pointsTitle->setAnchorPoint(Vec2(0.0f, 1.0f));
+        pointsTitle->setPosition(Vec2(pointsRect.getMinX() + 26.0f, pointsRect.getMaxY() - 20.0f));
+        _passiveSkillPage->addChild(pointsTitle, 2);
+    }
+    if (auto pointsValue = createUiLabel(StringUtils::format("%d", _player->getSkillPoints()), 64.0f, Color3B::WHITE, true, 3))
+    {
+        pointsValue->setPosition(Vec2(pointsRect.getMidX(), pointsRect.getMidY()));
+        _passiveSkillPage->addChild(pointsValue, 2);
+    }
+
+    // 右中：角色数据面板
+    const float statsH = 240.0f;
+    const Rect statsRect(rightX, pointsRect.getMinY() - 20.0f - statsH, rightW, statsH);
+    auto statsBg = DrawNode::create();
+    drawPanelRect(statsBg, statsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
+    _passiveSkillPage->addChild(statsBg, 1);
+    const std::string playerName = getPlayerDisplayName();
+    if (auto nameBar = createUiLabel(playerName, 34.0f, TITLE_COLOR, true, 3))
+    {
+        nameBar->setAnchorPoint(Vec2(0.0f, 1.0f));
+        nameBar->setPosition(Vec2(statsRect.getMinX() + 30.0f, statsRect.getMaxY() - 18.0f));
+        _passiveSkillPage->addChild(nameBar, 2);
+    }
+    if (auto levelLabel = createUiLabel(StringUtils::format("等级 %d", _player->getLevel()), 24.0f, Color3B(220, 220, 220)))
+    {
+        levelLabel->setAnchorPoint(Vec2(1.0f, 1.0f));
+        levelLabel->setPosition(Vec2(statsRect.getMaxX() - 30.0f, statsRect.getMaxY() - 18.0f));
+        _passiveSkillPage->addChild(levelLabel, 2);
+    }
+
+    // 左侧：被动技能列表（可滚动）
+    const float listBottom = 260.0f;
+    const float listRight = rightX - 80.0f;
+    const Rect listRect(safeLeft, listBottom, listRight - safeLeft, contentTop - listBottom);
+
+    auto listBg = DrawNode::create();
+    drawPanelRect(listBg, listRect, Color4F(0.06f, 0.06f, 0.10f, 0.25f), Color4F(0.25f, 0.25f, 0.30f, 0.45f));
+    _passiveSkillPage->addChild(listBg, 0);
+
+    auto scroll = cocos2d::ui::ScrollView::create();
+    scroll->setDirection(cocos2d::ui::ScrollView::Direction::VERTICAL);
+    scroll->setBounceEnabled(true);
+    scroll->setScrollBarEnabled(true);
+    scroll->setContentSize(listRect.size);
+    scroll->setAnchorPoint(Vec2::ZERO);
+    scroll->setPosition(listRect.origin);
+    _passiveSkillPage->addChild(scroll, 1);
+
+    std::vector<const SkillTemplate *> passiveTemplates;
+    passiveTemplates.reserve(_skillTemplates.size());
+    for (const auto &t : _skillTemplates)
+    {
+        if (t.isPassive)
+        {
+            passiveTemplates.push_back(&t);
+        }
+    }
+
+    constexpr float rowH = 96.0f;
+    const int itemCount = static_cast<int>(passiveTemplates.size());
+    const float innerH = std::max(listRect.size.height, rowH * itemCount);
+    scroll->setInnerContainerSize(Size(listRect.size.width, innerH));
+
+    const auto &passiveSlots = skillComp->getPassiveSlots();
+
+    for (int i = 0; i < itemCount; ++i)
+    {
+        const auto &tpl = *passiveTemplates[i];
+        const bool learned = (skillComp->findLearnedSkillById(tpl.id) != nullptr);
+        const bool selected = (_selectedSkillId == tpl.id);
+
+        bool isEquipped = false;
+        for (const auto &s : passiveSlots)
+        {
+            if (s && s->id == tpl.id)
+            {
+                isEquipped = true;
+                break;
+            }
+        }
+
+        auto row = cocos2d::ui::Layout::create();
+        row->setContentSize(Size(listRect.size.width, rowH));
+        row->setAnchorPoint(Vec2::ZERO);
+        row->setPosition(Vec2(0.0f, innerH - rowH * (i + 1)));
+        row->setTouchEnabled(true);
+
+        row->addTouchEventListener([this, id = tpl.id](Ref *, cocos2d::ui::Widget::TouchEventType type)
+                                   {
+                                       if (type != cocos2d::ui::Widget::TouchEventType::ENDED)
+                                       {
+                                           return;
+                                       }
+                                       if (!_player)
+                                       {
+                                           return;
+                                       }
+                                       auto comp = _player->getSkillComponent();
+                                       if (!comp)
+                                       {
+                                           return;
+                                       }
+
+                                       auto skill = comp->findLearnedSkillById(id);
+                                       if (!skill)
+                                       {
+                                           // 未学习：点击学习（只学习，不直接装备）
+                                           for (const auto &t : _skillTemplates)
+                                           {
+                                               if (t.id != id)
+                                               {
+                                                   continue;
+                                               }
+                                               auto s = std::make_shared<PassiveSkill>();
+                                               s->id = t.id;
+                                               s->name = t.name;
+                                               s->description = t.description;
+                                               s->isPassive = true;
+                                               s->attributeBonus = t.attributeBonus;
+                                               comp->learnSkill(s);
+                                               break;
+                                           }
+                                       }
+                                       else
+                                       {
+                                           // 已学习：装备到当前选中槽位
+                                           auto passive = std::dynamic_pointer_cast<PassiveSkill>(skill);
+                                           if (passive)
+                                           {
+                                               comp->equipPassiveSkill(passive, _selectedPassiveSlotIndex);
+                                           }
+                                       }
+
+                                       _selectedSkillId = id;
+                                       showDetailOverlay();
+                                       refresh();
+                                   });
+
+        auto rowBg = DrawNode::create();
+        drawPanelRect(rowBg,
+                      Rect(0, 0, listRect.size.width, rowH),
+                      selected ? Color4F(0.18f, 0.14f, 0.10f, 0.92f) : Color4F(0.10f, 0.10f, 0.14f, 0.72f),
+                      Color4F(0.25f, 0.25f, 0.30f, 0.55f));
+        row->addChild(rowBg, 0);
+
+        const Color3B iconTint = isEquipped ? SELECTED_COLOR : (learned ? ITEM_ATTR_COLOR : Color3B(120, 120, 120));
+        if (auto icon = createPlaceholderSprite(Size(ICON_ITEM, ICON_ITEM), iconTint))
+        {
+            icon->setPosition(Vec2(60.0f, rowH * 0.5f));
+            row->addChild(icon, 1);
+        }
+
+        if (auto name = createUiLabel(tpl.name, 26.0f, learned ? ITEM_TEXT_COLOR : Color3B(180, 180, 180)))
+        {
+            name->setAnchorPoint(Vec2(0.0f, 0.5f));
+            name->setPosition(Vec2(120.0f, rowH * 0.5f + 12.0f));
+            row->addChild(name, 1);
+        }
+
+        const std::string stateText = learned ? (isEquipped ? "已装备" : "已学习") : "未学习";
+        const Color3B stateColor = learned ? (isEquipped ? SELECTED_COLOR : Color3B(200, 255, 200)) : Color3B(160, 160, 160);
+        if (auto state = createUiLabel(stateText, 22.0f, stateColor))
+        {
+            state->setAnchorPoint(Vec2(1.0f, 0.5f));
+            state->setPosition(Vec2(listRect.size.width - 24.0f, rowH * 0.5f + 12.0f));
+            row->addChild(state, 1);
+        }
+
+        scroll->getInnerContainer()->addChild(row, 1);
+    }
+
+    // 被动槽位选择/卸下（右侧靠近列表边缘）
+    const float slotX = listRect.getMaxX() - 140.0f;
+    float slotY = listRect.getMaxY() - 140.0f;
 
     for (size_t i = 0; i < 3; ++i)
     {
@@ -1547,7 +1801,7 @@ void InventoryLayer::refreshSkillPage()
         if (btn)
         {
             btn->setPosition(Vec2(slotX, slotY));
-            _skillPage->addChild(btn, 3);
+            _passiveSkillPage->addChild(btn, 3);
         }
 
         if (hasSkill)
@@ -1566,7 +1820,7 @@ void InventoryLayer::refreshSkillPage()
             if (unequipBtn)
             {
                 unequipBtn->setPosition(Vec2(slotX + 118.0f, slotY));
-                _skillPage->addChild(unequipBtn, 3);
+                _passiveSkillPage->addChild(unequipBtn, 3);
             }
         }
 
@@ -1590,5 +1844,10 @@ void InventoryLayer::onTabEquipmentClicked(Ref *)
 
 void InventoryLayer::onTabSkillClicked(Ref *)
 {
-    switchTab(Tab::SKILL);
+    switchTab(Tab::ACTIVE_SKILL);
+}
+
+void InventoryLayer::onTabPassiveSkillClicked(Ref *)
+{
+    switchTab(Tab::PASSIVE_SKILL);
 }
