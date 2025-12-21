@@ -272,9 +272,8 @@ bool HelloWorld::init()
             {
                 dragonFire->setTexture(particleTexture);
             }
-
             dragonFire->setAnchorPoint(Vec2(0.0f, 0.0f));
-            dragonFire->setPosition(Vec2::ZERO); // dragon2 的左下角
+            dragonFire->setPosition(Vec2(80.0f, 85.0f)); // dragon2 的左下角
             dragonFire->setPositionType(ParticleSystem::PositionType::GROUPED);
             dragonFire->setScale(0.35f);
             dragonFire->resetSystem();
@@ -308,6 +307,7 @@ bool HelloWorld::init()
         {
             particleSystem->setTexture(particleTexture);
         }
+        particleSystem->setScale(0.3f);
         particleSystem->setPosition(Vec2(particleBaseX, y));
         particleSystem->setPositionType(ParticleSystem::PositionType::FREE);
         particleSystem->resetSystem();
