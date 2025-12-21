@@ -8,7 +8,7 @@
  * - 查看属性：展示角色属性/等级等信息（当前为占位排版）
  *
  * 说明：
- * - 目前所有文字均用 PNG 占位（TNT.png），后续再替换为真实 UI 资源。
+ * - 图标暂用 PNG 占位（TNT.png）；名称/等级/属性等信息使用文字渲染，便于调试与后续替换美术字。
  */
 
 #pragma once
@@ -126,6 +126,11 @@ private:
     cocos2d::ui::Button *_tabSkill = nullptr;
     cocos2d::ui::Button *_tabAttribute = nullptr;
     cocos2d::ui::Button *_closeButton = nullptr;
+
+    cocos2d::Label *_tabSkillLabel = nullptr;
+    cocos2d::Label *_tabEquipmentLabel = nullptr;
+    cocos2d::Label *_tabAttributeLabel = nullptr;
+    cocos2d::Label *_closeHintLabel = nullptr;
 
     cocos2d::Node *_equipmentPage = nullptr;
     cocos2d::Node *_skillPage = nullptr;

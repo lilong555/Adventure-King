@@ -10,12 +10,14 @@
 #include "Configs/GameConfigs.h"
 #include "ui/CocosGUI.h"
 #include <algorithm>
+#include <cmath>
 
 USING_NS_CC;
 
 namespace
 {
     const char *const PLACEHOLDER_ICON_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
+    const char *const UI_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
     // 设计分辨率（截图为 2560x1440）：所有布局基于该坐标系，再整体缩放适配不同分辨率
     constexpr float DESIGN_WIDTH = 2560.0f;
     constexpr float DESIGN_HEIGHT = 1440.0f;
@@ -26,8 +28,6 @@ namespace
 
     // 图标尺寸（占位）
     constexpr float ICON_TAB = 110.0f;      // 顶部入口图标
-    constexpr float ICON_TAB_LABEL_W = 96;  // 顶部入口“文字”占位（PNG）
-    constexpr float ICON_TAB_LABEL_H = 28;
     constexpr float ICON_ITEM = 64.0f;      // 列表/槽位图标
     constexpr float ICON_ACTION = 48.0f;    // 操作按钮图标
     constexpr float ICON_CLOSE = 70.0f;     // 返回按钮图标
@@ -50,6 +50,47 @@ namespace
     const Color3B ITEM_TEXT_COLOR = Color3B(230, 230, 230);
     const Color3B ITEM_ATTR_COLOR = Color3B(160, 180, 160);
     const Color3B SELECTED_COLOR = Color3B(255, 200, 100);
+
+    cocos2d::Label *createUiLabel(const std::string &text, float fontSize, const cocos2d::Color3B &color,
+                                  bool withOutline = true, int outlineSize = 2)
+    {
+        auto label = cocos2d::Label::createWithTTF(text, UI_FONT_PATH, fontSize);
+        if (!label)
+        {
+            // TTF 加载失败时降级为系统字体，避免 UI 完全不可见
+            label = cocos2d::Label::createWithSystemFont(text, "Arial", fontSize);
+        }
+        if (!label)
+        {
+            return nullptr;
+        }
+        label->setColor(color);
+        if (withOutline)
+        {
+            label->enableOutline(cocos2d::Color4B::BLACK, outlineSize);
+        }
+        return label;
+    }
+
+    std::string getPlayerDisplayName()
+    {
+        // 当前项目默认玩家为 Klee；后续可接入真实角色名/存档数据
+        return "可莉";
+    }
+
+    int getEquipmentDisplayLevel(const std::shared_ptr<Equipment> &item, const PlayerCharacter *player)
+    {
+        if (!item)
+        {
+            return 1;
+        }
+        // 当前装备暂未实现“装备等级”字段：先用玩家等级作为展示值，避免 UI 空白。
+        if (player)
+        {
+            return std::max(1, player->getLevel());
+        }
+        return 1;
+    }
 
     // 绘制面板（简化：实心矩形 + 描边）
     void drawPanelRect(DrawNode *node, const Rect &rect, const Color4F &fillColor, const Color4F &borderColor)
@@ -110,6 +151,18 @@ bool InventoryLayer::init()
         _closeButton->setAnchorPoint(Vec2(1.0f, 0.5f));
         _closeButton->setPosition(Vec2(DESIGN_WIDTH - SAFE_MARGIN_X, SAFE_MARGIN_Y * 0.55f));
         _panelRoot->addChild(_closeButton, Z_UI);
+    }
+
+    // 返回提示（参考截图右下角“Esc 返回”）
+    if (_panelRoot)
+    {
+        _closeHintLabel = createUiLabel("Esc 返回", 26.0f, Color3B(220, 220, 220));
+        if (_closeHintLabel)
+        {
+            _closeHintLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
+            _closeHintLabel->setPosition(Vec2(DESIGN_WIDTH - SAFE_MARGIN_X - 90.0f, SAFE_MARGIN_Y * 0.55f));
+            _panelRoot->addChild(_closeHintLabel, Z_UI);
+        }
     }
 
     // 初始隐藏
@@ -202,7 +255,7 @@ void InventoryLayer::createTabs()
         return;
     }
 
-    // 顶部“仓库入口”三分支：技能 / 装备 / 属性（布局参考截图，全部使用 PNG 占位）
+    // 顶部“仓库入口”三分支：技能 / 装备 / 属性（布局参考截图）
     const float tabY = DESIGN_HEIGHT - SAFE_MARGIN_Y * 0.55f;
     const float centerX = DESIGN_WIDTH * 0.5f;
     const float spacing = 200.0f;
@@ -233,20 +286,33 @@ void InventoryLayer::createTabs()
         _panelRoot->addChild(_tabAttribute, Z_UI);
     }
 
-    // “文字”占位（PNG）：只用于对齐布局，后续替换为真实资源
+    // 入口文字：允许用 Label 渲染（武器名/人物名/等级/属性等也同理）
     const float labelY = tabY - ICON_TAB * 0.72f;
-    auto addTabLabel = [this, labelY](float x, const Color3B &tint)
+    auto addTabLabel = [this, labelY](cocos2d::Label *&outLabel, float x, const std::string &text, const Color3B &tint)
     {
-        auto labelSprite = createPlaceholderSprite(Size(ICON_TAB_LABEL_W, ICON_TAB_LABEL_H), tint);
-        if (labelSprite && _panelRoot)
+        if (!_panelRoot)
         {
-            labelSprite->setPosition(Vec2(x, labelY));
-            _panelRoot->addChild(labelSprite, Z_UI);
+            return;
         }
+        if (outLabel)
+        {
+            outLabel->removeFromParent();
+            outLabel = nullptr;
+        }
+
+        auto label = createUiLabel(text, 28.0f, tint);
+        if (!label)
+        {
+            return;
+        }
+        label->setAnchorPoint(Vec2(0.5f, 0.5f));
+        label->setPosition(Vec2(x, labelY));
+        _panelRoot->addChild(label, Z_UI);
+        outLabel = label;
     };
-    addTabLabel(centerX - spacing, Color3B(200, 220, 255));
-    addTabLabel(centerX, Color3B(255, 220, 160));
-    addTabLabel(centerX + spacing, Color3B(200, 255, 200));
+    addTabLabel(_tabSkillLabel, centerX - spacing, "技能", Color3B(200, 220, 255));
+    addTabLabel(_tabEquipmentLabel, centerX, "装备", Color3B(255, 220, 160));
+    addTabLabel(_tabAttributeLabel, centerX + spacing, "属性", Color3B(200, 255, 200));
 }
 
 void InventoryLayer::createPages()
@@ -371,6 +437,20 @@ void InventoryLayer::switchTab(Tab tab)
     updateTabStyle(_tabSkill, skillVisible, Color3B(200, 220, 255));
     updateTabStyle(_tabEquipment, equipVisible, Color3B(255, 220, 160));
     updateTabStyle(_tabAttribute, attrVisible, Color3B(200, 255, 200));
+
+    auto updateTabLabelStyle = [](cocos2d::Label *label, bool selected, const Color3B &baseColor)
+    {
+        if (!label)
+        {
+            return;
+        }
+        label->setColor(selected ? baseColor : Color3B(180, 180, 180));
+        label->setOpacity(selected ? 255 : 200);
+    };
+
+    updateTabLabelStyle(_tabSkillLabel, skillVisible, Color3B(200, 220, 255));
+    updateTabLabelStyle(_tabEquipmentLabel, equipVisible, Color3B(255, 220, 160));
+    updateTabLabelStyle(_tabAttributeLabel, attrVisible, Color3B(200, 255, 200));
 
     refresh();
 }
@@ -564,13 +644,15 @@ void InventoryLayer::refreshAttributePage()
     // 玩家未绑定时仅展示占位
     if (!_player || !_player->getAttributeComponent())
     {
-        if (auto hint = createPlaceholderSprite(Size(360, 48), Color3B(180, 180, 180)))
+        if (auto hint = createUiLabel("请先绑定玩家", 32.0f, Color3B(200, 200, 200)))
         {
             hint->setPosition(Vec2(DESIGN_WIDTH * 0.5f, DESIGN_HEIGHT * 0.5f));
             _attributePage->addChild(hint, 1);
         }
         return;
     }
+
+    auto attrComp = _player->getAttributeComponent();
 
     // 中间属性列表面板（参考截图 1 的横条列表）
     const float characterW = 920.0f;
@@ -584,15 +666,30 @@ void InventoryLayer::refreshAttributePage()
     drawPanelRect(attrBg, attrListRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _attributePage->addChild(attrBg, 1);
 
-    // “现有点数”占位
-    if (auto points = createPlaceholderSprite(Size(260, 44), TITLE_COLOR))
+    // “现有点数”（当前属性加点系统未实现，先展示 0）
+    const int availablePoints = 0;
+    if (auto points = createUiLabel(StringUtils::format("现有点数 %d", availablePoints), 32.0f, TITLE_COLOR))
     {
         points->setPosition(Vec2(attrListRect.getMidX(), attrListRect.getMaxY() + 60.0f));
         _attributePage->addChild(points, 2);
     }
 
-    // 5 行属性条（全部用 PNG 占位）
+    // 5 行属性条（使用文字渲染，避免“纯 PNG”导致排版错位）
     constexpr int kRowCount = 5;
+    struct AttrRowDef
+    {
+        const char *name = nullptr;
+        AttributeType type = AttributeType::STRENGTH;
+        bool isPercent = false;
+    };
+    const AttrRowDef rowDefs[kRowCount] = {
+        {"活力", AttributeType::MAX_HP, false},
+        {"力量", AttributeType::STRENGTH, false},
+        {"敏捷", AttributeType::MOVE_SPEED, false},
+        {"防御", AttributeType::DEFENSE, false},
+        {"运气", AttributeType::CRITICAL_RATE, true},
+    };
+
     const float rowH = 84.0f;
     const float rowGap = 16.0f;
     const float rowW = attrListRect.size.width - 80.0f;
@@ -612,17 +709,27 @@ void InventoryLayer::refreshAttributePage()
                       Color4F(0.25f, 0.25f, 0.30f, 0.70f));
         _attributePage->addChild(rowBg, 2);
 
-        if (auto name = createPlaceholderSprite(Size(150, 30), ITEM_TEXT_COLOR))
+        const auto &def = rowDefs[i];
+        if (auto name = createUiLabel(def.name ? def.name : "", 30.0f, ITEM_TEXT_COLOR))
         {
             name->setAnchorPoint(Vec2(0.0f, 0.5f));
-            name->setPosition(Vec2(rowRect.getMinX() + 18.0f, rowRect.getMidY()));
+            name->setPosition(Vec2(rowRect.getMinX() + 22.0f, rowRect.getMidY()));
             _attributePage->addChild(name, 3);
         }
 
-        if (auto value = createPlaceholderSprite(Size(120, 30), Color3B::WHITE))
+        float rawValue = 0.0f;
+        if (attrComp)
+        {
+            rawValue = attrComp->getAttributeValue(def.type);
+        }
+        const std::string valueText = def.isPercent
+                                          ? StringUtils::format("%d%%", static_cast<int>(std::round(rawValue * 100.0f)))
+                                          : StringUtils::format("%d", static_cast<int>(std::round(rawValue)));
+
+        if (auto value = createUiLabel(valueText, 30.0f, Color3B::WHITE))
         {
             value->setAnchorPoint(Vec2(1.0f, 0.5f));
-            value->setPosition(Vec2(rowRect.getMaxX() - 18.0f, rowRect.getMidY()));
+            value->setPosition(Vec2(rowRect.getMaxX() - 22.0f, rowRect.getMidY()));
             _attributePage->addChild(value, 3);
         }
     }
@@ -635,13 +742,13 @@ void InventoryLayer::refreshAttributePage()
     drawPanelRect(levelBg, levelRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _attributePage->addChild(levelBg, 1);
 
-    if (auto levelTitle = createPlaceholderSprite(Size(160, 40), TITLE_COLOR))
+    if (auto levelTitle = createUiLabel("等级", 44.0f, TITLE_COLOR, true, 3))
     {
         levelTitle->setAnchorPoint(Vec2(0.5f, 1.0f));
         levelTitle->setPosition(Vec2(levelRect.getMidX(), levelRect.getMaxY() - 24.0f));
         _attributePage->addChild(levelTitle, 2);
     }
-    if (auto levelNum = createPlaceholderSprite(Size(220, 180), Color3B(250, 240, 210)))
+    if (auto levelNum = createUiLabel(StringUtils::format("%d", _player->getLevel()), 150.0f, Color3B(250, 240, 210), true, 4))
     {
         levelNum->setPosition(Vec2(levelRect.getMidX(), levelRect.getMidY() - 30.0f));
         _attributePage->addChild(levelNum, 2);
@@ -658,23 +765,36 @@ void InventoryLayer::refreshAttributePage()
     drawPanelRect(statsBg, statsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _attributePage->addChild(statsBg, 1);
 
-    const float statRowH = 86.0f;
-    for (int i = 0; i < 5; ++i)
+    auto addStatRow = [this, statsRect](int index, const std::string &nameText, const std::string &valueText)
     {
-        const float y = statsRect.getMaxY() - 80.0f - statRowH * i;
-        if (auto name = createPlaceholderSprite(Size(180, 30), ITEM_TEXT_COLOR))
+        const float statRowH = 86.0f;
+        const float y = statsRect.getMaxY() - 80.0f - statRowH * index;
+
+        if (auto name = createUiLabel(nameText, 28.0f, ITEM_TEXT_COLOR))
         {
             name->setAnchorPoint(Vec2(0.0f, 0.5f));
             name->setPosition(Vec2(statsRect.getMinX() + 30.0f, y));
             _attributePage->addChild(name, 2);
         }
-        if (auto value = createPlaceholderSprite(Size(140, 30), Color3B::WHITE))
+        if (auto value = createUiLabel(valueText, 28.0f, Color3B::WHITE))
         {
             value->setAnchorPoint(Vec2(1.0f, 0.5f));
             value->setPosition(Vec2(statsRect.getMaxX() - 30.0f, y));
             _attributePage->addChild(value, 2);
         }
-    }
+    };
+
+    const float maxHp = attrComp ? attrComp->getAttributeValue(AttributeType::MAX_HP) : 0.0f;
+    const float attack = _player ? _player->getAttackPower() : 0.0f;
+    const float speed = attrComp ? attrComp->getAttributeValue(AttributeType::MOVE_SPEED) : 0.0f;
+    const float defense = attrComp ? attrComp->getAttributeValue(AttributeType::DEFENSE) : 0.0f;
+    const float crit = attrComp ? attrComp->getAttributeValue(AttributeType::CRITICAL_RATE) : 0.0f;
+
+    addStatRow(0, "生命", StringUtils::format("%d", static_cast<int>(std::round(maxHp))));
+    addStatRow(1, "攻击力", StringUtils::format("%d", static_cast<int>(std::round(attack))));
+    addStatRow(2, "速度", StringUtils::format("%d", static_cast<int>(std::round(speed))));
+    addStatRow(3, "防御", StringUtils::format("%d", static_cast<int>(std::round(defense))));
+    addStatRow(4, "暴击率", StringUtils::format("%d%%", static_cast<int>(std::round(crit * 100.0f))));
 }
 
 void InventoryLayer::refreshEquipmentPage()
@@ -713,7 +833,7 @@ void InventoryLayer::refreshEquipmentPage()
     // 玩家未绑定：仅展示布局占位
     if (!_player)
     {
-        if (auto hint = createPlaceholderSprite(Size(360, 48), Color3B(180, 180, 180)))
+        if (auto hint = createUiLabel("请先绑定玩家", 32.0f, Color3B(200, 200, 200)))
         {
             hint->setPosition(Vec2(listRect.getMidX(), listRect.getMidY()));
             _equipmentPage->addChild(hint, 2);
@@ -722,13 +842,13 @@ void InventoryLayer::refreshEquipmentPage()
     }
 
     // 左上：分类/排序占位
-    if (auto category = createPlaceholderSprite(Size(220, 36), SECTION_TITLE_COLOR))
+    if (auto category = createUiLabel("武器", 30.0f, SECTION_TITLE_COLOR))
     {
         category->setAnchorPoint(Vec2(0.0f, 0.5f));
         category->setPosition(Vec2(listRect.getMinX(), contentTop + 40.0f));
         _equipmentPage->addChild(category, 2);
     }
-    if (auto sort = createPlaceholderSprite(Size(220, 36), SECTION_TITLE_COLOR))
+    if (auto sort = createUiLabel("字母顺序", 30.0f, SECTION_TITLE_COLOR))
     {
         sort->setAnchorPoint(Vec2(0.0f, 0.5f));
         sort->setPosition(Vec2(listRect.getMinX() + 260.0f, contentTop + 40.0f));
@@ -814,13 +934,14 @@ void InventoryLayer::refreshEquipmentPage()
             icon->setPosition(Vec2(60.0f, rowH * 0.5f));
             row->addChild(icon, 1);
         }
-        if (auto name = createPlaceholderSprite(Size(360, 30), ITEM_TEXT_COLOR))
+        if (auto name = createUiLabel(item->name.empty() ? "未命名" : item->name, 26.0f, ITEM_TEXT_COLOR))
         {
             name->setAnchorPoint(Vec2(0.0f, 0.5f));
             name->setPosition(Vec2(120.0f, rowH * 0.5f + 12.0f));
             row->addChild(name, 1);
         }
-        if (auto level = createPlaceholderSprite(Size(90, 30), Color3B(190, 190, 190)))
+        const int displayLevel = getEquipmentDisplayLevel(item, _player);
+        if (auto level = createUiLabel(StringUtils::format("Lv%d", displayLevel), 24.0f, Color3B(190, 190, 190)))
         {
             level->setAnchorPoint(Vec2(1.0f, 0.5f));
             level->setPosition(Vec2(listRect.size.width - 24.0f, rowH * 0.5f + 12.0f));
@@ -830,40 +951,76 @@ void InventoryLayer::refreshEquipmentPage()
         scroll->getInnerContainer()->addChild(row, 1);
     }
 
-    // 右侧信息栏（占位）
+    // 右侧信息栏（人物信息/等级/属性，参考截图 3 右侧面板）
     auto rightBg = DrawNode::create();
     drawPanelRect(rightBg, rightStatsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _equipmentPage->addChild(rightBg, 1);
 
-    // 右栏内容占位：顶部标题/进度条/若干数据行
-    if (auto title = createPlaceholderSprite(Size(320, 40), TITLE_COLOR))
+    const std::string playerName = getPlayerDisplayName();
+    if (auto title = createUiLabel(playerName, 34.0f, TITLE_COLOR, true, 3))
     {
         title->setAnchorPoint(Vec2(0.0f, 1.0f));
         title->setPosition(Vec2(rightStatsRect.getMinX() + 30.0f, rightStatsRect.getMaxY() - 26.0f));
         _equipmentPage->addChild(title, 2);
     }
-    if (auto bar = createPlaceholderSprite(Size(rightStatsRect.size.width - 60.0f, 22.0f), Color3B(210, 210, 210)))
+
+    // 等级与经验条
+    if (auto levelLabel = createUiLabel(StringUtils::format("等级 %d", _player->getLevel()), 26.0f, Color3B(220, 220, 220)))
     {
-        bar->setAnchorPoint(Vec2(0.0f, 1.0f));
-        bar->setPosition(Vec2(rightStatsRect.getMinX() + 30.0f, rightStatsRect.getMaxY() - 80.0f));
-        _equipmentPage->addChild(bar, 2);
+        levelLabel->setAnchorPoint(Vec2(1.0f, 1.0f));
+        levelLabel->setPosition(Vec2(rightStatsRect.getMaxX() - 30.0f, rightStatsRect.getMaxY() - 26.0f));
+        _equipmentPage->addChild(levelLabel, 2);
     }
-    for (int i = 0; i < 4; ++i)
+
+    const int requiredExp = GameConfig::Player::Leveling::getRequiredExp(_player->getLevel());
+    const float expRatio = (requiredExp > 0) ? clampf(static_cast<float>(_player->getExperience()) / requiredExp, 0.0f, 1.0f) : 0.0f;
+    const float barW = rightStatsRect.size.width - 60.0f;
+    const float barH = 18.0f;
+    const float barLeft = rightStatsRect.getMinX() + 30.0f;
+    const float barTop = rightStatsRect.getMaxY() - 80.0f;
+    const Rect expRect(barLeft, barTop - barH, barW, barH);
+    auto expBar = DrawNode::create();
+    expBar->drawSolidRect(expRect.origin, expRect.origin + Vec2(expRect.size.width, expRect.size.height), Color4F(0.18f, 0.18f, 0.22f, 0.95f));
+    expBar->drawSolidRect(expRect.origin,
+                          expRect.origin + Vec2(expRect.size.width * expRatio, expRect.size.height),
+                          Color4F(0.92f, 0.78f, 0.25f, 0.95f));
+    expBar->drawRect(expRect.origin, expRect.origin + Vec2(expRect.size.width, expRect.size.height), Color4F(0.35f, 0.35f, 0.40f, 0.85f));
+    _equipmentPage->addChild(expBar, 2);
+
+    if (auto expText = createUiLabel(StringUtils::format("%d / %d", _player->getExperience(), requiredExp), 22.0f, Color3B(210, 210, 210)))
     {
-        const float y = rightStatsRect.getMaxY() - 150.0f - 82.0f * i;
-        if (auto name = createPlaceholderSprite(Size(160, 28), ITEM_TEXT_COLOR))
+        expText->setAnchorPoint(Vec2(1.0f, 1.0f));
+        expText->setPosition(Vec2(expRect.getMaxX(), expRect.getMinY() - 10.0f));
+        _equipmentPage->addChild(expText, 2);
+    }
+
+    auto attrComp = _player->getAttributeComponent();
+    const float maxHp = attrComp ? attrComp->getAttributeValue(AttributeType::MAX_HP) : 0.0f;
+    const float attack = _player->getAttackPower();
+    const float defense = attrComp ? attrComp->getAttributeValue(AttributeType::DEFENSE) : 0.0f;
+    const float crit = attrComp ? attrComp->getAttributeValue(AttributeType::CRITICAL_RATE) : 0.0f;
+
+    auto addStatRow = [this, rightStatsRect](int index, const std::string &nameText, const std::string &valueText)
+    {
+        const float y = rightStatsRect.getMaxY() - 150.0f - 82.0f * index;
+        if (auto name = createUiLabel(nameText, 26.0f, ITEM_TEXT_COLOR))
         {
             name->setAnchorPoint(Vec2(0.0f, 0.5f));
             name->setPosition(Vec2(rightStatsRect.getMinX() + 30.0f, y));
             _equipmentPage->addChild(name, 2);
         }
-        if (auto value = createPlaceholderSprite(Size(140, 28), Color3B::WHITE))
+        if (auto value = createUiLabel(valueText, 26.0f, Color3B::WHITE))
         {
             value->setAnchorPoint(Vec2(1.0f, 0.5f));
             value->setPosition(Vec2(rightStatsRect.getMaxX() - 30.0f, y));
             _equipmentPage->addChild(value, 2);
         }
-    }
+    };
+
+    addStatRow(0, "生命", StringUtils::format("%d", static_cast<int>(std::round(maxHp))));
+    addStatRow(1, "攻击力", StringUtils::format("%d", static_cast<int>(std::round(attack))));
+    addStatRow(2, "防御", StringUtils::format("%d", static_cast<int>(std::round(defense))));
+    addStatRow(3, "暴击率", StringUtils::format("%d%%", static_cast<int>(std::round(crit * 100.0f))));
 
     // 底部材料栏（占位）
     const float matW = 980.0f;
@@ -877,7 +1034,7 @@ void InventoryLayer::refreshEquipmentPage()
         matIcon->setPosition(Vec2(matRect.getMinX() + 70.0f, matRect.getMidY()));
         _equipmentPage->addChild(matIcon, 2);
     }
-    if (auto matText = createPlaceholderSprite(Size(matRect.size.width - 180.0f, 30.0f), ITEM_TEXT_COLOR))
+    if (auto matText = createUiLabel("所需材料：夺目催化源色 25/3", 28.0f, ITEM_TEXT_COLOR))
     {
         matText->setAnchorPoint(Vec2(0.0f, 0.5f));
         matText->setPosition(Vec2(matRect.getMinX() + 130.0f, matRect.getMidY()));
@@ -901,7 +1058,7 @@ void InventoryLayer::refreshSkillPage()
 
     if (!_player)
     {
-        if (auto hint = createPlaceholderSprite(Size(360, 48), Color3B(180, 180, 180)))
+        if (auto hint = createUiLabel("请先绑定玩家", 32.0f, Color3B(200, 200, 200)))
         {
             hint->setPosition(Vec2(DESIGN_WIDTH * 0.5f, DESIGN_HEIGHT * 0.5f));
             _skillPage->addChild(hint, 1);
@@ -912,7 +1069,7 @@ void InventoryLayer::refreshSkillPage()
     auto skillComp = _player->getSkillComponent();
     if (!skillComp)
     {
-        if (auto hint = createPlaceholderSprite(Size(360, 48), Color3B(180, 180, 180)))
+        if (auto hint = createUiLabel("技能组件未初始化", 32.0f, Color3B(200, 200, 200)))
         {
             hint->setPosition(Vec2(DESIGN_WIDTH * 0.5f, DESIGN_HEIGHT * 0.5f));
             _skillPage->addChild(hint, 1);
@@ -936,13 +1093,13 @@ void InventoryLayer::refreshSkillPage()
     auto pointsBg = DrawNode::create();
     drawPanelRect(pointsBg, pointsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _skillPage->addChild(pointsBg, 1);
-    if (auto pointsTitle = createPlaceholderSprite(Size(260, 40), TITLE_COLOR))
+    if (auto pointsTitle = createUiLabel("现有技能点数", 30.0f, TITLE_COLOR, true, 3))
     {
         pointsTitle->setAnchorPoint(Vec2(0.0f, 1.0f));
         pointsTitle->setPosition(Vec2(pointsRect.getMinX() + 26.0f, pointsRect.getMaxY() - 20.0f));
         _skillPage->addChild(pointsTitle, 2);
     }
-    if (auto pointsValue = createPlaceholderSprite(Size(140, 60), Color3B::WHITE))
+    if (auto pointsValue = createUiLabel(StringUtils::format("%d", _player->getSkillPoints()), 64.0f, Color3B::WHITE, true, 3))
     {
         pointsValue->setPosition(Vec2(pointsRect.getMidX(), pointsRect.getMidY()));
         _skillPage->addChild(pointsValue, 2);
@@ -954,12 +1111,51 @@ void InventoryLayer::refreshSkillPage()
     auto statsBg = DrawNode::create();
     drawPanelRect(statsBg, statsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _skillPage->addChild(statsBg, 1);
-    if (auto nameBar = createPlaceholderSprite(Size(statsRect.size.width - 60.0f, 34.0f), TITLE_COLOR))
+    const std::string playerName = getPlayerDisplayName();
+    if (auto nameBar = createUiLabel(playerName, 34.0f, TITLE_COLOR, true, 3))
     {
         nameBar->setAnchorPoint(Vec2(0.0f, 1.0f));
         nameBar->setPosition(Vec2(statsRect.getMinX() + 30.0f, statsRect.getMaxY() - 18.0f));
         _skillPage->addChild(nameBar, 2);
     }
+    if (auto levelLabel = createUiLabel(StringUtils::format("等级 %d", _player->getLevel()), 24.0f, Color3B(220, 220, 220)))
+    {
+        levelLabel->setAnchorPoint(Vec2(1.0f, 1.0f));
+        levelLabel->setPosition(Vec2(statsRect.getMaxX() - 30.0f, statsRect.getMaxY() - 18.0f));
+        _skillPage->addChild(levelLabel, 2);
+    }
+
+    // 简要战斗数据（参考截图 2 右侧）
+    auto attrComp = _player->getAttributeComponent();
+    const float maxHp = attrComp ? attrComp->getAttributeValue(AttributeType::MAX_HP) : 0.0f;
+    const float attack = _player->getAttackPower();
+    const float speed = attrComp ? attrComp->getAttributeValue(AttributeType::MOVE_SPEED) : 0.0f;
+    const float crit = attrComp ? attrComp->getAttributeValue(AttributeType::CRITICAL_RATE) : 0.0f;
+
+    auto addSmallStat = [this, statsRect](int index, const std::string &nameText, const std::string &valueText)
+    {
+        const float firstY = statsRect.getMaxY() - 74.0f;
+        const float rowGap = 42.0f;
+        const float y = firstY - rowGap * index;
+
+        if (auto name = createUiLabel(nameText, 22.0f, ITEM_TEXT_COLOR))
+        {
+            name->setAnchorPoint(Vec2(0.0f, 0.5f));
+            name->setPosition(Vec2(statsRect.getMinX() + 30.0f, y));
+            _skillPage->addChild(name, 2);
+        }
+        if (auto value = createUiLabel(valueText, 22.0f, Color3B::WHITE))
+        {
+            value->setAnchorPoint(Vec2(1.0f, 0.5f));
+            value->setPosition(Vec2(statsRect.getMaxX() - 30.0f, y));
+            _skillPage->addChild(value, 2);
+        }
+    };
+
+    addSmallStat(0, "生命", StringUtils::format("%d", static_cast<int>(std::round(maxHp))));
+    addSmallStat(1, "攻击力", StringUtils::format("%d", static_cast<int>(std::round(attack))));
+    addSmallStat(2, "速度", StringUtils::format("%d", static_cast<int>(std::round(speed))));
+    addSmallStat(3, "暴击率", StringUtils::format("%d%%", static_cast<int>(std::round(crit * 100.0f))));
 
     // 左侧：技能树区域（可滚动，占位实现）
     const float treeBottom = 260.0f;
