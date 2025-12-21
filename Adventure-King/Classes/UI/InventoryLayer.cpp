@@ -72,6 +72,62 @@ namespace
         return label;
     }
 
+    cocos2d::ui::Button *createTextButton(const std::string &text, const cocos2d::Size &targetSize,
+                                          const std::function<void(cocos2d::Ref *)> &callback,
+                                          float fontSize = 26.0f,
+                                          const cocos2d::Color3B &titleColor = cocos2d::Color3B::WHITE,
+                                          const cocos2d::Color3B &backgroundTint = cocos2d::Color3B(80, 80, 90))
+    {
+        auto btn = cocos2d::ui::Button::create(PLACEHOLDER_ICON_PATH, PLACEHOLDER_ICON_PATH);
+        if (!btn)
+        {
+            return nullptr;
+        }
+
+        btn->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+        btn->setPressedActionEnabled(true);
+
+        // 使用 Scale9 让按钮尺寸稳定（占位贴图仅作为背景）
+        btn->setScale9Enabled(true);
+        btn->setCapInsets(cocos2d::Rect(10, 10, 10, 10));
+        btn->setContentSize(targetSize);
+        btn->setColor(backgroundTint);
+
+        btn->setTitleText(text);
+        btn->setTitleFontName(UI_FONT_PATH);
+        btn->setTitleFontSize(fontSize);
+        btn->setTitleColor(titleColor);
+
+        if (callback)
+        {
+            btn->addClickEventListener(callback);
+        }
+        return btn;
+    }
+
+    void showToast(cocos2d::Node *parent, const cocos2d::Vec2 &pos, const std::string &text,
+                   const cocos2d::Color3B &color = cocos2d::Color3B(230, 230, 230))
+    {
+        if (!parent)
+        {
+            return;
+        }
+        auto label = createUiLabel(text, 24.0f, color);
+        if (!label)
+        {
+            return;
+        }
+        label->setOpacity(0);
+        label->setPosition(pos);
+        parent->addChild(label, 999);
+        label->runAction(cocos2d::Sequence::create(
+            cocos2d::FadeIn::create(0.08f),
+            cocos2d::DelayTime::create(1.2f),
+            cocos2d::FadeOut::create(0.18f),
+            cocos2d::RemoveSelf::create(),
+            nullptr));
+    }
+
     std::string getPlayerDisplayName()
     {
         // 当前项目默认玩家为 Klee；后续可接入真实角色名/存档数据
@@ -633,14 +689,6 @@ void InventoryLayer::refreshAttributePage()
     const float safeBottom = SAFE_MARGIN_Y;
     const float safeTop = DESIGN_HEIGHT - SAFE_MARGIN_Y;
 
-    // 左侧立绘占位（后续可替换为真实角色资源）
-    if (auto character = createPlaceholderSprite(Size(920.0f, 1320.0f), Color3B(175, 175, 175)))
-    {
-        character->setAnchorPoint(Vec2::ZERO);
-        character->setPosition(Vec2(0, 0));
-        _attributePage->addChild(character, 0);
-    }
-
     // 玩家未绑定时仅展示占位
     if (!_player || !_player->getAttributeComponent())
     {
@@ -672,6 +720,23 @@ void InventoryLayer::refreshAttributePage()
     {
         points->setPosition(Vec2(attrListRect.getMidX(), attrListRect.getMaxY() + 60.0f));
         _attributePage->addChild(points, 2);
+    }
+
+    // 属性加点按钮（占位）
+    if (auto addAttrBtn = createTextButton(
+            "提升属性",
+            Size(240.0f, 62.0f),
+            [this](Ref *)
+            {
+                // 当前属性加点系统未接入：先给出明确提示，避免“按钮无反应”的误解
+                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 140.0f), "属性加点功能待实现", Color3B(255, 220, 160));
+            },
+            28.0f,
+            Color3B::WHITE,
+            Color3B(90, 90, 110)))
+    {
+        addAttrBtn->setPosition(Vec2(attrListRect.getMidX(), attrListRect.getMinY() - 70.0f));
+        _attributePage->addChild(addAttrBtn, 3);
     }
 
     // 5 行属性条（使用文字渲染，避免“纯 PNG”导致排版错位）
@@ -907,18 +972,9 @@ void InventoryLayer::refreshEquipmentPage()
                                        {
                                            return;
                                        }
-                                       const auto &inv = _player->getInventoryItems();
-                                       for (const auto &it : inv)
-                                       {
-                                           if (it && it->id == itemId)
-                                           {
-                                               _player->equip(it);
-                                               _selectedInventoryItemId = itemId;
-                                               showDetailOverlay();
-                                               refresh();
-                                               break;
-                                           }
-                                       } });
+                                       _selectedInventoryItemId = itemId;
+                                       showDetailOverlay();
+                                       refresh(); });
 
         // 行背景（选中高亮）
         auto rowBg = DrawNode::create();
@@ -1021,6 +1077,130 @@ void InventoryLayer::refreshEquipmentPage()
     addStatRow(1, "攻击力", StringUtils::format("%d", static_cast<int>(std::round(attack))));
     addStatRow(2, "防御", StringUtils::format("%d", static_cast<int>(std::round(defense))));
     addStatRow(3, "暴击率", StringUtils::format("%d%%", static_cast<int>(std::round(crit * 100.0f))));
+
+    // 当前选中装备信息 + 操作按钮（装备/升级）
+    std::shared_ptr<Equipment> selectedItem;
+    for (const auto &it : items)
+    {
+        if (it && it->id == _selectedInventoryItemId)
+        {
+            selectedItem = it;
+            break;
+        }
+    }
+
+    const std::string selectedName = selectedItem ? (selectedItem->name.empty() ? "未命名" : selectedItem->name) : "未选择";
+    if (auto selectedLabel = createUiLabel(StringUtils::format("选中：%s", selectedName.c_str()), 24.0f, Color3B(210, 210, 210)))
+    {
+        selectedLabel->setAnchorPoint(Vec2(0.0f, 0.5f));
+        selectedLabel->setPosition(Vec2(rightStatsRect.getMinX() + 30.0f, rightStatsRect.getMinY() + 150.0f));
+        _equipmentPage->addChild(selectedLabel, 2);
+    }
+
+    const float actionY = rightStatsRect.getMinY() + 70.0f;
+    const float actionXMid = rightStatsRect.getMidX();
+    const Size actionBtnSize(160.0f, 56.0f);
+
+    auto equipBtn = createTextButton(
+        "装备",
+        actionBtnSize,
+        [this](Ref *)
+        {
+            if (!_player)
+            {
+                return;
+            }
+            const int itemId = _selectedInventoryItemId;
+            if (itemId < 0)
+            {
+                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "请先选择一件装备", Color3B(255, 220, 160));
+                return;
+            }
+
+            const auto &inv = _player->getInventoryItems();
+            for (const auto &it : inv)
+            {
+                if (it && it->id == itemId)
+                {
+                    _player->equip(it);
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已装备", Color3B(200, 255, 200));
+                    break;
+                }
+            }
+            showDetailOverlay();
+            refresh();
+        },
+        28.0f,
+        Color3B::WHITE,
+        Color3B(70, 110, 70));
+
+    auto upgradeBtn = createTextButton(
+        "升级",
+        actionBtnSize,
+        [this](Ref *)
+        {
+            if (!_player)
+            {
+                return;
+            }
+            const int itemId = _selectedInventoryItemId;
+            if (itemId < 0)
+            {
+                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "请先选择一件装备", Color3B(255, 220, 160));
+                return;
+            }
+
+            const auto &inv = _player->getInventoryItems();
+            for (const auto &it : inv)
+            {
+                if (!it || it->id != itemId)
+                {
+                    continue;
+                }
+
+                // 升级逻辑（轻量占位）：提高现有属性加成；武器额外提升攻击力
+                if (!it->attributeBonus.values.empty())
+                {
+                    for (auto &kv : it->attributeBonus.values)
+                    {
+                        kv.second *= 1.05f;
+                    }
+                }
+                else
+                {
+                    // 没有属性加成时，给一个很小的默认提升，避免“升级无变化”
+                    it->attributeBonus.add(AttributeType::DEFENSE, 1.0f);
+                }
+
+                if (auto weapon = std::dynamic_pointer_cast<Weapon>(it))
+                {
+                    weapon->attackDamage = weapon->attackDamage * 1.05f + 1.0f;
+                }
+
+                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已升级（占位数值）", Color3B(255, 220, 160));
+                break;
+            }
+
+            refresh();
+        },
+        28.0f,
+        Color3B::WHITE,
+        Color3B(120, 105, 60));
+
+    if (equipBtn && upgradeBtn)
+    {
+        equipBtn->setPosition(Vec2(actionXMid - 120.0f, actionY));
+        upgradeBtn->setPosition(Vec2(actionXMid + 120.0f, actionY));
+
+        const bool hasSelection = (_selectedInventoryItemId >= 0);
+        equipBtn->setEnabled(hasSelection);
+        upgradeBtn->setEnabled(hasSelection);
+        equipBtn->setOpacity(hasSelection ? 255 : 160);
+        upgradeBtn->setOpacity(hasSelection ? 255 : 160);
+
+        _equipmentPage->addChild(equipBtn, 3);
+        _equipmentPage->addChild(upgradeBtn, 3);
+    }
 
     // 底部材料栏（占位）
     const float matW = 980.0f;
@@ -1285,6 +1465,24 @@ void InventoryLayer::refreshSkillPage()
         }
         btn->setPosition(nodePositions[i]);
         treeScroll->getInnerContainer()->addChild(btn, 1);
+
+        // 技能名字与状态（未学习/已学习）
+        const Vec2 pos = nodePositions[i];
+        if (auto nameLabel = createUiLabel(tpl.name, 20.0f, tint, true, 2))
+        {
+            nameLabel->setAnchorPoint(Vec2(0.5f, 1.0f));
+            nameLabel->setPosition(Vec2(pos.x, pos.y - 52.0f));
+            treeScroll->getInnerContainer()->addChild(nameLabel, 2);
+        }
+
+        const std::string stateText = learned ? "已学习" : "未学习";
+        const Color3B stateColor = learned ? Color3B(200, 255, 200) : Color3B(160, 160, 160);
+        if (auto stateLabel = createUiLabel(stateText, 18.0f, stateColor, true, 2))
+        {
+            stateLabel->setAnchorPoint(Vec2(0.5f, 1.0f));
+            stateLabel->setPosition(Vec2(pos.x, pos.y - 76.0f));
+            treeScroll->getInnerContainer()->addChild(stateLabel, 2);
+        }
     }
 
     // 槽位选择/卸下（参考截图 2 右侧中间的“锁/槽位”位置）
@@ -1314,7 +1512,7 @@ void InventoryLayer::refreshSkillPage()
 
         if (hasSkill)
         {
-            auto unequipBtn = createIconButton(Size(40, 40), [this, i](Ref *) {
+            auto unequipBtn = createTextButton("卸下", Size(86.0f, 40.0f), [this, i](Ref *) {
                 if (_player)
                 {
                     if (auto comp = _player->getSkillComponent())
@@ -1324,10 +1522,10 @@ void InventoryLayer::refreshSkillPage()
                 }
                 showDetailOverlay();
                 refresh();
-            }, Color3B(255, 120, 120));
+            }, 22.0f, Color3B::WHITE, Color3B(120, 60, 60));
             if (unequipBtn)
             {
-                unequipBtn->setPosition(Vec2(slotX + 66.0f, slotY));
+                unequipBtn->setPosition(Vec2(slotX + 118.0f, slotY));
                 _skillPage->addChild(unequipBtn, 3);
             }
         }
@@ -1354,7 +1552,7 @@ void InventoryLayer::refreshSkillPage()
 
         if (hasSkill)
         {
-            auto unequipBtn = createIconButton(Size(40, 40), [this, i](Ref *) {
+            auto unequipBtn = createTextButton("卸下", Size(86.0f, 40.0f), [this, i](Ref *) {
                 if (_player)
                 {
                     if (auto comp = _player->getSkillComponent())
@@ -1364,10 +1562,10 @@ void InventoryLayer::refreshSkillPage()
                 }
                 showDetailOverlay();
                 refresh();
-            }, Color3B(255, 120, 120));
+            }, 22.0f, Color3B::WHITE, Color3B(120, 60, 60));
             if (unequipBtn)
             {
-                unequipBtn->setPosition(Vec2(slotX + 66.0f, slotY));
+                unequipBtn->setPosition(Vec2(slotX + 118.0f, slotY));
                 _skillPage->addChild(unequipBtn, 3);
             }
         }
