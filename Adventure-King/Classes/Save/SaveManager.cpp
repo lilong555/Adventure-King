@@ -804,6 +804,9 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         skillComp->clearAndSetPassiveSlots(passiveSlots);
     }
 
+    // 补齐默认测试物品（不重复加入），便于版本更新后直接验证新装备/被动机制
+    player->ensureDefaultInventory();
+
     // 根据最终上限夹取 HP/MP
     player->setCurrentHP(savedHP);
     player->setCurrentMP(savedMP);

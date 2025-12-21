@@ -639,13 +639,10 @@ void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon>& weapon)
 
 void PlayerCharacter::ensureDefaultInventory()
 {
-    if (!_inventoryItems.empty())
-    {
-        return;
-    }
-
-    // 说明：这里只放少量“占位物品”，用于背包/装备系统的基本交互验证
-    // 后续可替换为掉落/商店/任务等真实产出逻辑
+    // 说明：这里放少量“测试/占位物品”，用于背包/装备/被动机制的基本交互验证。
+    // 该函数应保持幂等：通过 addToInventory 的去重逻辑，避免重复加入。
+    //
+    // 注意：目前尚未接入掉落/商店等产出系统，因此通过“默认物品”保证功能可测试。
 
     // 新手剑（武器）
     {

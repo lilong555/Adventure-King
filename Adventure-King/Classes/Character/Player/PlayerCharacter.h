@@ -85,6 +85,8 @@ public:
     void clearInventory();
     /// @brief 设置背包物品列表（读档用，会按 id 去重）
     void setInventoryItems(const std::vector<std::shared_ptr<Equipment>>& items);
+    /// @brief 确保默认测试物品存在（不会重复添加）
+    void ensureDefaultInventory();
 
     /// @brief 获取指定槽位装备
     std::shared_ptr<Equipment> getEquipment(EquipmentSlot slot) const;
@@ -197,8 +199,6 @@ private:
     void initAssetPaths(const std::string& spriteFrameName);
     /// @brief 创建技能集
     void createSkillSet();
-    /// @brief 初始化默认背包物品（用于占位与测试）
-    void ensureDefaultInventory();
 
     // 触发型被动/装备特效的统一更新（条件类被动、冷却计时等）
     void updateTriggerEffects(float dt);
