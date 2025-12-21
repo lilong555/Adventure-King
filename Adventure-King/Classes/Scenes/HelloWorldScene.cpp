@@ -254,6 +254,32 @@ bool HelloWorld::init()
         contentContainer->addChild(dragon2, cornerSpriteZOrder);
         // 右上角：向左下（向内）漂浮，避免漂到屏幕外导致“看起来没动”
         addCornerWobbleEffect(dragon2, Vec2(-5.0f, -4.0f), 1.0f, 1.15f, 0.85f);
+
+        // dragon2 左下角火焰粒子（作为 dragon2 子节点，保证跟随摇晃且不遮挡菜单按钮）
+        auto dragonFire = ParticleSystemQuad::create("Particle/par_dragon_fire.plist");
+        if (!dragonFire)
+        {
+            problemLoading("Particle/par_dragon_fire.plist");
+        }
+        else
+        {
+            auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
+            if (!particleTexture)
+            {
+                problemLoading("Particle/particle_texture.png");
+            }
+            else
+            {
+                dragonFire->setTexture(particleTexture);
+            }
+
+            dragonFire->setAnchorPoint(Vec2(0.0f, 0.0f));
+            dragonFire->setPosition(Vec2::ZERO); // dragon2 的左下角
+            dragonFire->setPositionType(ParticleSystem::PositionType::GROUPED);
+            dragonFire->setScale(0.35f);
+            dragonFire->resetSystem();
+            dragon2->addChild(dragonFire, 1);
+        }
     }
 
     // ==========================================================
