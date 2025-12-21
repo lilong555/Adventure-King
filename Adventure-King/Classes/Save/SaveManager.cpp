@@ -4,6 +4,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "cocos2d.h"
+#include <algorithm>
 #include <chrono>
 #include <unordered_map>
 
@@ -433,6 +434,7 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
         equipData.name = equipment->name;
         equipData.description = equipment->description;
         equipData.slot = static_cast<int>(equipment->slot);
+        equipData.level = std::max(1, equipment->level);
         equipData.spritePath = equipment->spritePath;
 
         // 属性加成
@@ -608,6 +610,7 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
             weapon->name = equipData.name;
             weapon->description = equipData.description;
             weapon->slot = static_cast<EquipmentSlot>(equipData.slot);
+            weapon->level = std::max(1, equipData.level);
             weapon->spritePath = equipData.spritePath;
             weapon->type = static_cast<WeaponType>(equipData.weaponType);
             weapon->attackDamage = equipData.attackDamage;
@@ -630,6 +633,7 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
             equipment->name = equipData.name;
             equipment->description = equipData.description;
             equipment->slot = static_cast<EquipmentSlot>(equipData.slot);
+            equipment->level = std::max(1, equipData.level);
             equipment->spritePath = equipData.spritePath;
 
             for (std::map<int, float>::const_iterator attrIt = equipData.attributeBonus.values.begin();

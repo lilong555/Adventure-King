@@ -27,6 +27,7 @@ namespace cocos2d
 namespace ui
 {
 class Button;
+class ScrollView;
 }
 }
 
@@ -150,8 +151,10 @@ private:
 
     std::vector<SkillTemplate> _skillTemplates;
 
-    // 详情图弹层：用于在点击后显示“更详细”的图片（目前用占位图）
+    // 详情弹层：用于显示技能/装备的文字详情（右侧，不遮挡列表）
     cocos2d::Node *_detailOverlay = nullptr;
     cocos2d::DrawNode *_detailOverlayBg = nullptr;
-    cocos2d::Sprite *_detailOverlaySprite = nullptr;
+    cocos2d::Label *_detailOverlayTitle = nullptr;
+    cocos2d::ui::ScrollView *_detailOverlayScroll = nullptr;
+    cocos2d::Label *_detailOverlayBody = nullptr;
 };

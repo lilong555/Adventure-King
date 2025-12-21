@@ -140,12 +140,94 @@ namespace
         {
             return 1;
         }
-        // 当前装备暂未实现“装备等级”字段：先用玩家等级作为展示值，避免 UI 空白。
-        if (player)
+        (void)player;
+        // 装备等级独立于角色等级
+        return std::max(1, item->level);
+    }
+
+    std::string getEquipmentSlotName(EquipmentSlot slot)
+    {
+        switch (slot)
         {
-            return std::max(1, player->getLevel());
+        case EquipmentSlot::WEAPON:
+            return "武器";
+        case EquipmentSlot::HELMET:
+            return "头盔";
+        case EquipmentSlot::ARMOR:
+            return "护甲";
+        case EquipmentSlot::BOOTS:
+            return "靴子";
+        default:
+            return "未知槽位";
         }
-        return 1;
+    }
+
+    std::string getAttributeDisplayName(AttributeType type)
+    {
+        switch (type)
+        {
+        case AttributeType::MAX_HP:
+            return "生命力";
+        case AttributeType::STRENGTH:
+            return "力量";
+        case AttributeType::MOVE_SPEED:
+            return "敏捷";
+        case AttributeType::DEFENSE:
+            return "防御";
+        case AttributeType::CRITICAL_RATE:
+            return "暴击率";
+        case AttributeType::MAX_MP:
+            return "能量";
+        case AttributeType::ATTACKINTERVAL:
+        case AttributeType::ATTACK_INTERVAL:
+            return "攻速";
+        case AttributeType::ATTACK_RANGE:
+            return "攻击范围";
+        default:
+            return "未知属性";
+        }
+    }
+
+    bool isPercentAttribute(AttributeType type)
+    {
+        switch (type)
+        {
+        case AttributeType::CRITICAL_RATE:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    std::string formatAttributeDelta(AttributeType type, float value)
+    {
+        if (isPercentAttribute(type))
+        {
+            const int percent = static_cast<int>(std::round(value * 100.0f));
+            return StringUtils::format("%+d%%", percent);
+        }
+
+        const int rounded = static_cast<int>(std::round(value));
+        return StringUtils::format("%+d", rounded);
+    }
+
+    std::string formatAttributesBlock(const Attributes &attrs)
+    {
+        if (attrs.values.empty())
+        {
+            return "无";
+        }
+
+        std::string out;
+        for (const auto &kv : attrs.values)
+        {
+            out += " - " + getAttributeDisplayName(kv.first) + " " + formatAttributeDelta(kv.first, kv.second) + "\n";
+        }
+        if (!out.empty() && out.back() == '\n')
+        {
+            out.pop_back();
+        }
+        return out;
     }
 
     // 绘制面板（简化：实心矩形 + 描边）
@@ -626,11 +708,43 @@ void InventoryLayer::createDetailOverlay()
     _detailOverlayBg->drawRect(Vec2::ZERO, Vec2(DETAIL_PANEL_W, DETAIL_PANEL_H), PANEL_BORDER_COLOR);
     _detailOverlay->addChild(_detailOverlayBg, 0);
 
-    _detailOverlaySprite = Sprite::create(PLACEHOLDER_ICON_PATH);
-    if (_detailOverlaySprite)
+    // 标题
+    _detailOverlayTitle = createUiLabel("详情", 30.0f, TITLE_COLOR, true, 3);
+    if (_detailOverlayTitle)
     {
-        _detailOverlaySprite->setPosition(Vec2(DETAIL_PANEL_W / 2, DETAIL_PANEL_H / 2));
-        _detailOverlay->addChild(_detailOverlaySprite, 1);
+        _detailOverlayTitle->setAnchorPoint(Vec2(0.0f, 1.0f));
+        _detailOverlayTitle->setPosition(Vec2(DETAIL_PANEL_PADDING, DETAIL_PANEL_H - DETAIL_PANEL_PADDING));
+        _detailOverlay->addChild(_detailOverlayTitle, 1);
+    }
+
+    // 内容区（可滚动，避免长描述溢出）
+    const float titleAreaH = 64.0f;
+    const float scrollW = DETAIL_PANEL_W - DETAIL_PANEL_PADDING * 2.0f;
+    const float scrollH = DETAIL_PANEL_H - DETAIL_PANEL_PADDING * 2.0f - titleAreaH;
+
+    _detailOverlayScroll = cocos2d::ui::ScrollView::create();
+    if (_detailOverlayScroll)
+    {
+        _detailOverlayScroll->setDirection(cocos2d::ui::ScrollView::Direction::VERTICAL);
+        _detailOverlayScroll->setBounceEnabled(true);
+        _detailOverlayScroll->setScrollBarEnabled(true);
+        _detailOverlayScroll->setContentSize(Size(scrollW, scrollH));
+        _detailOverlayScroll->setAnchorPoint(Vec2(0.0f, 0.0f));
+        _detailOverlayScroll->setPosition(Vec2(DETAIL_PANEL_PADDING, DETAIL_PANEL_PADDING));
+        _detailOverlay->addChild(_detailOverlayScroll, 1);
+
+        _detailOverlayBody = createUiLabel("", 24.0f, ITEM_TEXT_COLOR, false);
+        if (_detailOverlayBody)
+        {
+            _detailOverlayBody->setAnchorPoint(Vec2(0.0f, 1.0f));
+            _detailOverlayBody->setHorizontalAlignment(TextHAlignment::LEFT);
+            _detailOverlayBody->setVerticalAlignment(TextVAlignment::TOP);
+            _detailOverlayBody->setDimensions(scrollW, 0.0f);
+
+            _detailOverlayScroll->addChild(_detailOverlayBody, 1);
+            _detailOverlayScroll->setInnerContainerSize(Size(scrollW, scrollH));
+            _detailOverlayBody->setPosition(Vec2(0.0f, scrollH));
+        }
     }
 
     // 仅吞噬预览面板区域内的触摸，避免点击穿透到背包列表
@@ -663,25 +777,203 @@ void InventoryLayer::showDetailOverlay()
         _detailOverlayListener->setEnabled(true);
     }
 
-    if (_detailOverlaySprite)
+    std::string title = "详情";
+    std::string body = "请先选择一个条目";
+
+    // 根据当前页面与选中项填充详情文字
+    if (_currentTab == Tab::EQUIPMENT)
     {
-        // 后续可替换为真实的“详情图”；目前仅用占位图展示。
-        auto texture = Director::getInstance()->getTextureCache()->addImage(PLACEHOLDER_ICON_PATH);
-        if (texture)
+        title = "装备详情";
+
+        if (!_player || _selectedInventoryItemId < 0)
         {
-            _detailOverlaySprite->setTexture(texture);
+            body = "请先选择一件装备";
+        }
+        else
+        {
+            std::shared_ptr<Equipment> item;
+            const auto &items = _player->getInventoryItems();
+            for (const auto &it : items)
+            {
+                if (it && it->id == _selectedInventoryItemId)
+                {
+                    item = it;
+                    break;
+                }
+            }
+
+            if (!item)
+            {
+                body = "未找到该装备";
+            }
+            else
+            {
+                title = StringUtils::format("%s  Lv%d", item->name.c_str(), std::max(1, item->level));
+
+                body = "故事：\n";
+                body += (item->description.empty() ? "暂无故事" : item->description);
+                body += "\n\n槽位：";
+                body += getEquipmentSlotName(item->slot);
+
+                body += "\n\n属性：\n";
+                body += formatAttributesBlock(item->attributeBonus);
+
+                if (auto weapon = std::dynamic_pointer_cast<Weapon>(item))
+                {
+                    body += "\n\n武器信息：\n";
+                    body += StringUtils::format(" - 基础攻击力 %d\n", static_cast<int>(std::round(weapon->attackDamage)));
+                    body += StringUtils::format(" - 攻击范围 %d\n", static_cast<int>(std::round(weapon->attackRange)));
+                    body += StringUtils::format(" - 攻速倍率 ×%.2f\n", weapon->attackSpeed);
+                    if (!weapon->attackAnimationPrefix.empty())
+                    {
+                        body += StringUtils::format(" - 攻击动画 %s\n", weapon->attackAnimationPrefix.c_str());
+                    }
+                    body += StringUtils::format(" - 动画帧数 %d", weapon->attackFrameCount);
+                }
+
+                body += "\n\n特效：\n - 无";
+            }
+        }
+    }
+    else if (_currentTab == Tab::ACTIVE_SKILL)
+    {
+        title = "主动技能详情";
+
+        const int skillId = _selectedSkillId;
+        const SkillTemplate *tpl = nullptr;
+        for (const auto &t : _skillTemplates)
+        {
+            if (!t.isPassive && t.id == skillId)
+            {
+                tpl = &t;
+                break;
+            }
         }
 
-        const float targetW = DETAIL_PANEL_W - DETAIL_PANEL_PADDING * 2.0f;
-        const float targetH = DETAIL_PANEL_H - DETAIL_PANEL_PADDING * 2.0f;
-        const auto size = _detailOverlaySprite->getContentSize();
-        float scale = 1.0f;
-        if (size.width > 0.0f && size.height > 0.0f)
+        if (skillId < 0 || !tpl)
         {
-            scale = std::min(targetW / size.width, targetH / size.height);
+            body = "请先选择一个技能";
         }
-        _detailOverlaySprite->setScale(scale);
-        _detailOverlaySprite->setPosition(Vec2(DETAIL_PANEL_W / 2, DETAIL_PANEL_H / 2));
+        else
+        {
+            std::shared_ptr<Skill> learned;
+            auto comp = _player ? _player->getSkillComponent() : nullptr;
+            if (comp)
+            {
+                learned = comp->findLearnedSkillById(skillId);
+            }
+
+            title = tpl->name;
+            body = "描述：\n";
+            body += (learned ? learned->description : tpl->description);
+
+            body += "\n\n基础信息：\n";
+            float cooldown = tpl->cooldown;
+            float manaCost = tpl->manaCost;
+            if (auto active = std::dynamic_pointer_cast<ActiveSkill>(learned))
+            {
+                cooldown = active->cooldown;
+                manaCost = active->manaCost;
+            }
+            body += StringUtils::format(" - 冷却：%.2fs\n", cooldown);
+            body += StringUtils::format(" - 消耗：%.0f MP\n", manaCost);
+
+            body += "\n伤害构成：\n";
+            if (skillId == GameConfig::Bomb::BOMB_ID)
+            {
+                body += StringUtils::format(" - 爆炸伤害：攻击力 × %.2f\n", GameConfig::Bomb::DAMAGE_SCALE);
+                body += StringUtils::format(" - 爆炸半径：%.0f\n", GameConfig::Bomb::EXPLOSION_RADIUS);
+                body += " - 暴击：按暴击率判定，暴击伤害 ×1.5\n";
+                body += " - 命中方式：范围爆炸";
+            }
+            else if (skillId == GameConfig::Fireball::FIREBALL_ID)
+            {
+                body += StringUtils::format(" - 爆炸伤害：攻击力 × %.2f\n", GameConfig::Fireball::DAMAGE_SCALE);
+                body += StringUtils::format(" - 爆炸半径：%.0f\n", GameConfig::Fireball::EXPLOSION_RADIUS);
+                body += " - 暴击：按暴击率判定，暴击伤害 ×1.5\n";
+                body += " - 命中方式：飞行命中后爆炸\n";
+
+                body += "\n持续效果（燃烧）：\n";
+                body += StringUtils::format(" - 持续：%.1fs\n", GameConfig::StatusEffect::Burning::DURATION_SECONDS);
+                body += StringUtils::format(" - 间隔：%.1fs\n", GameConfig::StatusEffect::Burning::TICK_INTERVAL_SECONDS);
+                body += StringUtils::format(" - 每跳伤害：(%.2f + %.2f×层数) × 攻击力\n",
+                                            GameConfig::StatusEffect::Burning::BASE_DAMAGE_SCALE,
+                                            GameConfig::StatusEffect::Burning::PER_STACK_DAMAGE_SCALE);
+                body += " - 规则：可叠层并刷新持续时间";
+            }
+            else
+            {
+                body += " - 暂无伤害描述";
+            }
+        }
+    }
+    else if (_currentTab == Tab::PASSIVE_SKILL)
+    {
+        title = "被动技能详情";
+
+        const int skillId = _selectedSkillId;
+        const SkillTemplate *tpl = nullptr;
+        for (const auto &t : _skillTemplates)
+        {
+            if (t.isPassive && t.id == skillId)
+            {
+                tpl = &t;
+                break;
+            }
+        }
+
+        if (skillId < 0 || !tpl)
+        {
+            body = "请先选择一个被动技能";
+        }
+        else
+        {
+            std::shared_ptr<Skill> learned;
+            auto comp = _player ? _player->getSkillComponent() : nullptr;
+            if (comp)
+            {
+                learned = comp->findLearnedSkillById(skillId);
+            }
+
+            title = tpl->name;
+            body = "描述：\n";
+            body += (learned ? learned->description : tpl->description);
+
+            body += "\n\n属性：\n";
+            Attributes bonus;
+            if (auto passive = std::dynamic_pointer_cast<PassiveSkill>(learned))
+            {
+                bonus = passive->attributeBonus;
+            }
+            else
+            {
+                bonus = tpl->attributeBonus;
+            }
+            body += formatAttributesBlock(bonus);
+
+            // 当前项目的被动技能模板暂未配置“条件触发特效”，先以占位形式展示
+            body += "\n\n特殊效果：\n - 无";
+        }
+    }
+
+    if (_detailOverlayTitle)
+    {
+        _detailOverlayTitle->setString(title);
+    }
+    if (_detailOverlayBody && _detailOverlayScroll)
+    {
+        const float viewW = _detailOverlayScroll->getContentSize().width;
+        const float viewH = _detailOverlayScroll->getContentSize().height;
+
+        // 先设定宽度，再设置文本以便正确计算高度
+        _detailOverlayBody->setDimensions(viewW, 0.0f);
+        _detailOverlayBody->setString(body);
+
+        const float textH = _detailOverlayBody->getContentSize().height;
+        const float innerH = std::max(viewH, textH);
+        _detailOverlayScroll->setInnerContainerSize(Size(viewW, innerH));
+        _detailOverlayBody->setPosition(Vec2(0.0f, innerH));
+        _detailOverlayScroll->scrollToTop(0.0f, false);
     }
 }
 
@@ -1220,6 +1512,7 @@ void InventoryLayer::refreshEquipmentPage()
             }
 
             const auto &inv = _player->getInventoryItems();
+            bool upgraded = false;
             for (const auto &it : inv)
             {
                 if (!it || it->id != itemId)
@@ -1227,7 +1520,21 @@ void InventoryLayer::refreshEquipmentPage()
                     continue;
                 }
 
-                // 升级逻辑（轻量占位）：提高现有属性加成；武器额外提升攻击力
+                // 如果当前已穿戴该装备，先卸下再升级，避免“属性加成变更但未重新结算”
+                bool wasEquipped = false;
+                if (auto equipped = _player->getEquipment(it->slot))
+                {
+                    wasEquipped = (equipped->id == it->id);
+                }
+                if (wasEquipped)
+                {
+                    _player->unequip(it->slot);
+                }
+
+                // 装备等级：独立于角色等级
+                it->level = std::max(1, it->level) + 1;
+
+                // 升级逻辑（占位）：提高现有属性加成；武器额外提升攻击力
                 if (!it->attributeBonus.values.empty())
                 {
                     for (auto &kv : it->attributeBonus.values)
@@ -1246,10 +1553,23 @@ void InventoryLayer::refreshEquipmentPage()
                     weapon->attackDamage = weapon->attackDamage * 1.05f + 1.0f;
                 }
 
-                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已升级（占位数值）", Color3B(255, 220, 160));
+                if (wasEquipped)
+                {
+                    _player->equip(it);
+                }
+
+                showToast(_panelRoot,
+                          Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f),
+                          StringUtils::format("已升级至 Lv%d", std::max(1, it->level)),
+                          Color3B(255, 220, 160));
+                upgraded = true;
                 break;
             }
 
+            if (upgraded)
+            {
+                showDetailOverlay();
+            }
             refresh();
         },
         28.0f,
@@ -1788,6 +2108,7 @@ void InventoryLayer::refreshPassiveSkillPage()
         }
 
         auto actionBtn = createTextButton(actionText, Size(120.0f, 46.0f), [this, id = tpl.id](Ref *) {
+            _selectedSkillId = id;
             if (!_player)
             {
                 return;
@@ -1818,6 +2139,7 @@ void InventoryLayer::refreshPassiveSkillPage()
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
                     break;
                 }
+                showDetailOverlay();
                 refresh();
                 return;
             }
@@ -1840,6 +2162,7 @@ void InventoryLayer::refreshPassiveSkillPage()
                 }
             }
 
+            showDetailOverlay();
             refresh();
         }, 24.0f, Color3B::WHITE, actionTint);
         if (actionBtn)

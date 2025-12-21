@@ -55,6 +55,7 @@ static rapidjson::Value serializeEquipment(const EquipmentSaveData &equip,
     obj.AddMember("name", rapidjson::Value(equip.name.c_str(), allocator).Move(), allocator);
     obj.AddMember("description", rapidjson::Value(equip.description.c_str(), allocator).Move(), allocator);
     obj.AddMember("slot", equip.slot, allocator);
+    obj.AddMember("level", equip.level, allocator);
     obj.AddMember("spritePath", rapidjson::Value(equip.spritePath.c_str(), allocator).Move(), allocator);
     obj.AddMember("isWeapon", equip.isWeapon, allocator);
 
@@ -103,6 +104,7 @@ static void deserializeEquipment(const rapidjson::Value &jsonObj, EquipmentSaveD
     equip.name = getString("name", "");
     equip.description = getString("description", "");
     equip.slot = getInt("slot", 0);
+    equip.level = getInt("level", 1);
     equip.spritePath = getString("spritePath", "");
     equip.isWeapon = getBool("isWeapon", false);
 

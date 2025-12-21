@@ -23,6 +23,7 @@ struct EquipmentSaveData
     std::string name;
     std::string description;
     int slot = 0; // EquipmentSlot (使用 int 便于 JSON 序列化)
+    int level = 1; // 装备等级（独立于角色等级）
     AttributesSaveData attributeBonus;
     std::string spritePath;
 

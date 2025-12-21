@@ -172,6 +172,7 @@ struct Equipment
     std::string name;                           // 装备名称
     std::string description;                    // 装备描述
     EquipmentSlot slot = EquipmentSlot::WEAPON; // 装备槽位
+    int level = 1;                              // 装备等级（独立于角色等级）
     Attributes attributeBonus;                  // 装备提供的属性加成
     std::string spritePath;                     // 装备对应的角色贴图路径（可选）
 
