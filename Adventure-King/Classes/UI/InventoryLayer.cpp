@@ -814,27 +814,27 @@ void InventoryLayer::refreshAttributePage()
         }
 
         // 单项加点按钮：消耗 1 点属性点
-        auto plusBtn = createTextButton("+", Size(54.0f, 54.0f), [this, type = def.type](Ref *) {
+        const Vec2 toastPos(rowRect.getMaxX() - 38.0f, rowRect.getMidY() + 60.0f);
+        const bool hasPoints = (_player && _player->getAttributePoints() > 0);
+        auto plusBtn = createTextButton("+", Size(54.0f, 54.0f), [this, type = def.type, toastPos](Ref *) {
             if (!_player)
             {
                 return;
             }
             if (_player->getAttributePoints() <= 0)
             {
-                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "属性点不足", Color3B(255, 220, 160));
+                showToast(_panelRoot, toastPos, "属性点不足", Color3B(255, 220, 160));
                 return;
             }
             if (_player->upgradeAttribute(type))
             {
-                showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已提升属性", Color3B(200, 255, 200));
+                showToast(_panelRoot, toastPos, "已提升属性", Color3B(200, 255, 200));
                 refresh();
             }
-        }, 36.0f, Color3B::WHITE, Color3B(90, 90, 110));
+        }, 36.0f, Color3B::WHITE, hasPoints ? Color3B(90, 90, 110) : Color3B(70, 70, 80));
         if (plusBtn)
         {
-            const bool enabled = (_player->getAttributePoints() > 0);
-            plusBtn->setEnabled(enabled);
-            plusBtn->setOpacity(enabled ? 255 : 160);
+            plusBtn->setOpacity(hasPoints ? 255 : 190);
             plusBtn->setPosition(Vec2(rowRect.getMaxX() - 38.0f, rowRect.getMidY()));
             _attributePage->addChild(plusBtn, 3);
         }
@@ -1012,15 +1012,52 @@ void InventoryLayer::refreshEquipmentPage()
                                        {
                                            return;
                                        }
+                                       const auto now = std::chrono::steady_clock::now();
+                                       bool isDoubleClick = false;
+                                       if (_lastEquipmentListClickItemId == itemId)
+                                       {
+                                           const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastEquipmentListClickTime).count();
+                                           isDoubleClick = (delta >= 0 && delta <= 350);
+                                       }
+
+                                       _lastEquipmentListClickItemId = itemId;
+                                       _lastEquipmentListClickTime = now;
+
                                        _selectedInventoryItemId = itemId;
+
+                                       if (isDoubleClick)
+                                       {
+                                           const auto &inv = _player->getInventoryItems();
+                                           for (const auto &it : inv)
+                                           {
+                                               if (it && it->id == itemId)
+                                               {
+                                                   _player->equip(it);
+                                                   showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已装备", Color3B(200, 255, 200));
+                                                   break;
+                                               }
+                                           }
+                                           // 避免三击触发多次
+                                           _lastEquipmentListClickItemId = -1;
+                                       }
+
                                        showDetailOverlay();
                                        refresh(); });
 
         // 行背景（选中高亮）
         auto rowBg = DrawNode::create();
+        Color4F rowFill = Color4F(0.10f, 0.10f, 0.14f, 0.72f);
+        if (isSelected)
+        {
+            rowFill = Color4F(0.18f, 0.14f, 0.10f, 0.92f); // 选中：黄色系
+        }
+        else if (isEquipped)
+        {
+            rowFill = Color4F(0.10f, 0.20f, 0.10f, 0.82f); // 已装备：绿色
+        }
         drawPanelRect(rowBg,
                       Rect(0, 0, listRect.size.width, rowH),
-                      isSelected ? Color4F(0.18f, 0.14f, 0.10f, 0.92f) : Color4F(0.10f, 0.10f, 0.14f, 0.72f),
+                      rowFill,
                       Color4F(0.25f, 0.25f, 0.30f, 0.55f));
         row->addChild(rowBg, 0);
 
@@ -1118,7 +1155,7 @@ void InventoryLayer::refreshEquipmentPage()
     addStatRow(2, "防御", StringUtils::format("%d", static_cast<int>(std::round(defense))));
     addStatRow(3, "暴击率", StringUtils::format("%d%%", static_cast<int>(std::round(crit * 100.0f))));
 
-    // 当前选中装备信息 + 操作按钮（装备/升级）
+    // 操作按钮（装备/升级）
     std::shared_ptr<Equipment> selectedItem;
     for (const auto &it : items)
     {
@@ -1127,14 +1164,6 @@ void InventoryLayer::refreshEquipmentPage()
             selectedItem = it;
             break;
         }
-    }
-
-    const std::string selectedName = selectedItem ? (selectedItem->name.empty() ? "未命名" : selectedItem->name) : "未选择";
-    if (auto selectedLabel = createUiLabel(StringUtils::format("选中：%s", selectedName.c_str()), 24.0f, Color3B(210, 210, 210)))
-    {
-        selectedLabel->setAnchorPoint(Vec2(0.0f, 0.5f));
-        selectedLabel->setPosition(Vec2(rightStatsRect.getMinX() + 30.0f, rightStatsRect.getMinY() + 150.0f));
-        _equipmentPage->addChild(selectedLabel, 2);
     }
 
     const float actionY = rightStatsRect.getMinY() + 70.0f;
@@ -1675,23 +1704,13 @@ void InventoryLayer::refreshPassiveSkillPage()
     const float innerH = std::max(listRect.size.height, rowH * itemCount);
     scroll->setInnerContainerSize(Size(listRect.size.width, innerH));
 
-    const auto &passiveSlots = skillComp->getPassiveSlots();
-
     for (int i = 0; i < itemCount; ++i)
     {
         const auto &tpl = *passiveTemplates[i];
         const bool learned = (skillComp->findLearnedSkillById(tpl.id) != nullptr);
         const bool selected = (_selectedSkillId == tpl.id);
 
-        bool isEquipped = false;
-        for (const auto &s : passiveSlots)
-        {
-            if (s && s->id == tpl.id)
-            {
-                isEquipped = true;
-                break;
-            }
-        }
+        const bool isEquipped = skillComp->isPassiveSkillEquipped(tpl.id);
 
         auto row = cocos2d::ui::Layout::create();
         row->setContentSize(Size(listRect.size.width, rowH));
@@ -1705,55 +1724,24 @@ void InventoryLayer::refreshPassiveSkillPage()
                                        {
                                            return;
                                        }
-                                       if (!_player)
-                                       {
-                                           return;
-                                       }
-                                       auto comp = _player->getSkillComponent();
-                                       if (!comp)
-                                       {
-                                           return;
-                                       }
-
-                                       auto skill = comp->findLearnedSkillById(id);
-                                       if (!skill)
-                                       {
-                                           // 未学习：点击学习（只学习，不直接装备）
-                                           for (const auto &t : _skillTemplates)
-                                           {
-                                               if (t.id != id)
-                                               {
-                                                   continue;
-                                               }
-                                               auto s = std::make_shared<PassiveSkill>();
-                                               s->id = t.id;
-                                               s->name = t.name;
-                                               s->description = t.description;
-                                               s->isPassive = true;
-                                               s->attributeBonus = t.attributeBonus;
-                                               comp->learnSkill(s);
-                                               break;
-                                           }
-                                       }
-                                       else
-                                       {
-                                           // 已学习：装备到当前选中槽位
-                                           auto passive = std::dynamic_pointer_cast<PassiveSkill>(skill);
-                                           if (passive)
-                                           {
-                                               comp->equipPassiveSkill(passive, _selectedPassiveSlotIndex);
-                                           }
-                                       }
-
                                        _selectedSkillId = id;
                                        showDetailOverlay();
                                        refresh();
                                    });
 
         auto rowBg = DrawNode::create();
+        Color4F rowFill = Color4F(0.10f, 0.10f, 0.14f, 0.72f);
+        if (selected)
+        {
+            rowFill = Color4F(0.18f, 0.14f, 0.10f, 0.92f); // 选中：黄色
+        }
+        else if (isEquipped)
+        {
+            rowFill = Color4F(0.10f, 0.20f, 0.10f, 0.82f); // 已装备：绿色
+        }
         drawPanelRect(rowBg,
                       Rect(0, 0, listRect.size.width, rowH),
-                      selected ? Color4F(0.18f, 0.14f, 0.10f, 0.92f) : Color4F(0.10f, 0.10f, 0.14f, 0.72f),
+                      rowFill,
                       Color4F(0.25f, 0.25f, 0.30f, 0.55f));
         row->addChild(rowBg, 0);
 
@@ -1776,55 +1764,92 @@ void InventoryLayer::refreshPassiveSkillPage()
         if (auto state = createUiLabel(stateText, 22.0f, stateColor))
         {
             state->setAnchorPoint(Vec2(1.0f, 0.5f));
-            state->setPosition(Vec2(listRect.size.width - 24.0f, rowH * 0.5f + 12.0f));
+            state->setPosition(Vec2(listRect.size.width - 190.0f, rowH * 0.5f + 12.0f));
             row->addChild(state, 1);
         }
 
-        scroll->getInnerContainer()->addChild(row, 1);
-    }
-
-    // 被动槽位选择/卸下（右侧靠近列表边缘）
-    const float slotX = listRect.getMaxX() - 140.0f;
-    float slotY = listRect.getMaxY() - 140.0f;
-
-    for (size_t i = 0; i < 3; ++i)
-    {
-        const bool hasSkill = (i < passiveSlots.size() && passiveSlots[i]);
-        const bool isSelected = (_selectedPassiveSlotIndex == i);
-        const Color3B tint = isSelected ? SELECTED_COLOR : (hasSkill ? ITEM_ATTR_COLOR : Color3B(120, 120, 120));
-
-        auto btn = createIconButton(Size(64, 64), [this, i](Ref *) {
-            _selectedPassiveSlotIndex = i;
-            showDetailOverlay();
-            refresh();
-        }, tint);
-        if (btn)
+        // 行内操作：学习 / 装备 / 卸下（无槽位限制）
+        std::string actionText;
+        Color3B actionTint(90, 90, 110);
+        if (!learned)
         {
-            btn->setPosition(Vec2(slotX, slotY));
-            _passiveSkillPage->addChild(btn, 3);
+            actionText = "学习";
+            actionTint = Color3B(80, 90, 130);
+        }
+        else if (!isEquipped)
+        {
+            actionText = "装备";
+            actionTint = Color3B(70, 110, 70);
+        }
+        else
+        {
+            actionText = "卸下";
+            actionTint = Color3B(120, 60, 60);
         }
 
-        if (hasSkill)
-        {
-            auto unequipBtn = createTextButton("卸下", Size(86.0f, 40.0f), [this, i](Ref *) {
-                if (_player)
-                {
-                    if (auto comp = _player->getSkillComponent())
-                    {
-                        comp->unequipPassiveSkill(i);
-                    }
-                }
-                showDetailOverlay();
-                refresh();
-            }, 22.0f, Color3B::WHITE, Color3B(120, 60, 60));
-            if (unequipBtn)
+        auto actionBtn = createTextButton(actionText, Size(120.0f, 46.0f), [this, id = tpl.id](Ref *) {
+            if (!_player)
             {
-                unequipBtn->setPosition(Vec2(slotX + 118.0f, slotY));
-                _passiveSkillPage->addChild(unequipBtn, 3);
+                return;
             }
+            auto comp = _player->getSkillComponent();
+            if (!comp)
+            {
+                return;
+            }
+
+            auto skill = comp->findLearnedSkillById(id);
+            if (!skill)
+            {
+                // 学习
+                for (const auto &t : _skillTemplates)
+                {
+                    if (t.id != id)
+                    {
+                        continue;
+                    }
+                    auto s = std::make_shared<PassiveSkill>();
+                    s->id = t.id;
+                    s->name = t.name;
+                    s->description = t.description;
+                    s->isPassive = true;
+                    s->attributeBonus = t.attributeBonus;
+                    comp->learnSkill(s);
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
+                    break;
+                }
+                refresh();
+                return;
+            }
+
+            if (comp->isPassiveSkillEquipped(id))
+            {
+                // 卸下
+                if (comp->unequipPassiveSkillById(id))
+                {
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已卸下", Color3B(255, 220, 160));
+                }
+            }
+            else
+            {
+                // 装备（无槽位限制）
+                auto passive = std::dynamic_pointer_cast<PassiveSkill>(skill);
+                if (passive && comp->equipPassiveSkill(passive))
+                {
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已装备", Color3B(200, 255, 200));
+                }
+            }
+
+            refresh();
+        }, 24.0f, Color3B::WHITE, actionTint);
+        if (actionBtn)
+        {
+            actionBtn->setAnchorPoint(Vec2(1.0f, 0.5f));
+            actionBtn->setPosition(Vec2(listRect.size.width - 24.0f, rowH * 0.5f + 12.0f));
+            row->addChild(actionBtn, 2);
         }
 
-        slotY -= 90.0f;
+        scroll->getInnerContainer()->addChild(row, 1);
     }
 }
 

@@ -85,7 +85,7 @@ struct PlayerSaveData
     // 技能
     std::vector<SkillSaveData> learnedSkills;
     std::vector<int> activeSlotSkillIds; // 主动技能槽位（最多 4 个）
-    std::vector<int> passiveSlotSkillIds; // 被动技能槽位（当前默认 3）
+    std::vector<int> passiveSlotSkillIds; // 已装备的被动技能 id 列表（无槽位限制；兼容旧存档可能包含 -1 占位）
 
     // 默认构造：使用初始玩家数据
     PlayerSaveData() = default;

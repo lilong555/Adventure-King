@@ -22,7 +22,8 @@ bool SkillComponent::init()
     }
     // 初始化槽位大小，防止越界 (假设默认3个槽位)
     _activeSlots.resize(GameConfig::UI::SKILL_BAR_SLOT_COUNT, nullptr);
-    _passiveSlots.resize(3, nullptr);
+    // 被动技能取消槽位限制：用列表表示“已装备的被动技能”
+    _passiveSlots.clear();
     return true;
 }
 
@@ -94,6 +95,53 @@ bool SkillComponent::equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skil
     applyPassiveSkill(skill);
 
     return true;
+}
+
+bool SkillComponent::isPassiveSkillEquipped(int skillId) const
+{
+    for (const auto& skill : _passiveSlots)
+    {
+        if (skill && skill->id == skillId)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool SkillComponent::equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill)
+{
+    if (!skill)
+    {
+        return false;
+    }
+
+    // 已经装备则不重复应用
+    if (isPassiveSkillEquipped(skill->id))
+    {
+        return false;
+    }
+
+    _passiveSlots.push_back(skill);
+    applyPassiveSkill(skill);
+    return true;
+}
+
+bool SkillComponent::unequipPassiveSkillById(int skillId)
+{
+    for (size_t i = 0; i < _passiveSlots.size(); ++i)
+    {
+        const auto& skill = _passiveSlots[i];
+        if (!skill || skill->id != skillId)
+        {
+            continue;
+        }
+
+        removePassiveSkill(skill);
+        _passiveSlots.erase(_passiveSlots.begin() + static_cast<std::vector<std::shared_ptr<PassiveSkill>>::difference_type>(i));
+        return true;
+    }
+    return false;
 }
 
 bool SkillComponent::unequipActiveSkill(size_t slotIndex)

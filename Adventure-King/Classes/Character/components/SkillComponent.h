@@ -34,6 +34,11 @@ public:
     bool equipActiveSkill(const std::shared_ptr<ActiveSkill>& skill, size_t slotIndex);
     bool equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill, size_t slotIndex);
 
+    // 被动技能：无槽位概念（只要学习即可装备/卸下，且不限制同时装备数量）
+    bool isPassiveSkillEquipped(int skillId) const;
+    bool equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill); // 装备（追加到已装备列表）
+    bool unequipPassiveSkillById(int skillId);                          // 卸下（按 id）
+
     // 卸下技能（将对应槽位置空；被动技能会移除属性加成）
     bool unequipActiveSkill(size_t slotIndex);
     bool unequipPassiveSkill(size_t slotIndex);

@@ -15,6 +15,7 @@
 
 #include "Character/Base/CharacterData.h"
 #include "cocos2d.h"
+#include <chrono>
 #include <functional>
 #include <string>
 #include <vector>
@@ -104,9 +105,8 @@ private:
     bool _isShowing = false;
     Tab _currentTab = Tab::EQUIPMENT;
 
-    // 当前选中槽位（用于装备技能）
+    // 当前选中槽位（用于装备主动技能）
     size_t _selectedActiveSlotIndex = 0;
-    size_t _selectedPassiveSlotIndex = 0;
 
     // 当前选中的装备槽位（-1 表示未选中）
     int _selectedEquipSlotIndex = -1;
@@ -116,6 +116,10 @@ private:
 
     // 当前选中的技能 id（-1 表示未选中）
     int _selectedSkillId = -1;
+
+    // 装备列表双击判定（双击=快速装备）
+    int _lastEquipmentListClickItemId = -1;
+    std::chrono::steady_clock::time_point _lastEquipmentListClickTime;
 
     std::function<void()> _closeCallback;
 

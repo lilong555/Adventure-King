@@ -544,10 +544,6 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
             {
                 data.passiveSlotSkillIds.push_back(skill->id);
             }
-            else
-            {
-                data.passiveSlotSkillIds.push_back(-1);
-            }
         }
     }
 
@@ -757,27 +753,36 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         }
         skillComp->clearAndSetActiveSlots(activeSlots);
 
-        // 恢复被动技能槽位
-        const size_t requiredPassiveSlots = 3;
+        // 恢复被动技能（无槽位概念：存档里保存“已装备的被动技能 id 列表”）
         std::vector<std::shared_ptr<PassiveSkill>> passiveSlots;
-        passiveSlots.reserve(requiredPassiveSlots);
-        for (size_t i = 0; i < requiredPassiveSlots; ++i)
+        passiveSlots.reserve(data.passiveSlotSkillIds.size());
+        for (size_t i = 0; i < data.passiveSlotSkillIds.size(); ++i)
         {
             int skillId = -1;
-            if (i < data.passiveSlotSkillIds.size())
+            skillId = data.passiveSlotSkillIds[i];
+            if (skillId < 0)
             {
-                skillId = data.passiveSlotSkillIds[i];
+                continue; // 兼容旧存档里的 -1 占位
             }
 
-            if (skillId == -1)
+            std::shared_ptr<Skill> skill = skillComp->findLearnedSkillById(skillId);
+            std::shared_ptr<PassiveSkill> passiveSkill = std::dynamic_pointer_cast<PassiveSkill>(skill);
+            if (passiveSkill)
             {
-                passiveSlots.push_back(std::shared_ptr<PassiveSkill>());
-            }
-            else
-            {
-                std::shared_ptr<Skill> skill = skillComp->findLearnedSkillById(skillId);
-                std::shared_ptr<PassiveSkill> passiveSkill = std::dynamic_pointer_cast<PassiveSkill>(skill);
-                passiveSlots.push_back(passiveSkill);
+                // 去重：避免重复应用属性加成
+                bool exists = false;
+                for (const auto& s : passiveSlots)
+                {
+                    if (s && s->id == passiveSkill->id)
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists)
+                {
+                    passiveSlots.push_back(passiveSkill);
+                }
             }
         }
         skillComp->clearAndSetPassiveSlots(passiveSlots);
