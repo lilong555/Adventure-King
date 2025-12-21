@@ -3,8 +3,8 @@
 #include "MapScene.h"
 #include "GameScene.h"
 #include "Character/Player/PlayerCharacter.h"
-#include"Scenes/LevelScenes/OriginMushroomScene.h"
-#include"Scenes/LevelScenes/MysteryForestScene.h"
+#include "Scenes/LevelScenes/OriginMushroomScene.h"
+#include "Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Scenes/Layers/SetMenuLayer.h"
 #include "Managers/SceneTransitionManager.h"
@@ -173,6 +173,115 @@ bool HelloWorld::init()
     }
 
     // ==========================================================
+    // 5.1 角落装饰精灵（放在背景之上，但不遮挡菜单按钮）
+    // ==========================================================
+    const int cornerSpriteZOrder = menuZOrder - 1; // 背景 z=0，菜单 z=1
+
+    // 以主菜单背景为参考，定位到四角（contentContainer 的坐标原点在中心）
+    const Size referenceSize = (sprite != nullptr) ? sprite->getContentSize() : visibleSize;
+    const Vec2 halfSize(referenceSize.width * 0.5f, referenceSize.height * 0.5f);
+
+    // 角落装饰的轻微摇晃/漂浮效果（注意：装饰仅用于表现，不参与任何交互）
+    auto addCornerWobbleEffect = [](Node *target,
+                                    const Vec2 &moveOffset,
+                                    float rotateAmplitude,
+                                    float moveDuration,
+                                    float rotateDuration)
+    {
+        if (!target)
+        {
+            return;
+        }
+
+        target->setRotation(0.0f);
+
+        // 轻微漂浮（建议传入“向内”的偏移，避免角落元素漂到屏幕外导致看不出来在动）
+        auto moveAction = RepeatForever::create(Sequence::create(
+            EaseSineInOut::create(MoveBy::create(moveDuration, moveOffset)),
+            EaseSineInOut::create(MoveBy::create(moveDuration, -moveOffset)),
+            nullptr));
+
+        // 轻微左右摇摆（基于锚点旋转，形成“摇晃”观感）
+        auto rotateAction = RepeatForever::create(Sequence::create(
+            EaseSineInOut::create(RotateTo::create(rotateDuration, rotateAmplitude)),
+            EaseSineInOut::create(RotateTo::create(rotateDuration, -rotateAmplitude)),
+            nullptr));
+
+        target->runAction(moveAction);
+        target->runAction(rotateAction);
+    };
+
+    // backman：左下角
+    auto backman = Sprite::create("Scene/Backgrounds/backman.png");
+    if (backman == nullptr)
+    {
+        problemLoading("Scene/Backgrounds/backman.png");
+    }
+    else
+    {
+        backman->setAnchorPoint(Vec2(0.0f, 0.0f));
+        backman->setPosition(Vec2(-halfSize.x, -halfSize.y + visibleSize.height * 0.1f)); // 微调一点点位置
+        contentContainer->addChild(backman, cornerSpriteZOrder);
+        // backman 比较大，旋转幅度要小一些，否则会“晃得太厉害”
+        addCornerWobbleEffect(backman, Vec2(0.0f, 4.0f), 0.6f, 1.3f, 1.0f);
+    }
+
+    // dragon1：右下角
+    auto dragon1 = Sprite::create("Scene/Backgrounds/dragon1.png");
+    if (dragon1 == nullptr)
+    {
+        problemLoading("Scene/Backgrounds/dragon1.png");
+    }
+    else
+    {
+        dragon1->setAnchorPoint(Vec2(1.0f, 0.0f));
+        dragon1->setPosition(Vec2(halfSize.x, -halfSize.y));
+        contentContainer->addChild(dragon1, cornerSpriteZOrder);
+        // 右下角：向左上（向内）漂浮，避免漂到屏幕外导致“看起来没动”
+        addCornerWobbleEffect(dragon1, Vec2(-5.0f, 4.0f), 1.0f, 1.2f, 0.9f);
+    }
+
+    // dragon2：右上角
+    auto dragon2 = Sprite::create("Scene/Backgrounds/dragon2.png");
+    if (dragon2 == nullptr)
+    {
+        problemLoading("Scene/Backgrounds/dragon2.png");
+    }
+    else
+    {
+        dragon2->setAnchorPoint(Vec2(1.0f, 1.0f));
+        dragon2->setPosition(Vec2(halfSize.x, halfSize.y));
+        contentContainer->addChild(dragon2, cornerSpriteZOrder);
+        // 右上角：向左下（向内）漂浮，避免漂到屏幕外导致“看起来没动”
+        addCornerWobbleEffect(dragon2, Vec2(-5.0f, -4.0f), 1.0f, 1.15f, 0.85f);
+
+        // dragon2 左下角火焰粒子（作为 dragon2 子节点，保证跟随摇晃且不遮挡菜单按钮）
+        auto dragonFire = ParticleSystemQuad::create("Particle/par_dragon_fire.plist");
+        if (!dragonFire)
+        {
+            problemLoading("Particle/par_dragon_fire.plist");
+        }
+        else
+        {
+            auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
+            if (!particleTexture)
+            {
+                problemLoading("Particle/particle_texture.png");
+            }
+            else
+            {
+                dragonFire->setTexture(particleTexture);
+            }
+            dragonFire->setAnchorPoint(Vec2(0.0f, 0.0f));
+            dragonFire->setPosition(Vec2(80.0f, 85.0f)); // dragon2 的左下角
+            dragonFire->setPositionType(ParticleSystem::PositionType::GROUPED);
+            dragonFire->setScale(0.35f);
+            dragonFire->resetSystem();
+            dragon2->addChild(dragonFire, 1);
+        }
+    }
+
+    // ==========================================================
     // 6. 右侧火星粒子效果
     // ==========================================================
     const float particleMarginX = 40.0f;
@@ -198,6 +307,7 @@ bool HelloWorld::init()
         {
             particleSystem->setTexture(particleTexture);
         }
+        particleSystem->setScale(0.3f);
         particleSystem->setPosition(Vec2(particleBaseX, y));
         particleSystem->setPositionType(ParticleSystem::PositionType::FREE);
         particleSystem->resetSystem();
