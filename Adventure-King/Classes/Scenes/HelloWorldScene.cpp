@@ -173,6 +173,50 @@ bool HelloWorld::init()
     }
 
     // ==========================================================
+    // 5.1 角落装饰精灵（按屏幕坐标放置，避免受 contentContainer 缩放影响）
+    // ==========================================================
+    const int cornerSpriteZOrder = contentZOrder + 1;
+
+    // backman：左下角
+    auto backman = Sprite::create("Scene/Backgrounds/backman.png");
+    if (backman == nullptr)
+    {
+        problemLoading("Scene/Backgrounds/backman.png");
+    }
+    else
+    {
+        backman->setAnchorPoint(Vec2(0.0f, 0.0f));
+        backman->setPosition(Vec2(origin.x, origin.y));
+        this->addChild(backman, cornerSpriteZOrder);
+    }
+
+    // dragon1：右下角
+    auto dragon1 = Sprite::create("Scene/Backgrounds/dragon1.png");
+    if (dragon1 == nullptr)
+    {
+        problemLoading("Scene/Backgrounds/dragon1.png");
+    }
+    else
+    {
+        dragon1->setAnchorPoint(Vec2(1.0f, 0.0f));
+        dragon1->setPosition(Vec2(origin.x + visibleSize.width, origin.y));
+        this->addChild(dragon1, cornerSpriteZOrder);
+    }
+
+    // dragon2：右上角
+    auto dragon2 = Sprite::create("Scene/Backgrounds/dragon2.png");
+    if (dragon2 == nullptr)
+    {
+        problemLoading("Scene/Backgrounds/dragon2.png");
+    }
+    else
+    {
+        dragon2->setAnchorPoint(Vec2(1.0f, 1.0f));
+        dragon2->setPosition(Vec2(origin.x + visibleSize.width, origin.y + visibleSize.height));
+        this->addChild(dragon2, cornerSpriteZOrder);
+    }
+
+    // ==========================================================
     // 6. 右侧火星粒子效果
     // ==========================================================
     const float particleMarginX = 40.0f;

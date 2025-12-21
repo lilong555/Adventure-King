@@ -45,6 +45,8 @@ EXCLUDES=(
   --exclude '.venv'
   --exclude 'dist'
   --exclude '*.vcxproj.user'
+  # Windows 下载文件的 ADS 元数据在 WSL 下可能会映射成“:Zone.Identifier”，会导致同步到 Windows 失败
+  --exclude '*:Zone.Identifier'
 )
 
 cmd="${1:-}"
