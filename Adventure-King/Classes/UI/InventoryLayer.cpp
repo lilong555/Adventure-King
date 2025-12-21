@@ -1663,13 +1663,13 @@ void InventoryLayer::refreshSkillPage()
     auto pointsBg = DrawNode::create();
     drawPanelRect(pointsBg, pointsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _skillPage->addChild(pointsBg, 1);
-    if (auto pointsTitle = createUiLabel("现有技能点数", 30.0f, TITLE_COLOR, true, 3))
+    if (auto pointsTitle = createUiLabel("现有主动技能点数", 30.0f, TITLE_COLOR, true, 3))
     {
         pointsTitle->setAnchorPoint(Vec2(0.0f, 1.0f));
         pointsTitle->setPosition(Vec2(pointsRect.getMinX() + 26.0f, pointsRect.getMaxY() - 20.0f));
         _skillPage->addChild(pointsTitle, 2);
     }
-    if (auto pointsValue = createUiLabel(StringUtils::format("%d", _player->getSkillPoints()), 64.0f, Color3B::WHITE, true, 3))
+    if (auto pointsValue = createUiLabel(StringUtils::format("%d", _player->getActiveSkillPoints()), 64.0f, Color3B::WHITE, true, 3))
     {
         pointsValue->setPosition(Vec2(pointsRect.getMidX(), pointsRect.getMidY()));
         _skillPage->addChild(pointsValue, 2);
@@ -1803,11 +1803,11 @@ void InventoryLayer::refreshSkillPage()
             if (!skill)
             {
                 // 未学习：点击学习（只学习，不直接装备，符合“已学习才能装备”的规则）
-                if (_player->getSkillPoints() <= 0)
+                if (_player->getActiveSkillPoints() <= 0)
                 {
                     _selectedSkillId = id;
                     showDetailOverlay();
-                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "技能点不足", Color3B(255, 220, 160));
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "主动技能点不足", Color3B(255, 220, 160));
                     refresh();
                     return;
                 }
@@ -1827,7 +1827,7 @@ void InventoryLayer::refreshSkillPage()
                     s->manaCost = t.manaCost;
                     s->currentCooldown = 0.0f;
                     comp->learnSkill(s);
-                    _player->setSkillPoints(_player->getSkillPoints() - 1);
+                    _player->setActiveSkillPoints(_player->getActiveSkillPoints() - 1);
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
                     break;
                 }
@@ -1971,13 +1971,13 @@ void InventoryLayer::refreshPassiveSkillPage()
     auto pointsBg = DrawNode::create();
     drawPanelRect(pointsBg, pointsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _passiveSkillPage->addChild(pointsBg, 1);
-    if (auto pointsTitle = createUiLabel("现有技能点数", 30.0f, TITLE_COLOR, true, 3))
+    if (auto pointsTitle = createUiLabel("现有被动技能点数", 30.0f, TITLE_COLOR, true, 3))
     {
         pointsTitle->setAnchorPoint(Vec2(0.0f, 1.0f));
         pointsTitle->setPosition(Vec2(pointsRect.getMinX() + 26.0f, pointsRect.getMaxY() - 20.0f));
         _passiveSkillPage->addChild(pointsTitle, 2);
     }
-    if (auto pointsValue = createUiLabel(StringUtils::format("%d", _player->getSkillPoints()), 64.0f, Color3B::WHITE, true, 3))
+    if (auto pointsValue = createUiLabel(StringUtils::format("%d", _player->getPassiveSkillPoints()), 64.0f, Color3B::WHITE, true, 3))
     {
         pointsValue->setPosition(Vec2(pointsRect.getMidX(), pointsRect.getMidY()));
         _passiveSkillPage->addChild(pointsValue, 2);
@@ -2167,10 +2167,10 @@ void InventoryLayer::refreshPassiveSkillPage()
             if (!skill)
             {
                 // 学习
-                if (_player->getSkillPoints() <= 0)
+                if (_player->getPassiveSkillPoints() <= 0)
                 {
                     showDetailOverlay();
-                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "技能点不足", Color3B(255, 220, 160));
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "被动技能点不足", Color3B(255, 220, 160));
                     refresh();
                     return;
                 }
@@ -2188,7 +2188,7 @@ void InventoryLayer::refreshPassiveSkillPage()
                     s->isPassive = true;
                     s->attributeBonus = t.attributeBonus;
                     comp->learnSkill(s);
-                    _player->setSkillPoints(_player->getSkillPoints() - 1);
+                    _player->setPassiveSkillPoints(_player->getPassiveSkillPoints() - 1);
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
                     break;
                 }

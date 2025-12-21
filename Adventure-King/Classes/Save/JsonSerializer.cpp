@@ -202,7 +202,8 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     playerObj.AddMember("role", data.playerData.role, allocator);
     playerObj.AddMember("level", data.playerData.level, allocator);
     playerObj.AddMember("experience", data.playerData.experience, allocator);
-    playerObj.AddMember("skillPoints", data.playerData.skillPoints, allocator);
+    playerObj.AddMember("activeSkillPoints", data.playerData.activeSkillPoints, allocator);
+    playerObj.AddMember("passiveSkillPoints", data.playerData.passiveSkillPoints, allocator);
     playerObj.AddMember("attributePoints", data.playerData.attributePoints, allocator);
     playerObj.AddMember("currentHP", data.playerData.currentHP, allocator);
     playerObj.AddMember("currentMP", data.playerData.currentMP, allocator);
@@ -346,10 +347,27 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
             outData.playerData.role = getInt(player, "role", outData.playerData.role);
             outData.playerData.level = getInt(player, "level", outData.playerData.level);
             outData.playerData.experience = getInt(player, "experience", outData.playerData.experience);
-            outData.playerData.skillPoints = getInt(player, "skillPoints", outData.playerData.skillPoints);
             outData.playerData.attributePoints = getInt(player, "attributePoints", outData.playerData.attributePoints);
             outData.playerData.currentHP = getFloat(player, "currentHP", outData.playerData.currentHP);
             outData.playerData.currentMP = getFloat(player, "currentMP", outData.playerData.currentMP);
+
+            // 技能点：优先读取新字段；兼容旧存档 skillPoints（按 1:1 平分到主动/被动）
+            const bool hasActivePoints = player.HasMember("activeSkillPoints") && player["activeSkillPoints"].IsInt();
+            const bool hasPassivePoints = player.HasMember("passiveSkillPoints") && player["passiveSkillPoints"].IsInt();
+            if (hasActivePoints)
+            {
+                outData.playerData.activeSkillPoints = player["activeSkillPoints"].GetInt();
+            }
+            if (hasPassivePoints)
+            {
+                outData.playerData.passiveSkillPoints = player["passiveSkillPoints"].GetInt();
+            }
+            if (!hasActivePoints && !hasPassivePoints)
+            {
+                const int legacySkillPoints = getInt(player, "skillPoints", 0);
+                outData.playerData.activeSkillPoints = (legacySkillPoints + 1) / 2;
+                outData.playerData.passiveSkillPoints = legacySkillPoints / 2;
+            }
 
             // 基础属性
             if (player.HasMember("baseAttributes"))

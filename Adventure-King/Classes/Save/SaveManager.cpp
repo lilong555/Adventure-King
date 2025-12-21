@@ -403,7 +403,8 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
     data.role = static_cast<int>(player->getRole());
     data.level = player->getLevel();
     data.experience = player->getExperience();
-    data.skillPoints = player->getSkillPoints();
+    data.activeSkillPoints = player->getActiveSkillPoints();
+    data.passiveSkillPoints = player->getPassiveSkillPoints();
     data.attributePoints = player->getAttributePoints();
 
     // 当前状态
@@ -570,7 +571,8 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
     player->setRole(static_cast<CharacterRole>(data.role));
     player->setLevel(data.level);
     player->setExperience(data.experience);
-    player->setSkillPoints(data.skillPoints);
+    player->setActiveSkillPoints(data.activeSkillPoints);
+    player->setPassiveSkillPoints(data.passiveSkillPoints);
     player->setAttributePoints(data.attributePoints);
 
     // 基础属性

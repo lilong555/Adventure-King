@@ -47,10 +47,15 @@ public:
     /// @brief 设置职业
     void setRole(CharacterRole role) { _role = role; }
 
-    /// @brief 获取技能点
-    int getSkillPoints() const { return _skillPoints; }
-    /// @brief 设置技能点
-    void setSkillPoints(int points) { _skillPoints = points; }
+    /// @brief 获取主动技能点
+    int getActiveSkillPoints() const { return _activeSkillPoints; }
+    /// @brief 设置主动技能点
+    void setActiveSkillPoints(int points) { _activeSkillPoints = points; }
+
+    /// @brief 获取被动技能点
+    int getPassiveSkillPoints() const { return _passiveSkillPoints; }
+    /// @brief 设置被动技能点
+    void setPassiveSkillPoints(int points) { _passiveSkillPoints = points; }
 
     /// @brief 获取属性点
     int getAttributePoints() const { return _attributePoints; }
@@ -214,7 +219,8 @@ private:
 
     // 基础数据
     CharacterRole _role = CharacterRole::WARRIOR;
-    int _skillPoints = 0;
+    int _activeSkillPoints = 0;
+    int _passiveSkillPoints = 0;
     int _attributePoints = 0;
     bool _isGrounded = false;
     int _jumpCount = 0;

@@ -67,7 +67,9 @@ struct PlayerSaveData
     int role = 0;           // CharacterRole
     int level = 1;
     int experience = 0;
-    int skillPoints = 0;
+    // 技能点拆分：主动/被动各自独立（都通过升级获得）
+    int activeSkillPoints = 0;
+    int passiveSkillPoints = 0;
     int attributePoints = 0;
 
     // 当前状态

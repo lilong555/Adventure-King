@@ -40,6 +40,8 @@ bool SkillBar::init()
 
 void SkillBar::initSlots(int slotCount)
 {
+    _slotCount = slotCount;
+
     // 清除旧槽位
     for (auto &slot : _slots)
     {
@@ -69,7 +71,8 @@ void SkillBar::createSlot(int index)
     float posX = 0, posY = 0;
     if (_horizontalLayout)
     {
-        posX = index * (_slotSize + _slotSpacing);
+        // 技能栏位于屏幕右下角时，槽位从右往左延展，避免最右侧溢出屏幕
+        posX = (index - (_slotCount - 1)) * (_slotSize + _slotSpacing);
     }
     else
     {
@@ -384,7 +387,7 @@ void SkillBar::setHorizontalLayout(bool horizontal)
         float posX = 0, posY = 0;
         if (_horizontalLayout)
         {
-            posX = i * (_slotSize + _slotSpacing);
+            posX = (static_cast<int>(i) - (_slotCount - 1)) * (_slotSize + _slotSpacing);
         }
         else
         {

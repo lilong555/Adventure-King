@@ -117,7 +117,9 @@ namespace GameConfig
         // 技能点配置（用于学习主动/被动技能）
         namespace SkillPoint
         {
-            inline constexpr int POINTS_PER_LEVEL = 1; // 每次升级获得的技能点
+            // 主动/被动技能点拆分：两者都通过升级获得
+            inline constexpr int ACTIVE_POINTS_PER_LEVEL = 1;  // 每次升级获得的主动技能点
+            inline constexpr int PASSIVE_POINTS_PER_LEVEL = 1; // 每次升级获得的被动技能点
         }
     }
     namespace Monster
