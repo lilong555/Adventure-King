@@ -37,6 +37,8 @@ private:
     void onTextureLoaded(cocos2d::Texture2D* texture);
     // 预加载全部完成
     void finishPreload();
+    // 安全切场景：避免在 TransitionScene 中嵌套 replaceScene 导致运行态断言
+    void tryReplacePendingScene();
     // 更新进度条与文本
     void updateProgressUI();
 
@@ -60,4 +62,7 @@ private:
 
     // 用于解绑 TextureCache 异步回调，避免回调访问已释放对象
     std::string _callbackKey;
+
+    // 预加载结束后待切换的目标场景（retain/release 管理）
+    cocos2d::Scene* _pendingDestinationScene = nullptr;
 };

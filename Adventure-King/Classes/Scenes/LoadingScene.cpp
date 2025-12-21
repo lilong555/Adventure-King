@@ -6,6 +6,7 @@
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include"Managers/MusicManager.h"
 #include "Utils/ParticlePreloadHelper.h"
+#include "2d/CCTransition.h"
 #include <algorithm>
 #include <unordered_set>
 
@@ -39,6 +40,12 @@ LoadingScene::~LoadingScene()
         {
             cache->unbindImageAsync(_callbackKey);
         }
+    }
+
+    if (_pendingDestinationScene)
+    {
+        _pendingDestinationScene->release();
+        _pendingDestinationScene = nullptr;
     }
 }
 
@@ -216,15 +223,59 @@ void LoadingScene::finishPreload()
         // 2. 使用工厂方法创建目标场景
         if (info->creator) {
             auto destinationScene = info->creator();
-            // 切换场景逻辑...
-            Director::getInstance()->replaceScene(destinationScene);
+            if (destinationScene)
+            {
+                // 延迟到 TransitionScene 结束后再切，避免嵌套 replaceScene 导致崩溃
+                if (_pendingDestinationScene)
+                {
+                    _pendingDestinationScene->release();
+                }
+                _pendingDestinationScene = destinationScene;
+                _pendingDestinationScene->retain();
+                tryReplacePendingScene();
+                return;
+            }
             return;
         }
     }
 
     // 容错处理：如果注册表中没找到，回退到默认
     CCLOG("Error: MapID %d not found in registry!", _mapId);
-    Director::getInstance()->replaceScene(MapScene::createScene());
+    auto fallback = MapScene::createScene();
+    if (fallback)
+    {
+        if (_pendingDestinationScene)
+        {
+            _pendingDestinationScene->release();
+        }
+        _pendingDestinationScene = fallback;
+        _pendingDestinationScene->retain();
+        tryReplacePendingScene();
+    }
+}
+
+void LoadingScene::tryReplacePendingScene()
+{
+    if (!_pendingDestinationScene)
+    {
+        return;
+    }
+
+    auto director = Director::getInstance();
+    auto running = director ? director->getRunningScene() : nullptr;
+    if (running && dynamic_cast<TransitionScene*>(running))
+    {
+        // 仍处于过渡场景中（比如从 MapScene 淡入 LoadingScene），延后一帧再尝试切换
+        scheduleOnce([this](float)
+                     { this->tryReplacePendingScene(); },
+                     0.0f,
+                     "TryReplacePendingScene");
+        return;
+    }
+
+    director->replaceScene(_pendingDestinationScene);
+    _pendingDestinationScene->release();
+    _pendingDestinationScene = nullptr;
 }
 
 void LoadingScene::updateProgressUI()
