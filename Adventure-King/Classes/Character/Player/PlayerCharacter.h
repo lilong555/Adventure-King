@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 // 前向声明，减少头文件依赖
@@ -46,10 +47,26 @@ public:
     /// @brief 设置职业
     void setRole(CharacterRole role) { _role = role; }
 
-    /// @brief 获取技能点
-    int getSkillPoints() const { return _skillPoints; }
-    /// @brief 设置技能点
-    void setSkillPoints(int points) { _skillPoints = points; }
+    /// @brief 获取主动技能点
+    int getActiveSkillPoints() const { return _activeSkillPoints; }
+    /// @brief 设置主动技能点
+    void setActiveSkillPoints(int points) { _activeSkillPoints = points; }
+
+    /// @brief 获取被动技能点
+    int getPassiveSkillPoints() const { return _passiveSkillPoints; }
+    /// @brief 设置被动技能点
+    void setPassiveSkillPoints(int points) { _passiveSkillPoints = points; }
+
+    /// @brief 获取属性点
+    int getAttributePoints() const { return _attributePoints; }
+    /// @brief 设置属性点
+    void setAttributePoints(int points) { _attributePoints = points; }
+
+    /**
+     * @brief 消耗 1 点属性点提升指定基础属性
+     * @details 仅对玩家基础属性生效；最终属性会在 AttributeComponent 中重新计算。
+     */
+    bool upgradeAttribute(AttributeType type);
 
     // =============================================================
     // 装备系统 (Equipment)
@@ -58,6 +75,16 @@ public:
     void equip(const std::shared_ptr<Equipment>& item);
     /// @brief 卸下指定槽位装备
     void unequip(EquipmentSlot slot);
+
+    // 背包（当前仅管理装备/武器；图标资源可后续补齐）
+    /// @brief 获取背包物品列表
+    const std::vector<std::shared_ptr<Equipment>>& getInventoryItems() const { return _inventoryItems; }
+    /// @brief 添加物品到背包（按 id 去重）
+    void addToInventory(const std::shared_ptr<Equipment>& item);
+    /// @brief 清空背包（读档/重置用）
+    void clearInventory();
+    /// @brief 设置背包物品列表（读档用，会按 id 去重）
+    void setInventoryItems(const std::vector<std::shared_ptr<Equipment>>& items);
 
     /// @brief 获取指定槽位装备
     std::shared_ptr<Equipment> getEquipment(EquipmentSlot slot) const;
@@ -166,6 +193,8 @@ private:
     void initAssetPaths(const std::string& spriteFrameName);
     /// @brief 创建技能集
     void createSkillSet();
+    /// @brief 初始化默认背包物品（用于占位与测试）
+    void ensureDefaultInventory();
 
     // 动画管理
     /// @brief 缓存移动动画
@@ -190,7 +219,9 @@ private:
 
     // 基础数据
     CharacterRole _role = CharacterRole::WARRIOR;
-    int _skillPoints = 0;
+    int _activeSkillPoints = 0;
+    int _passiveSkillPoints = 0;
+    int _attributePoints = 0;
     bool _isGrounded = false;
     int _jumpCount = 0;
     bool _actionLocked = false;
@@ -206,6 +237,8 @@ private:
 
     // 组件与对象
     std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;
+    std::vector<std::shared_ptr<Equipment>> _inventoryItems;
+    std::unordered_set<int> _inventoryItemIds; // 用于背包按 id 去重加速
     std::unique_ptr<PlayerSkillSet> _skillSet;
 
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;

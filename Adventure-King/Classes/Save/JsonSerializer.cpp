@@ -55,6 +55,7 @@ static rapidjson::Value serializeEquipment(const EquipmentSaveData &equip,
     obj.AddMember("name", rapidjson::Value(equip.name.c_str(), allocator).Move(), allocator);
     obj.AddMember("description", rapidjson::Value(equip.description.c_str(), allocator).Move(), allocator);
     obj.AddMember("slot", equip.slot, allocator);
+    obj.AddMember("level", equip.level, allocator);
     obj.AddMember("spritePath", rapidjson::Value(equip.spritePath.c_str(), allocator).Move(), allocator);
     obj.AddMember("isWeapon", equip.isWeapon, allocator);
 
@@ -103,6 +104,7 @@ static void deserializeEquipment(const rapidjson::Value &jsonObj, EquipmentSaveD
     equip.name = getString("name", "");
     equip.description = getString("description", "");
     equip.slot = getInt("slot", 0);
+    equip.level = getInt("level", 1);
     equip.spritePath = getString("spritePath", "");
     equip.isWeapon = getBool("isWeapon", false);
 
@@ -200,7 +202,9 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     playerObj.AddMember("role", data.playerData.role, allocator);
     playerObj.AddMember("level", data.playerData.level, allocator);
     playerObj.AddMember("experience", data.playerData.experience, allocator);
-    playerObj.AddMember("skillPoints", data.playerData.skillPoints, allocator);
+    playerObj.AddMember("activeSkillPoints", data.playerData.activeSkillPoints, allocator);
+    playerObj.AddMember("passiveSkillPoints", data.playerData.passiveSkillPoints, allocator);
+    playerObj.AddMember("attributePoints", data.playerData.attributePoints, allocator);
     playerObj.AddMember("currentHP", data.playerData.currentHP, allocator);
     playerObj.AddMember("currentMP", data.playerData.currentMP, allocator);
 
@@ -219,6 +223,14 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     }
     playerObj.AddMember("equippedItems", equippedItemsObj, allocator);
 
+    // 背包（装备/武器）
+    rapidjson::Value inventoryArr(rapidjson::kArrayType);
+    for (const auto &equip : data.playerData.inventoryItems)
+    {
+        inventoryArr.PushBack(serializeEquipment(equip, allocator), allocator);
+    }
+    playerObj.AddMember("inventoryItems", inventoryArr, allocator);
+
     // 技能
     rapidjson::Value learnedSkillsArr(rapidjson::kArrayType);
     for (const auto &skill : data.playerData.learnedSkills)
@@ -234,6 +246,14 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
         activeSlotSkillIdsArr.PushBack(skillId, allocator);
     }
     playerObj.AddMember("activeSlotSkillIds", activeSlotSkillIdsArr, allocator);
+
+    // 被动技能槽位
+    rapidjson::Value passiveSlotSkillIdsArr(rapidjson::kArrayType);
+    for (int skillId : data.playerData.passiveSlotSkillIds)
+    {
+        passiveSlotSkillIdsArr.PushBack(skillId, allocator);
+    }
+    playerObj.AddMember("passiveSlotSkillIds", passiveSlotSkillIdsArr, allocator);
 
     doc.AddMember("player", playerObj, allocator);
 
@@ -327,9 +347,27 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
             outData.playerData.role = getInt(player, "role", outData.playerData.role);
             outData.playerData.level = getInt(player, "level", outData.playerData.level);
             outData.playerData.experience = getInt(player, "experience", outData.playerData.experience);
-            outData.playerData.skillPoints = getInt(player, "skillPoints", outData.playerData.skillPoints);
+            outData.playerData.attributePoints = getInt(player, "attributePoints", outData.playerData.attributePoints);
             outData.playerData.currentHP = getFloat(player, "currentHP", outData.playerData.currentHP);
             outData.playerData.currentMP = getFloat(player, "currentMP", outData.playerData.currentMP);
+
+            // 技能点：优先读取新字段；兼容旧存档 skillPoints（按 1:1 平分到主动/被动）
+            const bool hasActivePoints = player.HasMember("activeSkillPoints") && player["activeSkillPoints"].IsInt();
+            const bool hasPassivePoints = player.HasMember("passiveSkillPoints") && player["passiveSkillPoints"].IsInt();
+            if (hasActivePoints)
+            {
+                outData.playerData.activeSkillPoints = player["activeSkillPoints"].GetInt();
+            }
+            if (hasPassivePoints)
+            {
+                outData.playerData.passiveSkillPoints = player["passiveSkillPoints"].GetInt();
+            }
+            if (!hasActivePoints && !hasPassivePoints)
+            {
+                const int legacySkillPoints = getInt(player, "skillPoints", 0);
+                outData.playerData.activeSkillPoints = (legacySkillPoints + 1) / 2;
+                outData.playerData.passiveSkillPoints = legacySkillPoints / 2;
+            }
 
             // 基础属性
             if (player.HasMember("baseAttributes"))
@@ -361,6 +399,20 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
                 }
             }
 
+            // 背包（装备/武器）
+            if (player.HasMember("inventoryItems") && player["inventoryItems"].IsArray())
+            {
+                const auto &inventoryItems = player["inventoryItems"];
+                for (rapidjson::SizeType i = 0; i < inventoryItems.Size(); ++i)
+                {
+                    if (!inventoryItems[i].IsObject())
+                        continue;
+                    EquipmentSaveData equip;
+                    deserializeEquipment(inventoryItems[i], equip);
+                    outData.playerData.inventoryItems.push_back(equip);
+                }
+            }
+
             // 技能
             if (player.HasMember("learnedSkills") && player["learnedSkills"].IsArray())
             {
@@ -384,6 +436,19 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
                     if (activeSlotSkillIds[i].IsInt())
                     {
                         outData.playerData.activeSlotSkillIds.push_back(activeSlotSkillIds[i].GetInt());
+                    }
+                }
+            }
+
+            // 被动技能槽位
+            if (player.HasMember("passiveSlotSkillIds") && player["passiveSlotSkillIds"].IsArray())
+            {
+                const auto &passiveSlotSkillIds = player["passiveSlotSkillIds"];
+                for (rapidjson::SizeType i = 0; i < passiveSlotSkillIds.Size(); ++i)
+                {
+                    if (passiveSlotSkillIds[i].IsInt())
+                    {
+                        outData.playerData.passiveSlotSkillIds.push_back(passiveSlotSkillIds[i].GetInt());
                     }
                 }
             }

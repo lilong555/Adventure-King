@@ -7,6 +7,7 @@
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/Base/CharacterData.h"
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
@@ -39,6 +40,8 @@ bool SkillBar::init()
 
 void SkillBar::initSlots(int slotCount)
 {
+    _slotCount = slotCount;
+
     // 清除旧槽位
     for (auto &slot : _slots)
     {
@@ -48,6 +51,7 @@ void SkillBar::initSlots(int slotCount)
         }
     }
     _slots.clear();
+    _cachedSkillIds.assign(static_cast<size_t>(slotCount), -1);
 
     // 创建新槽位
     for (int i = 0; i < slotCount; ++i)
@@ -67,7 +71,8 @@ void SkillBar::createSlot(int index)
     float posX = 0, posY = 0;
     if (_horizontalLayout)
     {
-        posX = index * (_slotSize + _slotSpacing);
+        // 技能栏位于屏幕右下角时，槽位从右往左延展，避免最右侧溢出屏幕
+        posX = (index - (_slotCount - 1)) * (_slotSize + _slotSpacing);
     }
     else
     {
@@ -152,9 +157,16 @@ void SkillBar::updateDisplay()
 
     for (size_t i = 0; i < _slots.size(); ++i)
     {
+        if (i >= _cachedSkillIds.size())
+        {
+            _cachedSkillIds.resize(_slots.size(), -1);
+        }
+
+        int skillId = -1;
         if (i < activeSlots.size() && activeSlots[i])
         {
             auto skill = activeSlots[i];
+            skillId = skill->id;
             updateSlotEmpty(i, false);
             updateSlotCooldown(i, skill->currentCooldown, skill->cooldown);
         }
@@ -163,7 +175,51 @@ void SkillBar::updateDisplay()
             updateSlotEmpty(i, true);
             updateSlotCooldown(i, 0, 0);
         }
+
+        if (_cachedSkillIds[i] != skillId)
+        {
+            _cachedSkillIds[i] = skillId;
+            if (skillId == -1)
+            {
+                // 技能槽变为空时隐藏图标，避免显示上一次的残留
+                auto &slot = _slots[i];
+                if (slot.icon)
+                {
+                    slot.icon->setVisible(false);
+                }
+            }
+            else
+            {
+                std::string iconPath = getIconPathForSkillId(skillId);
+                if (!iconPath.empty())
+                {
+                    setSlotIcon(i, iconPath);
+                }
+                else
+                {
+                    // 未配置图标时隐藏，避免显示上一次的残留
+                    auto &slot = _slots[i];
+                    if (slot.icon)
+                    {
+                        slot.icon->setVisible(false);
+                    }
+                }
+            }
+        }
     }
+}
+
+std::string SkillBar::getIconPathForSkillId(int skillId) const
+{
+    if (skillId == GameConfig::Fireball::FIREBALL_ID)
+    {
+        return "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png";
+    }
+    if (skillId == GameConfig::Bomb::BOMB_ID)
+    {
+        return "Sprites/Characters/Player/Klee/defalt/TNT.png";
+    }
+    return "";
 }
 
 void SkillBar::updateSlotCooldown(size_t index, float currentCD, float maxCD)
@@ -331,7 +387,7 @@ void SkillBar::setHorizontalLayout(bool horizontal)
         float posX = 0, posY = 0;
         if (_horizontalLayout)
         {
-            posX = i * (_slotSize + _slotSpacing);
+            posX = (static_cast<int>(i) - (_slotCount - 1)) * (_slotSize + _slotSpacing);
         }
         else
         {

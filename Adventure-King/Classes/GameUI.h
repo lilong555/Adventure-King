@@ -25,6 +25,7 @@ class PlayerStatusBar;
 class SkillBar;
 class BossHealthBar;
 class PauseMenu;
+class InventoryLayer;
 
 class GameUI : public cocos2d::Node
 {
@@ -107,6 +108,19 @@ public:
     PauseMenu *getPauseMenu() const { return _pauseMenu; }
 
     //=========================================================================
+    // 背包/技能
+    //=========================================================================
+
+    /// @brief 显示背包/技能界面
+    void showInventory();
+    /// @brief 隐藏背包/技能界面
+    void hideInventory();
+    /// @brief 背包/技能界面是否显示中
+    bool isInventoryShowing() const;
+    /// @brief 获取背包界面
+    InventoryLayer *getInventoryLayer() const { return _inventoryLayer; }
+
+    //=========================================================================
     // 原有功能
     //=========================================================================
 
@@ -154,6 +168,8 @@ protected:
     void createBossHealthBar();
     // 创建暂停菜单 UI
     void createPauseMenu();
+    // 创建背包/技能 UI
+    void createInventoryLayer();
     // 创建地图按钮 UI
     void createMapButton();
     // 创建交互提示 UI
@@ -175,6 +191,8 @@ protected:
 
     // 暂停菜单
     PauseMenu *_pauseMenu = nullptr;
+    // 背包/技能界面
+    InventoryLayer *_inventoryLayer = nullptr;
 
     // 地图按钮
     cocos2d::MenuItemImage *_mapButton = nullptr;

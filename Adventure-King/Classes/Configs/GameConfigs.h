@@ -27,6 +27,14 @@ namespace GameConfig
     {
         inline constexpr size_t SLOT_BOMB = 0;     // 炸弹技能槽位
         inline constexpr size_t SLOT_FIREBALL = 0; // 火球技能槽位（当前 Klee 技能1）
+
+        namespace Passive
+        {
+            // 被动技能 ID（集中管理，避免散落魔法数字）
+            inline constexpr int TOUGHNESS = 2001; // 体魄强化
+            inline constexpr int SWIFTNESS = 2002; // 迅捷步伐
+            inline constexpr int FOCUS = 2003;     // 战斗专注
+        }
     }
 
     // --- 炸弹属性配置 ---
@@ -91,6 +99,27 @@ namespace GameConfig
                 }
                 return level * REQUIRED_EXP_PER_LEVEL;
             }
+        }
+
+        // 属性点配置（用于属性页面的单项加点）
+        namespace AttributePoint
+        {
+            inline constexpr int POINTS_PER_LEVEL = 1; // 每次升级获得的属性点
+
+            // 每点属性的成长数值（当前为占位，可根据数值体验再调整）
+            inline constexpr float MAX_HP_PER_POINT = 10.0f;         // 生命力
+            inline constexpr float STRENGTH_PER_POINT = 2.0f;        // 力量
+            inline constexpr float MOVE_SPEED_PER_POINT = 10.0f;     // 敏捷（当前映射为移动速度）
+            inline constexpr float DEFENSE_PER_POINT = 1.0f;         // 防御
+            inline constexpr float CRITICAL_RATE_PER_POINT = 0.02f;  // 暴击率（+2%）
+        }
+
+        // 技能点配置（用于学习主动/被动技能）
+        namespace SkillPoint
+        {
+            // 主动/被动技能点拆分：两者都通过升级获得
+            inline constexpr int ACTIVE_POINTS_PER_LEVEL = 1;  // 每次升级获得的主动技能点
+            inline constexpr int PASSIVE_POINTS_PER_LEVEL = 1; // 每次升级获得的被动技能点
         }
     }
     namespace Monster
@@ -301,7 +330,8 @@ namespace GameConfig
 
         inline constexpr float PADDING = 20.0f;
         inline constexpr float STATUS_BAR_OFFSET_X = 50.0f;
-        inline constexpr float SKILL_BAR_OFFSET_X = 150.0f;
+        // 技能栏默认 4 个槽位：偏移适当增大，避免最右侧槽位超出屏幕
+        inline constexpr float SKILL_BAR_OFFSET_X = 220.0f;
         inline constexpr float SKILL_BAR_OFFSET_Y = 80.0f;
         inline constexpr float BOSS_BAR_OFFSET_Y = 60.0f;
         inline constexpr float MAP_BUTTON_OFFSET = 40.0f;

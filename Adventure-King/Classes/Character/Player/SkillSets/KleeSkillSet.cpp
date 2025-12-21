@@ -118,12 +118,104 @@ bool KleeSkillSet::tryUseSkill(PlayerCharacter &player, size_t slotIndex, const 
     }
 
     const ActiveSkill &skill = *slots[slotIndex];
+    if (skill.id == GameConfig::Bomb::BOMB_ID)
+    {
+        return tryCastBomb(player, slotIndex, skill, onFinished);
+    }
     if (skill.id == GameConfig::Fireball::FIREBALL_ID)
     {
         return tryCastFireball(player, slotIndex, skill, onFinished);
     }
 
     return false;
+}
+
+bool KleeSkillSet::tryCastBomb(PlayerCharacter &player,
+                               size_t slotIndex,
+                               const ActiveSkill &skill,
+                               const std::function<void()> &onFinished)
+{
+    const std::string &defaultDir = player.getDefaultSpriteDir();
+    const std::string &characterKey = player.getCharacterKey();
+
+    // 使用普通攻击的帧资源作为“投掷动作”占位
+    std::vector<std::string> castPaths;
+    castPaths.reserve(3);
+    for (int i = 1; i <= 3; ++i)
+    {
+        castPaths.push_back(StringUtils::format("%s/spr_%s_attack_%d.png", defaultDir.c_str(), characterKey.c_str(), i));
+    }
+
+    bool ok = player.runActionLocked(
+        [&player, slotIndex, skill]()
+        {
+            auto skillComp = player.getSkillComponent();
+            if (!skillComp)
+            {
+                return false;
+            }
+
+            if (!skillComp->useActiveSkill(slotIndex))
+            {
+                CCLOG("Bomb skill cast failed - MP insufficient or on cooldown: %s", skill.name.c_str());
+                return false;
+            }
+            return true;
+        },
+        [&player, castPaths](const std::function<void()> &done)
+        {
+            player.playOneShotAnimation(castPaths,
+                                        GameConfig::Klee::NormalAttack::ANIM_FRAME_DELAY,
+                                        PlayerCharacter::ACTION_TAG_SKILL_ANIM,
+                                        done);
+        },
+        [&player, defaultDir]()
+        {
+            auto bomb = Bomb::create(defaultDir + "/TNT.png");
+            if (!bomb)
+            {
+                return;
+            }
+
+            bomb->setScale(GameConfig::Bomb::SPRITE_SCALE);
+            bomb->setPosition(player.getProjectileSpawnPosition(
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_X_RATIO,
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_X,
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_Y_RATIO,
+                GameConfig::Klee::NormalAttack::SPAWN_OFFSET_Y));
+            bomb->setAttacker(&player);
+
+            // 技能炸弹：按攻击力缩放（与普通攻击一致），便于数值统一
+            bomb->setBaseDamage(0.0f);
+            bomb->setAttackPowerDamageScale(GameConfig::Bomb::DAMAGE_SCALE);
+            bomb->setExplosionRadius(GameConfig::Bomb::EXPLOSION_RADIUS);
+            bomb->setExplosionSpriteVfx(
+                defaultDir + "/BOOM_1.png",
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE,
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE_UP_DURATION,
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE_UP_FACTOR,
+                GameConfig::Klee::NormalAttack::EXPLOSION_VFX_FADE_OUT_DURATION);
+            bomb->setExplodeOnContact(true);
+
+            player.addToCombatLayer(bomb, 4);
+
+            float dirX = player.isFlippedX() ? -1.0f : 1.0f;
+            bomb->throwAt(Vec2(dirX * GameConfig::Bomb::THROW_SPEED_X,
+                               GameConfig::Bomb::THROW_SPEED_Y));
+        },
+        [onFinished]()
+        {
+            if (onFinished)
+            {
+                onFinished();
+            }
+        });
+
+    if (ok)
+    {
+        CCLOG("Skill started: Throw Bomb");
+    }
+    return ok;
 }
 
 bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,

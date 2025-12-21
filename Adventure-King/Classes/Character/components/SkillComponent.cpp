@@ -1,6 +1,7 @@
 #include "SkillComponent.h"
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h" // 确保包含属性组件头文件
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
@@ -19,9 +20,10 @@ bool SkillComponent::init()
     {
         return false;
     }
-    // 初始化槽位大小，防止越界 (假设默认3个槽位)
-    _activeSlots.resize(3, nullptr);
-    _passiveSlots.resize(3, nullptr);
+    // 初始化主动技能槽位，防止越界
+    _activeSlots.resize(GameConfig::UI::SKILL_BAR_SLOT_COUNT, nullptr);
+    // 被动技能取消槽位限制：用列表表示“已装备的被动技能”
+    _passiveSlots.clear();
     return true;
 }
 
@@ -45,7 +47,63 @@ CharacterBase* SkillComponent::getCharacterOwner() const
 void SkillComponent::learnSkill(const std::shared_ptr<Skill>& skill)
 {
     if (!skill)
+    {
         return;
+    }
+
+    // 去重并允许更新：同 ID 的技能不重复加入，但如果数据更新则更新已有数据（保持指针不变，避免影响已装备引用）
+    for (auto& existing : _learnedSkills)
+    {
+        if (!existing || existing->id != skill->id)
+        {
+            continue;
+        }
+
+        // 基础字段更新
+        existing->name = skill->name;
+        existing->description = skill->description;
+
+        if (existing->isPassive != skill->isPassive)
+        {
+            CCLOG("SkillComponent::learnSkill: 技能类型不一致（id=%d），请检查数据来源。", skill->id);
+            existing->isPassive = skill->isPassive;
+        }
+
+        // 主动技能字段更新
+        if (auto existingActive = std::dynamic_pointer_cast<ActiveSkill>(existing))
+        {
+            if (auto incomingActive = std::dynamic_pointer_cast<ActiveSkill>(skill))
+            {
+                existingActive->cooldown = incomingActive->cooldown;
+                existingActive->manaCost = incomingActive->manaCost;
+                existingActive->currentCooldown = incomingActive->currentCooldown;
+            }
+        }
+
+        // 被动技能字段更新（若已装备，需要重新结算属性加成）
+        if (auto existingPassive = std::dynamic_pointer_cast<PassiveSkill>(existing))
+        {
+            if (auto incomingPassive = std::dynamic_pointer_cast<PassiveSkill>(skill))
+            {
+                const bool wasEquipped = isPassiveSkillEquipped(existingPassive->id);
+                if (wasEquipped)
+                {
+                    removePassiveSkill(existingPassive);
+                }
+
+                existingPassive->attributeBonus = incomingPassive->attributeBonus;
+
+                if (wasEquipped)
+                {
+                    applyPassiveSkill(existingPassive);
+                }
+            }
+        }
+
+        CCLOG("SkillComponent::learnSkill: 技能已学习（id=%d），已更新数据。", skill->id);
+        return;
+    }
+
     _learnedSkills.push_back(skill);
 }
 
@@ -67,25 +125,80 @@ bool SkillComponent::equipActiveSkill(const std::shared_ptr<ActiveSkill>& skill,
 // 修改返回值类型为 bool
 bool SkillComponent::equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill, size_t slotIndex)
 {
-    if (!skill)
-        return false;
+    // 兼容旧接口：被动技能已取消“槽位”概念，slotIndex 将被忽略
+    (void)slotIndex;
+    return equipPassiveSkill(skill);
+}
 
+bool SkillComponent::isPassiveSkillEquipped(int skillId) const
+{
+    for (const auto& skill : _passiveSlots)
+    {
+        if (skill && skill->id == skillId)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool SkillComponent::equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill)
+{
+    if (!skill)
+    {
+        return false;
+    }
+
+    // 已经装备则不重复应用
+    if (isPassiveSkillEquipped(skill->id))
+    {
+        return false;
+    }
+
+    _passiveSlots.push_back(skill);
+    applyPassiveSkill(skill);
+    return true;
+}
+
+bool SkillComponent::unequipPassiveSkillById(int skillId)
+{
+    for (size_t i = 0; i < _passiveSlots.size(); ++i)
+    {
+        const auto& skill = _passiveSlots[i];
+        if (!skill || skill->id != skillId)
+        {
+            continue;
+        }
+
+        removePassiveSkill(skill);
+        _passiveSlots.erase(_passiveSlots.begin() + static_cast<std::vector<std::shared_ptr<PassiveSkill>>::difference_type>(i));
+        return true;
+    }
+    return false;
+}
+
+bool SkillComponent::unequipActiveSkill(size_t slotIndex)
+{
+    if (slotIndex >= _activeSlots.size())
+    {
+        return false;
+    }
+    _activeSlots[slotIndex] = nullptr;
+    return true;
+}
+
+bool SkillComponent::unequipPassiveSkill(size_t slotIndex)
+{
     if (slotIndex >= _passiveSlots.size())
     {
-        _passiveSlots.resize(slotIndex + 1);
+        return false;
     }
 
-    // 如果该槽位原来有技能，先移除原有加成
-    if (_passiveSlots[slotIndex])
+    if (auto& skill = _passiveSlots[slotIndex])
     {
-        removePassiveSkill(_passiveSlots[slotIndex]);
+        removePassiveSkill(skill);
     }
-
-    _passiveSlots[slotIndex] = skill;
-
-    // 应用新技能加成
-    applyPassiveSkill(skill);
-
+    _passiveSlots.erase(_passiveSlots.begin() + static_cast<std::vector<std::shared_ptr<PassiveSkill>>::difference_type>(slotIndex));
     return true;
 }
 

@@ -8,6 +8,7 @@
 #include "UI/SkillBar.h"
 #include "UI/BossHealthBar.h"
 #include "UI/PauseMenu.h"
+#include "UI/InventoryLayer.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/Base/CharacterBase.h"
 #include "Configs/GameConfigs.h"
@@ -71,6 +72,7 @@ bool GameUI::init()
     createInteractionHint();
     createLevelNameLabel();
     createPauseMenu();
+    createInventoryLayer();
 
     CCLOG("GameUI initialized with all components");
     return true;
@@ -119,6 +121,15 @@ void GameUI::createPauseMenu()
     if (_pauseMenu)
     {
         this->addChild(_pauseMenu, 100); // 最高层级
+    }
+}
+
+void GameUI::createInventoryLayer()
+{
+    _inventoryLayer = InventoryLayer::create();
+    if (_inventoryLayer)
+    {
+        this->addChild(_inventoryLayer, 101); // 高于 PauseMenu
     }
 }
 
@@ -190,6 +201,11 @@ void GameUI::bindPlayer(PlayerCharacter *player)
         // 设置技能1图标（火球）
         _skillBar->setSlotIcon(0, "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png");
     }
+
+    if (_inventoryLayer)
+    {
+        _inventoryLayer->bindPlayer(player);
+    }
 }
 
 void GameUI::bindBoss(CharacterBase *boss, const std::string &bossName, int phaseCount)
@@ -228,6 +244,27 @@ void GameUI::hidePauseMenu()
 bool GameUI::isPauseMenuShowing() const
 {
     return _pauseMenu && _pauseMenu->isShowing();
+}
+
+void GameUI::showInventory()
+{
+    if (_inventoryLayer)
+    {
+        _inventoryLayer->show();
+    }
+}
+
+void GameUI::hideInventory()
+{
+    if (_inventoryLayer)
+    {
+        _inventoryLayer->hide();
+    }
+}
+
+bool GameUI::isInventoryShowing() const
+{
+    return _inventoryLayer && _inventoryLayer->isShowing();
 }
 
 void GameUI::setMapButtonCallback(const std::function<void()> &callback)

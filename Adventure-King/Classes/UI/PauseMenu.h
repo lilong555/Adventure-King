@@ -4,6 +4,7 @@
  *
  * 游戏暂停时显示的菜单：
  * - 继续游戏
+ * - 背包/技能
  * - 设置
  * - 返回主菜单
  * - 退出游戏
@@ -56,6 +57,8 @@ public:
     void setSaveCallback(const std::function<void()> &callback) { _saveCallback = callback; }
     /// @brief 设置“加载游戏”回调
     void setLoadCallback(const std::function<void()> &callback) { _loadCallback = callback; }
+    /// @brief 设置“背包/技能”回调
+    void setInventoryCallback(const std::function<void()> &callback) { _inventoryCallback = callback; }
     /// @brief 设置“设置”回调
     void setSettingsCallback(const std::function<void()> &callback) { _settingsCallback = callback; }
     /// @brief 设置“主菜单”回调
@@ -78,6 +81,8 @@ protected:
     void onSaveClicked(cocos2d::Ref *sender);
     /// @brief 点击“加载”
     void onLoadClicked(cocos2d::Ref *sender);
+    /// @brief 点击“背包/技能”
+    void onInventoryClicked(cocos2d::Ref *sender);
     /// @brief 点击“设置”
     void onSettingsClicked(cocos2d::Ref *sender);
     /// @brief 点击“主菜单”
@@ -103,6 +108,7 @@ protected:
     std::function<void()> _resumeCallback;
     std::function<void()> _saveCallback;
     std::function<void()> _loadCallback;
+    std::function<void()> _inventoryCallback;
     std::function<void()> _settingsCallback;
     std::function<void()> _mainMenuCallback;
     std::function<void()> _quitCallback;
