@@ -181,6 +181,46 @@ bool HelloWorld::init()
     const Size referenceSize = (sprite != nullptr) ? sprite->getContentSize() : visibleSize;
     const Vec2 halfSize(referenceSize.width * 0.5f, referenceSize.height * 0.5f);
 
+    // 角落装饰的轻微摇晃/漂浮效果（注意：装饰仅用于表现，不参与任何交互）
+    auto addCornerWobbleEffect = [](Node *target,
+                                    float moveAmplitude,
+                                    float rotateAmplitude,
+                                    float moveDuration,
+                                    float rotateDuration,
+                                    float startDelay)
+    {
+        if (!target)
+        {
+            return;
+        }
+
+        target->setRotation(0.0f);
+
+        // 轻微上下浮动
+        auto moveAction = RepeatForever::create(
+            Sequence::create(
+                EaseSineInOut::create(MoveBy::create(moveDuration, Vec2(0.0f, moveAmplitude))),
+                EaseSineInOut::create(MoveBy::create(moveDuration, Vec2(0.0f, -moveAmplitude))),
+                nullptr));
+
+        // 轻微左右摇摆（基于锚点旋转，形成“摇晃”观感）
+        auto rotateAction = RepeatForever::create(
+            Sequence::create(
+                EaseSineInOut::create(RotateTo::create(rotateDuration, rotateAmplitude)),
+                EaseSineInOut::create(RotateTo::create(rotateDuration, -rotateAmplitude)),
+                nullptr));
+
+        if (startDelay > 0.0f)
+        {
+            target->runAction(Sequence::create(DelayTime::create(startDelay), moveAction, nullptr));
+            target->runAction(Sequence::create(DelayTime::create(startDelay), rotateAction, nullptr));
+            return;
+        }
+
+        target->runAction(moveAction);
+        target->runAction(rotateAction);
+    };
+
     // backman：左下角
     auto backman = Sprite::create("Scene/Backgrounds/backman.png");
     if (backman == nullptr)
@@ -190,8 +230,9 @@ bool HelloWorld::init()
     else
     {
         backman->setAnchorPoint(Vec2(0.0f, 0.0f));
-        backman->setPosition(Vec2(-halfSize.x, -halfSize.y));
+        backman->setPosition(Vec2(-halfSize.x, -halfSize.y + visibleSize.height * 0.1f)); // 微调一点点位置
         contentContainer->addChild(backman, cornerSpriteZOrder);
+        addCornerWobbleEffect(backman, 10.0f, 2.0f, 1.2f, 0.9f, 0.0f);
     }
 
     // dragon1：右下角
@@ -205,6 +246,7 @@ bool HelloWorld::init()
         dragon1->setAnchorPoint(Vec2(1.0f, 0.0f));
         dragon1->setPosition(Vec2(halfSize.x, -halfSize.y));
         contentContainer->addChild(dragon1, cornerSpriteZOrder);
+        addCornerWobbleEffect(dragon1, 8.0f, 2.0f, 1.1f, 0.85f, 0.15f);
     }
 
     // dragon2：右上角
@@ -218,6 +260,7 @@ bool HelloWorld::init()
         dragon2->setAnchorPoint(Vec2(1.0f, 1.0f));
         dragon2->setPosition(Vec2(halfSize.x, halfSize.y));
         contentContainer->addChild(dragon2, cornerSpriteZOrder);
+        addCornerWobbleEffect(dragon2, 8.0f, 2.0f, 1.0f, 0.8f, 0.3f);
     }
 
     // ==========================================================
