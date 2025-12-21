@@ -155,6 +155,7 @@ protected:
     float _currentMP = 0.0f;        // 当前能量值
     float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断，通常应该从属性组件读）
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
+    long long _lastRestoreHealthVfxMs = 0; ///< 回血特效节流：0.5s 内多次回血只播一次
 
     bool _damageNumbersEnabled = false; ///< 是否启用受击飘字
     cocos2d::Sprite* _visualSprite = nullptr; ///< 实际播放动画的精灵
