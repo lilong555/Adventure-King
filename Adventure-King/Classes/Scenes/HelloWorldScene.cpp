@@ -186,8 +186,7 @@ bool HelloWorld::init()
                                     float moveAmplitude,
                                     float rotateAmplitude,
                                     float moveDuration,
-                                    float rotateDuration,
-                                    float startDelay)
+                                    float rotateDuration)
     {
         if (!target)
         {
@@ -197,25 +196,16 @@ bool HelloWorld::init()
         target->setRotation(0.0f);
 
         // 轻微上下浮动
-        auto moveAction = RepeatForever::create(
-            Sequence::create(
-                EaseSineInOut::create(MoveBy::create(moveDuration, Vec2(0.0f, moveAmplitude))),
-                EaseSineInOut::create(MoveBy::create(moveDuration, Vec2(0.0f, -moveAmplitude))),
-                nullptr));
+        auto moveAction = RepeatForever::create(Sequence::create(
+            EaseSineInOut::create(MoveBy::create(moveDuration, Vec2(0.0f, moveAmplitude))),
+            EaseSineInOut::create(MoveBy::create(moveDuration, Vec2(0.0f, -moveAmplitude))),
+            nullptr));
 
         // 轻微左右摇摆（基于锚点旋转，形成“摇晃”观感）
-        auto rotateAction = RepeatForever::create(
-            Sequence::create(
-                EaseSineInOut::create(RotateTo::create(rotateDuration, rotateAmplitude)),
-                EaseSineInOut::create(RotateTo::create(rotateDuration, -rotateAmplitude)),
-                nullptr));
-
-        if (startDelay > 0.0f)
-        {
-            target->runAction(Sequence::create(DelayTime::create(startDelay), moveAction, nullptr));
-            target->runAction(Sequence::create(DelayTime::create(startDelay), rotateAction, nullptr));
-            return;
-        }
+        auto rotateAction = RepeatForever::create(Sequence::create(
+            EaseSineInOut::create(RotateTo::create(rotateDuration, rotateAmplitude)),
+            EaseSineInOut::create(RotateTo::create(rotateDuration, -rotateAmplitude)),
+            nullptr));
 
         target->runAction(moveAction);
         target->runAction(rotateAction);
@@ -232,7 +222,7 @@ bool HelloWorld::init()
         backman->setAnchorPoint(Vec2(0.0f, 0.0f));
         backman->setPosition(Vec2(-halfSize.x, -halfSize.y + visibleSize.height * 0.1f)); // 微调一点点位置
         contentContainer->addChild(backman, cornerSpriteZOrder);
-        addCornerWobbleEffect(backman, 10.0f, 2.0f, 1.2f, 0.9f, 0.0f);
+        addCornerWobbleEffect(backman, 10.0f, 2.0f, 1.2f, 0.9f);
     }
 
     // dragon1：右下角
@@ -246,7 +236,7 @@ bool HelloWorld::init()
         dragon1->setAnchorPoint(Vec2(1.0f, 0.0f));
         dragon1->setPosition(Vec2(halfSize.x, -halfSize.y));
         contentContainer->addChild(dragon1, cornerSpriteZOrder);
-        addCornerWobbleEffect(dragon1, 8.0f, 2.0f, 1.1f, 0.85f, 0.15f);
+        addCornerWobbleEffect(dragon1, 8.0f, 2.0f, 1.1f, 0.85f);
     }
 
     // dragon2：右上角
@@ -260,7 +250,7 @@ bool HelloWorld::init()
         dragon2->setAnchorPoint(Vec2(1.0f, 1.0f));
         dragon2->setPosition(Vec2(halfSize.x, halfSize.y));
         contentContainer->addChild(dragon2, cornerSpriteZOrder);
-        addCornerWobbleEffect(dragon2, 8.0f, 2.0f, 1.0f, 0.8f, 0.3f);
+        addCornerWobbleEffect(dragon2, 8.0f, 2.0f, 1.0f, 0.8f);
     }
 
     // ==========================================================
