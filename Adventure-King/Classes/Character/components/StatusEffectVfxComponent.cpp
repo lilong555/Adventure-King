@@ -11,6 +11,7 @@ USING_NS_CC;
 namespace
 {
     const char* const BURNING_PARTICLE_NAME = "BurningParticle";
+    const char* const POISON_PARTICLE_NAME = "PoisonParticle";
 
     struct BurningParticleConfig
     {
@@ -153,6 +154,7 @@ namespace
 } // namespace
 
 const char* const StatusEffectVfxComponent::BURNING_VFX_NAME = "StatusEffectVfx_Burning";
+const char* const StatusEffectVfxComponent::POISON_VFX_NAME = "StatusEffectVfx_Poison";
 
 StatusEffectVfxComponent::StatusEffectVfxComponent()
 {
@@ -191,6 +193,7 @@ void StatusEffectVfxComponent::update(float dt)
     }
 
     updateBurningVfx(owner, attr);
+    updatePoisonVfx(owner, attr);
 }
 
 void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent* attr)
@@ -228,6 +231,55 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
     if (auto particle = dynamic_cast<ParticleSystemQuad*>(existing->getChildByName(BURNING_PARTICLE_NAME)))
     {
         updateBurningParticleIntensity(particle, bodyInfo, stacks);
+    }
+}
+
+void StatusEffectVfxComponent::updatePoisonVfx(Node* owner, AttributeComponent* attr)
+{
+    const bool poisoned = attr->hasStatusEffect(StatusEffectType::POISONED);
+    auto existing = owner->getChildByName(POISON_VFX_NAME);
+
+    if (!poisoned)
+    {
+        if (existing)
+        {
+            existing->removeFromParent();
+        }
+        return;
+    }
+
+    const int stacks = getStacks(attr, StatusEffectType::POISONED);
+    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(owner);
+
+    if (!existing)
+    {
+        existing = Node::create();
+        existing->setName(POISON_VFX_NAME);
+        owner->addChild(existing, 999);
+
+        auto particle = ParticleSystemQuad::create("Particle/par_Poison.plist");
+        if (particle)
+        {
+            particle->setName(POISON_PARTICLE_NAME);
+            particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+            particle->setPosition(Vec2::ZERO);
+            existing->addChild(particle);
+        }
+    }
+
+    existing->setPosition(bodyInfo.center);
+
+    if (auto particle = dynamic_cast<ParticleSystemQuad*>(existing->getChildByName(POISON_PARTICLE_NAME)))
+    {
+        // 让中毒特效的散布与角色体型匹配，避免 Boss 过宽/过窄
+        const float posVarX = std::min(bodyInfo.size.width * 0.15f, 60.0f);
+        const float posVarY = std::min(bodyInfo.size.height * 0.10f, 45.0f);
+        particle->setPosVar(Vec2(posVarX, posVarY));
+
+        const int safeStacks = std::max(1, stacks);
+        const float baseEmission = 6.0f;
+        const float perStackEmission = 3.0f;
+        particle->setEmissionRate(baseEmission + perStackEmission * static_cast<float>(safeStacks - 1));
     }
 }
 

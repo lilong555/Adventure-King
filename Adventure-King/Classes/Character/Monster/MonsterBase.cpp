@@ -875,14 +875,14 @@ void MonsterBase::faceToX(float targetWorldX)
     setScaleX(sign * std::fabs(_baseScaleX));
 }
 
-void MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
-                                  const Size &hitboxSize,
-                                  int damageTag,
-                                  float lifeSeconds)
+cocos2d::Node* MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
+                                            const Size &hitboxSize,
+                                            int damageTag,
+                                            float lifeSeconds)
 {
     auto parent = getParent();
     if (!parent)
-        return;
+        return nullptr;
 
     auto attackNode = Node::create();
     attackNode->setPosition(getPosition() + offsetInParentSpace);
@@ -906,6 +906,8 @@ void MonsterBase::spawnMeleeHitbox(const Vec2 &offsetInParentSpace,
         DelayTime::create(std::max(0.0f, lifeSeconds)),
         RemoveSelf::create(),
         nullptr));
+
+    return attackNode;
 }
 
 void MonsterBase::faceTarget(Node* target)

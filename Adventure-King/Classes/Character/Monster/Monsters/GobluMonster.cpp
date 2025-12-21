@@ -505,11 +505,23 @@ void GobluMonster::attack()
                                  }
                              }
 
-                             spawnMeleeHitbox(
+                             auto hitboxNode = spawnMeleeHitbox(
                                  offset,
                                  hitboxSize,
                                  std::max(1, damageTag),
-                                 GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS); }),
+                                 GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS);
+
+                             // 哥布鲁远程攻击：在判定框上挂一个粒子，便于玩家感知命中范围
+                             if (!useNearHitbox && hitboxNode)
+                             {
+                                 auto particle = ParticleSystemQuad::create("Particle/par_GobluRemoteHit.plist");
+                                 if (particle)
+                                 {
+                                     particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+                                     particle->setPosition(hitboxNode->getContentSize() * 0.5f);
+                                     hitboxNode->addChild(particle, 1);
+                                 }
+                             } }),
         nullptr);
 
     auto spawn = Spawn::create(animateAction, logicSequence, nullptr);

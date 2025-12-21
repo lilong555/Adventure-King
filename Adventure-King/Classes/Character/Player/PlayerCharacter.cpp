@@ -9,6 +9,7 @@
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfigs.h"
 #include "Configs/GamePhysicsCategory.h"
+#include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 
@@ -414,6 +415,17 @@ void PlayerCharacter::levelUp()
 
     // 升级后恢复状态或刷新上限
     refreshHpMpFromAttributes();
+
+    // 升级粒子特效
+    auto particle = ParticleSystemQuad::create("Particle/par_levelup.plist");
+    if (particle)
+    {
+        particle->setAutoRemoveOnFinish(true);
+        particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+        const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
+        particle->setPosition(bodyInfo.center);
+        addChild(particle, 999);
+    }
 }
 
 bool PlayerCharacter::upgradeAttribute(AttributeType type)
