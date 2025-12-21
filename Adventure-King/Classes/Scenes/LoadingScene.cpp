@@ -1,11 +1,10 @@
 #include "Scenes/LoadingScene.h"
-
-#include "Character/Monster/Monsters/GoblinMonster.h"
-#include "Character/Monster/Monsters/GobluMonster.h"
-#include "Configs/GameConfigs.h"
+#include "Managers/SceneRegistry.h"
 #include "Scenes/DebugScene.h"
-#include "Scenes/GameScene.h"
 #include "Scenes/MapScene.h"
+#include"Scenes/LevelScenes/OriginMushroomScene.h"
+#include"Scenes/LevelScenes/MysteryForestScene.h"
+#include"Managers/MusicManager.h"
 #include <algorithm>
 #include <unordered_set>
 
@@ -57,7 +56,7 @@ bool LoadingScene::initWithMapId(int mapId)
     {
         return false;
     }
-
+    MusicManager::getInstance()->stopBGM();
     _mapId = mapId;
     _callbackKey = StringUtils::format("LoadingScene_%p", this);
 
@@ -195,32 +194,29 @@ void LoadingScene::onTextureLoaded(Texture2D* /*texture*/)
 
 void LoadingScene::finishPreload()
 {
-    if (_finished)
-    {
-        return;
-    }
+    if (_finished) return;
     _finished = true;
 
-    // 预热动画缓存：贴图已进 TextureCache，这里主要是填充 AnimationCache
-    GoblinMonster::preloadResources();
-    GobluMonster::preloadResources();
+    auto info = SceneRegistry::getInstance()->getSceneInfo(_mapId);
 
-    // 让进度条先到 100%，再切场景（避免最后一帧看起来停在 99%）
-    _loaded = _total;
-    updateProgressUI();
+    if (info) {
+        // 1. 执行注册好的预热回调 (AnimationCache 等)
+        if (info->onResourcesLoaded) {
+            info->onResourcesLoaded();
+        }
 
-    auto destinationScene = createDestinationScene(_mapId);
-    if (!destinationScene)
-    {
-        CCLOG("LoadingScene: 创建目标场景失败，mapId=%d", _mapId);
-        // 回退到地图场景
-        destinationScene = MapScene::createScene();
+        // 2. 使用工厂方法创建目标场景
+        if (info->creator) {
+            auto destinationScene = info->creator();
+            // 切换场景逻辑...
+            Director::getInstance()->replaceScene(destinationScene);
+            return;
+        }
     }
 
-    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION,
-                                             destinationScene,
-                                             Color3B::BLACK);
-    Director::getInstance()->replaceScene(transition);
+    // 容错处理：如果注册表中没找到，回退到默认
+    CCLOG("Error: MapID %d not found in registry!", _mapId);
+    Director::getInstance()->replaceScene(MapScene::createScene());
 }
 
 void LoadingScene::updateProgressUI()
@@ -254,74 +250,19 @@ void LoadingScene::updateProgressUI()
 
 std::vector<std::string> LoadingScene::buildPreloadList(int mapId) const
 {
-    std::unordered_set<std::string> uniq;
     std::vector<std::string> paths;
-    paths.reserve(96);
 
-    auto addPath = [&uniq, &paths](const std::string& path)
-    {
-        if (path.empty())
-        {
-            return;
-        }
-        if (uniq.insert(path).second)
-        {
-            paths.push_back(path);
-        }
-    };
+    // 1. 加载所有场景通用的基础资源 (UI 等)
+    paths.push_back("Scene/Backgrounds/MapBackground.png");
+    paths.push_back("Particle/particle_texture.png");
 
-    // 公共资源：粒子贴图等
-    addPath("Particle/particle_texture.png");
-
-    // 地图选择 UI：避免第一次 hover/点击时再加载
-    addPath("Scene/Backgrounds/MapBackground.png");
-    addPath("Scene/UI/mapselectItem_1_selected.png");
-    addPath("Scene/UI/mapselectItem_2_selected.png");
-
-    if (mapId == 1)
-    {
-        // 起源之菇背景序列
-        for (int i = 0; i < GameConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
-        {
-            addPath(StringUtils::format("%s%02d.png", GameConfig::Map::OriginMushroom::BACKGROUND_PREFIX, i));
-        }
-
-        // TMX tileset 贴图（Origin_Mushroom.tmx 引用的 tsx）
-        addPath("Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png");
-        addPath("Map/Origin_Mushroom/s1.png");
-        addPath("Map/Origin_Mushroom/s2.png");
-        addPath("Map/Origin_Mushroom/s3.png");
-        addPath("Map/Origin_Mushroom/s4.png");
-
-        // 哥布林：首刷卡顿主要来自贴图首次解码 + 动画缓存创建
-        addPath("Sprites/Enemies/Goblin/Goblin_idle.png");
-        addPath("Sprites/Enemies/Goblin/Goblin_beattacked.png");
-        for (int i = 1; i <= 4; ++i)
-        {
-            addPath(StringUtils::format("Sprites/Enemies/Goblin/Goblin_walk_%d.png", i));
-            addPath(StringUtils::format("Sprites/Enemies/Goblin/Goblin_attack_%d.png", i));
-        }
-
-        // Goblu：同样提前热身
-        addPath("Sprites/Enemies/Goblu/Goblu.png");
-        for (int i = 1; i <= 4; ++i)
-        {
-            addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_walk_%d.png", i));
-            addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i));
-        }
-        for (int i = 11; i <= 15; ++i)
-        {
-            addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_attack_%02d.png", i));
-        }
-
-        // Goblu 死亡动画：避免首次死亡时加载卡顿
-        for (int i = 1; i <= 6; ++i)
-        {
-            addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
-        }
+    // 2. 从注册表中获取该 ID 特有的资源
+    auto info = SceneRegistry::getInstance()->getSceneInfo(mapId);
+    if (info) {
+        // 将特定场景的资源合并进来
+        paths.insert(paths.end(), info->imagePaths.begin(), info->imagePaths.end());
     }
 
-    // 其它 mapId 目前多为占位场景，可在后续按需补充
     return paths;
 }
 

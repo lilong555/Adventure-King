@@ -32,18 +32,6 @@ class GameUIController;
 class GameInputController;
 
 // ============================================================
-// 游戏对象结构体定义
-// ============================================================
-
-/**
- * @brief 炸弹数据结构（游戏场景专用）
- */
-
-// ============================================================
-// 场景配置结构体
-// ============================================================
-
-// ============================================================
 // GameScene 基类
 // ============================================================
 
@@ -243,44 +231,8 @@ private:
     void showMapLoadFailedUI();
 };
 
-// ============================================================
-// 起源之菇场景
-// ============================================================
 
-class OriginMushroomScene : public GameScene
-{
-public:
-    /// @brief 创建起源之菇场景
-    static cocos2d::Scene *createScene();
-    /// @brief 初始化起源之菇场景
-    virtual bool init() override;
-    CREATE_FUNC(OriginMushroomScene);
 
-protected:
-    /// @brief 关卡名
-    virtual std::string getLevelName() const override { return "起源之菇"; }
-    /// @brief 关卡配置
-    virtual LevelConfig getLevelConfig() const override;
-};
 
-// ============================================================
-// 神秘之森场景
-// ============================================================
-
-class MysteryForestScene : public GameScene
-{
-public:
-    /// @brief 创建神秘之森场景
-    static cocos2d::Scene *createScene();
-    /// @brief 初始化神秘之森场景
-    virtual bool init() override;
-    CREATE_FUNC(MysteryForestScene);
-
-protected:
-    /// @brief 关卡名
-    virtual std::string getLevelName() const override { return "神秘之森"; }
-    /// @brief 关卡配置
-    virtual LevelConfig getLevelConfig() const override;
-};
 
 #endif // __GAME_SCENE_H__

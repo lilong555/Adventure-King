@@ -1,11 +1,12 @@
-﻿#include "MapScene.h"
+#include "MapScene.h"
 #include "GameScene.h"
 #include "DebugScene.h"
+#include"Scenes/LevelScenes/OriginMushroomScene.h"
+#include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include "Configs/GameConfigs.h"
 #include "Scenes/LoadingScene.h"
-#include <algorithm>
 #include <unordered_set>
 USING_NS_CC;
 
@@ -460,8 +461,8 @@ void MapScene::onOriginMushroomPreloadFinished()
     }
 
     // 预热动画缓存：贴图已进 TextureCache，这里主要是填充 AnimationCache
-    GoblinMonster::preloadResources();
-    GobluMonster::preloadResources();
+    //GoblinMonster::preloadResources();
+    //GobluMonster::preloadResources();
 }
 
 void MapScene::updatePreloadLabel()

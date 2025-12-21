@@ -26,6 +26,11 @@ public:
         float delayBeforeFadeOut = GameConfig::Scene::TRANSITION_MESSAGE_DELAY,
         float fadeDuration = GameConfig::Scene::TRANSITION_FADE_DURATION
     );
+    static void fadeReplace(
+        cocos2d::Scene* target,
+        float duration = 0.5f,
+        bool stopMusic = true
+    );
 };
 
 #endif // __SCENE_TRANSITION_MANAGER_H__

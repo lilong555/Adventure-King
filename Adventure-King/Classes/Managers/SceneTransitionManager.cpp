@@ -61,3 +61,14 @@ void SceneTransitionManager::transitionToScene(
             targetScene->release(); }),
         nullptr));
 }
+void SceneTransitionManager::fadeReplace(Scene* target, float duration, bool stopMusic)
+{
+    if (!target) return;
+
+    if (stopMusic)
+        MusicManager::getInstance()->stopBGM();
+
+    auto transition = TransitionFade::create(duration, target, Color3B::BLACK);
+    Director::getInstance()->replaceScene(transition);
+}
+

@@ -1,5 +1,7 @@
 
 #include "AppDelegate.h"
+#include"Scenes/LevelScenes/OriginMushroomScene.h"
+#include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/HelloWorldScene.h"
 #include "Configs/GameConfigs.h"
 #include <cstdlib>
@@ -102,6 +104,10 @@ bool AppDelegate::applicationDidFinishLaunching()
     {
         director->setContentScaleFactor(MIN(smallResolutionSize.height / designResolutionSize.height, smallResolutionSize.width / designResolutionSize.width));
     }
+
+    // 注意在这里创建游戏资源的注册表
+
+    OriginMushroomScene::setupRegistry();
 
     register_all_packages();
 
