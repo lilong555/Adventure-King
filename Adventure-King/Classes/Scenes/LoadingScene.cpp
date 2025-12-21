@@ -254,7 +254,7 @@ std::vector<std::string> LoadingScene::buildPreloadList(int mapId) const
 
     // 1. 加载所有场景通用的基础资源 (UI 等)
     paths.push_back("Scene/Backgrounds/MapBackground.png");
-    paths.push_back("Particle/particle_texture.png");
+    // 粒子特效使用 plist 内嵌纹理，不需要预加载 particle_texture.png
 
     // 2. 从注册表中获取该 ID 特有的资源
     auto info = SceneRegistry::getInstance()->getSceneInfo(mapId);

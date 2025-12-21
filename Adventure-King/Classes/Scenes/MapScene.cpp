@@ -378,8 +378,7 @@ void MapScene::startPreloadOriginMushroom(bool showUI)
         addPath(info.selectedImage);
     }
 
-    // 常用粒子贴图：避免首次受击/爆炸时加载造成卡顿
-    addPath("Particle/particle_texture.png");
+    // 粒子特效使用 plist 内嵌纹理，不再预加载 particle_texture.png
 
     // 哥布林资源（首刷会卡）：贴图先入 TextureCache
     addPath("Sprites/Enemies/Goblin/Goblin_idle.png");

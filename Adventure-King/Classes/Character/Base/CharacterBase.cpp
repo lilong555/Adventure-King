@@ -252,11 +252,6 @@ void CharacterBase::spawnHurtVfx(const DamageInfo& info)
     }
 
     const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
-    auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
-    if (particleTexture)
-    {
-        particle->setTexture(particleTexture);
-    }
 
     // 增强可见性：增加数量与寿命，扩大粒子尺寸
     particle->setTotalParticles(HurtVfxParams::TOTAL_PARTICLES);
