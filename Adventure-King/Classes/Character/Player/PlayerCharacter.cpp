@@ -250,6 +250,7 @@ void PlayerCharacter::addExperience(int amount)
 void PlayerCharacter::levelUp()
 {
     _level++;
+    _skillPoints += GameConfig::Player::SkillPoint::POINTS_PER_LEVEL;
     _attributePoints += GameConfig::Player::AttributePoint::POINTS_PER_LEVEL;
 
     if (auto attr = getAttributeComponent())

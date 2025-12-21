@@ -1803,6 +1803,15 @@ void InventoryLayer::refreshSkillPage()
             if (!skill)
             {
                 // 未学习：点击学习（只学习，不直接装备，符合“已学习才能装备”的规则）
+                if (_player->getSkillPoints() <= 0)
+                {
+                    _selectedSkillId = id;
+                    showDetailOverlay();
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "技能点不足", Color3B(255, 220, 160));
+                    refresh();
+                    return;
+                }
+
                 for (const auto &t : _skillTemplates)
                 {
                     if (t.id != id)
@@ -1818,6 +1827,8 @@ void InventoryLayer::refreshSkillPage()
                     s->manaCost = t.manaCost;
                     s->currentCooldown = 0.0f;
                     comp->learnSkill(s);
+                    _player->setSkillPoints(_player->getSkillPoints() - 1);
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
                     break;
                 }
             }
@@ -2156,6 +2167,14 @@ void InventoryLayer::refreshPassiveSkillPage()
             if (!skill)
             {
                 // 学习
+                if (_player->getSkillPoints() <= 0)
+                {
+                    showDetailOverlay();
+                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "技能点不足", Color3B(255, 220, 160));
+                    refresh();
+                    return;
+                }
+
                 for (const auto &t : _skillTemplates)
                 {
                     if (t.id != id)
@@ -2169,6 +2188,7 @@ void InventoryLayer::refreshPassiveSkillPage()
                     s->isPassive = true;
                     s->attributeBonus = t.attributeBonus;
                     comp->learnSkill(s);
+                    _player->setSkillPoints(_player->getSkillPoints() - 1);
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
                     break;
                 }

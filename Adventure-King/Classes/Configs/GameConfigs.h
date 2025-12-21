@@ -113,6 +113,12 @@ namespace GameConfig
             inline constexpr float DEFENSE_PER_POINT = 1.0f;         // 防御
             inline constexpr float CRITICAL_RATE_PER_POINT = 0.02f;  // 暴击率（+2%）
         }
+
+        // 技能点配置（用于学习主动/被动技能）
+        namespace SkillPoint
+        {
+            inline constexpr int POINTS_PER_LEVEL = 1; // 每次升级获得的技能点
+        }
     }
     namespace Monster
     {
@@ -322,7 +328,8 @@ namespace GameConfig
 
         inline constexpr float PADDING = 20.0f;
         inline constexpr float STATUS_BAR_OFFSET_X = 50.0f;
-        inline constexpr float SKILL_BAR_OFFSET_X = 150.0f;
+        // 技能栏默认 4 个槽位：偏移适当增大，避免最右侧槽位超出屏幕
+        inline constexpr float SKILL_BAR_OFFSET_X = 220.0f;
         inline constexpr float SKILL_BAR_OFFSET_Y = 80.0f;
         inline constexpr float BOSS_BAR_OFFSET_Y = 60.0f;
         inline constexpr float MAP_BUTTON_OFFSET = 40.0f;
