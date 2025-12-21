@@ -5,6 +5,7 @@
 #include"Scenes/LevelScenes/OriginMushroomScene.h"
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include"Managers/MusicManager.h"
+#include "Utils/ParticlePreloadHelper.h"
 #include <algorithm>
 #include <unordered_set>
 
@@ -196,6 +197,13 @@ void LoadingScene::finishPreload()
 {
     if (_finished) return;
     _finished = true;
+
+    // 粒子预热：使用 plist 内嵌纹理的粒子首次触发会解码/上传贴图，提前在加载阶段完成
+    if (_label)
+    {
+        _label->setString("粒子预热中...");
+    }
+    ParticlePreloadHelper::preloadCommonParticles();
 
     auto info = SceneRegistry::getInstance()->getSceneInfo(_mapId);
 
