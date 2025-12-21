@@ -3,8 +3,8 @@
 #include "MapScene.h"
 #include "GameScene.h"
 #include "Character/Player/PlayerCharacter.h"
-#include"Scenes/LevelScenes/OriginMushroomScene.h"
-#include"Scenes/LevelScenes/MysteryForestScene.h"
+#include "Scenes/LevelScenes/OriginMushroomScene.h"
+#include "Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Scenes/Layers/SetMenuLayer.h"
 #include "Managers/SceneTransitionManager.h"
@@ -173,9 +173,13 @@ bool HelloWorld::init()
     }
 
     // ==========================================================
-    // 5.1 角落装饰精灵（按屏幕坐标放置，避免受 contentContainer 缩放影响）
+    // 5.1 角落装饰精灵（放在背景之上，但不遮挡菜单按钮）
     // ==========================================================
-    const int cornerSpriteZOrder = contentZOrder + 1;
+    const int cornerSpriteZOrder = menuZOrder - 1; // 背景 z=0，菜单 z=1
+
+    // 以主菜单背景为参考，定位到四角（contentContainer 的坐标原点在中心）
+    const Size referenceSize = (sprite != nullptr) ? sprite->getContentSize() : visibleSize;
+    const Vec2 halfSize(referenceSize.width * 0.5f, referenceSize.height * 0.5f);
 
     // backman：左下角
     auto backman = Sprite::create("Scene/Backgrounds/backman.png");
@@ -186,8 +190,8 @@ bool HelloWorld::init()
     else
     {
         backman->setAnchorPoint(Vec2(0.0f, 0.0f));
-        backman->setPosition(Vec2(origin.x, origin.y));
-        this->addChild(backman, cornerSpriteZOrder);
+        backman->setPosition(Vec2(-halfSize.x, -halfSize.y));
+        contentContainer->addChild(backman, cornerSpriteZOrder);
     }
 
     // dragon1：右下角
@@ -199,8 +203,8 @@ bool HelloWorld::init()
     else
     {
         dragon1->setAnchorPoint(Vec2(1.0f, 0.0f));
-        dragon1->setPosition(Vec2(origin.x + visibleSize.width, origin.y));
-        this->addChild(dragon1, cornerSpriteZOrder);
+        dragon1->setPosition(Vec2(halfSize.x, -halfSize.y));
+        contentContainer->addChild(dragon1, cornerSpriteZOrder);
     }
 
     // dragon2：右上角
@@ -212,8 +216,8 @@ bool HelloWorld::init()
     else
     {
         dragon2->setAnchorPoint(Vec2(1.0f, 1.0f));
-        dragon2->setPosition(Vec2(origin.x + visibleSize.width, origin.y + visibleSize.height));
-        this->addChild(dragon2, cornerSpriteZOrder);
+        dragon2->setPosition(Vec2(halfSize.x, halfSize.y));
+        contentContainer->addChild(dragon2, cornerSpriteZOrder);
     }
 
     // ==========================================================
