@@ -1,13 +1,14 @@
 /**
  * @file InventoryLayer.h
- * @brief 背包/技能管理界面（占位实现）
+ * @brief 仓库界面（技能/装备/属性，占位实现）
  *
  * 目标：
  * - 管理装备：查看背包物品、穿戴/卸下装备
  * - 管理技能：学习技能、装备主动/被动技能到槽位、卸下技能
+ * - 查看属性：展示角色属性/等级等信息（当前为占位排版）
  *
  * 说明：
- * - 图标与美术资源先使用占位 UI（DrawNode + 文本）替代，后续可接入真实图标与排版。
+ * - 目前所有文字均用 PNG 占位（TNT.png），后续再替换为真实 UI 资源。
  */
 
 #pragma once
@@ -19,6 +20,14 @@
 #include <vector>
 
 class PlayerCharacter;
+
+namespace cocos2d
+{
+namespace ui
+{
+class Button;
+}
+}
 
 class InventoryLayer final : public cocos2d::Layer
 {
@@ -38,7 +47,8 @@ private:
     enum class Tab
     {
         EQUIPMENT,
-        SKILL
+        SKILL,
+        ATTRIBUTE
     };
 
     struct SkillTemplate
@@ -67,14 +77,15 @@ private:
     void refresh();
     void refreshEquipmentPage();
     void refreshSkillPage();
+    void refreshAttributePage();
 
     // 工具
     cocos2d::Sprite *createPlaceholderSprite(const cocos2d::Size &targetSize,
                                              const cocos2d::Color3B &tint = cocos2d::Color3B::WHITE);
 
-    cocos2d::MenuItemSprite *createIconButton(const cocos2d::Size &targetSize,
-                                              const cocos2d::ccMenuCallback &callback,
-                                              const cocos2d::Color3B &tint = cocos2d::Color3B::WHITE);
+    cocos2d::ui::Button *createIconButton(const cocos2d::Size &targetSize,
+                                          const std::function<void(cocos2d::Ref *)> &callback,
+                                          const cocos2d::Color3B &tint = cocos2d::Color3B::WHITE);
 
     void createDetailOverlay();
     void showDetailOverlay();
@@ -83,6 +94,7 @@ private:
     void onCloseClicked(cocos2d::Ref *sender);
     void onTabEquipmentClicked(cocos2d::Ref *sender);
     void onTabSkillClicked(cocos2d::Ref *sender);
+    void onTabAttributeClicked(cocos2d::Ref *sender);
 
 private:
     PlayerCharacter *_player = nullptr;
@@ -96,6 +108,12 @@ private:
     // 当前选中的装备槽位（-1 表示未选中）
     int _selectedEquipSlotIndex = -1;
 
+    // 当前选中的背包物品 id（-1 表示未选中）
+    int _selectedInventoryItemId = -1;
+
+    // 当前选中的技能 id（-1 表示未选中）
+    int _selectedSkillId = -1;
+
     std::function<void()> _closeCallback;
 
     cocos2d::Node *_container = nullptr;
@@ -104,16 +122,15 @@ private:
     cocos2d::DrawNode *_panel = nullptr;
     cocos2d::Sprite *_titleSprite = nullptr;
 
-    cocos2d::Menu *_tabMenu = nullptr;
-    cocos2d::MenuItemSprite *_tabEquipment = nullptr;
-    cocos2d::MenuItemSprite *_tabSkill = nullptr;
-
-    cocos2d::Menu *_closeMenu = nullptr;
+    cocos2d::ui::Button *_tabEquipment = nullptr;
+    cocos2d::ui::Button *_tabSkill = nullptr;
+    cocos2d::ui::Button *_tabAttribute = nullptr;
+    cocos2d::ui::Button *_closeButton = nullptr;
 
     cocos2d::Node *_equipmentPage = nullptr;
     cocos2d::Node *_skillPage = nullptr;
+    cocos2d::Node *_attributePage = nullptr;
 
-    cocos2d::EventListenerTouchOneByOne *_touchListener = nullptr;
     cocos2d::EventListenerTouchOneByOne *_detailOverlayListener = nullptr;
 
     std::vector<SkillTemplate> _skillTemplates;
