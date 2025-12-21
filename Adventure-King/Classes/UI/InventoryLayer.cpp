@@ -740,7 +740,7 @@ void InventoryLayer::refreshEquipmentPage()
     drawPanelRect(listBg, listRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _equipmentPage->addChild(listBg, 1);
 
-    // ScrollView：物品列表
+    // 滚动列表：物品列表
     auto scroll = cocos2d::ui::ScrollView::create();
     scroll->setDirection(cocos2d::ui::ScrollView::Direction::VERTICAL);
     scroll->setBounceEnabled(true);
