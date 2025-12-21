@@ -271,6 +271,29 @@ bool SkillComponent::useActiveSkill(size_t slotIndex)
     return true;
 }
 
+void SkillComponent::reduceAllActiveCooldown(float seconds)
+{
+    if (seconds <= 0.0f)
+    {
+        return;
+    }
+
+    for (auto &skill : _activeSlots)
+    {
+        if (!skill)
+        {
+            continue;
+        }
+
+        if (skill->currentCooldown <= 0.0f)
+        {
+            continue;
+        }
+
+        skill->currentCooldown = std::max(0.0f, skill->currentCooldown - seconds);
+    }
+}
+
 void SkillComponent::update(float dt)
 {
     // 遍历所有装备的主动技能，减少冷却时间

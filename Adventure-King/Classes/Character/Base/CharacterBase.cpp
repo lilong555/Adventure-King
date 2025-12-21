@@ -174,14 +174,28 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     spawnHurtVfx(info);
 
     _currentHP -= finalDamage;
+    const bool wouldDieBeforeCallback = (_currentHP <= 0.0f);
+    setCurrentHP(_currentHP); // 夹取到 [0, maxHP]，避免出现负值或溢出
 
-    // 获取最大生命值用于受击动画阈值
-    float maxHP = _maxHP;
-    if (attr) {
-        maxHP = attr->getAttributeValue(AttributeType::MAX_HP);
+    // 先触发“受击后回调”（可用于濒死救援等机制）
+    onReceiveDamage(info.attacker, finalDamage, info, wouldDieBeforeCallback);
+
+    const bool died = isDead();
+
+    // 再通知攻击者“造成伤害回调”（用于吸血/击杀触发等）
+    if (info.attacker && info.attacker != this)
+    {
+        info.attacker->onDealDamage(this, finalDamage, info, died);
     }
 
-    if (_currentHP <= 0.0f)
+    // 获取最大生命值用于受击动画阈值（属性可能在回调里发生变化，需重新读取）
+    float maxHP = _maxHP;
+    if (auto latestAttr = getAttributeComponent())
+    {
+        maxHP = latestAttr->getAttributeValue(AttributeType::MAX_HP);
+    }
+
+    if (died)
     {
         _currentHP = 0.0f;
         die();
