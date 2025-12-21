@@ -1991,6 +1991,38 @@ void InventoryLayer::refreshPassiveSkillPage()
         _passiveSkillPage->addChild(levelLabel, 2);
     }
 
+    // 简要战斗数据（与主动技能页面一致）
+    auto attrComp = _player->getAttributeComponent();
+    const float maxHp = attrComp ? attrComp->getAttributeValue(AttributeType::MAX_HP) : 0.0f;
+    const float attack = _player->getAttackPower();
+    const float speed = attrComp ? attrComp->getAttributeValue(AttributeType::MOVE_SPEED) : 0.0f;
+    const float crit = attrComp ? attrComp->getAttributeValue(AttributeType::CRITICAL_RATE) : 0.0f;
+
+    auto addSmallStat = [this, statsRect](int index, const std::string &nameText, const std::string &valueText)
+    {
+        const float firstY = statsRect.getMaxY() - 74.0f;
+        const float rowGap = 42.0f;
+        const float y = firstY - rowGap * index;
+
+        if (auto name = createUiLabel(nameText, 22.0f, ITEM_TEXT_COLOR))
+        {
+            name->setAnchorPoint(Vec2(0.0f, 0.5f));
+            name->setPosition(Vec2(statsRect.getMinX() + 30.0f, y));
+            _passiveSkillPage->addChild(name, 2);
+        }
+        if (auto value = createUiLabel(valueText, 22.0f, Color3B::WHITE))
+        {
+            value->setAnchorPoint(Vec2(1.0f, 0.5f));
+            value->setPosition(Vec2(statsRect.getMaxX() - 30.0f, y));
+            _passiveSkillPage->addChild(value, 2);
+        }
+    };
+
+    addSmallStat(0, "生命", StringUtils::format("%d", static_cast<int>(std::round(maxHp))));
+    addSmallStat(1, "攻击力", StringUtils::format("%d", static_cast<int>(std::round(attack))));
+    addSmallStat(2, "速度", StringUtils::format("%d", static_cast<int>(std::round(speed))));
+    addSmallStat(3, "暴击率", StringUtils::format("%d%%", static_cast<int>(std::round(crit * 100.0f))));
+
     // 左侧：被动技能列表（可滚动）
     const float listBottom = 260.0f;
     const float listRight = rightX - 80.0f;
