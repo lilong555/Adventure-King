@@ -36,6 +36,7 @@ namespace
     constexpr float DETAIL_PANEL_W = 720.0f;
     constexpr float DETAIL_PANEL_H = 360.0f;
     constexpr float DETAIL_PANEL_PADDING = 26.0f;
+    constexpr int EQUIPMENT_DOUBLE_CLICK_WINDOW_MS = 350; // 装备列表双击判定窗口（毫秒）
 
     constexpr int Z_BACKGROUND = 0;
     constexpr int Z_ROOT = 1;
@@ -524,7 +525,7 @@ void InventoryLayer::buildSkillTemplates()
     // 被动：体魄
     {
         SkillTemplate t;
-        t.id = 2001;
+        t.id = GameConfig::Skill::Passive::TOUGHNESS;
         t.isPassive = true;
         t.name = "体魄强化";
         t.description = "提升最大生命值";
@@ -535,7 +536,7 @@ void InventoryLayer::buildSkillTemplates()
     // 被动：迅捷
     {
         SkillTemplate t;
-        t.id = 2002;
+        t.id = GameConfig::Skill::Passive::SWIFTNESS;
         t.isPassive = true;
         t.name = "迅捷步伐";
         t.description = "提升移动速度";
@@ -546,7 +547,7 @@ void InventoryLayer::buildSkillTemplates()
     // 被动：专注
     {
         SkillTemplate t;
-        t.id = 2003;
+        t.id = GameConfig::Skill::Passive::FOCUS;
         t.isPassive = true;
         t.name = "战斗专注";
         t.description = "提升暴击率";
@@ -1309,7 +1310,7 @@ void InventoryLayer::refreshEquipmentPage()
                                        if (_lastEquipmentListClickItemId == itemId)
                                        {
                                            const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastEquipmentListClickTime).count();
-                                           isDoubleClick = (delta >= 0 && delta <= 350);
+                                           isDoubleClick = (delta >= 0 && delta <= EQUIPMENT_DOUBLE_CLICK_WINDOW_MS);
                                        }
 
                                        _lastEquipmentListClickItemId = itemId;

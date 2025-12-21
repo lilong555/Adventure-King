@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 // 前向声明，减少头文件依赖
@@ -231,6 +232,7 @@ private:
     // 组件与对象
     std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;
     std::vector<std::shared_ptr<Equipment>> _inventoryItems;
+    std::unordered_set<int> _inventoryItemIds; // 用于背包按 id 去重加速
     std::unique_ptr<PlayerSkillSet> _skillSet;
 
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;

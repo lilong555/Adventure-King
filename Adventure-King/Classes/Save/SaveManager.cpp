@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <unordered_map>
+#include <unordered_set>
 
 USING_NS_CC;
 
@@ -655,8 +656,13 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         {
             continue;
         }
-        player->addToInventory(equipment);
-        inventoryById[equipment->id] = equipment;
+
+        // 兼容：存档背包可能包含重复 id，避免重复加入
+        if (inventoryById.find(equipment->id) == inventoryById.end())
+        {
+            player->addToInventory(equipment);
+            inventoryById[equipment->id] = equipment;
+        }
     }
 
     // 装备（穿戴）
@@ -673,11 +679,20 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         }
         else
         {
+            // 兼容：旧存档/异常数据可能出现“穿戴列表存在，但背包列表缺失”的情况。
+            // 此时需要补建对象并加入背包，保证 UI 与加成结算一致。
             equipment = createEquipmentFromSaveData(equipData);
             if (equipment)
             {
-                player->addToInventory(equipment);
-                inventoryById[equipment->id] = equipment;
+                if (inventoryById.find(equipment->id) == inventoryById.end())
+                {
+                    player->addToInventory(equipment);
+                    inventoryById[equipment->id] = equipment;
+                }
+                else
+                {
+                    equipment = inventoryById[equipment->id];
+                }
             }
         }
 
@@ -760,6 +775,8 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         // 恢复被动技能（无槽位概念：存档里保存“已装备的被动技能 id 列表”）
         std::vector<std::shared_ptr<PassiveSkill>> passiveSlots;
         passiveSlots.reserve(data.passiveSlotSkillIds.size());
+        std::unordered_set<int> passiveSeen;
+        passiveSeen.reserve(data.passiveSlotSkillIds.size());
         for (size_t i = 0; i < data.passiveSlotSkillIds.size(); ++i)
         {
             int skillId = -1;
@@ -769,24 +786,17 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
                 continue; // 兼容旧存档里的 -1 占位
             }
 
+            if (passiveSeen.find(skillId) != passiveSeen.end())
+            {
+                continue;
+            }
+
             std::shared_ptr<Skill> skill = skillComp->findLearnedSkillById(skillId);
             std::shared_ptr<PassiveSkill> passiveSkill = std::dynamic_pointer_cast<PassiveSkill>(skill);
             if (passiveSkill)
             {
-                // 去重：避免重复应用属性加成
-                bool exists = false;
-                for (const auto& s : passiveSlots)
-                {
-                    if (s && s->id == passiveSkill->id)
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
-                if (!exists)
-                {
-                    passiveSlots.push_back(passiveSkill);
-                }
+                passiveSeen.insert(skillId);
+                passiveSlots.push_back(passiveSkill);
             }
         }
         skillComp->clearAndSetPassiveSlots(passiveSlots);

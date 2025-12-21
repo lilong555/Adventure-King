@@ -250,7 +250,6 @@ void PlayerCharacter::addExperience(int amount)
 void PlayerCharacter::levelUp()
 {
     _level++;
-    // _skillPoints++; 
     _attributePoints += GameConfig::Player::AttributePoint::POINTS_PER_LEVEL;
 
     if (auto attr = getAttributeComponent())
@@ -384,25 +383,27 @@ void PlayerCharacter::addToInventory(const std::shared_ptr<Equipment>& item)
         return;
     }
 
-    // 按 id 去重，避免重复插入
-    for (const auto& existing : _inventoryItems)
+    // 按 id 去重：使用 set 加速（背包变大时避免线性扫描）
+    const int itemId = item->id;
+    if (_inventoryItemIds.find(itemId) != _inventoryItemIds.end())
     {
-        if (existing && existing->id == item->id)
-        {
-            return;
-        }
+        return;
     }
+
     _inventoryItems.push_back(item);
+    _inventoryItemIds.insert(itemId);
 }
 
 void PlayerCharacter::clearInventory()
 {
     _inventoryItems.clear();
+    _inventoryItemIds.clear();
 }
 
 void PlayerCharacter::setInventoryItems(const std::vector<std::shared_ptr<Equipment>>& items)
 {
     _inventoryItems.clear();
+    _inventoryItemIds.clear();
     for (const auto& item : items)
     {
         addToInventory(item);

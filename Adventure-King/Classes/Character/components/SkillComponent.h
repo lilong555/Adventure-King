@@ -32,6 +32,7 @@ public:
 
     // 将技能装备到槽位 (建议改为 bool 返回值，方便判断是否装备成功)
     bool equipActiveSkill(const std::shared_ptr<ActiveSkill>& skill, size_t slotIndex);
+    // 兼容旧接口：被动技能已取消“槽位”概念，slotIndex 将被忽略
     bool equipPassiveSkill(const std::shared_ptr<PassiveSkill>& skill, size_t slotIndex);
 
     // 被动技能：无槽位概念（只要学习即可装备/卸下，且不限制同时装备数量）
@@ -41,6 +42,7 @@ public:
 
     // 卸下技能（将对应槽位置空；被动技能会移除属性加成）
     bool unequipActiveSkill(size_t slotIndex);
+    // 兼容旧接口：按“已装备被动技能列表索引”卸下
     bool unequipPassiveSkill(size_t slotIndex);
 
     // 使用主动技能（成功返回 true）

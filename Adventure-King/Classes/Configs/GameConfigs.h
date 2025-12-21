@@ -27,6 +27,14 @@ namespace GameConfig
     {
         inline constexpr size_t SLOT_BOMB = 0;     // 炸弹技能槽位
         inline constexpr size_t SLOT_FIREBALL = 0; // 火球技能槽位（当前 Klee 技能1）
+
+        namespace Passive
+        {
+            // 被动技能 ID（集中管理，避免散落魔法数字）
+            inline constexpr int TOUGHNESS = 2001; // 体魄强化
+            inline constexpr int SWIFTNESS = 2002; // 迅捷步伐
+            inline constexpr int FOCUS = 2003;     // 战斗专注
+        }
     }
 
     // --- 炸弹属性配置 ---

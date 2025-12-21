@@ -49,15 +49,13 @@ void SkillBar::initSlots(int slotCount)
         }
     }
     _slots.clear();
-    _cachedSkillIds.clear();
+    _cachedSkillIds.assign(static_cast<size_t>(slotCount), -1);
 
     // 创建新槽位
     for (int i = 0; i < slotCount; ++i)
     {
         createSlot(i);
     }
-
-    _cachedSkillIds.resize(static_cast<size_t>(slotCount), -1);
 }
 
 void SkillBar::createSlot(int index)
@@ -180,21 +178,28 @@ void SkillBar::updateDisplay()
             _cachedSkillIds[i] = skillId;
             if (skillId == -1)
             {
-                continue;
-            }
-
-            std::string iconPath = getIconPathForSkillId(skillId);
-            if (!iconPath.empty())
-            {
-                setSlotIcon(i, iconPath);
-            }
-            else
-            {
-                // 未配置图标时隐藏，避免显示上一次的残留
+                // 技能槽变为空时隐藏图标，避免显示上一次的残留
                 auto &slot = _slots[i];
                 if (slot.icon)
                 {
                     slot.icon->setVisible(false);
+                }
+            }
+            else
+            {
+                std::string iconPath = getIconPathForSkillId(skillId);
+                if (!iconPath.empty())
+                {
+                    setSlotIcon(i, iconPath);
+                }
+                else
+                {
+                    // 未配置图标时隐藏，避免显示上一次的残留
+                    auto &slot = _slots[i];
+                    if (slot.icon)
+                    {
+                        slot.icon->setVisible(false);
+                    }
                 }
             }
         }
