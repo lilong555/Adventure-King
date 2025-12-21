@@ -48,6 +48,9 @@ public:
     // 使用主动技能（成功返回 true）
     bool useActiveSkill(size_t slotIndex);
 
+    // 统一减少所有主动技能冷却（用于“暴击缩冷却”等机制）
+    void reduceAllActiveCooldown(float seconds);
+
     // 获取主动技能槽位
     const std::vector<std::shared_ptr<ActiveSkill>>& getActiveSlots() const { return _activeSlots; }
     // 获取被动技能槽位

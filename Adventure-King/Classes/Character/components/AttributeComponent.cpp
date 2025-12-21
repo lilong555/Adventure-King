@@ -285,6 +285,35 @@ bool AttributeComponent::hasStatusEffect(StatusEffectType type) const
     return false;
 }
 
+bool AttributeComponent::removeStatusEffect(StatusEffectType type)
+{
+    if (_statusEffects.empty())
+    {
+        return false;
+    }
+
+    const size_t before = _statusEffects.size();
+    _statusEffects.erase(std::remove_if(_statusEffects.begin(), _statusEffects.end(),
+                                        [type](const StatusEffectInstance &eff) {
+                                            return eff.type == type;
+                                        }),
+                         _statusEffects.end());
+
+    if (_statusEffects.size() == before)
+    {
+        return false;
+    }
+
+    // 状态变化：重算状态加成并刷新最终属性
+    _statusBonus.clear();
+    for (const auto &eff : _statusEffects)
+    {
+        _statusBonus += eff.attributeBonus;
+    }
+    recalculateFinalAttributes();
+    return true;
+}
+
 //---------------- 最终属性 ----------------
 
 void AttributeComponent::recalculateFinalAttributes()

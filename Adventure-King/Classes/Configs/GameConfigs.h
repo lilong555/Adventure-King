@@ -34,6 +34,100 @@ namespace GameConfig
             inline constexpr int TOUGHNESS = 2001; // 体魄强化
             inline constexpr int SWIFTNESS = 2002; // 迅捷步伐
             inline constexpr int FOCUS = 2003;     // 战斗专注
+            inline constexpr int BLOODTHIRST = 2004;    // 嗜血（吸血）
+            inline constexpr int EMBER_MARK = 2005;     // 余烬印记（命中附加燃烧）
+            inline constexpr int FULL_HP_CRIT = 2006;   // 满血暴击（条件触发）
+            inline constexpr int CRIT_ECHO = 2007;      // 冷却回响（暴击缩短冷却）
+            inline constexpr int POISON_TOUCH = 2008;   // 淬毒（命中附加中毒）
+        }
+
+        namespace PassiveEffect
+        {
+            // 嗜血：按“实际造成伤害”回复生命（比例）
+            inline constexpr float BLOODTHIRST_LIFESTEAL = 0.05f;
+
+            // 余烬印记：命中附加燃烧
+            inline constexpr float EMBER_MARK_PROC_CHANCE = 0.20f;
+            inline constexpr float EMBER_MARK_PROC_COOLDOWN = 0.25f;
+
+            // 满血暴击：满血时暴击率加成
+            inline constexpr float FULL_HP_CRIT_BONUS = 0.25f;
+
+            // 冷却回响：暴击时减少所有主动技能冷却（秒）
+            inline constexpr float CRIT_ECHO_REDUCE_SECONDS = 0.35f;
+            inline constexpr float CRIT_ECHO_PROC_COOLDOWN = 0.25f;
+
+            // 淬毒：命中附加中毒
+            inline constexpr float POISON_TOUCH_PROC_CHANCE = 0.18f;
+            inline constexpr float POISON_TOUCH_PROC_COOLDOWN = 0.35f;
+        }
+    }
+
+    // --- 装备 ID（集中管理，便于扩展“特效/机制”）---
+    namespace Equipment
+    {
+        namespace Weapon
+        {
+            inline constexpr int STARTER_SWORD = 5001;      // 新手剑
+            inline constexpr int TRAINING_STAFF = 5002;     // 训练法杖
+            inline constexpr int EMBER_STAFF = 5003;        // 焰纹法杖（命中燃烧）
+            inline constexpr int BLOOD_PACT_SWORD = 5004;   // 血契短剑（吸血）
+        }
+
+        namespace Helmet
+        {
+            inline constexpr int LEATHER_CAP = 5101;        // 皮帽
+            inline constexpr int EMERGENCY_MASK = 5104;     // 急救面罩（低血量救援）
+        }
+
+        namespace Armor
+        {
+            inline constexpr int LEATHER_ARMOR = 5102;      // 皮甲
+            inline constexpr int THORNS_ARMOR = 5105;       // 荆棘甲（反伤）
+        }
+
+        namespace Boots
+        {
+            inline constexpr int LIGHT_BOOTS = 5103;        // 轻便靴
+            inline constexpr int HUNTER_BOOTS = 5106;       // 追猎之靴（击杀加速）
+        }
+    }
+
+    // --- 装备特效参数（随装备等级可做成长）---
+    namespace EquipmentEffect
+    {
+        namespace ThornsArmor
+        {
+            inline constexpr float REFLECT_RATE_BASE = 0.15f;      // 基础反伤比例
+            inline constexpr float REFLECT_RATE_PER_LEVEL = 0.01f; // 每级额外反伤比例
+            inline constexpr float REFLECT_RATE_MAX = 0.35f;       // 反伤上限
+            inline constexpr float PROC_COOLDOWN = 0.50f;          // 触发间隔（秒）
+        }
+
+        namespace EmergencyMask
+        {
+            inline constexpr float TRIGGER_HP_RATIO = 0.20f;       // 触发阈值：低于最大生命的 20%
+            inline constexpr float HEAL_TARGET_HP_RATIO = 0.35f;   // 触发后将生命抬到最大生命的 35%
+            inline constexpr float PROC_COOLDOWN = 45.0f;          // 冷却（秒）
+        }
+
+        namespace HunterBoots
+        {
+            inline constexpr float BUFF_DURATION_SECONDS = 2.0f;
+            inline constexpr float MOVE_SPEED_BONUS = 60.0f;
+        }
+
+        namespace EmberStaff
+        {
+            inline constexpr float PROC_CHANCE = 0.25f;
+            inline constexpr float PROC_COOLDOWN = 0.20f;
+        }
+
+        namespace BloodPactSword
+        {
+            inline constexpr float LIFESTEAL_BASE = 0.03f;
+            inline constexpr float LIFESTEAL_PER_LEVEL = 0.002f;
+            inline constexpr float LIFESTEAL_MAX = 0.10f;
         }
     }
 
@@ -278,6 +372,21 @@ namespace GameConfig
             inline constexpr float TICK_INTERVAL_SECONDS = 0.5f;
             inline constexpr float BASE_DAMAGE_SCALE = 0.1f;
             inline constexpr float PER_STACK_DAMAGE_SCALE = 0.1f;
+        }
+
+        namespace Poisoned
+        {
+            inline constexpr float DURATION_SECONDS = 6.0f;
+            inline constexpr float TICK_INTERVAL_SECONDS = 1.0f;
+            inline constexpr float BASE_DAMAGE_SCALE = 0.07f;
+            inline constexpr float PER_STACK_DAMAGE_SCALE = 0.05f;
+        }
+
+        namespace Excited
+        {
+            // 亢奋：纯属性 buff（用于击杀加速等机制）
+            inline constexpr float DURATION_SECONDS = 2.0f;
+            inline constexpr float MOVE_SPEED_BONUS = 60.0f;
         }
     }
 

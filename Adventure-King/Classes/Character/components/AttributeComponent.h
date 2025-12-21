@@ -55,6 +55,8 @@ public:
 
     // 查询是否存在指定状态
     bool hasStatusEffect(StatusEffectType type) const;
+    // 移除指定状态（用于条件性被动等动态开关）
+    bool removeStatusEffect(StatusEffectType type);
     // 获取所有状态效果
     const std::vector<StatusEffectInstance>& getStatusEffects() const { return _statusEffects; }
 

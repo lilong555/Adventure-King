@@ -231,6 +231,99 @@ namespace
         return out;
     }
 
+    std::string getEquipmentSpecialEffectBlock(const std::shared_ptr<Equipment> &item)
+    {
+        if (!item)
+        {
+            return " - 无";
+        }
+
+        const int level = std::max(1, item->level);
+
+        // 武器：焰纹法杖（命中燃烧）
+        if (item->id == GameConfig::Equipment::Weapon::EMBER_STAFF)
+        {
+            std::string out;
+            out += StringUtils::format(" - 命中燃烧：%.0f%% 概率触发（%.2fs 冷却）\n",
+                                       GameConfig::EquipmentEffect::EmberStaff::PROC_CHANCE * 100.0f,
+                                       GameConfig::EquipmentEffect::EmberStaff::PROC_COOLDOWN);
+            out += StringUtils::format(" - 燃烧：持续 %.1fs，间隔 %.1fs\n",
+                                       GameConfig::StatusEffect::Burning::DURATION_SECONDS,
+                                       GameConfig::StatusEffect::Burning::TICK_INTERVAL_SECONDS);
+            out += StringUtils::format(" - 每跳伤害：(%.2f + %.2f×层数) × 攻击力",
+                                       GameConfig::StatusEffect::Burning::BASE_DAMAGE_SCALE,
+                                       GameConfig::StatusEffect::Burning::PER_STACK_DAMAGE_SCALE);
+            return out;
+        }
+
+        // 武器：血契短剑（吸血，随等级成长）
+        if (item->id == GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD)
+        {
+            float rate = GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_BASE +
+                         GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_PER_LEVEL * static_cast<float>(level - 1);
+            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_MAX));
+            return StringUtils::format(" - 吸血：造成伤害的 %.1f%% 转为生命（随装备等级成长）",
+                                       rate * 100.0f);
+        }
+
+        // 头盔：急救面罩（低血量救援）
+        if (item->id == GameConfig::Equipment::Helmet::EMERGENCY_MASK)
+        {
+            return StringUtils::format(" - 急救：生命低于 %.0f%% 时将生命抬升到 %.0f%%（%.0fs 冷却）",
+                                       GameConfig::EquipmentEffect::EmergencyMask::TRIGGER_HP_RATIO * 100.0f,
+                                       GameConfig::EquipmentEffect::EmergencyMask::HEAL_TARGET_HP_RATIO * 100.0f,
+                                       GameConfig::EquipmentEffect::EmergencyMask::PROC_COOLDOWN);
+        }
+
+        // 护甲：荆棘甲（反伤，随等级成长）
+        if (item->id == GameConfig::Equipment::Armor::THORNS_ARMOR)
+        {
+            float rate = GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_BASE +
+                         GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_PER_LEVEL * static_cast<float>(level - 1);
+            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_MAX));
+            return StringUtils::format(" - 反伤：反弹 %.0f%% 受到的伤害（%.2fs 冷却，随装备等级成长）",
+                                       rate * 100.0f,
+                                       GameConfig::EquipmentEffect::ThornsArmor::PROC_COOLDOWN);
+        }
+
+        // 靴子：追猎之靴（击杀加速）
+        if (item->id == GameConfig::Equipment::Boots::HUNTER_BOOTS)
+        {
+            return StringUtils::format(" - 亢奋：击杀后移动速度 %+d，持续 %.1fs",
+                                       static_cast<int>(std::round(GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS)),
+                                       GameConfig::StatusEffect::Excited::DURATION_SECONDS);
+        }
+
+        return " - 无";
+    }
+
+    std::string getPassiveSkillSpecialEffectBlock(int skillId)
+    {
+        switch (skillId)
+        {
+        case GameConfig::Skill::Passive::BLOODTHIRST:
+            return StringUtils::format(" - 吸血：造成伤害的 %.0f%% 转为生命",
+                                       GameConfig::Skill::PassiveEffect::BLOODTHIRST_LIFESTEAL * 100.0f);
+        case GameConfig::Skill::Passive::EMBER_MARK:
+            return StringUtils::format(" - 余烬：%.0f%% 概率施加燃烧（%.2fs 冷却，可叠层）",
+                                       GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_CHANCE * 100.0f,
+                                       GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_COOLDOWN);
+        case GameConfig::Skill::Passive::FULL_HP_CRIT:
+            return StringUtils::format(" - 条件：满血时暴击率 %+d%%",
+                                       static_cast<int>(std::round(GameConfig::Skill::PassiveEffect::FULL_HP_CRIT_BONUS * 100.0f)));
+        case GameConfig::Skill::Passive::CRIT_ECHO:
+            return StringUtils::format(" - 暴击：减少所有主动技能冷却 %.2fs（%.2fs 冷却）",
+                                       GameConfig::Skill::PassiveEffect::CRIT_ECHO_REDUCE_SECONDS,
+                                       GameConfig::Skill::PassiveEffect::CRIT_ECHO_PROC_COOLDOWN);
+        case GameConfig::Skill::Passive::POISON_TOUCH:
+            return StringUtils::format(" - 淬毒：%.0f%% 概率施加中毒（%.2fs 冷却，可叠层）",
+                                       GameConfig::Skill::PassiveEffect::POISON_TOUCH_PROC_CHANCE * 100.0f,
+                                       GameConfig::Skill::PassiveEffect::POISON_TOUCH_PROC_COOLDOWN);
+        default:
+            return " - 无";
+        }
+    }
+
     // 绘制面板（简化：实心矩形 + 描边）
     void drawPanelRect(DrawNode *node, const Rect &rect, const Color4F &fillColor, const Color4F &borderColor)
     {
@@ -554,6 +647,56 @@ void InventoryLayer::buildSkillTemplates()
         t.attributeBonus.add(AttributeType::CRITICAL_RATE, 0.05f);
         _skillTemplates.push_back(t);
     }
+
+    // 被动：嗜血（机制：吸血）
+    {
+        SkillTemplate t;
+        t.id = GameConfig::Skill::Passive::BLOODTHIRST;
+        t.isPassive = true;
+        t.name = "嗜血";
+        t.description = "造成伤害会按比例回复生命";
+        _skillTemplates.push_back(t);
+    }
+
+    // 被动：余烬印记（机制：命中燃烧）
+    {
+        SkillTemplate t;
+        t.id = GameConfig::Skill::Passive::EMBER_MARK;
+        t.isPassive = true;
+        t.name = "余烬印记";
+        t.description = "命中有概率施加燃烧（可叠层）";
+        _skillTemplates.push_back(t);
+    }
+
+    // 被动：满血暴击（机制：条件触发暴击）
+    {
+        SkillTemplate t;
+        t.id = GameConfig::Skill::Passive::FULL_HP_CRIT;
+        t.isPassive = true;
+        t.name = "满血暴击";
+        t.description = "生命值满时，暴击率提升";
+        _skillTemplates.push_back(t);
+    }
+
+    // 被动：冷却回响（机制：暴击缩短冷却）
+    {
+        SkillTemplate t;
+        t.id = GameConfig::Skill::Passive::CRIT_ECHO;
+        t.isPassive = true;
+        t.name = "冷却回响";
+        t.description = "暴击时减少所有主动技能的剩余冷却";
+        _skillTemplates.push_back(t);
+    }
+
+    // 被动：淬毒（机制：命中中毒）
+    {
+        SkillTemplate t;
+        t.id = GameConfig::Skill::Passive::POISON_TOUCH;
+        t.isPassive = true;
+        t.name = "淬毒";
+        t.description = "命中有概率施加中毒（可叠层）";
+        _skillTemplates.push_back(t);
+    }
 }
 
 void InventoryLayer::switchTab(Tab tab)
@@ -832,7 +975,8 @@ void InventoryLayer::showDetailOverlay()
                     body += StringUtils::format(" - 动画帧数 %d", weapon->attackFrameCount);
                 }
 
-                body += "\n\n特效：\n - 无";
+                body += "\n\n特效：\n";
+                body += getEquipmentSpecialEffectBlock(item);
             }
         }
     }
@@ -952,8 +1096,8 @@ void InventoryLayer::showDetailOverlay()
             }
             body += formatAttributesBlock(bonus);
 
-            // 当前项目的被动技能模板暂未配置“条件触发特效”，先以占位形式展示
-            body += "\n\n特殊效果：\n - 无";
+            body += "\n\n特殊效果：\n";
+            body += getPassiveSkillSpecialEffectBlock(skillId);
         }
     }
 

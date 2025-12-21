@@ -55,6 +55,12 @@ public:
     /// @brief 死亡处理
     virtual void die();                                  // 死亡
 
+    // 伤害事件回调：用于装备/被动等“触发型机制”（默认空实现）
+    /// @brief 自己造成伤害后回调（在目标 HP 已扣除、死亡判定完成后触发）
+    virtual void onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied) {}
+    /// @brief 自己受到伤害后回调（在 HP 扣除后、死亡判定前触发，可用于濒死救援等机制）
+    virtual void onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDie) {}
+
     // HP / MP
     /// @brief 获取当前 HP
     float getCurrentHP() const { return _currentHP; }

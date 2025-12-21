@@ -658,7 +658,16 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     setCurrentHP(hp);
     updateHpBar();
 
-    if (hp <= 0)
+    const bool wouldDie = (hp <= 0.0f);
+    onReceiveDamage(info.attacker, dmg, info, wouldDie);
+
+    const bool died = isDead();
+    if (info.attacker && info.attacker != this)
+    {
+        info.attacker->onDealDamage(this, dmg, info, died);
+    }
+
+    if (died)
     {
         // 先结算经验，再执行死亡逻辑（部分 Boss 的 die() 不会走 MonsterBase::die）
         grantKillExperience(info);

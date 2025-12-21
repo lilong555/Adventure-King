@@ -199,6 +199,7 @@ void PlayerCharacter::update(float dt)
 {
     CharacterBase::update(dt);
     // 如果 SkillSet 需要 update，在此调用
+    updateTriggerEffects(dt);
 
     // 受击方向：持续修正 scaleX 的符号，保证移动时的 setFlippedX（朝向）不会覆盖受击图的镜像
     if (_hurtMirrorActive)
@@ -224,6 +225,148 @@ void PlayerCharacter::update(float dt)
             setScaleX(desiredScaleX);
         }
     }
+}
+
+// =================================================================
+// 装备/被动的触发型机制
+// =================================================================
+
+void PlayerCharacter::updateTriggerEffects(float dt)
+{
+    auto dec = [dt](float &v)
+    {
+        if (v > 0.0f)
+        {
+            v = std::max(0.0f, v - dt);
+        }
+    };
+
+    dec(_burnProcCooldownRemaining);
+    dec(_poisonProcCooldownRemaining);
+    dec(_critEchoCooldownRemaining);
+    dec(_thornsCooldownRemaining);
+    dec(_emergencyMaskCooldownRemaining);
+
+    updateFullHpCritEffect();
+}
+
+void PlayerCharacter::updateFullHpCritEffect()
+{
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        _fullHpCritActive = false;
+        return;
+    }
+
+    const bool equipped = hasPassiveEquipped(GameConfig::Skill::Passive::FULL_HP_CRIT);
+    if (!equipped)
+    {
+        if (_fullHpCritActive)
+        {
+            attr->removeStatusEffect(StatusEffectType::FULL_HP_CRIT);
+            _fullHpCritActive = false;
+        }
+        return;
+    }
+
+    const float maxHp = attr->getAttributeValue(AttributeType::MAX_HP);
+    const bool isFullHp = (getCurrentHP() >= maxHp - 0.01f);
+
+    if (isFullHp && !_fullHpCritActive)
+    {
+        StatusEffectInstance fullHpCrit;
+        fullHpCrit.type = StatusEffectType::FULL_HP_CRIT;
+        fullHpCrit.duration = 999999.0f; // 超长持续时间（由代码控制移除）
+        fullHpCrit.elapsed = 0.0f;
+        fullHpCrit.attributeBonus.set(AttributeType::CRITICAL_RATE, GameConfig::Skill::PassiveEffect::FULL_HP_CRIT_BONUS);
+        attr->addStatusEffect(fullHpCrit);
+        _fullHpCritActive = true;
+    }
+    else if (!isFullHp && _fullHpCritActive)
+    {
+        attr->removeStatusEffect(StatusEffectType::FULL_HP_CRIT);
+        _fullHpCritActive = false;
+    }
+}
+
+bool PlayerCharacter::hasPassiveEquipped(int skillId)
+{
+    auto comp = getSkillComponent();
+    if (!comp)
+    {
+        return false;
+    }
+    return comp->isPassiveSkillEquipped(skillId);
+}
+
+std::shared_ptr<Equipment> PlayerCharacter::findEquippedItemById(int itemId) const
+{
+    for (const auto &kv : _equippedItems)
+    {
+        const auto &item = kv.second;
+        if (item && item->id == itemId)
+        {
+            return item;
+        }
+    }
+    return nullptr;
+}
+
+void PlayerCharacter::tryApplyDotStatus(CharacterBase *target,
+                                       StatusEffectType type,
+                                       int stacks,
+                                       float duration,
+                                       float tickInterval,
+                                       float baseDamageScale,
+                                       float perStackDamageScale)
+{
+    if (!target || target->isDead())
+    {
+        return;
+    }
+
+    auto targetAttr = target->getAttributeComponent();
+    if (!targetAttr)
+    {
+        return;
+    }
+
+    StatusEffectInstance inst;
+    inst.type = type;
+    inst.duration = std::max(0.0f, duration);
+    inst.elapsed = 0.0f;
+    inst.attributeBonus.clear();
+
+    inst.stacks = std::max(1, stacks);
+    inst.maxStacks = 0;
+    inst.stackable = true;
+    inst.refreshOnAdd = true;
+
+    inst.tickInterval = std::max(0.0f, tickInterval);
+    inst.tickAccumulator = 0.0f;
+    inst.sourceAttackPower = getAttackPower();
+    inst.baseDamageScale = std::max(0.0f, baseDamageScale);
+    inst.perStackDamageScale = std::max(0.0f, perStackDamageScale);
+
+    targetAttr->addStatusEffect(inst);
+}
+
+void PlayerCharacter::applyExcitedBuff(float durationSeconds, float moveSpeedBonus)
+{
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return;
+    }
+
+    StatusEffectInstance excited;
+    excited.type = StatusEffectType::EXCITED;
+    excited.duration = std::max(0.0f, durationSeconds);
+    excited.elapsed = 0.0f;
+    excited.attributeBonus.set(AttributeType::MOVE_SPEED, moveSpeedBonus);
+
+    attr->addStatusEffect(excited);
 }
 
 // =================================================================
@@ -507,7 +650,7 @@ void PlayerCharacter::ensureDefaultInventory()
     // 新手剑（武器）
     {
         auto weapon = std::make_shared<Weapon>();
-        weapon->id = 5001;
+        weapon->id = GameConfig::Equipment::Weapon::STARTER_SWORD;
         weapon->name = "新手剑";
         weapon->description = "一把趁手的练习用短剑";
         weapon->slot = EquipmentSlot::WEAPON;
@@ -524,7 +667,7 @@ void PlayerCharacter::ensureDefaultInventory()
     // 训练法杖（武器）
     {
         auto weapon = std::make_shared<Weapon>();
-        weapon->id = 5002;
+        weapon->id = GameConfig::Equipment::Weapon::TRAINING_STAFF;
         weapon->name = "训练法杖";
         weapon->description = "木制法杖，适合练习施法";
         weapon->slot = EquipmentSlot::WEAPON;
@@ -538,10 +681,44 @@ void PlayerCharacter::ensureDefaultInventory()
         addToInventory(weapon);
     }
 
+    // 焰纹法杖（武器：命中有概率施加燃烧，可叠层）
+    {
+        auto weapon = std::make_shared<Weapon>();
+        weapon->id = GameConfig::Equipment::Weapon::EMBER_STAFF;
+        weapon->name = "焰纹法杖";
+        weapon->description = "杖身刻着古老火纹。命中时有概率施加燃烧（可叠层），适合持续压制。";
+        weapon->slot = EquipmentSlot::WEAPON;
+        weapon->type = WeaponType::STAFF;
+        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE + 2.0f;
+        weapon->attackRange = 90.0f;
+        weapon->attackSpeed = 0.95f;
+        weapon->attackAnimationPrefix = "";
+        weapon->attackFrameCount = 3;
+        weapon->attributeBonus.add(AttributeType::MAX_MP, 30.0f);
+        addToInventory(weapon);
+    }
+
+    // 血契短剑（武器：吸血，随装备等级成长）
+    {
+        auto weapon = std::make_shared<Weapon>();
+        weapon->id = GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD;
+        weapon->name = "血契短剑";
+        weapon->description = "刀刃渴望鲜血。造成伤害会按比例转化为生命回复（随装备等级成长）。";
+        weapon->slot = EquipmentSlot::WEAPON;
+        weapon->type = WeaponType::SWORD;
+        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE + 3.0f;
+        weapon->attackRange = 70.0f;
+        weapon->attackSpeed = 1.05f;
+        weapon->attackAnimationPrefix = "";
+        weapon->attackFrameCount = 3;
+        weapon->attributeBonus.add(AttributeType::STRENGTH, 3.0f);
+        addToInventory(weapon);
+    }
+
     // 皮帽（头盔）
     {
         auto equip = std::make_shared<Equipment>();
-        equip->id = 5101;
+        equip->id = GameConfig::Equipment::Helmet::LEATHER_CAP;
         equip->name = "皮帽";
         equip->description = "简单的皮制头盔";
         equip->slot = EquipmentSlot::HELMET;
@@ -549,10 +726,21 @@ void PlayerCharacter::ensureDefaultInventory()
         addToInventory(equip);
     }
 
+    // 急救面罩（头盔：低血量触发救援，带冷却）
+    {
+        auto equip = std::make_shared<Equipment>();
+        equip->id = GameConfig::Equipment::Helmet::EMERGENCY_MASK;
+        equip->name = "急救面罩";
+        equip->description = "内置应急药剂：生命低于 20% 时将生命抬升到 35%，45 秒冷却。";
+        equip->slot = EquipmentSlot::HELMET;
+        equip->attributeBonus.add(AttributeType::MAX_HP, 10.0f);
+        addToInventory(equip);
+    }
+
     // 皮甲（护甲）
     {
         auto equip = std::make_shared<Equipment>();
-        equip->id = 5102;
+        equip->id = GameConfig::Equipment::Armor::LEATHER_ARMOR;
         equip->name = "皮甲";
         equip->description = "轻便护甲，提供基础防护";
         equip->slot = EquipmentSlot::ARMOR;
@@ -560,14 +748,36 @@ void PlayerCharacter::ensureDefaultInventory()
         addToInventory(equip);
     }
 
+    // 荆棘甲（护甲：反弹部分伤害，随装备等级成长）
+    {
+        auto equip = std::make_shared<Equipment>();
+        equip->id = GameConfig::Equipment::Armor::THORNS_ARMOR;
+        equip->name = "荆棘甲";
+        equip->description = "带刺甲片会反弹部分伤害（带冷却，反伤随装备等级成长）。";
+        equip->slot = EquipmentSlot::ARMOR;
+        equip->attributeBonus.add(AttributeType::DEFENSE, 2.0f);
+        addToInventory(equip);
+    }
+
     // 轻便靴（靴子）
     {
         auto equip = std::make_shared<Equipment>();
-        equip->id = 5103;
+        equip->id = GameConfig::Equipment::Boots::LIGHT_BOOTS;
         equip->name = "轻便靴";
         equip->description = "更轻的鞋子，跑得更快";
         equip->slot = EquipmentSlot::BOOTS;
         equip->attributeBonus.add(AttributeType::MOVE_SPEED, 20.0f);
+        addToInventory(equip);
+    }
+
+    // 追猎之靴（靴子：击杀后短暂加速）
+    {
+        auto equip = std::make_shared<Equipment>();
+        equip->id = GameConfig::Equipment::Boots::HUNTER_BOOTS;
+        equip->name = "追猎之靴";
+        equip->description = "击杀目标后进入亢奋：短时间内移动速度提升。";
+        equip->slot = EquipmentSlot::BOOTS;
+        equip->attributeBonus.add(AttributeType::MOVE_SPEED, 10.0f);
         addToInventory(equip);
     }
 }
@@ -797,6 +1007,181 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     stopActionByTag(PlayerCharacter::ACTION_TAG_ATTACK_ANIM);
     stopActionByTag(PlayerCharacter::ACTION_TAG_SKILL_ANIM);
     _actionLocked = false;
+}
+
+void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool /*wouldDie*/)
+{
+    (void)info;
+
+    if (finalDamage <= 0.0f)
+    {
+        return;
+    }
+
+    // -----------------------------
+    // 装备特效：荆棘甲（反伤）
+    // -----------------------------
+    if (_thornsCooldownRemaining <= 0.0f && attacker && attacker != this && !attacker->isDead())
+    {
+        auto thorns = findEquippedItemById(GameConfig::Equipment::Armor::THORNS_ARMOR);
+        if (thorns)
+        {
+            const int level = std::max(1, thorns->level);
+            float rate = GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_BASE +
+                         GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_PER_LEVEL * static_cast<float>(level - 1);
+            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::ThornsArmor::REFLECT_RATE_MAX));
+
+            float reflect = std::floor(std::max(1.0f, finalDamage * rate));
+            DamageInfo thornDmg;
+            thornDmg.amount = reflect;
+            thornDmg.attacker = nullptr;      // 避免反伤链式触发（不走 attacker 回调）
+            thornDmg.isCritical = false;
+            thornDmg.penetration = 0.0f;
+            thornDmg.causesHitStun = false;   // 反伤不打断，避免“互相锁死”
+            attacker->takeDamage(thornDmg);
+
+            _thornsCooldownRemaining = GameConfig::EquipmentEffect::ThornsArmor::PROC_COOLDOWN;
+        }
+    }
+
+    // -----------------------------
+    // 装备特效：急救面罩（低血量救援）
+    // -----------------------------
+    if (_emergencyMaskCooldownRemaining <= 0.0f && findEquippedItemById(GameConfig::Equipment::Helmet::EMERGENCY_MASK))
+    {
+        auto attr = getAttributeComponent();
+        if (attr && !isDead())
+        {
+            const float maxHp = attr->getAttributeValue(AttributeType::MAX_HP);
+            const float triggerHp = maxHp * GameConfig::EquipmentEffect::EmergencyMask::TRIGGER_HP_RATIO;
+            if (getCurrentHP() <= triggerHp)
+            {
+                const float targetHp = maxHp * GameConfig::EquipmentEffect::EmergencyMask::HEAL_TARGET_HP_RATIO;
+                setCurrentHP(std::max(getCurrentHP(), targetHp));
+                _emergencyMaskCooldownRemaining = GameConfig::EquipmentEffect::EmergencyMask::PROC_COOLDOWN;
+            }
+        }
+    }
+}
+
+void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied)
+{
+    if (!target || target == this)
+    {
+        return;
+    }
+    if (finalDamage <= 0.0f)
+    {
+        return;
+    }
+
+    // -----------------------------
+    // 被动/装备：吸血（按造成伤害回复）
+    // -----------------------------
+    float lifestealRate = 0.0f;
+    if (hasPassiveEquipped(GameConfig::Skill::Passive::BLOODTHIRST))
+    {
+        lifestealRate += GameConfig::Skill::PassiveEffect::BLOODTHIRST_LIFESTEAL;
+    }
+    if (auto weapon = getEquippedWeapon())
+    {
+        if (weapon->id == GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD)
+        {
+            const int level = std::max(1, weapon->level);
+            float rate = GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_BASE +
+                         GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_PER_LEVEL * static_cast<float>(level - 1);
+            rate = std::max(0.0f, std::min(rate, GameConfig::EquipmentEffect::BloodPactSword::LIFESTEAL_MAX));
+            lifestealRate += rate;
+        }
+    }
+    if (lifestealRate > 0.0f && !isDead())
+    {
+        setCurrentHP(getCurrentHP() + finalDamage * lifestealRate);
+    }
+
+    // -----------------------------
+    // 被动/装备：命中附加 DOT（燃烧/中毒）
+    // -----------------------------
+    if (_burnProcCooldownRemaining <= 0.0f)
+    {
+        float chance = 0.0f;
+        if (hasPassiveEquipped(GameConfig::Skill::Passive::EMBER_MARK))
+        {
+            chance = std::max(chance, GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_CHANCE);
+        }
+        if (auto weapon = getEquippedWeapon())
+        {
+            if (weapon->id == GameConfig::Equipment::Weapon::EMBER_STAFF)
+            {
+                chance = std::max(chance, GameConfig::EquipmentEffect::EmberStaff::PROC_CHANCE);
+            }
+        }
+
+        if (chance > 0.0f)
+        {
+            float chancePercent = std::max(0.0f, std::min(chance * 100.0f, 100.0f));
+            if ((rand() % 100) < static_cast<int>(chancePercent))
+            {
+                tryApplyDotStatus(target,
+                                  StatusEffectType::BURNING,
+                                  1,
+                                  GameConfig::StatusEffect::Burning::DURATION_SECONDS,
+                                  GameConfig::StatusEffect::Burning::TICK_INTERVAL_SECONDS,
+                                  GameConfig::StatusEffect::Burning::BASE_DAMAGE_SCALE,
+                                  GameConfig::StatusEffect::Burning::PER_STACK_DAMAGE_SCALE);
+
+                // 冷却：取更严格的那个（避免同帧多段伤害刷屏）
+                float cd = GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_COOLDOWN;
+                if (auto weapon = getEquippedWeapon())
+                {
+                    if (weapon->id == GameConfig::Equipment::Weapon::EMBER_STAFF)
+                    {
+                        cd = std::max(cd, GameConfig::EquipmentEffect::EmberStaff::PROC_COOLDOWN);
+                    }
+                }
+                _burnProcCooldownRemaining = std::max(0.0f, cd);
+            }
+        }
+    }
+
+    if (_poisonProcCooldownRemaining <= 0.0f && hasPassiveEquipped(GameConfig::Skill::Passive::POISON_TOUCH))
+    {
+        float chancePercent = GameConfig::Skill::PassiveEffect::POISON_TOUCH_PROC_CHANCE * 100.0f;
+        chancePercent = std::max(0.0f, std::min(chancePercent, 100.0f));
+        if ((rand() % 100) < static_cast<int>(chancePercent))
+        {
+            tryApplyDotStatus(target,
+                              StatusEffectType::POISONED,
+                              1,
+                              GameConfig::StatusEffect::Poisoned::DURATION_SECONDS,
+                              GameConfig::StatusEffect::Poisoned::TICK_INTERVAL_SECONDS,
+                              GameConfig::StatusEffect::Poisoned::BASE_DAMAGE_SCALE,
+                              GameConfig::StatusEffect::Poisoned::PER_STACK_DAMAGE_SCALE);
+
+            _poisonProcCooldownRemaining = GameConfig::Skill::PassiveEffect::POISON_TOUCH_PROC_COOLDOWN;
+        }
+    }
+
+    // -----------------------------
+    // 被动：暴击缩短冷却（减少所有主动技能剩余 CD）
+    // -----------------------------
+    if (info.isCritical && _critEchoCooldownRemaining <= 0.0f && hasPassiveEquipped(GameConfig::Skill::Passive::CRIT_ECHO))
+    {
+        if (auto comp = getSkillComponent())
+        {
+            comp->reduceAllActiveCooldown(GameConfig::Skill::PassiveEffect::CRIT_ECHO_REDUCE_SECONDS);
+            _critEchoCooldownRemaining = GameConfig::Skill::PassiveEffect::CRIT_ECHO_PROC_COOLDOWN;
+        }
+    }
+
+    // -----------------------------
+    // 装备：击杀加速（追猎之靴）
+    // -----------------------------
+    if (targetDied && findEquippedItemById(GameConfig::Equipment::Boots::HUNTER_BOOTS))
+    {
+        applyExcitedBuff(GameConfig::StatusEffect::Excited::DURATION_SECONDS,
+                         GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
+    }
 }
 
 void PlayerCharacter::useSkill(size_t slotIndex)

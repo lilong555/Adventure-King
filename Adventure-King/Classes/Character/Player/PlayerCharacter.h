@@ -138,6 +138,10 @@ public:
     virtual void attack() override; // 普攻
     /// @brief 受击处理（打断动作/播放受击）
     virtual void takeDamage(const DamageInfo& info) override; // 受击（打断动作/播放受击）
+    /// @brief 造成伤害回调（用于吸血/命中特效/击杀触发等）
+    virtual void onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied) override;
+    /// @brief 受到伤害回调（用于反伤/濒死救援等）
+    virtual void onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDie) override;
     /// @brief 计算攻击力（用于 DOT 等）
     virtual float getAttackPower() override; // 攻击力（用于 DOT 等计算）
     /// @brief 使用技能槽位
@@ -196,6 +200,24 @@ private:
     /// @brief 初始化默认背包物品（用于占位与测试）
     void ensureDefaultInventory();
 
+    // 触发型被动/装备特效的统一更新（条件类被动、冷却计时等）
+    void updateTriggerEffects(float dt);
+    void updateFullHpCritEffect();
+
+    // 查询辅助
+    bool hasPassiveEquipped(int skillId);
+    std::shared_ptr<Equipment> findEquippedItemById(int itemId) const;
+
+    // 特效实现：命中附加 DOT / 击杀加速
+    void tryApplyDotStatus(CharacterBase* target,
+                           StatusEffectType type,
+                           int stacks,
+                           float duration,
+                           float tickInterval,
+                           float baseDamageScale,
+                           float perStackDamageScale);
+    void applyExcitedBuff(float durationSeconds, float moveSpeedBonus);
+
     // 动画管理
     /// @brief 缓存移动动画
     void ensureMoveAnimations();
@@ -252,4 +274,14 @@ private:
     bool _hurtMirrorActive = false;
     bool _hurtDesiredFinalMirror = false; // 期望的最终镜像状态（= scaleX<0 XOR flippedX）
     float _hurtMirrorAbsScaleX = 1.0f;    // 受击期间保持的 |scaleX|
+
+    // ------------------------------------------------------------
+    // 装备/被动“触发型机制”缓存（不入存档）
+    // ------------------------------------------------------------
+    float _burnProcCooldownRemaining = 0.0f;      // 命中燃烧触发冷却
+    float _poisonProcCooldownRemaining = 0.0f;    // 命中中毒触发冷却
+    float _critEchoCooldownRemaining = 0.0f;      // 暴击缩冷却触发冷却
+    float _thornsCooldownRemaining = 0.0f;        // 反伤触发冷却
+    float _emergencyMaskCooldownRemaining = 0.0f; // 急救面罩触发冷却
+    bool _fullHpCritActive = false;               // 满血暴击状态是否已激活
 };
