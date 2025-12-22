@@ -378,21 +378,21 @@ namespace GameConfig
             inline constexpr float PHYSICS_BOX_HEIGHT = 449.0f;
 
             // 动画帧间隔
-            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.12f; // Obscur_attack_1..4
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.20f; // Obscur_attack_1..4
             inline constexpr float USEICE_ANIM_FRAME_DELAY = 0.12f; // Obscur_useice_1..2（循环）
-            inline constexpr float ICE_ANIM_FRAME_DELAY = 0.10f;    // Obscur_ice_1..5
+            inline constexpr float ICE_ANIM_FRAME_DELAY = 0.35f;    // Obscur_ice_1..5
 
-            // 近战命中判定：第 3 帧开始到第 4 帧结束
-            inline constexpr int MELEE_HIT_START_FRAME = 3;
+            // 近战命中判定：第 4 帧开始到第 4 帧结束
+            inline constexpr int MELEE_HIT_START_FRAME = 4;
             inline constexpr int MELEE_HIT_END_FRAME = 4;
-            inline constexpr float MELEE_HITBOX_OFFSET_X = 110.0f;
-            inline constexpr float MELEE_HITBOX_OFFSET_Y = 0.0f;
+            inline constexpr float MELEE_HITBOX_OFFSET_X = 50.0f;
+            inline constexpr float MELEE_HITBOX_OFFSET_Y = 50.0f;
             inline constexpr float MELEE_HITBOX_WIDTH = 50.0f;
             inline constexpr float MELEE_HITBOX_HEIGHT = 135.0f;
 
-            // 远程冰命中判定：冰动画第 2 帧开始到第 3 帧结束
-            inline constexpr int REMOTE_HIT_START_FRAME = 2;
-            inline constexpr int REMOTE_HIT_END_FRAME = 3;
+            // 远程冰命中判定：冰动画第 3 帧开始到第 4 帧结束
+            inline constexpr int REMOTE_HIT_START_FRAME = 3;
+            inline constexpr int REMOTE_HIT_END_FRAME = 4;
             inline constexpr float REMOTE_HITBOX_WIDTH = 50.0f;
             inline constexpr float REMOTE_HITBOX_HEIGHT = 200.0f;
         }
