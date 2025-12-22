@@ -87,10 +87,16 @@
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GobluMonster.cpp">
       <Filter>src\Character\Monster\Monsters</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.cpp">
+      <Filter>src\Character\Monster\Monsters</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp">
       <Filter>src\Character\Monster</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\CombatContactHelper.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\GameInputController.cpp">
@@ -215,10 +221,16 @@
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GobluMonster.h">
       <Filter>src\Character\Monster\Monsters</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.h">
+      <Filter>src\Character\Monster\Monsters</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h">
       <Filter>src\Character\Monster</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\DebugScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\CombatContactHelper.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\GameInputController.h">

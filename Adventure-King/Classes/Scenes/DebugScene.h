@@ -19,13 +19,15 @@
 
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
-#include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfigs.h"
+#include "Scenes/GameInputController.h"
+#include "Scenes/GameUIController.h"
 #include "Character/Base/CharacterData.h"
 #include <memory>
 
 // 前向声明
 class PlayerCharacter;
+class MonsterBase;
 
 //=============================================================================
 // 物理碰撞分类掩码
@@ -49,25 +51,6 @@ class PlayerCharacter;
 //    CATEGORY_ENEMY = 1 << 3,    ///< 敌人/木桩 (0x08)
 //    CATEGORY_ALL = 0xFFFFFFFF   ///< 所有类别
 //};
-
-//=============================================================================
-// 游戏对象结构体定义
-//=============================================================================
-
-/**
- * @brief 木桩（靶子）数据结构
- *
- * 木桩是用于测试攻击系统的静态目标，拥有血量和血条显示。
- * 可以被玩家的普通攻击和技能攻击命中。
- */
-struct TargetDummy
-{
-    cocos2d::Sprite *sprite = nullptr;  ///< 木桩精灵节点
-    float maxHP = 1000.0f;              ///< 最大生命值
-    float currentHP = 1000.0f;          ///< 当前生命值
-    cocos2d::DrawNode *hpBar = nullptr; ///< 血条绘制节点
-    cocos2d::Label *hpLabel = nullptr;  ///< 血量数值显示标签
-};
 
 //=============================================================================
 // DebugScene 类定义
@@ -108,12 +91,12 @@ struct TargetDummy
  *
  * ## 使用快捷键：
  * - A/D：左右移动
+ * - Shift：跑步
  * - W/空格：跳跃
- * - E：丢炸弹
- * - 4：攻击
- * - 1-5：测试按钮快捷键
- * - R：重置角色
- * - ESC：返回地图
+ * - 4/J：普攻
+ * - E/K/Q/R/F：技能槽 0/1/2/3
+ * - 1/2/3/5：调试快捷键（受击/暴击/治疗/升级）
+ * - ESC：暂停菜单（背包/存档等）
  */
 class DebugScene : public cocos2d::Scene
 {
@@ -129,15 +112,32 @@ public:
     static cocos2d::Scene *createScene();
 
     /**
+     * @brief 注册到 LoadingScene 的场景注册表（供 LoadingScene 根据 mapId 创建）
+     * @note 需要在 AppDelegate 启动时调用一次
+     */
+    static void setupRegistry();
+
+    /**
      * @brief 初始化场景
      * @return 初始化是否成功
      */
     virtual bool init() override;
 
+    /**
+     * @brief 析构：在 .cpp 中定义，确保 unique_ptr 释放时类型完整
+     */
+    ~DebugScene() override;
+
     /// cocos2d-x 自动生成 create() 方法
     CREATE_FUNC(DebugScene);
 
 private:
+    /**
+     * @brief 构造函数放在 .cpp 中定义，避免隐式构造函数在头文件中实例化 unique_ptr 的析构逻辑
+     * @note 主要用于解决 Win32/MSVC 下 “can't delete an incomplete type” 的编译错误
+     */
+    DebugScene();
+
     //=========================================================================
     // 初始化方法
     //=========================================================================
@@ -146,6 +146,13 @@ private:
     void initPlayer();         ///< 初始化玩家角色
     void initDebugUI();        ///< 初始化调试UI面板
     void initControlButtons(); ///< 初始化控制按钮
+    void initGameUIController(); ///< 初始化与 GameScene 同款的 UI（暂停/背包/技能栏等）
+    void initInputController(); ///< 初始化与 GameScene 同款的输入控制器
+
+    /// @brief 返回地图选择界面（与 GameScene 行为一致）
+    void returnToMapScene();
+    /// @brief 切换暂停菜单（与 GameScene 行为一致）
+    void togglePauseMenu();
 
     //=========================================================================
     // 主循环更新
@@ -173,7 +180,6 @@ private:
     void onPoisonClicked(cocos2d::Ref *sender);  ///< 添加中毒效果（5秒）
     void onExcitedClicked(cocos2d::Ref *sender); ///< 添加亢奋效果（8秒）
     void onStunnedClicked(cocos2d::Ref *sender); ///< 添加眩晕效果（3秒）
-    void applyPoisonDamage(float dt);            ///< 应用中毒持续伤害
 
     //=========================================================================
     // 装备系统
@@ -201,7 +207,6 @@ private:
     void onLearnPassive2Clicked(cocos2d::Ref *sender); ///< 学习被动2：防御+3
     void onLearnPassive3Clicked(cocos2d::Ref *sender); ///< 学习被动3：满血暴击
     void updatePassiveSkillLabel();                    ///< 更新被动技能UI显示
-    void updateConditionalPassives();                  ///< 更新条件性被动效果
 
     //=========================================================================
     // 输入处理
@@ -209,12 +214,6 @@ private:
 
     void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
     void onKeyReleased(cocos2d::EventKeyboard::KeyCode keyCode, cocos2d::Event *event);
-
-    //=========================================================================
-    // 角色移动与动画
-    //=========================================================================
-
-    void updatePlayerMovement(float dt); ///< 更新玩家移动（物理驱动）
 
     //=========================================================================
     // 物理系统
@@ -236,45 +235,11 @@ private:
      */
     void onContactSeparate(cocos2d::PhysicsContact &contact);
 
-    void jump(); ///< 执行跳跃
-
     //=========================================================================
-    // 攻击系统
+    // 测试怪物
     //=========================================================================
 
-    void onAttackAnimationFinished(); ///< 攻击动画结束回调
-
-    //=========================================================================
-    // 技能系统
-    //=========================================================================
-
-    void initPlayerSkills();         ///< 初始化玩家技能
-    void onSkillAnimationFinished(); ///< 技能动画结束回调
-    void throwBomb();                ///< 释放炸弹技能（入口）
-    void doThrowBomb();              ///< 实际创建并投掷炸弹
-
-    //=========================================================================
-    // 木桩/敌人系统
-    //=========================================================================
-
-    void initTargetDummy(); ///< 初始化测试用木桩
-
-    /**
-     * @brief 对木桩造成伤害
-     * @param damage 伤害值
-     * @param isCrit 是否暴击
-     */
-    void dealDamageToTarget(float damage, bool isCrit = false);
-
-    /**
-     * @brief 显示伤害数字飘字
-     * @param pos 显示位置
-     * @param damage 伤害值
-     * @param isCrit 是否暴击（影响显示颜色和大小）
-     */
-    void showDamageNumber(const cocos2d::Vec2 &pos, float damage, bool isCrit = false);
-
-    void updateTargetHPBar(); ///< 更新木桩血条显示
+    void initTestMonsters(); ///< 初始化测试用怪物（用于验证命中/受击/状态效果）
 
     //=========================================================================
     // 日志系统
@@ -288,33 +253,10 @@ private:
     //=========================================================================
 
     PlayerCharacter *_player = nullptr; ///< 玩家角色实例
-
-    //=========================================================================
-    // 成员变量 - 移动状态
-    //=========================================================================
-
-    bool _isMovingLeft = false;           ///< 是否正在向左移动
-    bool _isMovingRight = false;          ///< 是否正在向右移动
-    bool _isRunPressed = false;           ///< 是否按下跑步键（Shift）
-    float _moveSpeed = 200.0f;            ///< 基础移动速度（像素/秒）
-
-    //=========================================================================
-    // 成员变量 - 战斗状态
-    //=========================================================================
-
-    bool _isAttacking = false;    ///< 是否正在执行攻击动画
-    bool _isCastingSkill = false; ///< 是否正在施放技能
-
-    //=========================================================================
-    // 成员变量 - 物理系统
-    //=========================================================================
-
-    bool _isGrounded = false;    ///< 是否在地面上（通过碰撞检测更新）
-    int _groundContactCount = 0; ///< 与地面接触的计数（处理多平台边缘情况）
-    int _jumpCount = 0;          ///< 当前空中已跳次数（落地重置）
-
-    /// 跳跃冲量（数值越大跳得越高）
-    static constexpr float JUMP_IMPULSE = GameConfig::Debug::JUMP_IMPULSE;
+    MonsterBase *_boss = nullptr; ///< Boss（用于对齐 GameScene 的 Boss UI 解绑逻辑）
+    std::unique_ptr<GameInputController> _inputController; ///< 与 GameScene 同款输入控制器
+    std::unique_ptr<GameUIController> _uiController; ///< 与 GameScene 同款 UI 编排
+    bool _isPaused = false; ///< 是否暂停（由 GameUIController 回调维护）
 
     /// 地面Y坐标基准线
     static constexpr float GROUND_Y = GameConfig::Debug::GROUND_Y;
@@ -323,30 +265,10 @@ private:
     std::vector<cocos2d::Rect> _platforms;
 
     //=========================================================================
-    // 成员变量 - 炸弹系统
+    // 成员变量 - 测试怪物
     //=========================================================================
 
-    std::vector<Bomb> _bombs; ///< 当前场景中的炸弹列表
-
-    static constexpr float BOMB_THROW_SPEED_X = GameConfig::Bomb::THROW_SPEED_X;   ///< 炸弹水平初速度
-    static constexpr float BOMB_THROW_SPEED_Y = GameConfig::Bomb::THROW_SPEED_Y;   ///< 炸弹垂直初速度
-    static constexpr float BOMB_DAMAGE = GameConfig::Bomb::BASE_DAMAGE;            ///< 炸弹基础伤害
-    static constexpr float BOMB_EXPLOSION_RADIUS = GameConfig::Bomb::EXPLOSION_RADIUS; ///< 爆炸范围半径
-
-    //=========================================================================
-    // 成员变量 - 技能配置
-    //=========================================================================
-
-    static constexpr size_t BOMB_SKILL_SLOT = GameConfig::Skill::SLOT_BOMB;       ///< 炸弹技能所在槽位索引
-    static constexpr int BOMB_SKILL_ID = GameConfig::Bomb::BOMB_ID;               ///< 炸弹技能唯一ID
-    static constexpr float BOMB_SKILL_MP_COST = GameConfig::Bomb::BOMB_MP;        ///< 炸弹技能MP消耗
-    static constexpr float BOMB_SKILL_COOLDOWN = GameConfig::Bomb::BOMB_CD;       ///< 炸弹技能冷却时间（秒）
-
-    //=========================================================================
-    // 成员变量 - 木桩（测试靶子）
-    //=========================================================================
-
-    TargetDummy _targetDummy; ///< 测试用木桩实例
+    std::vector<MonsterBase*> _testMonsters; ///< 测试用怪物列表（由场景持有）
 
     //=========================================================================
     // 成员变量 - UI标签
@@ -374,8 +296,6 @@ private:
     // 成员变量 - 状态效果
     //=========================================================================
 
-    bool _isPoisoned = false; ///< 中毒状态标记（用于持续伤害计时）
-
     //=========================================================================
     // 成员变量 - 装备系统
     //=========================================================================
@@ -391,9 +311,6 @@ private:
     std::shared_ptr<PassiveSkill> _passiveSkill1; ///< 被动技能1：力量精通
     std::shared_ptr<PassiveSkill> _passiveSkill2; ///< 被动技能2：铁壁
     std::shared_ptr<PassiveSkill> _passiveSkill3; ///< 被动技能3：满血暴击
-
-    bool _hasFullHpCritPassive = false; ///< 是否已学习满血暴击被动
-    bool _isFullHpCritActive = false;   ///< 满血暴击效果是否激活中
 
     //=========================================================================
     // 成员变量 - 日志系统

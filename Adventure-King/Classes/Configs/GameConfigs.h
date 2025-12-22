@@ -429,7 +429,7 @@ namespace GameConfig
     namespace Scene
     {
         const char *const DEFAULT_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
-        const char *const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png";
+        const char *const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/default/spr_klee_run.png";
         const char *const MAP_LOAD_FAILED_TEXT = " - Map Load Failed";
         // 场景切换
         inline constexpr float TRANSITION_DURATION = 0.5f;

@@ -19,6 +19,8 @@
 #include "Configs/GamePhysicsCategory.h"
 #include "Configs/GameConfigs.h"
 #include "Configs/GameSceneConfig.h"
+#include "Scenes/GameInputController.h"
+#include "Scenes/GameUIController.h"
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -28,8 +30,6 @@
 class PlayerCharacter;
 class MonsterBase;
 class LevelMap;
-class GameUIController;
-class GameInputController;
 
 // ============================================================
 // GameScene 基类

@@ -40,6 +40,9 @@ public:
     void onGroundContactBegin(float normalY);
     void onGroundContactEnd(float normalY);
 
+    /// @brief 强制同步移动动画（用于非键盘触发的攻击/技能回调）
+    void resyncMoveAnimation();
+
 private:
     /// @brief 处理跳跃逻辑
     void handleJump();

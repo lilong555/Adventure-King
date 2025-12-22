@@ -14,6 +14,7 @@
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"
+#include "Scenes/CombatContactHelper.h"
 #include "Scenes/LevelMap.h"
 #include "Character/Base/CharacterBase.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
@@ -232,29 +233,7 @@ void GameScene::initPhysicsContactListener()
     auto contactListener = EventListenerPhysicsContact::create();
     contactListener->onContactBegin = CC_CALLBACK_1(GameScene::onContactBegin, this);
 
-    contactListener->onContactPreSolve = [](PhysicsContact &contact, PhysicsContactPreSolve &solve) -> bool
-    {
-        auto nodeA = contact.getShapeA()->getBody()->getNode();
-        auto nodeB = contact.getShapeB()->getBody()->getNode();
-        if (!nodeA || !nodeB)
-            return true;
-
-        int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
-        int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
-
-        bool playerInvolved = (categoryA & ToMask(GamePhysicsCategory::PLAYER)) || (categoryB & ToMask(GamePhysicsCategory::PLAYER));
-        bool platformInvolved =
-            (categoryA & ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION)) ||
-            (categoryB & ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION));
-
-        if (playerInvolved && platformInvolved)
-        {
-            solve.setRestitution(0.0f);
-            solve.setFriction(0.0f);
-        }
-
-        return true;
-    };
+    contactListener->onContactPreSolve = CombatContactHelper::handleContactPreSolve;
 
     contactListener->onContactSeparate = CC_CALLBACK_1(GameScene::onContactSeparate, this);
     _eventDispatcher->addEventListenerWithSceneGraphPriority(contactListener, this);
@@ -480,179 +459,12 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
 
 bool GameScene::onContactBegin(PhysicsContact &contact)
 {
-    auto nodeA = contact.getShapeA()->getBody()->getNode();
-    auto nodeB = contact.getShapeB()->getBody()->getNode();
-    auto bodyA = contact.getShapeA()->getBody();
-    auto bodyB = contact.getShapeB()->getBody();
-
-    if (!nodeA || !nodeB)
-        return true;
-
-    auto getWorldPos = [](Node* node) -> Vec2 {
-        if (!node)
-        {
-            return Vec2::ZERO;
-        }
-        auto parent = node->getParent();
-        return parent ? parent->convertToWorldSpace(node->getPosition()) : node->getPosition();
-    };
-
-    int categoryA = bodyA->getCategoryBitmask();
-    int categoryB = bodyB->getCategoryBitmask();
-
-    // 玩家与平台/碰撞体的接触（用于跳跃/落地判定）
-    bool playerIsA = (categoryA & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-    bool playerIsB = (categoryB & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-    bool platformContact =
-        (playerIsA && ((categoryB & ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION)) != 0)) ||
-        (playerIsB && ((categoryA & ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION)) != 0));
-
-    if (platformContact && _inputController)
-    {
-        if (auto contactData = contact.getContactData())
-        {
-            Vec2 normal = contactData->normal;
-            if (playerIsB)
-            {
-                normal = -normal;
-            }
-            _inputController->onGroundContactBegin(normal.y);
-        }
-    }
-
-    // ============================================================
-    // 战斗：怪物攻击 -> 玩家
-    // ============================================================
-    bool monsterAttackVsPlayer =
-        ((categoryA & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) != 0 && (categoryB & ToMask(GamePhysicsCategory::PLAYER)) != 0) ||
-        ((categoryB & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) != 0 && (categoryA & ToMask(GamePhysicsCategory::PLAYER)) != 0);
-
-    if (monsterAttackVsPlayer)
-    {
-        auto attackBody = ((categoryA & ToMask(GamePhysicsCategory::MONSTER_ATTACK)) != 0) ? bodyA : bodyB;
-        auto playerNode = ((categoryA & ToMask(GamePhysicsCategory::PLAYER)) != 0) ? nodeA : nodeB;
-        auto player = dynamic_cast<CharacterBase *>(playerNode);
-
-        if (player && !player->isDead())
-        {
-            float rawDamage = static_cast<float>(attackBody->getTag());
-            if (rawDamage <= 0.0f)
-            {
-                rawDamage = 1.0f;
-            }
-
-            DamageInfo dmg{};
-            dmg.amount = rawDamage;
-            if (auto attackNode = attackBody->getNode())
-            {
-                dmg.attacker = dynamic_cast<CharacterBase *>(attackNode->getUserObject());
-                // 记录命中位置（世界坐标），用于受击方向判断
-                dmg.hitWorldPos = getWorldPos(attackNode);
-                dmg.hasHitWorldPos = true;
-            }
-
-            // 避免在物理回调中直接修改角色/物理状态（可能导致物理引擎内部状态被破坏）。
-            // 延迟到下一帧执行伤害结算。
-            std::string key = StringUtils::format("defer_monster_dmg_%p_%p",
-                                                  static_cast<void*>(attackBody),
-                                                  static_cast<void*>(player));
-            player->scheduleOnce(
-                [player, dmg](float)
-                {
-                    if (!player || player->isDead())
-                    {
-                        return;
-                    }
-                    player->takeDamage(dmg);
-                },
-                0.0f,
-                key);
-        }
-    }
-
-    // ============================================================
-    // 战斗：玩家攻击 -> 怪物（近战/判定框）
-    // 注：投掷物/爆炸由投掷物逻辑处理
-    // ============================================================
-    bool playerAttackVsMonster =
-        ((categoryA & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0 && (categoryB & ToMask(GamePhysicsCategory::MONSTER)) != 0) ||
-        ((categoryB & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0 && (categoryA & ToMask(GamePhysicsCategory::MONSTER)) != 0);
-
-    if (playerAttackVsMonster)
-    {
-        auto attackBody = ((categoryA & ToMask(GamePhysicsCategory::PLAYER_ATTACK)) != 0) ? bodyA : bodyB;
-        auto monsterNode = ((categoryA & ToMask(GamePhysicsCategory::MONSTER)) != 0) ? nodeA : nodeB;
-        auto monster = dynamic_cast<CharacterBase *>(monsterNode);
-
-        if (monster && !monster->isDead())
-        {
-            float rawDamage = static_cast<float>(attackBody->getTag());
-            if (rawDamage > 0.0f)
-            {
-                DamageInfo dmg{};
-                dmg.amount = rawDamage;
-                dmg.attacker = _player;
-                if (auto attackNode = attackBody->getNode())
-                {
-                    // 记录命中位置（世界坐标），用于受击方向判断
-                    dmg.hitWorldPos = getWorldPos(attackNode);
-                    dmg.hasHitWorldPos = true;
-                }
-
-                // 避免在物理回调中直接修改角色/物理状态（可能导致物理引擎内部状态被破坏）。
-                // 延迟到下一帧执行伤害结算。
-                std::string key = StringUtils::format("defer_player_dmg_%p_%p",
-                                                      static_cast<void*>(attackBody),
-                                                      static_cast<void*>(monster));
-                monster->scheduleOnce(
-                    [monster, dmg](float)
-                    {
-                        if (!monster || monster->isDead())
-                        {
-                            return;
-                        }
-                        monster->takeDamage(dmg);
-                    },
-                    0.0f,
-                    key);
-            }
-        }
-    }
-
-    return true;
+    return CombatContactHelper::handleContactBegin(contact, _player, _inputController.get());
 }
 
 void GameScene::onContactSeparate(PhysicsContact &contact)
 {
-    if (!_inputController)
-        return;
-
-    auto nodeA = contact.getShapeA()->getBody()->getNode();
-    auto nodeB = contact.getShapeB()->getBody()->getNode();
-    if (!nodeA || !nodeB)
-        return;
-
-    int categoryA = contact.getShapeA()->getBody()->getCategoryBitmask();
-    int categoryB = contact.getShapeB()->getBody()->getCategoryBitmask();
-
-    bool playerIsA = (categoryA & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-    bool playerIsB = (categoryB & ToMask(GamePhysicsCategory::PLAYER)) != 0;
-    bool platformContact =
-        (playerIsA && ((categoryB & ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION)) != 0)) ||
-        (playerIsB && ((categoryA & ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION)) != 0));
-
-    if (!platformContact)
-        return;
-
-    if (auto contactData = contact.getContactData())
-    {
-        Vec2 normal = contactData->normal;
-        if (playerIsB)
-        {
-            normal = -normal;
-        }
-        _inputController->onGroundContactEnd(normal.y);
-    }
+    CombatContactHelper::handleContactSeparate(contact, _inputController.get());
 }
 
 void GameScene::update(float dt)
@@ -716,6 +528,4 @@ void GameScene::showMapLoadFailedUI()
         addChild(titleLabel, 1);
     }
 }
-
-
 

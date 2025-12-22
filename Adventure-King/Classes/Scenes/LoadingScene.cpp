@@ -213,6 +213,7 @@ void LoadingScene::finishPreload()
     ParticlePreloadHelper::preloadCommonParticles();
 
     auto info = SceneRegistry::getInstance()->getSceneInfo(_mapId);
+    Scene* destinationScene = nullptr;
 
     if (info) {
         // 1. 执行注册好的预热回调 (AnimationCache 等)
@@ -222,25 +223,33 @@ void LoadingScene::finishPreload()
 
         // 2. 使用工厂方法创建目标场景
         if (info->creator) {
-            auto destinationScene = info->creator();
-            if (destinationScene)
-            {
-                // 延迟到 TransitionScene 结束后再切，避免嵌套 replaceScene 导致崩溃
-                if (_pendingDestinationScene)
-                {
-                    _pendingDestinationScene->release();
-                }
-                _pendingDestinationScene = destinationScene;
-                _pendingDestinationScene->retain();
-                tryReplacePendingScene();
-                return;
-            }
-            return;
+            destinationScene = info->creator();
         }
     }
 
+    if (destinationScene)
+    {
+        // 延迟到 TransitionScene 结束后再切，避免嵌套 replaceScene 导致崩溃
+        if (_pendingDestinationScene)
+        {
+            _pendingDestinationScene->release();
+        }
+        _pendingDestinationScene = destinationScene;
+        _pendingDestinationScene->retain();
+        tryReplacePendingScene();
+        return;
+    }
+
     // 容错处理：如果注册表中没找到，回退到默认
-    CCLOG("Error: MapID %d not found in registry!", _mapId);
+    if (!info)
+    {
+        CCLOG("Error: MapID %d not found in registry!", _mapId);
+    }
+    else
+    {
+        CCLOG("Error: MapID %d create scene failed (creator is %s)", _mapId, info->creator ? "set" : "null");
+    }
+
     auto fallback = MapScene::createScene();
     if (fallback)
     {

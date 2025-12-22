@@ -16,7 +16,7 @@ USING_NS_CC;
 
 namespace
 {
-    const char *const PLACEHOLDER_ICON_PATH = "Sprites/Characters/Player/Klee/defalt/TNT.png";
+    const char *const PLACEHOLDER_ICON_PATH = "Sprites/Characters/Player/Klee/default/TNT.png";
     const char *const UI_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
     // 设计分辨率（截图为 2560x1440）：所有布局基于该坐标系，再整体缩放适配不同分辨率
     constexpr float DESIGN_WIDTH = 2560.0f;

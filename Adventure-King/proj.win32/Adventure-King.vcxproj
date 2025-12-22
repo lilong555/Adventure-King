@@ -166,6 +166,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GoblinMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GobluMonster.cpp" />
+    <ClCompile Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
     <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp" />
     <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp" />
@@ -180,6 +181,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
     <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
+    <ClCompile Include="..\Classes\Scenes\CombatContactHelper.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameInputController.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameUIController.cpp" />
@@ -211,6 +213,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h" />
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GoblinMonster.h" />
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GobluMonster.h" />
+    <ClInclude Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.h" />
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
     <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h" />
@@ -223,6 +226,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h" />
     <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h" />
     <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h" />
+    <ClInclude Include="..\Classes\Scenes\CombatContactHelper.h" />
     <ClInclude Include="..\Classes\Scenes\LevelScenes\MysteryForestScene.h" />
     <ClInclude Include="..\Classes\Scenes\LevelScenes\OriginMushroomScene.h" />
     <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
