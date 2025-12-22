@@ -16,6 +16,7 @@
 #include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"
 #include "Scenes/CombatContactHelper.h"
+#include "Scenes/GamePauseHelper.h"
 #include "Scenes/LevelMap.h"
 #include "Character/Base/CharacterBase.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
@@ -289,7 +290,7 @@ void GameScene::initUIController()
         [this]()
         { returnToMapScene(); },
         [this](bool paused)
-        { _isPaused = paused; },
+        { setGamePaused(paused); },
         [this]()
         {
             return _levelMap && _player && _levelMap->isPointAtGate(_player->getPosition());
@@ -415,6 +416,17 @@ void GameScene::togglePauseMenu()
     {
         _uiController->togglePauseMenu();
     }
+}
+
+void GameScene::setGamePaused(bool paused)
+{
+    if (_isPaused == paused)
+    {
+        return;
+    }
+
+    _isPaused = paused;
+    GamePauseHelper::setWorldPaused(this, _gameLayer, paused, _cachedPhysicsAutoStep, _cachedPhysicsSpeed);
 }
 
 float GameScene::getEnemySpawnViewDistance() const
