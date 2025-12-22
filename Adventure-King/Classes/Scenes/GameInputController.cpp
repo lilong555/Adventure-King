@@ -263,3 +263,8 @@ void GameInputController::resumeMoveAnimationIfIdle()
 
     _player->setMoving(_movingLeft || _movingRight, _runPressed);
 }
+
+void GameInputController::resyncMoveAnimation()
+{
+    resumeMoveAnimationIfIdle();
+}

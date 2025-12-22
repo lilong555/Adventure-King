@@ -180,6 +180,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
     <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
+    <ClCompile Include="..\Classes\Scenes\CombatContactHelper.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameInputController.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameUIController.cpp" />
@@ -223,6 +224,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h" />
     <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h" />
     <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h" />
+    <ClInclude Include="..\Classes\Scenes\CombatContactHelper.h" />
     <ClInclude Include="..\Classes\Scenes\LevelScenes\MysteryForestScene.h" />
     <ClInclude Include="..\Classes\Scenes\LevelScenes\OriginMushroomScene.h" />
     <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />

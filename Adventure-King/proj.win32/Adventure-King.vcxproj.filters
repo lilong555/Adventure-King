@@ -93,6 +93,9 @@
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\CombatContactHelper.cpp">
+      <Filter>src\Scenes</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Scenes\GameInputController.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
@@ -219,6 +222,9 @@
       <Filter>src\Character\Monster</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\DebugScene.h">
+      <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\CombatContactHelper.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\GameInputController.h">
