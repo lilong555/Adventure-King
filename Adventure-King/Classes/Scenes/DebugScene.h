@@ -20,13 +20,13 @@
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
 #include "Configs/GameConfigs.h"
+#include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"
 #include "Character/Base/CharacterData.h"
 #include <memory>
 
 // 前向声明
 class PlayerCharacter;
-class GameInputController;
 class MonsterBase;
 
 //=============================================================================
