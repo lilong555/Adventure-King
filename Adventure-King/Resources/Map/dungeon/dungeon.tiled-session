@@ -1,0 +1,46 @@
+{
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "E:/aaaa/images/dungeon/2.tsx": {
+            "scaleInDock": 0.125,
+            "scaleInEditor": 1
+        },
+        "E:/aaaa/images/dungeon/3.tsx": {
+            "scaleInDock": 0.125,
+            "scaleInEditor": 1
+        },
+        "E:/aaaa/images/dungeon/4.tsx": {
+            "scaleInDock": 0.125,
+            "scaleInEditor": 1
+        },
+        "E:/aaaa/images/dungeon/dungeon_1.tsx": {
+            "scaleInDock": 0.125,
+            "scaleInEditor": 0.25
+        },
+        "dungeon.tmx": {
+            "scale": 0.25,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 3616,
+                "y": 806
+            }
+        }
+    },
+    "openFiles": [
+        "E:/aaaa/images/dungeon/dungeon_1.tsx",
+        "E:/aaaa/images/dungeon/2.tsx",
+        "E:/aaaa/images/dungeon/3.tsx",
+        "E:/aaaa/images/dungeon/4.tsx",
+        "dungeon.tmx"
+    ],
+    "project": "dungeon.tiled-project",
+    "recentFiles": [
+        "E:/aaaa/images/dungeon/dungeon_1.tsx",
+        "E:/aaaa/images/dungeon/2.tsx",
+        "E:/aaaa/images/dungeon/3.tsx",
+        "E:/aaaa/images/dungeon/4.tsx",
+        "dungeon.tmx"
+    ]
+}

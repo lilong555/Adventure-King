@@ -362,6 +362,10 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
         {
             targetScene = MysteryForestScene::createScene();
         }
+        else if (sceneName == "冒险王之家")
+        {
+            targetScene = HomeScene::createScene();
+        }
         else
         {
             CCLOG("HelloWorld - 未知的场景名称: %s，跳转到地图选择", sceneName.c_str());

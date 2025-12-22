@@ -10,6 +10,7 @@
 
 #include "GameScene.h"
 #include "MapScene.h"
+#include "HomeScene.h"
 #include"Scenes/LevelScenes/OriginMushroomScene.h"
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/GameInputController.h"
@@ -307,6 +308,10 @@ void GameScene::initUIController()
             else if (sceneName == "神秘之森")
             {
                 targetScene = MysteryForestScene::createScene();
+            }
+            else if (sceneName == "冒险王之家")
+            {
+                targetScene = HomeScene::createScene();
             }
             else
             {

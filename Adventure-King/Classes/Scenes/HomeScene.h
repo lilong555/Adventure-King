@@ -1,23 +1,24 @@
-#ifndef __GAMESCENE_H__
-#define __GAMESCENE_H__
+#ifndef __HOME_SCENE_H__
+#define __HOME_SCENE_H__
 
-#include "cocos2d.h"
+#include "Scenes/GameScene.h"
 
-class HomeScene : public cocos2d::Scene
+class HomeScene : public GameScene
 {
 public:
     // 静态创建方法：用于生成场景实例
     static cocos2d::Scene *createScene();
 
     // 初始化方法：用于设置场景内容
-    virtual bool init();
-    // 返回主菜单回调
-    void menuReturnCallback(Ref *pSender);
+    virtual bool init() override;
     // 创建宏
     CREATE_FUNC(HomeScene);
 
-private:
-    // 可以在这里添加游戏逻辑或变量
+protected:
+    // 关卡名（用于 UI 显示与存档标识）
+    virtual std::string getLevelName() const override { return "冒险王之家"; }
+    // 关卡配置
+    virtual LevelConfig getLevelConfig() const override;
 };
 
-#endif // __GAMESCENE_H__
+#endif // __HOME_SCENE_H__

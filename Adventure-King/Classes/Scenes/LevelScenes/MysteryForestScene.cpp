@@ -14,43 +14,24 @@ Scene* MysteryForestScene::createScene()
 LevelConfig MysteryForestScene::getLevelConfig() const
 {
     LevelConfig config;
-    config.tmxMapPath = "";
+    config.tmxMapPath = "Map/dungeon/dungeon.tmx";
     config.backgroundPath = "";
-    config.gravity = -800.0f;
+    config.collisionLayerName = "collisions";
+    config.bornLayerName = "born";
+    config.gateLayerName = "gate";
+    config.gravity = -1000.0f;
     config.enablePhysicsDebug = false;
     return config;
 }
 
 bool MysteryForestScene::init()
 {
-    if (!GameScene::init())
+    LevelConfig config = getLevelConfig();
+    if (!initWithPhysicsConfig(config))
     {
         return false;
     }
-
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    auto origin = Director::getInstance()->getVisibleOrigin();
-    Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
-
-    auto titleLabel = Label::createWithTTF(getLevelName(), GameConfig::Scene::DEFAULT_FONT_PATH, 72);
-    if (titleLabel)
-    {
-        titleLabel->setPosition(center);
-        titleLabel->setColor(Color3B::WHITE);
-        addChild(titleLabel, 1);
-    }
-
-    auto hintLabel = Label::createWithTTF("Click map button to return", GameConfig::Scene::DEFAULT_FONT_PATH, 32);
-    if (hintLabel)
-    {
-        hintLabel->setPosition(Vec2(center.x, center.y - 80));
-        hintLabel->setColor(Color3B(200, 200, 200));
-        addChild(hintLabel, 1);
-    }
-
-    initUIController();
-
-    CCLOG("MysteryForestScene initialized (placeholder)");
+    CCLOG("MysteryForestScene initialized");
     return true;
 }
 
@@ -62,9 +43,13 @@ void MysteryForestScene::setupRegistry()
     info.creator = []()
     { return MysteryForestScene::createScene(); };
 
-    // 2. 资源列表（占位关卡先保持最小集合）
+    // 2. 资源列表（神秘之森：地牢 tileset）
     info.imagePaths = {
         // 粒子特效使用 plist 内嵌纹理，不需要预加载 particle_texture.png
+        "Map/dungeon/1.png",
+        "Map/dungeon/2.png",
+        "Map/dungeon/3.png",
+        "Map/dungeon/4.png",
     };
 
     SceneRegistry::getInstance()->registerScene(2, info);

@@ -3,6 +3,7 @@
 # ========================
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
 
 # ========================
 # VS Code 配置文件 (本机特定)
