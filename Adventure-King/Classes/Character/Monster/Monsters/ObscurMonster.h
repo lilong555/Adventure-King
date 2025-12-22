@@ -39,11 +39,5 @@ private:
     // 获取目标“脚下居中”的父节点坐标（用于远程冰锁定落点）
     cocos2d::Vec2 getTargetBottomCenterPosInParentSpace() const;
 
-    // 在指定位置生成一次性命中判定框
-    cocos2d::Node* spawnHitboxAt(const cocos2d::Vec2& centerPosInParentSpace,
-                                 const cocos2d::Size& hitboxSize,
-                                 int damageTag,
-                                 float lifeSeconds);
-
     cocos2d::Animate* _meleeAttackAnimate = nullptr;
 };

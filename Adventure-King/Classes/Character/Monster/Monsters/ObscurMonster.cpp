@@ -393,7 +393,7 @@ void ObscurMonster::performRemoteAttack()
     auto remoteSequence = Sequence::create(
         DelayTime::create(hitStartTime),
         CallFunc::create([this, hitboxCenter, hitboxSize, damageTag, hitDuration]()
-                         { this->spawnHitboxAt(hitboxCenter, hitboxSize, std::max(1, damageTag), hitDuration); }),
+                         { this->spawnAttackHitboxAt(hitboxCenter, hitboxSize, std::max(1, damageTag), hitDuration, 999); }),
         // 远程攻击总时长：对齐冰动画时长，结束后恢复状态并停止 useice 循环
         DelayTime::create(finishDelay),
         CallFunc::create([this]()
@@ -427,39 +427,4 @@ Vec2 ObscurMonster::getTargetBottomCenterPosInParentSpace() const
     pos.x += (0.5f - anchor.x) * scaledWidth;
     pos.y += (0.0f - anchor.y) * scaledHeight;
     return pos;
-}
-
-Node* ObscurMonster::spawnHitboxAt(const Vec2& centerPosInParentSpace,
-                                  const Size& hitboxSize,
-                                  int damageTag,
-                                  float lifeSeconds)
-{
-    auto parent = getParent();
-    if (!parent)
-    {
-        return nullptr;
-    }
-
-    auto hitboxNode = Node::create();
-    hitboxNode->setPosition(centerPosInParentSpace);
-    hitboxNode->setContentSize(hitboxSize);
-    hitboxNode->setAnchorPoint(Vec2(0.5f, 0.5f));
-    hitboxNode->setUserObject(this);
-    parent->addChild(hitboxNode, 999);
-
-    auto body = PhysicsBody::createBox(hitboxSize);
-    body->setDynamic(false);
-    body->setGravityEnable(false);
-    body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
-    body->setCategoryBitmask(ToMask(GamePhysicsCategory::MONSTER_ATTACK));
-    body->setCollisionBitmask(0);
-    body->setTag(damageTag);
-    hitboxNode->setPhysicsBody(body);
-
-    hitboxNode->runAction(Sequence::create(
-        DelayTime::create(std::max(0.0f, lifeSeconds)),
-        RemoveSelf::create(),
-        nullptr));
-
-    return hitboxNode;
 }
