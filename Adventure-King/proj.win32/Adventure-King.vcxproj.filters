@@ -186,6 +186,9 @@
     <ClCompile Include="..\Classes\Character\components\StatusEffectVfxComponent.cpp">
       <Filter>src\Character\components</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\components\EquipmentComponent.cpp">
+      <Filter>src\Character\components</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -324,6 +327,9 @@
       <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\components\StatusEffectVfxComponent.h">
+      <Filter>src\Character\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\components\EquipmentComponent.h">
       <Filter>src\Character\components</Filter>
     </ClInclude>
   </ItemGroup>

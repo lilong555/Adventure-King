@@ -159,6 +159,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\AppDelegate.cpp" />
     <ClCompile Include="..\Classes\Character\Base\CharacterBase.cpp" />
     <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp" />
+    <ClCompile Include="..\Classes\Character\components\EquipmentComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\SkillComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\StateMachineComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\StatusEffectVfxComponent.cpp" />
@@ -203,6 +204,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Base\CharacterBase.h" />
     <ClInclude Include="..\Classes\Character\Base\CharacterData.h" />
     <ClInclude Include="..\Classes\Character\components\AttributeComponent.h" />
+    <ClInclude Include="..\Classes\Character\components\EquipmentComponent.h" />
     <ClInclude Include="..\Classes\Character\components\SkillComponent.h" />
     <ClInclude Include="..\Classes\Character\components\StateMachineComponent.h" />
     <ClInclude Include="..\Classes\Character\components\StatusEffectVfxComponent.h" />
