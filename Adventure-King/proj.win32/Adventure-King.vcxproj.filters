@@ -58,6 +58,9 @@
     <Filter Include="src\Configs">
       <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Utils">
+      <UniqueIdentifier>{8d0e40b6-10c9-4b5a-a1b5-9f5b3f6b2c33}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Scenes\LevelScenes">
       <UniqueIdentifier>{49342bb6-151c-4a1b-9b8c-d9af38d23459}</UniqueIdentifier>
     </Filter>
@@ -125,6 +128,9 @@
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\MapScene.cpp">
       <Filter>src\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Utils\ImeHelper.cpp">
+      <Filter>src\Utils</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\LevelMap.cpp">
       <Filter>src\Scenes</Filter>
@@ -262,6 +268,9 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\MapScene.h">
       <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Utils\ImeHelper.h">
+      <Filter>src\Utils</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\GameUIController.h">
       <Filter>src\Scenes</Filter>

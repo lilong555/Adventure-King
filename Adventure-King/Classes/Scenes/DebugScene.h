@@ -122,6 +122,10 @@ public:
      * @return 初始化是否成功
      */
     virtual bool init() override;
+    /// @brief 场景进入：禁用输入法（IME），避免抢输入
+    virtual void onEnter() override;
+    /// @brief 场景退出：恢复输入法（IME）
+    virtual void onExit() override;
 
     /**
      * @brief 析构：在 .cpp 中定义，确保 unique_ptr 释放时类型完整

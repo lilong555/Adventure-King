@@ -7,6 +7,7 @@
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include"Managers/MusicManager.h"
 #include "Utils/ParticlePreloadHelper.h"
+#include "Utils/ImeHelper.h"
 #include "2d/CCTransition.h"
 #include <algorithm>
 #include <unordered_set>
@@ -57,6 +58,18 @@ bool LoadingScene::init()
         return false;
     }
     return true;
+}
+
+void LoadingScene::onEnter()
+{
+    Scene::onEnter();
+    ImeHelper::pushDisableIme();
+}
+
+void LoadingScene::onExit()
+{
+    ImeHelper::popDisableIme();
+    Scene::onExit();
 }
 
 bool LoadingScene::initWithMapId(int mapId)

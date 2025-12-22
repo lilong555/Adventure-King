@@ -27,6 +27,7 @@
 #include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
+#include "Utils/ImeHelper.h"
 #include <algorithm>
 #include <cctype>
 #include <memory>
@@ -60,6 +61,18 @@ bool GameScene::init()
     }
 
     return true;
+}
+
+void GameScene::onEnter()
+{
+    Scene::onEnter();
+    ImeHelper::pushDisableIme();
+}
+
+void GameScene::onExit()
+{
+    ImeHelper::popDisableIme();
+    Scene::onExit();
 }
 
 bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
