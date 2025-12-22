@@ -94,7 +94,8 @@ bool DebugScene::init()
 
     // 配置物理世界参数
     auto physicsWorld = this->getPhysicsWorld();
-    physicsWorld->setGravity(Vec2(0, -1000.0f)); // 与关卡默认重力保持一致
+    const float gravityY = LevelConfig{}.gravity; // 关卡默认重力（见 Configs/GameSceneConfig.h）
+    physicsWorld->setGravity(Vec2(0, gravityY));
 
     // 开启物理调试绘制（开发时可视化碰撞体，发布时应关闭）
     physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
@@ -264,7 +265,7 @@ void DebugScene::initPlayer()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // 玩家初始位置：屏幕中央、地面上方（最终 Y 会用角色高度修正）
+    // 玩家初始位置：屏幕中央、地面上方（用于创建失败占位符；创建成功后会按角色高度修正 Y）
     Vec2 startPos(origin.x + visibleSize.width * 0.5f, origin.y + GROUND_Y + 40.0f);
 
     // 创建玩家角色（战士职业）
@@ -320,7 +321,11 @@ void DebugScene::initPlayer()
                                               GamePhysicsCategory::COLLISION |
                                               GamePhysicsCategory::MONSTER_ATTACK));
 
-    // PlayerCharacter 在初始化时已挂载 PhysicsBody，这里用 setPhysicsBody 替换，避免重复添加同名组件导致断言
+    // 说明：
+    // - PlayerCharacter 初始化时会挂载一套「通用 / 默认」PhysicsBody，供普通关卡直接使用。
+    // - DebugScene 作为功能调试场景，需要自定义碰撞盒尺寸与更精细的碰撞 / 接触掩码配置，
+    //   因此在这里显式创建并设置一套 PhysicsBody 配置，用于覆盖默认配置。
+    // - 使用 setPhysicsBody 替换已有 PhysicsBody 是 cocos2d-x 推荐的做法，可避免重复添加导致断言。
     _player->setPhysicsBody(physicsBody);
     this->addChild(_player, 5);
 
@@ -596,6 +601,12 @@ void DebugScene::initControlButtons()
 
 void DebugScene::initGameUIController()
 {
+    if (!_player)
+    {
+        CCLOG("DebugScene - initGameUIController 失败：玩家未创建");
+        return;
+    }
+
     _uiController = std::make_unique<GameUIController>();
 
     const std::string levelName = "画室";
@@ -638,28 +649,35 @@ void DebugScene::initGameUIController()
             auto gameScene = dynamic_cast<GameScene *>(targetScene);
             if (gameScene)
             {
-                auto saveManager = SaveManager::getInstance();
                 auto playerData = saveData.playerData;
                 auto playerPos = Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
 
                 // 同步运行时数据：保证新场景创建玩家时即可拿到正确的等级/经验等（避免先用旧数据刷怪/显示）
-                if (saveManager)
+                if (auto saveManager = SaveManager::getInstance())
                 {
                     saveManager->setRuntimePlayerData(playerData);
                 }
 
-                gameScene->scheduleOnce([saveManager, playerData, playerPos](float)
+                // 延迟一小段时间，等待目标场景创建玩家；同时确保只作用于本次切换到的目标场景
+                gameScene->scheduleOnce([gameScene, playerData, playerPos](float)
                                         {
-                                            auto currentScene = Director::getInstance()->getRunningScene();
-                                            auto currentGameScene = dynamic_cast<GameScene *>(currentScene);
-                                            if (!currentGameScene)
+                                            auto director = Director::getInstance();
+                                            auto currentScene = director ? director->getRunningScene() : nullptr;
+                                            if (currentScene != gameScene)
+                                            {
                                                 return;
+                                            }
 
-                                            auto player = currentGameScene->getPlayer();
+                                            auto player = gameScene->getPlayer();
                                             if (!player)
+                                            {
                                                 return;
+                                            }
 
-                                            saveManager->applyPlayerData(player, playerData);
+                                            if (auto saveManager = SaveManager::getInstance())
+                                            {
+                                                saveManager->applyPlayerData(player, playerData);
+                                            }
                                             player->setPosition(playerPos);
                                             CCLOG("DebugScene - 玩家数据已恢复，位置: (%.1f, %.1f)", playerPos.x, playerPos.y);
                                         },
@@ -807,8 +825,7 @@ void DebugScene::update(float dt)
 
     // 更新调试UI显示
     updateDebugInfo();
-    // DebugScene 不在这里手动跑技能/状态效果逻辑：
-    // - SkillComponent/AttributeComponent/StatusEffectVfxComponent 都是 Component，会随 owner 自动 update
+    // DebugScene 这里只做场景/调试 UI 刷新；技能/状态等逻辑由角色及其组件在各自流程中处理
 }
 /**
  * @brief 更新调试信息显示

@@ -44,7 +44,9 @@ bool TrainingDummyMonster::init(const std::string& spriteFrameName)
     setCurrentMP(0.0f);
     setAutoRemoveOnDeath(false);
 
-    // 固定站立：改为静态刚体，避免受到重力/碰撞影响
+    // 固定站立：训练木桩不参与移动/受力，使用静态刚体以避免被推挤/掉落。
+    // 说明：在 cocos2d-x 物理引擎中，静态刚体仍可与动态刚体发生碰撞与接触回调，
+    // 因此不影响命中/受击/状态等测试流程。
     if (auto body = getPhysicsBody())
     {
         body->setDynamic(false);
@@ -79,4 +81,3 @@ void TrainingDummyMonster::updateAttack(float /*dt*/)
 {
     // 木桩不攻击
 }
-
