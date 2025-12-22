@@ -346,6 +346,57 @@ namespace GameConfig
             inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
         }
 
+        // --- 黑暗法师 (Obscur) 普通怪物配置 ---
+        namespace Obscur
+        {
+            // 基础属性（可后续按数值体验再调）
+            inline constexpr float MAX_HP = 1200.0f;
+            inline constexpr float MAX_MP = 0.0f;
+            inline constexpr float STRENGTH = 18.0f;
+            inline constexpr float DEFENSE = 4.0f;
+            inline constexpr float CRITICAL_RATE = 0.06f;
+
+            // 经验奖励（按玩家等级缩放）
+            inline constexpr int EXP_REWARD_BASE = 35;
+            inline constexpr int EXP_REWARD_PER_LEVEL = 4;
+
+            // 移动与战斗
+            inline constexpr float MOVE_SPEED = 170.0f;
+            inline constexpr float ATTACK_INTERVAL = 2.2f;
+            inline constexpr float ATTACK_RANGE = 520.0f; // 最大攻击距离（用于远程冰）
+            inline constexpr float MELEE_TRIGGER_RANGE = 180.0f; // 小于该距离优先近战
+
+            // 视野/AI 相关
+            inline constexpr float VISION_RANGE = 850.0f;
+            inline constexpr float CHASE_RANGE = 0.0f;
+            inline constexpr bool PATROL_ENABLED = true;
+
+            // 体型/碰撞盒：要求像 Goblu 一样自定义“实际碰撞箱”
+            inline constexpr float SCALE = Base::SCALE;
+            inline constexpr float HP_BAR_SCALE = 2.0f;
+            inline constexpr float PHYSICS_BOX_WIDTH = 235.0f;
+            inline constexpr float PHYSICS_BOX_HEIGHT = 449.0f;
+
+            // 动画帧间隔
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.12f; // Obscur_attack_1..4
+            inline constexpr float USEICE_ANIM_FRAME_DELAY = 0.12f; // Obscur_useice_1..2（循环）
+            inline constexpr float ICE_ANIM_FRAME_DELAY = 0.10f;    // Obscur_ice_1..5
+
+            // 近战命中判定：第 3 帧开始到第 4 帧结束
+            inline constexpr int MELEE_HIT_START_FRAME = 3;
+            inline constexpr int MELEE_HIT_END_FRAME = 4;
+            inline constexpr float MELEE_HITBOX_OFFSET_X = 210.0f;
+            inline constexpr float MELEE_HITBOX_OFFSET_Y = 190.0f;
+            inline constexpr float MELEE_HITBOX_WIDTH = 320.0f;
+            inline constexpr float MELEE_HITBOX_HEIGHT = 180.0f;
+
+            // 远程冰命中判定：冰动画第 2 帧开始到第 3 帧结束
+            inline constexpr int REMOTE_HIT_START_FRAME = 2;
+            inline constexpr int REMOTE_HIT_END_FRAME = 3;
+            inline constexpr float REMOTE_HITBOX_WIDTH = 240.0f;
+            inline constexpr float REMOTE_HITBOX_HEIGHT = 220.0f;
+        }
+
         // --- 以后加 Boss 或者其他怪物 ---
         namespace Slime
         {

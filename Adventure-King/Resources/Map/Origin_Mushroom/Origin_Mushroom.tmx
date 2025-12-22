@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="366" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="19" nextobjectid="47">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="366" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="19" nextobjectid="49">
  <tileset firstgid="1" source="Env_Tree_Oak_Giant_Green.tsx"/>
  <tileset firstgid="826" source="s1.tsx"/>
  <tileset firstgid="4546" source="s2.tsx"/>
@@ -236,6 +236,12 @@
    <point/>
   </object>
   <object id="46" name="1" type="Goblu" x="9100" y="876">
+   <point/>
+  </object>
+  <object id="47" name="1" type="Obscur" x="3092" y="1004">
+   <point/>
+  </object>
+  <object id="48" name="1" type="Obscur" x="6232" y="1052">
    <point/>
   </object>
  </objectgroup>
