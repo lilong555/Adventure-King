@@ -289,7 +289,7 @@ void GameScene::initUIController()
         [this]()
         { returnToMapScene(); },
         [this](bool paused)
-        { _isPaused = paused; },
+        { setGamePaused(paused); },
         [this]()
         {
             return _levelMap && _player && _levelMap->isPointAtGate(_player->getPosition());
@@ -414,6 +414,47 @@ void GameScene::togglePauseMenu()
     if (_uiController)
     {
         _uiController->togglePauseMenu();
+    }
+}
+
+void GameScene::setGamePaused(bool paused)
+{
+    if (_isPaused == paused)
+    {
+        return;
+    }
+
+    _isPaused = paused;
+
+    // 只冻结游戏内容层，保证 UI（暂停菜单/背包等）仍然可交互。
+    if (_gameLayer)
+    {
+        if (paused)
+        {
+            _gameLayer->pause();
+        }
+        else
+        {
+            _gameLayer->resume();
+        }
+    }
+
+    // 物理世界默认由 Scene 自动 step；仅靠 update() 早退无法阻止物理模拟。
+    // 暂停时关闭 autoStep（并把 speed 置 0），确保角色/怪物/投掷物完全静止。
+    if (auto world = getPhysicsWorld())
+    {
+        if (paused)
+        {
+            _cachedPhysicsAutoStep = world->isAutoStep();
+            _cachedPhysicsSpeed = world->getSpeed();
+            world->setAutoStep(false);
+            world->setSpeed(0.0f);
+        }
+        else
+        {
+            world->setAutoStep(_cachedPhysicsAutoStep);
+            world->setSpeed(_cachedPhysicsSpeed);
+        }
     }
 }
 

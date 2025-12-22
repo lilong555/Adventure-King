@@ -101,6 +101,8 @@ protected:
     // 游戏状态
     // -------------------------------
     bool _isPaused = false; ///< 游戏是否暂停
+    bool _cachedPhysicsAutoStep = true; ///< 暂停前物理世界 autoStep 状态
+    float _cachedPhysicsSpeed = 1.0f;   ///< 暂停前物理世界 speed 值
 
     // -------------------------------
     // UI 系统
@@ -185,6 +187,11 @@ protected:
      * @brief 切换暂停菜单显示状态
      */
     void togglePauseMenu();
+
+    /**
+     * @brief 设置游戏暂停/恢复（只冻结世界逻辑，UI 仍可交互）
+     */
+    void setGamePaused(bool paused);
 
     // ===================================================================
     // 更新循环

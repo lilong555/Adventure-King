@@ -153,6 +153,8 @@ private:
     void returnToMapScene();
     /// @brief 切换暂停菜单（与 GameScene 行为一致）
     void togglePauseMenu();
+    /// @brief 设置暂停/恢复（只冻结世界，UI 仍可交互）
+    void setGamePaused(bool paused);
 
     //=========================================================================
     // 主循环更新
@@ -257,6 +259,9 @@ private:
     std::unique_ptr<GameInputController> _inputController; ///< 与 GameScene 同款输入控制器
     std::unique_ptr<GameUIController> _uiController; ///< 与 GameScene 同款 UI 编排
     bool _isPaused = false; ///< 是否暂停（由 GameUIController 回调维护）
+    cocos2d::Node *_gameLayer = nullptr; ///< 游戏内容层（暂停时冻结，避免影响 UI）
+    bool _cachedPhysicsAutoStep = true; ///< 暂停前物理世界 autoStep 状态
+    float _cachedPhysicsSpeed = 1.0f;   ///< 暂停前物理世界 speed 值
 
     /// 地面Y坐标基准线
     static constexpr float GROUND_Y = GameConfig::Debug::GROUND_Y;
