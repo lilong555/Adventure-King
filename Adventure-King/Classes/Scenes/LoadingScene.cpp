@@ -1,6 +1,7 @@
 #include "Scenes/LoadingScene.h"
 #include "Managers/SceneRegistry.h"
 #include "Scenes/DebugScene.h"
+#include "Scenes/HomeScene.h"
 #include "Scenes/MapScene.h"
 #include"Scenes/LevelScenes/OriginMushroomScene.h"
 #include"Scenes/LevelScenes/MysteryForestScene.h"
@@ -339,6 +340,9 @@ Scene* LoadingScene::createDestinationScene(int mapId) const
     Scene* scene = nullptr;
     switch (mapId)
     {
+    case HomeScene::MAP_ID:
+        scene = HomeScene::createScene();
+        break;
     case 1:
         scene = OriginMushroomScene::createScene();
         break;

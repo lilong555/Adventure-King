@@ -1,24 +1,35 @@
-#include "HelloWorldScene.h" // 包含主菜单场景，以便返回
 #include "HomeScene.h"
 #include "GameScene.h"
 #include "Scenes/LevelMap.h"
 #include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
+#include "Managers/SceneRegistry.h"
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
-// 静态创建场景方法
 Scene *HomeScene::createScene()
 {
     return HomeScene::create();
 }
-// 当文件不存在时，打印有用的错误消息而不是错误。
-// 统一的资源缺失提示
-static void problemLoading(const char *filename)
+
+void HomeScene::setupRegistry()
 {
-    printf("Error while loading: %s\n", filename);
-    printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
+    SceneInfo info;
+    info.creator = []()
+    { return HomeScene::createScene(); };
+
+    // 资源列表：用于 LoadingScene 预加载，避免首次进图卡顿
+    // 说明：TMX 会引用 tileset 图片，这里也一并预热到 TextureCache
+    info.imagePaths = {
+        "Map/Home/home.png",
+        "Map/Home/HomeBackground_1.png",
+        "Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png",
+    };
+
+    SceneRegistry::getInstance()->registerScene(MAP_ID, info);
 }
+
 bool HomeScene::init() {
     // 1. 基础初始化
     if (!GameScene::init()) return false;
@@ -63,7 +74,7 @@ bool HomeScene::init() {
     }
     // 4.播放背景音乐
     std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
-    float musicVolume = 0.5f;
+    float musicVolume = GameConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
         [musicFile, musicVolume](float dt)
         {
@@ -74,18 +85,4 @@ bool HomeScene::init() {
     );
     CCLOG("HomeScene - Initialized successfully");
     return true;
-}
-
-// 返回主菜单的回调函数
-void HomeScene::menuReturnCallback(Ref *pSender)
-{
-    MusicManager::getInstance()->stopBGM();
-
-    auto helloWorldScene = HelloWorld::createScene();
-
-    SceneTransitionManager::transitionToScene(
-        this,
-        helloWorldScene,
-        "返回主菜单...",
-        1.0f);
 }
