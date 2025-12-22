@@ -3,6 +3,7 @@
 #include "MapScene.h"
 #include "GameScene.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Scenes/LoadingScene.h"
 #include "Scenes/LevelScenes/OriginMushroomScene.h"
 #include "Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
@@ -332,7 +333,8 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
 
 void HelloWorld::menuStartCallback(Ref *pSender)
 {
-    auto newScene = HomeScene::createScene();
+    // 通过 LoadingScene 统一预加载 Home 资源，避免首次进图卡顿
+    auto newScene = LoadingScene::createScene(HomeScene::MAP_ID);
     SceneTransitionManager::transitionToScene(
         this, // 当前场景
         newScene,
@@ -361,6 +363,10 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
         else if (sceneName == "神秘之森")
         {
             targetScene = MysteryForestScene::createScene();
+        }
+        else if (sceneName == "冒险王之家")
+        {
+            targetScene = HomeScene::createScene();
         }
         else
         {

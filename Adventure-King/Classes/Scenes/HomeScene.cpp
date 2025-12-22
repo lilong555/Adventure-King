@@ -1,88 +1,64 @@
-#include "HelloWorldScene.h" // 包含主菜单场景，以便返回
 #include "HomeScene.h"
-#include "GameScene.h"
-#include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
+#include "Managers/SceneRegistry.h"
+#include "Configs/GameConfigs.h"
 
 USING_NS_CC;
 
-// 静态创建场景方法
 Scene *HomeScene::createScene()
 {
     return HomeScene::create();
 }
-// 当文件不存在时，打印有用的错误消息而不是错误。
-// 统一的资源缺失提示
-static void problemLoading(const char *filename)
+
+void HomeScene::setupRegistry()
 {
-    printf("Error while loading: %s\n", filename);
-    printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
+    SceneInfo info;
+    info.creator = []()
+    { return HomeScene::createScene(); };
+
+    // 资源列表：用于 LoadingScene 预加载，避免首次进图卡顿
+    // 说明：TMX 会引用 tileset 图片，这里也一并预热到 TextureCache
+    info.imagePaths = {
+        "Map/Home/home.png",
+        "Map/Home/HomeBackground_1.png",
+        "Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png",
+    };
+
+    SceneRegistry::getInstance()->registerScene(MAP_ID, info);
 }
-// 初始化方法
+
+LevelConfig HomeScene::getLevelConfig() const
+{
+    LevelConfig config;
+    config.tmxMapPath = "Map/Home/home.tmx";
+    // 参考起源之菇（mushroom）的背景方案：使用“背景序列”机制（这里是单张整图）
+    config.backgroundSeriesPaths = { "Map/Home/home.png" };
+    config.collisionLayerName = "collisions";
+    config.bornLayerName = "born";
+    config.gateLayerName = "gate";
+    config.gravity = -1000.0f;
+    config.enablePhysicsDebug = false;
+    return config;
+}
+
 bool HomeScene::init()
 {
-    if (!Scene::init())
+    // 冒险王之家：使用 GameScene 的统一关卡加载流程（TMX/碰撞/玩家/输入/UI）
+    LevelConfig config = getLevelConfig();
+    if (!initWithPhysicsConfig(config))
+    {
         return false;
-
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    Vec2 origin = Director::getInstance()->getVisibleOrigin();
-    Vec2 center = Vec2(origin.x + visibleSize.width / 2,
-                       origin.y + visibleSize.height / 2);
-
-    // 1. 背景
-    auto bg = Sprite::create("Scene/Backgrounds/HomeBackground_1.jpg");
-    if (bg)
-    {
-        Size textureSize = bg->getContentSize();
-        float scaleX = visibleSize.width / textureSize.width;
-        float scaleY = visibleSize.height / textureSize.height;
-        float scaleFactor = std::max(scaleX, scaleY); // 覆盖屏幕
-        bg->setScale(scaleFactor);
-        bg->setPosition(center);
-        this->addChild(bg, 0);
     }
-    else
-    {
-        problemLoading("'Scene/Backgrounds/HomeBackground_1.jpg'");
-    }
-
-    // 2. 菜单按钮
-    auto setItem = MenuItemImage::create(
-        "CloseNormal.png",
-        "CloseSelected.png",
-        CC_CALLBACK_1(HomeScene::menuReturnCallback, this));
-
-    setItem->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
-    setItem->setPosition(Vec2(origin.x, origin.y + visibleSize.height));
-
-    auto menu = Menu::create(setItem, nullptr);
-    menu->setPosition(Vec2::ZERO);
-    this->addChild(menu, 5);
 
     // 播放背景音乐
     std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
-    float musicVolume = 0.5f;
+    float musicVolume = GameConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
         [musicFile, musicVolume](float dt)
         {
             MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
         },
-        0.5f, //必须加一定延迟否则会被场景切换截断
-        "PlayMusicAfterSceneChange"
-    );
+        GameConfig::UI::MainMenu::BGM_DELAY_SECONDS, // 必须加一定延迟否则会被场景切换截断
+        "PlayMusicAfterSceneChange");
     return true;
-}
-
-// 返回主菜单的回调函数
-void HomeScene::menuReturnCallback(Ref *pSender)
-{
-    MusicManager::getInstance()->stopBGM();
-
-    auto helloWorldScene = HelloWorld::createScene();
-
-    SceneTransitionManager::transitionToScene(
-        this,
-        helloWorldScene,
-        "返回主菜单...",
-        1.0f);
 }

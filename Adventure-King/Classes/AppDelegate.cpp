@@ -2,6 +2,7 @@
 #include "AppDelegate.h"
 #include"Scenes/LevelScenes/OriginMushroomScene.h"
 #include"Scenes/LevelScenes/MysteryForestScene.h"
+#include "Scenes/HomeScene.h"
 #include "Scenes/DebugScene.h"
 #include "Scenes/HelloWorldScene.h"
 #include "Configs/GameConfigs.h"
@@ -110,6 +111,7 @@ bool AppDelegate::applicationDidFinishLaunching()
 
     OriginMushroomScene::setupRegistry();
     MysteryForestScene::setupRegistry();
+    HomeScene::setupRegistry();
     DebugScene::setupRegistry();
 
     register_all_packages();
