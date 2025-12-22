@@ -1,5 +1,6 @@
 #include "HomeScene.h"
 #include "Managers/MusicManager.h"
+#include "Managers/SceneRegistry.h"
 #include "Configs/GameConfigs.h"
 
 USING_NS_CC;
@@ -7,6 +8,23 @@ USING_NS_CC;
 Scene *HomeScene::createScene()
 {
     return HomeScene::create();
+}
+
+void HomeScene::setupRegistry()
+{
+    SceneInfo info;
+    info.creator = []()
+    { return HomeScene::createScene(); };
+
+    // 资源列表：用于 LoadingScene 预加载，避免首次进图卡顿
+    // 说明：TMX 会引用 tileset 图片，这里也一并预热到 TextureCache
+    info.imagePaths = {
+        "Map/Home/home.png",
+        "Map/Home/HomeBackground_1.png",
+        "Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png",
+    };
+
+    SceneRegistry::getInstance()->registerScene(MAP_ID, info);
 }
 
 LevelConfig HomeScene::getLevelConfig() const

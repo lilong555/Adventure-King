@@ -6,8 +6,13 @@
 class HomeScene : public GameScene
 {
 public:
+    // HomeScene 在 LoadingScene/SceneRegistry 中使用的地图 ID
+    static constexpr int MAP_ID = 3;
+
     // 静态创建方法：用于生成场景实例
     static cocos2d::Scene *createScene();
+    // 注册到场景注册表（供 LoadingScene 预加载使用）
+    static void setupRegistry();
 
     // 初始化方法：用于设置场景内容
     virtual bool init() override;
