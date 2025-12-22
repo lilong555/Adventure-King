@@ -308,7 +308,8 @@ void DebugScene::initPlayer()
     physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM));
     physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM) | ToMask(GamePhysicsCategory::BOMB));
 
-    _player->addComponent(physicsBody);
+    // PlayerCharacter 在初始化时已挂载 PhysicsBody，这里用 setPhysicsBody 替换，避免重复添加同名组件导致断言
+    _player->setPhysicsBody(physicsBody);
     this->addChild(_player, 5);
 
     // 设置死亡时不自动移除（由DebugScene控制重置）
