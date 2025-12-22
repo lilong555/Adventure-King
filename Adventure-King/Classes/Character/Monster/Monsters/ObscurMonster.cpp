@@ -145,6 +145,9 @@ bool ObscurMonster::init(const std::string& spriteFrameName)
         return false;
     }
 
+    // Obscur 以脚底为锚点（底部对齐），避免以中心锚点导致站立/落点表现不一致
+    setAnchorPoint(Vec2(GameConfig::Monster::Base::ANCHOR_X, GameConfig::Monster::Base::ANCHOR_Y));
+
     // Obscur 体型缩放与碰撞箱：按策划要求使用固定大小碰撞箱（235x449）
     setScale(GameConfig::Monster::Obscur::SCALE);
     _baseScaleX = GameConfig::Monster::Obscur::SCALE;
