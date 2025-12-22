@@ -21,12 +21,12 @@
 #include "ui/CocosGUI.h"
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfigs.h"
+#include "Scenes/GameUIController.h"
 #include "Character/Base/CharacterData.h"
 #include <memory>
 
 // 前向声明
 class PlayerCharacter;
-class GameUIController;
 
 //=============================================================================
 // 物理碰撞分类掩码
