@@ -38,6 +38,7 @@
 #include "Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/LevelScenes/OriginMushroomScene.h"
 #include "2d/CCTransition.h"
+#include "Utils/ImeHelper.h"
 #include <algorithm>
 #include <cmath>
 
@@ -137,6 +138,18 @@ bool DebugScene::init()
 
     CCLOG("DebugScene initialized with Physics Engine");
     return true;
+}
+
+void DebugScene::onEnter()
+{
+    Scene::onEnter();
+    ImeHelper::pushDisableIme();
+}
+
+void DebugScene::onExit()
+{
+    ImeHelper::popDisableIme();
+    Scene::onExit();
 }
 
 /**

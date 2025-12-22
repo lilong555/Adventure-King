@@ -26,6 +26,10 @@ public:
     static cocos2d::Scene* createScene(int mapId);
 
     bool init() override;
+    /// @brief 场景进入：禁用输入法（IME），避免加载阶段也抢输入
+    void onEnter() override;
+    /// @brief 场景退出：恢复输入法（IME）
+    void onExit() override;
     ~LoadingScene() override;
 
 private:

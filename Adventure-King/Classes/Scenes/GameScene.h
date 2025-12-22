@@ -42,6 +42,10 @@ public:
      * @brief 初始化基础场景（入口）
      */
     virtual bool init() override;
+    /// @brief 场景进入：进入游戏时禁用输入法（IME），避免抢输入
+    virtual void onEnter() override;
+    /// @brief 场景退出：离开游戏时恢复输入法（IME）
+    virtual void onExit() override;
     /**
      * @brief 析构：释放场景资源
      */
