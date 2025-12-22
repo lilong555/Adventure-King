@@ -141,6 +141,11 @@ public:
      */
     virtual bool init() override;
 
+    /**
+     * @brief 析构：在 .cpp 中定义，确保 unique_ptr 释放时类型完整
+     */
+    ~DebugScene() override;
+
     /// cocos2d-x 自动生成 create() 方法
     CREATE_FUNC(DebugScene);
 

@@ -52,6 +52,8 @@ Scene *DebugScene::createScene()
     return DebugScene::create();
 }
 
+DebugScene::~DebugScene() = default;
+
 void DebugScene::setupRegistry()
 {
     SceneInfo info;
