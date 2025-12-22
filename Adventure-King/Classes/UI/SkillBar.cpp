@@ -217,7 +217,7 @@ std::string SkillBar::getIconPathForSkillId(int skillId) const
     }
     if (skillId == GameConfig::Bomb::BOMB_ID)
     {
-        return "Sprites/Characters/Player/Klee/defalt/TNT.png";
+        return "Sprites/Characters/Player/Klee/default/TNT.png";
     }
     return "";
 }

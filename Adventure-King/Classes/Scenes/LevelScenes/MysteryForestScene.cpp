@@ -53,3 +53,19 @@ bool MysteryForestScene::init()
     CCLOG("MysteryForestScene initialized (placeholder)");
     return true;
 }
+
+void MysteryForestScene::setupRegistry()
+{
+    SceneInfo info;
+
+    // 1. 设置创建器
+    info.creator = []()
+    { return MysteryForestScene::createScene(); };
+
+    // 2. 资源列表（占位关卡先保持最小集合）
+    info.imagePaths = {
+        // 粒子特效使用 plist 内嵌纹理，不需要预加载 particle_texture.png
+    };
+
+    SceneRegistry::getInstance()->registerScene(2, info);
+}

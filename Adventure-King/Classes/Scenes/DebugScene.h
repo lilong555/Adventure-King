@@ -26,6 +26,7 @@
 
 // 前向声明
 class PlayerCharacter;
+class GameUIController;
 
 //=============================================================================
 // 物理碰撞分类掩码
@@ -113,7 +114,7 @@ struct TargetDummy
  * - 4：攻击
  * - 1-5：测试按钮快捷键
  * - R：重置角色
- * - ESC：返回地图
+ * - ESC：暂停菜单（背包/存档等）
  */
 class DebugScene : public cocos2d::Scene
 {
@@ -127,6 +128,12 @@ public:
      * @return 场景指针
      */
     static cocos2d::Scene *createScene();
+
+    /**
+     * @brief 注册到 LoadingScene 的场景注册表（供 LoadingScene 根据 mapId 创建）
+     * @note 需要在 AppDelegate 启动时调用一次
+     */
+    static void setupRegistry();
 
     /**
      * @brief 初始化场景
@@ -146,6 +153,12 @@ private:
     void initPlayer();         ///< 初始化玩家角色
     void initDebugUI();        ///< 初始化调试UI面板
     void initControlButtons(); ///< 初始化控制按钮
+    void initGameUIController(); ///< 初始化与 GameScene 同款的 UI（暂停/背包/技能栏等）
+
+    /// @brief 返回地图选择界面（与 GameScene 行为一致）
+    void returnToMapScene();
+    /// @brief 切换暂停菜单（与 GameScene 行为一致）
+    void togglePauseMenu();
 
     //=========================================================================
     // 主循环更新
@@ -288,6 +301,8 @@ private:
     //=========================================================================
 
     PlayerCharacter *_player = nullptr; ///< 玩家角色实例
+    std::unique_ptr<GameUIController> _uiController; ///< 与 GameScene 同款 UI 编排
+    bool _isPaused = false; ///< 是否暂停（由 GameUIController 回调维护）
 
     //=========================================================================
     // 成员变量 - 移动状态

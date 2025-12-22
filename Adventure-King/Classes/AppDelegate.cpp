@@ -2,6 +2,7 @@
 #include "AppDelegate.h"
 #include"Scenes/LevelScenes/OriginMushroomScene.h"
 #include"Scenes/LevelScenes/MysteryForestScene.h"
+#include "Scenes/DebugScene.h"
 #include "Scenes/HelloWorldScene.h"
 #include "Configs/GameConfigs.h"
 #include <cstdlib>
@@ -108,6 +109,8 @@ bool AppDelegate::applicationDidFinishLaunching()
     // 注意在这里创建游戏资源的注册表
 
     OriginMushroomScene::setupRegistry();
+    MysteryForestScene::setupRegistry();
+    DebugScene::setupRegistry();
 
     register_all_packages();
 

@@ -29,7 +29,15 @@
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Configs/GamePhysicsCategory.h"
+#include "Managers/SceneRegistry.h"
 #include "MapScene.h"
+#include "Save/SaveData.h"
+#include "Save/SaveManager.h"
+#include "Scenes/GameScene.h"
+#include "Scenes/GameUIController.h"
+#include "Scenes/LevelScenes/MysteryForestScene.h"
+#include "Scenes/LevelScenes/OriginMushroomScene.h"
+#include "2d/CCTransition.h"
 #include <algorithm>
 
 USING_NS_CC;
@@ -42,6 +50,19 @@ using namespace cocos2d::ui;
 Scene *DebugScene::createScene()
 {
     return DebugScene::create();
+}
+
+void DebugScene::setupRegistry()
+{
+    SceneInfo info;
+    info.creator = []()
+    { return DebugScene::createScene(); };
+
+    // DebugScene 主要用于功能验证，资源依赖较分散；这里保持最小注册即可。
+    // 若后续需要进一步降低首次进入卡顿，可逐步补齐 imagePaths。
+    info.imagePaths = {};
+
+    SceneRegistry::getInstance()->registerScene(99, info);
 }
 
 /**
@@ -80,6 +101,7 @@ bool DebugScene::init()
     initBackground();             // 背景和网格线
     initPlatforms();              // 平台和地面（物理刚体）
     initPlayer();                 // 玩家角色（物理刚体）
+    initGameUIController();       // 与 GameScene 同款 UI（暂停/背包/技能栏等）
     initEquipments();             // 装备系统
     initPassiveSkills();          // 被动技能系统
     initTargetDummy();            // 测试用木桩
@@ -237,7 +259,7 @@ void DebugScene::initPlayer()
     Vec2 startPos(origin.x + visibleSize.width / 2, origin.y + GROUND_Y + getContentSize().height / 2);
 
     // 创建玩家角色（战士职业）
-    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/defalt/spr_klee_run.png");
+    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/default/spr_klee_run.png");
 
     if (!_player)
     {
@@ -621,11 +643,117 @@ void DebugScene::initControlButtons()
     // 快捷键提示
     //=========================================================================
     auto hintLabel = Label::createWithTTF(
-        "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 返回",
+        "[AD] 移动  [W/Space] 跳跃  [E] 丢炸弹  [4] 攻击  [R] 重置  [ESC] 暂停",
         "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     hintLabel->setPosition(Vec2(centerX, origin.y + 160));
     hintLabel->setColor(Color3B(150, 150, 150));
     this->addChild(hintLabel, 10);
+}
+
+void DebugScene::initGameUIController()
+{
+    _uiController = std::make_unique<GameUIController>();
+
+    const std::string levelName = "画室";
+    bool ok = _uiController->init(
+        this,
+        _player,
+        levelName,
+        [this]()
+        { returnToMapScene(); },
+        [this](bool paused)
+        { _isPaused = paused; },
+        []()
+        { return false; },
+        [](const SaveSlotData &saveData)
+        {
+            CCLOG("DebugScene - 加载存档成功，场景: %s", saveData.progressData.currentSceneName.c_str());
+
+            Scene *targetScene = nullptr;
+            const std::string &sceneName = saveData.progressData.currentSceneName;
+
+            if (sceneName == "起源之菇")
+            {
+                targetScene = OriginMushroomScene::createScene();
+            }
+            else if (sceneName == "神秘之森")
+            {
+                targetScene = MysteryForestScene::createScene();
+            }
+            else
+            {
+                CCLOG("DebugScene - 未知的场景名称: %s", sceneName.c_str());
+                return;
+            }
+
+            if (!targetScene)
+            {
+                return;
+            }
+
+            auto gameScene = dynamic_cast<GameScene *>(targetScene);
+            if (gameScene)
+            {
+                auto saveManager = SaveManager::getInstance();
+                auto playerData = saveData.playerData;
+                auto playerPos = Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
+
+                // 同步运行时数据：保证新场景创建玩家时即可拿到正确的等级/经验等（避免先用旧数据刷怪/显示）
+                if (saveManager)
+                {
+                    saveManager->setRuntimePlayerData(playerData);
+                }
+
+                gameScene->scheduleOnce([saveManager, playerData, playerPos](float)
+                                        {
+                                            auto currentScene = Director::getInstance()->getRunningScene();
+                                            auto currentGameScene = dynamic_cast<GameScene *>(currentScene);
+                                            if (!currentGameScene)
+                                                return;
+
+                                            auto player = currentGameScene->getPlayer();
+                                            if (!player)
+                                                return;
+
+                                            saveManager->applyPlayerData(player, playerData);
+                                            player->setPosition(playerPos);
+                                            CCLOG("DebugScene - 玩家数据已恢复，位置: (%.1f, %.1f)", playerPos.x, playerPos.y);
+                                        },
+                                        0.1f,
+                                        "apply_save_data");
+            }
+
+            auto transition = TransitionFade::create(0.5f, targetScene, Color3B::BLACK);
+            Director::getInstance()->replaceScene(transition);
+        });
+
+    if (!ok)
+    {
+        _uiController.reset();
+    }
+}
+
+void DebugScene::returnToMapScene()
+{
+    auto mapScene = MapScene::createScene();
+    if (!mapScene)
+    {
+        CCLOG("DebugScene - 返回地图失败：无法创建 MapScene");
+        return;
+    }
+
+    auto director = Director::getInstance();
+    director->popToRootScene();
+    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION, mapScene, Color3B::BLACK);
+    director->replaceScene(transition);
+}
+
+void DebugScene::togglePauseMenu()
+{
+    if (_uiController)
+    {
+        _uiController->togglePauseMenu();
+    }
 }
 
 //=============================================================================
@@ -647,6 +775,17 @@ void DebugScene::initControlButtons()
 void DebugScene::update(float dt)
 {
     Scene::update(dt);
+
+    // 与 GameScene 一致：暂停时只刷新 UI，不推进战斗/移动/计时等逻辑
+    if (_uiController)
+    {
+        _uiController->update(dt);
+    }
+    if (_isPaused)
+    {
+        updateDebugInfo();
+        return;
+    }
 
     //-------------------------------------------------------------------------
     // 死亡重置检测
@@ -1080,17 +1219,10 @@ void DebugScene::onResetClicked(Ref *sender)
     CCLOG("Player reset");
 }
 
-/**
- * @brief 返回按钮回调 - 使用场景入栈方式返回地图
- * @param sender 按钮引用（未使用）
- *
- * @note 使用 pushScene 而非 replaceScene，以便支持场景返回
- */
 void DebugScene::onBackClicked(Ref *sender)
 {
-    auto mapScene = MapScene::createScene();
-    Director::getInstance()->pushScene(
-        TransitionFade::create(0.5f, mapScene, Color3B::BLACK));
+    // 与 GameScene/MapScene 一致：回到地图选择界面
+    returnToMapScene();
 }
 
 //=============================================================================
@@ -1246,13 +1378,26 @@ void DebugScene::applyPoisonDamage(float dt)
  * - E：释放炸弹技能
  * - 1-5：功能测试快捷键
  * - R：重置角色
- * - ESC：返回地图
+ * - ESC：暂停菜单（与 GameScene 一致）
  *
  * @param keyCode 按键代码
  * @param event 事件对象（未使用）
  */
 void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
 {
+    // 与 GameScene 行为一致：Esc 切换暂停菜单
+    if (keyCode == EventKeyboard::KeyCode::KEY_ESCAPE)
+    {
+        togglePauseMenu();
+        return;
+    }
+
+    // 暂停时不响应其它输入（避免误操作）
+    if (_isPaused)
+    {
+        return;
+    }
+
     switch (keyCode)
     {
     //-------------------------------------------------------------------------
@@ -1321,9 +1466,6 @@ void DebugScene::onKeyPressed(EventKeyboard::KeyCode keyCode, Event *event)
         break;
     case EventKeyboard::KeyCode::KEY_R:
         onResetClicked(nullptr);
-        break;
-    case EventKeyboard::KeyCode::KEY_ESCAPE:
-        onBackClicked(nullptr);
         break;
 
     default:
@@ -2195,7 +2337,7 @@ void DebugScene::doThrowBomb()
         return;
 
     // 1. 创建 Bomb 对象 (工厂方法内部已经处理了 initPhysics)
-    auto bomb = Bomb::create("Sprites/Characters/Player/Klee/defalt/TNT.png");
+    auto bomb = Bomb::create("Sprites/Characters/Player/Klee/default/TNT.png");
     if (!bomb) return;
 
     // 2. 计算出生位置和方向
