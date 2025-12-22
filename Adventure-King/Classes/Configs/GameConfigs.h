@@ -32,14 +32,14 @@ namespace GameConfig
         namespace Passive
         {
             // 被动技能 ID（集中管理，避免散落魔法数字）
-            inline constexpr int TOUGHNESS = 2001; // 体魄强化
-            inline constexpr int SWIFTNESS = 2002; // 迅捷步伐
-            inline constexpr int FOCUS = 2003;     // 战斗专注
-            inline constexpr int BLOODTHIRST = 2004;    // 嗜血（吸血）
-            inline constexpr int EMBER_MARK = 2005;     // 余烬印记（命中附加燃烧）
-            inline constexpr int FULL_HP_CRIT = 2006;   // 满血暴击（条件触发）
-            inline constexpr int CRIT_ECHO = 2007;      // 冷却回响（暴击缩短冷却）
-            inline constexpr int POISON_TOUCH = 2008;   // 淬毒（命中附加中毒）
+            inline constexpr int TOUGHNESS = 2001;    // 体魄强化
+            inline constexpr int SWIFTNESS = 2002;    // 迅捷步伐
+            inline constexpr int FOCUS = 2003;        // 战斗专注
+            inline constexpr int BLOODTHIRST = 2004;  // 嗜血（吸血）
+            inline constexpr int EMBER_MARK = 2005;   // 余烬印记（命中附加燃烧）
+            inline constexpr int FULL_HP_CRIT = 2006; // 满血暴击（条件触发）
+            inline constexpr int CRIT_ECHO = 2007;    // 冷却回响（暴击缩短冷却）
+            inline constexpr int POISON_TOUCH = 2008; // 淬毒（命中附加中毒）
         }
 
         namespace PassiveEffect
@@ -71,28 +71,28 @@ namespace GameConfig
     {
         namespace Weapon
         {
-            inline constexpr int STARTER_SWORD = 5001;      // 新手剑
-            inline constexpr int TRAINING_STAFF = 5002;     // 训练法杖
-            inline constexpr int EMBER_STAFF = 5003;        // 焰纹法杖（命中燃烧）
-            inline constexpr int BLOOD_PACT_SWORD = 5004;   // 血契短剑（吸血）
+            inline constexpr int STARTER_SWORD = 5001;    // 新手剑
+            inline constexpr int TRAINING_STAFF = 5002;   // 训练法杖
+            inline constexpr int EMBER_STAFF = 5003;      // 焰纹法杖（命中燃烧）
+            inline constexpr int BLOOD_PACT_SWORD = 5004; // 血契短剑（吸血）
         }
 
         namespace Helmet
         {
-            inline constexpr int LEATHER_CAP = 5101;        // 皮帽
-            inline constexpr int EMERGENCY_MASK = 5104;     // 急救面罩（低血量救援）
+            inline constexpr int LEATHER_CAP = 5101;    // 皮帽
+            inline constexpr int EMERGENCY_MASK = 5104; // 急救面罩（低血量救援）
         }
 
         namespace Armor
         {
-            inline constexpr int LEATHER_ARMOR = 5102;      // 皮甲
-            inline constexpr int THORNS_ARMOR = 5105;       // 荆棘甲（反伤）
+            inline constexpr int LEATHER_ARMOR = 5102; // 皮甲
+            inline constexpr int THORNS_ARMOR = 5105;  // 荆棘甲（反伤）
         }
 
         namespace Boots
         {
-            inline constexpr int LIGHT_BOOTS = 5103;        // 轻便靴
-            inline constexpr int HUNTER_BOOTS = 5106;       // 追猎之靴（击杀加速）
+            inline constexpr int LIGHT_BOOTS = 5103;  // 轻便靴
+            inline constexpr int HUNTER_BOOTS = 5106; // 追猎之靴（击杀加速）
         }
     }
 
@@ -117,9 +117,9 @@ namespace GameConfig
 
         namespace EmergencyMask
         {
-            inline constexpr float TRIGGER_HP_RATIO = 0.20f;       // 触发阈值：低于最大生命的 20%
-            inline constexpr float HEAL_TARGET_HP_RATIO = 0.35f;   // 触发后将生命抬到最大生命的 35%
-            inline constexpr float PROC_COOLDOWN = 45.0f;          // 冷却（秒）
+            inline constexpr float TRIGGER_HP_RATIO = 0.20f;     // 触发阈值：低于最大生命的 20%
+            inline constexpr float HEAL_TARGET_HP_RATIO = 0.35f; // 触发后将生命抬到最大生命的 35%
+            inline constexpr float PROC_COOLDOWN = 45.0f;        // 冷却（秒）
         }
 
         namespace HunterBoots
@@ -220,11 +220,11 @@ namespace GameConfig
             inline constexpr int POINTS_PER_LEVEL = 1; // 每次升级获得的属性点
 
             // 每点属性的成长数值（当前为占位，可根据数值体验再调整）
-            inline constexpr float MAX_HP_PER_POINT = 10.0f;         // 生命力
-            inline constexpr float STRENGTH_PER_POINT = 2.0f;        // 力量
-            inline constexpr float MOVE_SPEED_PER_POINT = 10.0f;     // 敏捷（当前映射为移动速度）
-            inline constexpr float DEFENSE_PER_POINT = 1.0f;         // 防御
-            inline constexpr float CRITICAL_RATE_PER_POINT = 0.02f;  // 暴击率（+2%）
+            inline constexpr float MAX_HP_PER_POINT = 10.0f;        // 生命力
+            inline constexpr float STRENGTH_PER_POINT = 2.0f;       // 力量
+            inline constexpr float MOVE_SPEED_PER_POINT = 10.0f;    // 敏捷（当前映射为移动速度）
+            inline constexpr float DEFENSE_PER_POINT = 1.0f;        // 防御
+            inline constexpr float CRITICAL_RATE_PER_POINT = 0.02f; // 暴击率（+2%）
         }
 
         // 技能点配置（用于学习主动/被动技能）
@@ -344,6 +344,57 @@ namespace GameConfig
             inline constexpr float HITBOX_LIFE_SECONDS = 0.12f;
             inline constexpr float REMOTE_HITBOX_VFX_HOLD_SECONDS = 0.35f; // 远程攻击特效展示时间（碰撞禁用后仍保留节点）
             inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
+        }
+
+        // --- 黑暗法师 (Obscur) 普通怪物配置 ---
+        namespace Obscur
+        {
+            // 基础属性（可后续按数值体验再调）
+            inline constexpr float MAX_HP = 1200.0f;
+            inline constexpr float MAX_MP = 0.0f;
+            inline constexpr float STRENGTH = 18.0f;
+            inline constexpr float DEFENSE = 4.0f;
+            inline constexpr float CRITICAL_RATE = 0.06f;
+
+            // 经验奖励（按玩家等级缩放）
+            inline constexpr int EXP_REWARD_BASE = 35;
+            inline constexpr int EXP_REWARD_PER_LEVEL = 4;
+
+            // 移动与战斗
+            inline constexpr float MOVE_SPEED = 170.0f;
+            inline constexpr float ATTACK_INTERVAL = 2.2f;
+            inline constexpr float ATTACK_RANGE = 520.0f;        // 最大攻击距离（用于远程冰）
+            inline constexpr float MELEE_TRIGGER_RANGE = 180.0f; // 小于该距离优先近战
+
+            // 视野/AI 相关
+            inline constexpr float VISION_RANGE = 850.0f;
+            inline constexpr float CHASE_RANGE = 0.0f;
+            inline constexpr bool PATROL_ENABLED = true;
+
+            // 体型/碰撞盒：要求像 Goblu 一样自定义“实际碰撞箱”
+            inline constexpr float SCALE = Base::SCALE;
+            inline constexpr float HP_BAR_SCALE = 2.0f;
+            inline constexpr float PHYSICS_BOX_WIDTH = 235.0f;
+            inline constexpr float PHYSICS_BOX_HEIGHT = 449.0f;
+
+            // 动画帧间隔
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.20f; // Obscur_attack_1..4
+            inline constexpr float USEICE_ANIM_FRAME_DELAY = 0.12f; // Obscur_useice_1..2（循环）
+            inline constexpr float ICE_ANIM_FRAME_DELAY = 0.35f;    // Obscur_ice_1..5
+
+            // 近战命中判定：第 4 帧开始到第 4 帧结束
+            inline constexpr int MELEE_HIT_START_FRAME = 4;
+            inline constexpr int MELEE_HIT_END_FRAME = 4;
+            inline constexpr float MELEE_HITBOX_OFFSET_X = 50.0f;
+            inline constexpr float MELEE_HITBOX_OFFSET_Y = 50.0f;
+            inline constexpr float MELEE_HITBOX_WIDTH = 50.0f;
+            inline constexpr float MELEE_HITBOX_HEIGHT = 135.0f;
+
+            // 远程冰命中判定：冰动画第 3 帧开始到第 4 帧结束
+            inline constexpr int REMOTE_HIT_START_FRAME = 3;
+            inline constexpr int REMOTE_HIT_END_FRAME = 4;
+            inline constexpr float REMOTE_HITBOX_WIDTH = 50.0f;
+            inline constexpr float REMOTE_HITBOX_HEIGHT = 200.0f;
         }
 
         // --- 以后加 Boss 或者其他怪物 ---

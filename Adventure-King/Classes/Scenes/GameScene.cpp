@@ -19,6 +19,7 @@
 #include "Character/Base/CharacterBase.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
+#include "Character/Monster/Monsters/ObscurMonster.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "GameUI.h"
 #include "Configs/GameConfigs.h"
@@ -453,6 +454,12 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
         return goblu;
     }
 
+    if (key == "obscur" || key == "obscurmonster")
+    {
+        auto obscur = ObscurMonster::create();
+        return obscur;
+    }
+
     CCLOG("Warning: Unknown monster type '%s'", monsterType.c_str());
     return nullptr;
 }
@@ -528,4 +535,3 @@ void GameScene::showMapLoadFailedUI()
         addChild(titleLabel, 1);
     }
 }
-

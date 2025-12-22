@@ -112,6 +112,14 @@ protected:
                                     int damageTag,
                                     float lifeSeconds = 0.1f);
 
+    /// @brief 生成一次性的攻击判定框（中心点坐标）
+    /// @details 用于远程/落点类技能：在指定位置生成判定框，并自动绑定攻击来源与销毁计时。
+    cocos2d::Node* spawnAttackHitboxAt(const cocos2d::Vec2 &centerPosInParentSpace,
+                                       const cocos2d::Size &hitboxSize,
+                                       int damageTag,
+                                       float lifeSeconds = 0.1f,
+                                       int localZOrder = 0);
+
     // 工具
     /// @brief 朝向目标节点
     void faceTarget(Node* target);
