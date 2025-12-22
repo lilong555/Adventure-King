@@ -4,6 +4,7 @@
 .DS_Store
 Thumbs.db
 *:Zone.Identifier
+*.tiled-session
 
 # ========================
 # VS Code 配置文件 (本机特定)
