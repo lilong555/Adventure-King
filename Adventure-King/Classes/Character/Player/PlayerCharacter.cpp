@@ -1274,7 +1274,7 @@ bool PlayerCharacter::onProjectileContactBegin(PhysicsContact& contact)
 
 void PlayerCharacter::initAssetPaths(const std::string& spriteFrameName)
 {
-    _defaultSpriteDir = "Sprites/Characters/Player/Klee/defalt";
+    _defaultSpriteDir = "Sprites/Characters/Player/Klee/default";
     _skillSpriteDir = "Sprites/Characters/Player/Klee/rpg";
     _characterKey = "klee";
 

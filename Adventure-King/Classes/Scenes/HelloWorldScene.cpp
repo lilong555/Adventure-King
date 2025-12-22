@@ -145,17 +145,25 @@ bool HelloWorld::init()
     // ==========================================================
 
     auto menu = Menu::create(StartItem, SetItem, SaveItem, MapItem, NULL);
-    menu->setPosition(Vec2(0, -visibleSize.height / menuOffsetYDivisor));
+
+    // --- 核心设置 ---
+    //menu->ignoreAnchorPointForPosition(false);
+    //menu->setAnchorPoint(Vec2(0.5f, 0.5f));    // 设置缩放中心为中点
+    menu->setContentSize(Size::ZERO);          // 强制内容大小为0，使锚点与 (0,0) 重合
+    menu->setScale(2.0f);                      // 整体缩放
+
+    menu->setPosition(Vec2(0,0));
+
     contentContainer->addChild(menu, menuZOrder);
 
     // ==========================================================
     // 5. 添加背景精灵
     // ==========================================================
 
-    auto sprite = Sprite::create("Scene/UI/menuBacground_1.png");
+    auto sprite = Sprite::create("Scene/Backgrounds/startMenu.png");
     if (sprite == nullptr)
     {
-        problemLoading("'Scene/UI/menuBacground_1.png'");
+        problemLoading("'Scene/Backgrounds/startMenu.png'");
     }
     else
     {
@@ -221,6 +229,7 @@ bool HelloWorld::init()
     {
         backman->setAnchorPoint(Vec2(0.0f, 0.0f));
         backman->setPosition(Vec2(-halfSize.x, -halfSize.y + visibleSize.height * 0.1f)); // 微调一点点位置
+        backman->setScale(2.0f);
         contentContainer->addChild(backman, cornerSpriteZOrder);
         // backman 比较大，旋转幅度要小一些，否则会“晃得太厉害”
         addCornerWobbleEffect(backman, Vec2(0.0f, 4.0f), 0.6f, 1.3f, 1.0f);
@@ -236,6 +245,7 @@ bool HelloWorld::init()
     {
         dragon1->setAnchorPoint(Vec2(1.0f, 0.0f));
         dragon1->setPosition(Vec2(halfSize.x, -halfSize.y));
+        dragon1->setScale(2.0f);
         contentContainer->addChild(dragon1, cornerSpriteZOrder);
         // 右下角：向左上（向内）漂浮，避免漂到屏幕外导致“看起来没动”
         addCornerWobbleEffect(dragon1, Vec2(-5.0f, 4.0f), 1.0f, 1.2f, 0.9f);
@@ -251,6 +261,7 @@ bool HelloWorld::init()
     {
         dragon2->setAnchorPoint(Vec2(1.0f, 1.0f));
         dragon2->setPosition(Vec2(halfSize.x, halfSize.y));
+        dragon2->setScale(2.0f);
         contentContainer->addChild(dragon2, cornerSpriteZOrder);
         // 右上角：向左下（向内）漂浮，避免漂到屏幕外导致“看起来没动”
         addCornerWobbleEffect(dragon2, Vec2(-5.0f, -4.0f), 1.0f, 1.15f, 0.85f);

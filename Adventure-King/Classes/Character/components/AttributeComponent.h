@@ -69,6 +69,9 @@ public:
     const Attributes& getFinalAttributes() const { return _finalAttributes; }
 
 private:
+    int _attributePoints = 0;
+    std::map<AttributeType, float> _procCooldowns; // 用 Map 管理所有冷却
+
     // 辅助函数：内部更新状态效果逻辑
     void updateStatusEffectsLogic(float dt);
 
