@@ -1,23 +1,22 @@
-#ifndef __GAMESCENE_H__
-#define __GAMESCENE_H__
+#ifndef __HOME_SCENE_H__
+#define __HOME_SCENE_H__
 
-#include "cocos2d.h"
+#include "GameScene.h"
 
-class HomeScene : public cocos2d::Scene
+class HomeScene : public GameScene
 {
 public:
-    // 静态创建方法：用于生成场景实例
-    static cocos2d::Scene *createScene();
+    static cocos2d::Scene* createScene();
+    virtual bool init() override;
 
-    // 初始化方法：用于设置场景内容
-    virtual bool init();
-    // 返回主菜单回调
-    void menuReturnCallback(Ref *pSender);
-    // 创建宏
+    // 必须实现的纯虚函数
+    virtual std::string getLevelName() const override { return "HomeScene"; }
+
+    // “家”不需要刷怪
+    virtual float getEnemySpawnViewDistance() const override { return 0.0f; }
+
     CREATE_FUNC(HomeScene);
-
-private:
-    // 可以在这里添加游戏逻辑或变量
+    void menuReturnCallback(Ref* pSender);
 };
 
-#endif // __GAMESCENE_H__
+#endif

@@ -224,7 +224,7 @@ void GameScene::initPlayer(const Vec2 &startPos)
     {
         addChild(_player, PLAYER_Z_ORDER);
     }
-
+    CCLOG("Tiled Spawn Point: (%f, %f)", startPos.x, startPos.y);
     CCLOG("Player created: pos=(%.0f, %.0f), boxSize=(%.0f, %.0f)",
           playerPos.x, playerPos.y, boxWidth, boxHeight);
 }

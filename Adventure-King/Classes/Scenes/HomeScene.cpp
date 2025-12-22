@@ -1,6 +1,7 @@
 #include "HelloWorldScene.h" // 包含主菜单场景，以便返回
 #include "HomeScene.h"
 #include "GameScene.h"
+#include "Scenes/LevelMap.h"
 #include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
 
@@ -18,48 +19,49 @@ static void problemLoading(const char *filename)
     printf("Error while loading: %s\n", filename);
     printf("Depending on how you compiled you might have to add 'Resources/' in front of filenames in HelloWorldScene.cpp\n");
 }
-// 初始化方法
-bool HomeScene::init()
-{
-    if (!Scene::init())
+bool HomeScene::init() {
+    // 1. 基础初始化
+    if (!GameScene::init()) return false;
+
+    // 2. 关卡特化配置
+    LevelConfig config;
+    config.tmxMapPath = "Scene/Backgrounds/HomeBackground_1.tmx";
+
+    // 对应 Tiled 里的图层名
+    config.collisionLayerName = "collisions"; // 包含地面和左右边界
+    config.gateLayerName = "gates";           // 包含传送门区域
+    config.bornLayerName = "collisions";      // 包含 PlayerSpawn 点
+
+    // 物理参数
+    config.gravity = -980.0f;               // 标准重力
+    config.enablePhysicsDebug = true;       // 调试模式：显示红色碰撞框
+
+    // 3. 调用基类模板方法完成流水线初始化
+    if (!initWithPhysicsConfig(config)) {
+        CCLOG("HomeScene - Failed to init with physics config");
         return false;
-
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    Vec2 origin = Director::getInstance()->getVisibleOrigin();
-    Vec2 center = Vec2(origin.x + visibleSize.width / 2,
-                       origin.y + visibleSize.height / 2);
-
-    // 1. 背景
-    auto bg = Sprite::create("Scene/Backgrounds/HomeBackground_1.jpg");
-    if (bg)
-    {
-        Size textureSize = bg->getContentSize();
-        float scaleX = visibleSize.width / textureSize.width;
-        float scaleY = visibleSize.height / textureSize.height;
-        float scaleFactor = std::max(scaleX, scaleY); // 覆盖屏幕
-        bg->setScale(scaleFactor);
-        bg->setPosition(center);
-        this->addChild(bg, 0);
-    }
-    else
-    {
-        problemLoading("'Scene/Backgrounds/HomeBackground_1.jpg'");
     }
 
-    // 2. 菜单按钮
-    auto setItem = MenuItemImage::create(
-        "CloseNormal.png",
-        "CloseSelected.png",
-        CC_CALLBACK_1(HomeScene::menuReturnCallback, this));
+    //实现地图缩放
+    if (_levelMap) {
+        // 1. 获取地图的原始 TMX 对象
+        auto tiledMap = _levelMap->getTileMap();
+        if (tiledMap) {
+            auto visibleSize = Director::getInstance()->getVisibleSize();
+            auto mapSize = tiledMap->getContentSize();
 
-    setItem->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
-    setItem->setPosition(Vec2(origin.x, origin.y + visibleSize.height));
+            // 2. 计算缩放比（以高度为基准铺满屏幕）
+            float scaleY = visibleSize.height / mapSize.height;
 
-    auto menu = Menu::create(setItem, nullptr);
-    menu->setPosition(Vec2::ZERO);
-    this->addChild(menu, 5);
+            // 3. 应用缩放
+            // 注意：为了保持比例，X 和 Y 通常使用相同的缩放值
+            _gameLayer->setScale(scaleY);
 
-    // 播放背景音乐
+            // 4. 更新地图内容大小，确保相机 Follow 边界正确
+            //_gameLayer->setContentSize(Size(mapSize.width * scaleY, mapSize.height * scaleY));
+        }
+    }
+    // 4.播放背景音乐
     std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
     float musicVolume = 0.5f;
     this->scheduleOnce(
@@ -70,6 +72,7 @@ bool HomeScene::init()
         0.5f, //必须加一定延迟否则会被场景切换截断
         "PlayMusicAfterSceneChange"
     );
+    CCLOG("HomeScene - Initialized successfully");
     return true;
 }
 

@@ -4,6 +4,7 @@
  */
 
 #include "Scenes/LevelMap.h"
+#include "Scenes/GameScene.h"
 #include "Character/Monster/MonsterBase.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Configs/GameConfigs.h"
@@ -287,14 +288,14 @@ void LevelMap::createRectCollisionBody(Node *gameLayer,
                                       const Rect &rect,
                                       const std::string &name) const
 {
-    if (!gameLayer || !_tileMap)
-        return;
+    if (!_tileMap) return;
 
-    double rectCenterX = rect.origin.x + rect.size.width / 2;
-    double rectCenterY = rect.origin.y + rect.size.height / 2;
-
+    // 直接作为 _tileMap 的子节点
     auto collisionNode = Node::create();
-    collisionNode->setPosition(Vec2(rectCenterX, rectCenterY) + _tileMap->getPosition());
+
+    // TMX 对象的 rect.origin 已经是左下角坐标
+    Vec2 center(rect.origin.x + rect.size.width / 2, rect.origin.y + rect.size.height / 2);
+    collisionNode->setPosition(center);
 
     auto physicsBody = PhysicsBody::createBox(rect.size, COLLISION_PHYSICS_MATERIAL);
     physicsBody->setDynamic(false);
@@ -310,82 +311,62 @@ void LevelMap::createRectCollisionBody(Node *gameLayer,
                                               GamePhysicsCategory::PLAYER_ATTACK |
                                               GamePhysicsCategory::BOMB));
 
-    collisionNode->addComponent(physicsBody);
-    gameLayer->addChild(collisionNode, 1);
-
-    CCLOG("  Created rect collision: name='%s', size=(%.0f, %.0f) at (%.0f, %.0f)",
-          name.c_str(), rect.size.width, rect.size.height, rectCenterX, rectCenterY);
+    collisionNode->setPhysicsBody(physicsBody);
+    _tileMap->addChild(collisionNode); // 关键：统一加到地图里
+   /* CCLOG("  Created rect collision: name='%s', size=(%.0f, %.0f) at (%.0f, %.0f)",
+          name.c_str(), rect.size.width, rect.size.height, rectCenterX, rectCenterY);*/
 }
 
-Vec2 LevelMap::getPlayerSpawnPoint(const std::string &bornGroupName) const
+Vec2 LevelMap::getPlayerSpawnPoint(const std::string& bornGroupName) const
 {
-    if (!_tileMap)
-    {
-        CCLOG("Warning: Cannot get spawn point - tilemap not loaded");
-        return DEFAULT_SPAWN_POINT;
-    }
-
+    if (!_tileMap) return DEFAULT_SPAWN_POINT;
     auto bornGroup = _tileMap->getObjectGroup(bornGroupName);
-    if (!bornGroup)
-    {
-        CCLOG("Warning: '%s' object group not found, using default spawn", bornGroupName.c_str());
-        return DEFAULT_SPAWN_POINT;
-    }
+    if (!bornGroup) return DEFAULT_SPAWN_POINT;
 
     auto objects = bornGroup->getObjects();
-    if (objects.empty())
-    {
-        CCLOG("Warning: No objects in '%s' group, using default spawn", bornGroupName.c_str());
-        return DEFAULT_SPAWN_POINT;
-    }
-
-    auto dict = objects[0].asValueMap();
-    Vec2 spawnPoint(dict["x"].asDouble(), dict["y"].asDouble());
-    CCLOG("Player spawn point: (%.0f, %.0f)", spawnPoint.x, spawnPoint.y);
-    return spawnPoint;
-}
-
-void LevelMap::loadGateAreas(const std::string &gateGroupName)
-{
-    _gateAreas.clear();
-
-    if (!_tileMap)
-    {
-        CCLOG("Warning: Cannot load gate areas - tilemap not loaded");
-        return;
-    }
-
-    auto gateGroup = _tileMap->getObjectGroup(gateGroupName);
-    if (!gateGroup)
-    {
-        CCLOG("Info: '%s' object group not found in tilemap", gateGroupName.c_str());
-        return;
-    }
-
-    auto objects = gateGroup->getObjects();
-    CCLOG("Loading gate areas: %zu objects", objects.size());
-
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-
-    for (const auto &obj : objects)
+    for (const auto& obj : objects)
     {
         auto dict = obj.asValueMap();
-        std::string name = dict["name"].asString();
-        double x = dict["x"].asDouble();
-        double y = dict["y"].asDouble();
-        double width = dict["width"].asDouble();
-        double height = dict["height"].asDouble();
+        // 只有名字匹配 "PlayerSpawn" 才是真正的出生点
+        if (dict["name"].asString() == "PlayerSpawn")
+        {
+            float x = dict["x"].asFloat();
+            float y = dict["y"].asFloat();
+            CCLOG("Found PlayerSpawn at: (%f, %f)", x, y);
+            return Vec2(x, y);
+        }
+    }
 
-        if (width <= 0)
-            width = DEFAULT_GATE_INTERACT_DISTANCE * 2;
-        if (height <= 0)
-            height = visibleSize.height;
+    CCLOG("Warning: 'PlayerSpawn' not found in group '%s'", bornGroupName.c_str());
+    return DEFAULT_SPAWN_POINT;
+}
 
-        Rect gateRect(x, y, width, height);
+void LevelMap::loadGateAreas(const std::string& gateGroupName)
+{
+    _gateAreas.clear();
+    auto gateGroup = _tileMap->getObjectGroup(gateGroupName);
+    if (!gateGroup) return;
+
+    auto objects = gateGroup->getObjects();
+
+    for (const auto& obj : objects)
+    {
+        auto dict = obj.asValueMap();
+        float x = dict["x"].asFloat();
+        float y = dict["y"].asFloat();
+        float w = dict["width"].asFloat();
+        float h = dict["height"].asFloat();
+
+        Rect gateRect(x, y, w, h);
         _gateAreas.push_back(gateRect);
 
-        CCLOG("  Gate '%s': rect=(%.0f, %.0f, %.0f, %.0f)",
-              name.c_str(), x, y, width, height);
+        // --- 添加以下代码进行可视化 ---
+#if COCOS2D_DEBUG > 0
+        auto debugDraw = DrawNode::create();
+        // 画一个半透明的蓝色矩形代表传送门
+        debugDraw->drawSolidRect(Vec2(x, y), Vec2(x + w, y + h), Color4F(0, 0, 1, 0.3f));
+        _tileMap->addChild(debugDraw, 10);
+#endif
     }
 }
 
