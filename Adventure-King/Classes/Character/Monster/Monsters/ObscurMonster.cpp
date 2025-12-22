@@ -145,16 +145,10 @@ bool ObscurMonster::init(const std::string& spriteFrameName)
         return false;
     }
 
-    // Obscur 的帧图为了攻击动作延展，右侧留白较多；如果仍用 0.5 的锚点，会导致“脚下点/碰撞箱”与可视角色错位，看起来像悬空
-    // 这里把锚点放到“碰撞箱的底部中心”（也就是脚下中心），并把物理体相对 Sprite 内容中心做偏移对齐
-    float anchorX = GameConfig::Monster::Base::ANCHOR_X;
+    // Obscur 以脚底为锚点（底部对齐），避免“以中心为锚点”导致的站立表现悬空
+    // ⚠️ X 轴保持默认 0.5，避免左右错位；只调整 Y（脚底对齐）
     const auto contentSize = getContentSize();
-    if (contentSize.width > 0.0f)
-    {
-        anchorX = (GameConfig::Monster::Obscur::PHYSICS_BOX_WIDTH * 0.5f) / contentSize.width;
-        anchorX = std::max(0.0f, std::min(1.0f, anchorX));
-    }
-    setAnchorPoint(Vec2(anchorX, GameConfig::Monster::Base::ANCHOR_Y));
+    setAnchorPoint(Vec2(GameConfig::Monster::Base::ANCHOR_X, GameConfig::Monster::Base::ANCHOR_Y));
 
     // Obscur 体型缩放与碰撞箱：按策划要求使用固定大小碰撞箱（235x449）
     setScale(GameConfig::Monster::Obscur::SCALE);
@@ -165,20 +159,17 @@ bool ObscurMonster::init(const std::string& spriteFrameName)
                 GameConfig::Monster::Obscur::PATROL_ENABLED);
 
     {
-        Vec2 bodyOffset = Vec2::ZERO;
-        if (contentSize.width > 0.0f)
-        {
-            bodyOffset.x = (GameConfig::Monster::Obscur::PHYSICS_BOX_WIDTH - contentSize.width) * 0.5f;
-        }
+        // 仅保留 Y 轴对齐（解决“悬空”）；X 轴不做偏移（避免左右错位）
+        float bodyOffsetY = 0.0f;
         if (contentSize.height > 0.0f)
         {
-            bodyOffset.y = (GameConfig::Monster::Obscur::PHYSICS_BOX_HEIGHT - contentSize.height) * 0.5f;
+            bodyOffsetY = (GameConfig::Monster::Obscur::PHYSICS_BOX_HEIGHT - contentSize.height) * 0.5f;
         }
 
         auto body = PhysicsBody::createBox(
             Size(GameConfig::Monster::Obscur::PHYSICS_BOX_WIDTH, GameConfig::Monster::Obscur::PHYSICS_BOX_HEIGHT),
             GameConfig::Material::MONSTER,
-            bodyOffset);
+            Vec2(0.0f, bodyOffsetY));
         body->setDynamic(true);
         body->setRotationEnable(false);
         body->setGravityEnable(true);
