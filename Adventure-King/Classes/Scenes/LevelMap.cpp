@@ -80,8 +80,15 @@ void LevelMap::setupRepeatingBackground(Node *gameLayer,
     }
 
     Size bgSize = tempSprite->getContentSize();
-    float scaleY = visibleSize.height / bgSize.height;
-    int repeatCount = static_cast<int>(ceil(mapWidthPixels / (bgSize.width * scaleY))) + 1;
+    // 背景优先按“地图高度”缩放，保证与 TMX 像素坐标系一致（例如整图背景 3200x1440）
+    // 若地图高度未知，则回退到按屏幕高度缩放的策略。
+    const float targetHeight = (_mapSizeInPixels.height > 0.0f) ? _mapSizeInPixels.height : visibleSize.height;
+    const float scale = (bgSize.height > 0.0f) ? (targetHeight / bgSize.height) : 1.0f;
+
+    // repeatCount 只取覆盖地图宽度所需的最小数量，避免出现额外重复导致画面“拼接感”
+    const float scaledWidth = bgSize.width * scale;
+    int repeatCount = (scaledWidth > 0.0f) ? static_cast<int>(ceil(mapWidthPixels / scaledWidth)) : 1;
+    repeatCount = std::max(1, repeatCount);
 
     auto bgContainer = Node::create();
 
@@ -92,8 +99,8 @@ void LevelMap::setupRepeatingBackground(Node *gameLayer,
             continue;
 
         bgSprite->setAnchorPoint(Vec2(0, 0));
-        bgSprite->setScale(scaleY);
-        bgSprite->setPosition(Vec2(i * bgSize.width * scaleY, origin.y));
+        bgSprite->setScale(scale);
+        bgSprite->setPosition(Vec2(origin.x + i * scaledWidth, origin.y));
         bgContainer->addChild(bgSprite);
     }
 
@@ -110,10 +117,15 @@ void LevelMap::setupBackgroundSeries(Node *gameLayer,
     if (backgroundPaths.empty())
         return;
 
+    auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
     std::vector<Sprite *> sprites;
     sprites.reserve(backgroundPaths.size());
+
+    // 背景优先按“地图高度”缩放，保证与 TMX 像素坐标系一致
+    const float targetHeight = (_mapSizeInPixels.height > 0.0f) ? _mapSizeInPixels.height : visibleSize.height;
+    float scale = 1.0f;
 
     float xOffset = 0.0f;
     for (const auto &path : backgroundPaths)
@@ -126,9 +138,20 @@ void LevelMap::setupBackgroundSeries(Node *gameLayer,
         }
 
         bgSprite->setAnchorPoint(Vec2(0, 0));
+        // 使用第一张图的高度计算统一缩放比例，避免每张图尺寸不同导致接缝错位
+        if (sprites.empty())
+        {
+            const float h = bgSprite->getContentSize().height;
+            if (h > 0.0f)
+            {
+                scale = targetHeight / h;
+            }
+        }
+
+        bgSprite->setScale(scale);
         bgSprite->setPosition(Vec2(xOffset, 0.0f));
 
-        xOffset += bgSprite->getContentSize().width;
+        xOffset += bgSprite->getContentSize().width * scale;
         sprites.push_back(bgSprite);
     }
 

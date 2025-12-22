@@ -13,7 +13,8 @@ LevelConfig HomeScene::getLevelConfig() const
 {
     LevelConfig config;
     config.tmxMapPath = "Map/Home/home.tmx";
-    config.backgroundPath = "";
+    // 使用 Home 的整图背景（与 TMX 像素尺寸一致：3200x1440）
+    config.backgroundPath = "Map/Home/home.png";
     config.collisionLayerName = "collisions";
     config.bornLayerName = "born";
     config.gateLayerName = "gate";

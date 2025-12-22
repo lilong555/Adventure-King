@@ -15,7 +15,13 @@ LevelConfig MysteryForestScene::getLevelConfig() const
 {
     LevelConfig config;
     config.tmxMapPath = "Map/dungeon/dungeon.tmx";
-    config.backgroundPath = "";
+    // 神秘之森：背景由 1~4 四张图从左到右拼接（不重叠）
+    config.backgroundSeriesPaths = {
+        "Map/dungeon/1.png",
+        "Map/dungeon/2.png",
+        "Map/dungeon/3.png",
+        "Map/dungeon/4.png",
+    };
     config.collisionLayerName = "collisions";
     config.bornLayerName = "born";
     config.gateLayerName = "gate";
