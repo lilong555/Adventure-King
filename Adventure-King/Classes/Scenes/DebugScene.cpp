@@ -51,6 +51,8 @@ Scene *DebugScene::createScene()
     return DebugScene::create();
 }
 
+DebugScene::DebugScene() = default;
+
 DebugScene::~DebugScene() = default;
 
 void DebugScene::setupRegistry()
@@ -1237,14 +1239,30 @@ void DebugScene::onPoisonClicked(Ref *sender)
         return;
 
     // 与正式战斗逻辑一致：DOT 参数必须设置 tickInterval/sourceAttackPower，交给 AttributeComponent 自动结算
-    _player->tryApplyDotStatus(
-        _player,
-        StatusEffectType::POISONED,
-        1,
-        GameConfig::StatusEffect::Poisoned::DURATION_SECONDS,
-        GameConfig::StatusEffect::Poisoned::TICK_INTERVAL_SECONDS,
-        GameConfig::StatusEffect::Poisoned::BASE_DAMAGE_SCALE,
-        GameConfig::StatusEffect::Poisoned::PER_STACK_DAMAGE_SCALE);
+    auto attr = _player->getAttributeComponent();
+    if (!attr)
+    {
+        return;
+    }
+
+    StatusEffectInstance inst;
+    inst.type = StatusEffectType::POISONED;
+    inst.duration = std::max(0.0f, GameConfig::StatusEffect::Poisoned::DURATION_SECONDS);
+    inst.elapsed = 0.0f;
+    inst.attributeBonus.clear();
+
+    inst.stacks = 1;
+    inst.maxStacks = 0;
+    inst.stackable = true;
+    inst.refreshOnAdd = true;
+
+    inst.tickInterval = std::max(0.0f, GameConfig::StatusEffect::Poisoned::TICK_INTERVAL_SECONDS);
+    inst.tickAccumulator = 0.0f;
+    inst.sourceAttackPower = _player->getAttackPower();
+    inst.baseDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::BASE_DAMAGE_SCALE);
+    inst.perStackDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::PER_STACK_DAMAGE_SCALE);
+
+    attr->addStatusEffect(inst);
 
     addDamageLog(StringUtils::format("中毒! 持续%.1f秒", GameConfig::StatusEffect::Poisoned::DURATION_SECONDS));
     CCLOG("Poison effect applied");
@@ -1266,9 +1284,19 @@ void DebugScene::onExcitedClicked(Ref *sender)
     if (!_player || _player->isDead())
         return;
 
-    // 与正式战斗逻辑一致：亢奋由 PlayerCharacter 封装（这里只做移速 buff）
-    _player->applyExcitedBuff(GameConfig::StatusEffect::Excited::DURATION_SECONDS,
-                              GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
+    auto attr = _player->getAttributeComponent();
+    if (!attr)
+    {
+        return;
+    }
+
+    StatusEffectInstance excited;
+    excited.type = StatusEffectType::EXCITED;
+    excited.duration = std::max(0.0f, GameConfig::StatusEffect::Excited::DURATION_SECONDS);
+    excited.elapsed = 0.0f;
+    excited.attributeBonus.set(AttributeType::MOVE_SPEED, GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
+
+    attr->addStatusEffect(excited);
 
     addDamageLog(StringUtils::format("亢奋! 移速+%.0f (%.1f秒)",
                                      GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS,
