@@ -379,7 +379,8 @@ void MapScene::startPreloadOriginMushroom(bool showUI)
         addPath(info.selectedImage);
     }
 
-    // 粒子特效使用 plist 内嵌纹理，不再预加载 particle_texture.png
+    // 粒子特效现均使用粒子 plist 中内嵌的纹理，不再依赖单独的 particle_texture.png；
+    // 因此这里不需要再通过 addPath 预加载对应 PNG 贴图。
 
     // 哥布林资源（首刷会卡）：贴图先入 TextureCache
     addPath("Sprites/Enemies/Goblin/Goblin_idle.png");

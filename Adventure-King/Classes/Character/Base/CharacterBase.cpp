@@ -417,7 +417,7 @@ void CharacterBase::setCurrentHP(float hp)
     // 只有“真正回血”时才播放恢复特效，避免初始化/复活等场景刷屏
     constexpr float kRestoreHpMinDelta = 0.5f;
     constexpr long long kRestoreVfxCooldownMs = 500;
-    if (isRunning() && oldHp > 0.0f && newHp > oldHp + kRestoreHpMinDelta)
+    if (isRunning() && oldHp > 0.0f && newHp >= oldHp + kRestoreHpMinDelta)
     {
         const long long nowMs = utils::getTimeInMilliseconds();
         if (nowMs - _lastRestoreHealthVfxMs >= kRestoreVfxCooldownMs)

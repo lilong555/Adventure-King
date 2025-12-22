@@ -5,8 +5,9 @@
 #include <vector>
 
 // 粒子预热工具：
-// - 对于使用 plist 内嵌纹理（textureImageData）的粒子，首次创建时仍会解码并上传贴图到 GPU；
-// - 通过在 LoadingScene/地图预热阶段提前 create 一次，可把“首次卡顿”放到加载阶段完成。
+// - 背景：粒子 plist 支持内嵌纹理（textureImageData）。首次创建粒子时仍可能发生“解码纹理 + 上传 GPU”，
+//   若在战斗/技能触发瞬间发生，会造成明显掉帧或卡顿。
+// - 用法：在 LoadingScene / 地图预加载阶段提前 create 一次，把首次开销挪到加载阶段完成。
 namespace ParticlePreloadHelper
 {
     inline std::vector<std::string> getCommonParticlePlists()
@@ -62,7 +63,7 @@ namespace ParticlePreloadHelper
                 continue;
             }
 
-            // 显式触发一次取纹理，确保贴图已创建（不需要 addChild）
+            // 显式触发一次取纹理，确保内嵌纹理被解码并上传到 GPU/TextureCache，即使不渲染粒子（不需要 addChild）
             (void)particle->getTexture();
         }
     }
@@ -72,4 +73,3 @@ namespace ParticlePreloadHelper
         preloadParticlePlists(getCommonParticlePlists());
     }
 } // namespace ParticlePreloadHelper
-

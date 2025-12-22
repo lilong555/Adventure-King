@@ -521,7 +521,7 @@ void GobluMonster::attack()
                                  // 这里将其改成“短爆发”，并在禁用碰撞后延长节点存活一小段时间用于展示粒子
                                  hitboxNode->stopAllActions();
                                  const float hitboxActiveTime = GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS;
-                                 const float vfxHoldTime = 0.35f;
+                                 const float vfxHoldTime = GameConfig::Monster::Goblu::REMOTE_HITBOX_VFX_HOLD_SECONDS;
                                  hitboxNode->runAction(Sequence::create(
                                      DelayTime::create(std::max(0.0f, hitboxActiveTime)),
                                      CallFunc::create([hitboxNode]()
@@ -537,6 +537,8 @@ void GobluMonster::attack()
                                  auto particle = ParticleSystemQuad::create("Particle/par_GobluRemoteHit.plist");
                                  if (particle)
                                  {
+                                     // 运行时覆盖：hitbox 生命周期很短，如果完全依赖 plist 的持续发射配置，玩家很难看清命中范围；
+                                     // 因此这里将其调整为短爆发（更高发射率/粒子数/尺寸），确保瞬间反馈可见。
                                      particle->setAutoRemoveOnFinish(true);
                                      particle->setDuration(0.15f);
                                      particle->setTotalParticles(60);

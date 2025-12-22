@@ -236,6 +236,11 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
 
 void StatusEffectVfxComponent::updatePoisonVfx(Node* owner, AttributeComponent* attr)
 {
+    if (!owner || !attr)
+    {
+        return;
+    }
+
     const bool poisoned = attr->hasStatusEffect(StatusEffectType::POISONED);
     auto existing = owner->getChildByName(POISON_VFX_NAME);
 
@@ -253,34 +258,48 @@ void StatusEffectVfxComponent::updatePoisonVfx(Node* owner, AttributeComponent* 
 
     if (!existing)
     {
+        auto particle = ParticleSystemQuad::create("Particle/par_Poison.plist");
+        if (!particle)
+        {
+            // 创建失败时不创建空容器，避免后续帧留下“空节点”无法自愈
+            return;
+        }
+
         existing = Node::create();
         existing->setName(POISON_VFX_NAME);
         owner->addChild(existing, 999);
 
-        auto particle = ParticleSystemQuad::create("Particle/par_Poison.plist");
-        if (particle)
-        {
-            particle->setName(POISON_PARTICLE_NAME);
-            particle->setPositionType(ParticleSystem::PositionType::GROUPED);
-            particle->setPosition(Vec2::ZERO);
-            existing->addChild(particle);
-        }
+        particle->setName(POISON_PARTICLE_NAME);
+        particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+        particle->setPosition(Vec2::ZERO);
+        existing->addChild(particle);
     }
 
     existing->setPosition(bodyInfo.center);
 
-    if (auto particle = dynamic_cast<ParticleSystemQuad*>(existing->getChildByName(POISON_PARTICLE_NAME)))
+    auto particle = dynamic_cast<ParticleSystemQuad*>(existing->getChildByName(POISON_PARTICLE_NAME));
+    if (!particle)
     {
-        // 让中毒特效的散布与角色体型匹配，避免 Boss 过宽/过窄
-        const float posVarX = std::min(bodyInfo.size.width * 0.15f, 60.0f);
-        const float posVarY = std::min(bodyInfo.size.height * 0.10f, 45.0f);
-        particle->setPosVar(Vec2(posVarX, posVarY));
-
-        const int safeStacks = std::max(1, stacks);
-        const float baseEmission = 6.0f;
-        const float perStackEmission = 3.0f;
-        particle->setEmissionRate(baseEmission + perStackEmission * static_cast<float>(safeStacks - 1));
+        // 如果粒子子节点丢失，移除容器节点，让后续 update 自动重新创建
+        existing->removeFromParent();
+        return;
     }
+
+    // 经验参数：让散布范围随物理体缩放，但对超大体型做上限限制，避免 Boss 过宽/过窄
+    constexpr float kPoisonPosVarXRatio = 0.15f;
+    constexpr float kPoisonPosVarYRatio = 0.10f;
+    constexpr float kPoisonPosVarXMax = 60.0f;
+    constexpr float kPoisonPosVarYMax = 45.0f;
+
+    // 让中毒特效的散布与角色体型匹配，避免 Boss 过宽/过窄
+    const float posVarX = std::min(bodyInfo.size.width * kPoisonPosVarXRatio, kPoisonPosVarXMax);
+    const float posVarY = std::min(bodyInfo.size.height * kPoisonPosVarYRatio, kPoisonPosVarYMax);
+    particle->setPosVar(Vec2(posVarX, posVarY));
+
+    const int safeStacks = std::max(1, stacks);
+    const float baseEmission = 6.0f;
+    const float perStackEmission = 3.0f;
+    particle->setEmissionRate(baseEmission + perStackEmission * static_cast<float>(safeStacks - 1));
 }
 
 int StatusEffectVfxComponent::getStacks(AttributeComponent* attr, StatusEffectType type) const
