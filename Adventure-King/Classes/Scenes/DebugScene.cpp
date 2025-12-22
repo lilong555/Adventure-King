@@ -33,6 +33,7 @@
 #include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"
 #include "Scenes/CombatContactHelper.h"
+#include "Scenes/GamePauseHelper.h"
 #include "GameUI.h"
 #include "Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/LevelScenes/OriginMushroomScene.h"
@@ -149,16 +150,11 @@ void DebugScene::initBackground()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
+    CCASSERT(_gameLayer, "_gameLayer 必须在 initBackground 之前创建");
+
     // 创建深灰色背景层
     auto background = LayerColor::create(Color4B(40, 40, 50, 255));
-    if (_gameLayer)
-    {
-        _gameLayer->addChild(background, -1);
-    }
-    else
-    {
-        this->addChild(background, -1);
-    }
+    _gameLayer->addChild(background, -1);
 
     // 添加网格线（开发辅助，可在正式关卡中移除）
     auto drawNode = DrawNode::create();
@@ -174,14 +170,7 @@ void DebugScene::initBackground()
     {
         drawNode->drawLine(Vec2(origin.x, y), Vec2(origin.x + visibleSize.width, y), gridColor);
     }
-    if (_gameLayer)
-    {
-        _gameLayer->addChild(drawNode, 0);
-    }
-    else
-    {
-        this->addChild(drawNode, 0);
-    }
+    _gameLayer->addChild(drawNode, 0);
 
     // 场景标题
     auto titleLabel = Label::createWithTTF("角色调试场景", "fonts/ZCOOLKuaiLe-Regular.ttf", 36);
@@ -208,6 +197,8 @@ void DebugScene::initPlatforms()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
+
+    CCASSERT(_gameLayer, "_gameLayer 必须在 initPlatforms 之前创建");
 
     // 创建平台可视化绘制节点
     auto platformDraw = DrawNode::create();
@@ -251,14 +242,7 @@ void DebugScene::initPlatforms()
                                                  GamePhysicsCategory::MONSTER));
 
         platformNode->addComponent(physicsBody);
-        if (_gameLayer)
-        {
-            _gameLayer->addChild(platformNode, 1);
-        }
-        else
-        {
-            this->addChild(platformNode, 1);
-        }
+        _gameLayer->addChild(platformNode, 1);
 
         _platforms.push_back(rect);
     };
@@ -271,14 +255,7 @@ void DebugScene::initPlatforms()
     // Rect leftPlatform(origin.x + 50, origin.y + 200, 200, 20);
     // createPlatform(leftPlatform, Color4F(0.5f, 0.4f, 0.3f, 1.0f));
 
-    if (_gameLayer)
-    {
-        _gameLayer->addChild(platformDraw, 1);
-    }
-    else
-    {
-        this->addChild(platformDraw, 1);
-    }
+    _gameLayer->addChild(platformDraw, 1);
 
     CCLOG("Platforms initialized with physics: %zu platforms", _platforms.size());
 }
@@ -299,6 +276,8 @@ void DebugScene::initPlayer()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
+    CCASSERT(_gameLayer, "_gameLayer 必须在 initPlayer 之前创建");
+
     // 玩家初始位置：屏幕中央、地面上方（用于创建失败占位符；创建成功后会按角色高度修正 Y）
     Vec2 startPos(origin.x + visibleSize.width * 0.5f, origin.y + GROUND_Y + 40.0f);
 
@@ -313,25 +292,11 @@ void DebugScene::initPlayer()
         auto placeholder = DrawNode::create();
         placeholder->drawSolidRect(Vec2(-25, -40), Vec2(25, 40), Color4F::GREEN);
         placeholder->setPosition(startPos);
-        if (_gameLayer)
-        {
-            _gameLayer->addChild(placeholder, 4);
-        }
-        else
-        {
-            this->addChild(placeholder, 4);
-        }
+        _gameLayer->addChild(placeholder, 4);
 
         auto label = Label::createWithTTF("玩家占位符\n(需要精灵帧)", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
         label->setPosition(startPos + Vec2(0, 60));
-        if (_gameLayer)
-        {
-            _gameLayer->addChild(label, 6);
-        }
-        else
-        {
-            this->addChild(label, 6);
-        }
+        _gameLayer->addChild(label, 6);
 
         return;
     }
@@ -375,14 +340,7 @@ void DebugScene::initPlayer()
     //   因此在这里显式创建并设置一套 PhysicsBody 配置，用于覆盖默认配置。
     // - 使用 setPhysicsBody 替换已有 PhysicsBody 是 cocos2d-x 推荐的做法，可避免重复添加导致断言。
     _player->setPhysicsBody(physicsBody);
-    if (_gameLayer)
-    {
-        _gameLayer->addChild(_player, 5);
-    }
-    else
-    {
-        this->addChild(_player, 5);
-    }
+    _gameLayer->addChild(_player, 5);
 
     // 设置死亡时不自动移除（由DebugScene控制重置）
     _player->setAutoRemoveOnDeath(false);
@@ -400,6 +358,8 @@ void DebugScene::initTestMonsters()
         return;
     }
 
+    CCASSERT(_gameLayer, "_gameLayer 必须在 initTestMonsters 之前创建");
+
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
@@ -409,14 +369,7 @@ void DebugScene::initTestMonsters()
         Vec2 pos(origin.x + visibleSize.width * 0.75f, origin.y + GROUND_Y);
         dummy->setPosition(pos);
         dummy->setAutoRemoveOnDeath(false);
-        if (_gameLayer)
-        {
-            _gameLayer->addChild(dummy, 5);
-        }
-        else
-        {
-            addChild(dummy, 5);
-        }
+        _gameLayer->addChild(dummy, 5);
         _testMonsters.push_back(dummy);
         CCLOG("DebugScene - 已生成训练木桩，HP=%.0f", dummy->getCurrentHP());
     }
@@ -802,36 +755,7 @@ void DebugScene::setGamePaused(bool paused)
     }
 
     _isPaused = paused;
-
-    // 只冻结游戏内容层，保证 UI（暂停菜单/背包等）仍然可交互。
-    if (_gameLayer)
-    {
-        if (paused)
-        {
-            _gameLayer->pause();
-        }
-        else
-        {
-            _gameLayer->resume();
-        }
-    }
-
-    // DebugScene 同样是物理场景：需要同时停止物理自动 step，否则平台/投掷物仍会运动。
-    if (auto world = getPhysicsWorld())
-    {
-        if (paused)
-        {
-            _cachedPhysicsAutoStep = world->isAutoStep();
-            _cachedPhysicsSpeed = world->getSpeed();
-            world->setAutoStep(false);
-            world->setSpeed(0.0f);
-        }
-        else
-        {
-            world->setAutoStep(_cachedPhysicsAutoStep);
-            world->setSpeed(_cachedPhysicsSpeed);
-        }
-    }
+    GamePauseHelper::setWorldPaused(this, _gameLayer, paused, _cachedPhysicsAutoStep, _cachedPhysicsSpeed);
 }
 
 //=============================================================================

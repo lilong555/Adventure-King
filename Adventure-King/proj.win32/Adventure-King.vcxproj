@@ -183,6 +183,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\CombatContactHelper.cpp" />
+    <ClCompile Include="..\Classes\Scenes\GamePauseHelper.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameInputController.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\GameUIController.cpp" />
@@ -245,6 +246,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Scenes\GameInputController.h" />
     <ClInclude Include="..\Classes\Scenes\GameScene.h" />
     <ClInclude Include="..\Classes\Scenes\GameUIController.h" />
+    <ClInclude Include="..\Classes\Scenes\GamePauseHelper.h" />
     <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h" />
     <ClInclude Include="..\Classes\Scenes\HomeScene.h" />
     <ClInclude Include="..\Classes\Scenes\Layers\SaveMenuLayer.h" />
