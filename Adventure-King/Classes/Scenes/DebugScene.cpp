@@ -20,6 +20,7 @@
 #include "Character/Base/CharacterBase.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
+#include "Character/Monster/Monsters/TrainingDummyMonster.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
@@ -332,6 +333,7 @@ void DebugScene::initPlayer()
 void DebugScene::initTestMonsters()
 {
     _testMonsters.clear();
+    _boss = nullptr;
 
     if (!_player)
     {
@@ -341,45 +343,15 @@ void DebugScene::initTestMonsters()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // 预加载：避免首次生成时卡顿
-    GoblinMonster::preloadResources();
-
-    // 普通怪：哥布林
-    if (auto goblin = GoblinMonster::create())
+    // 训练木桩：21 亿血，固定站立，用于测试伤害/技能/状态/粒子
+    if (auto dummy = TrainingDummyMonster::create())
     {
-        Vec2 pos(origin.x + visibleSize.width * 0.70f, origin.y + GROUND_Y);
-        goblin->setPosition(pos);
-        goblin->setTarget(_player);
-        goblin->setHome(pos);
-        goblin->setAggroRadius(0.0f); // 0=一直追
-        goblin->setLeashRadius(0.0f);
-        goblin->setAutoRemoveOnDeath(false);
-        goblin->applyHpScalingForPlayerLevel(_player->getLevel());
-        addChild(goblin, 5);
-        _testMonsters.push_back(goblin);
-    }
-
-    // Boss：哥布鲁（用于测试远程攻击命中/状态效果/粒子）
-    if (auto goblu = GobluMonster::create())
-    {
-        Vec2 pos(origin.x + visibleSize.width * 0.85f, origin.y + GROUND_Y);
-        goblu->setPosition(pos);
-        goblu->setTarget(_player);
-        goblu->setHome(pos);
-        goblu->setAggroRadius(0.0f);
-        goblu->setLeashRadius(0.0f);
-        goblu->setAutoRemoveOnDeath(false);
-        addChild(goblu, 5);
-        _testMonsters.push_back(goblu);
-        _boss = goblu;
-
-        if (_uiController)
-        {
-            if (auto ui = _uiController->getGameUI())
-            {
-                ui->bindBoss(goblu, "Goblu", 1);
-            }
-        }
+        Vec2 pos(origin.x + visibleSize.width * 0.75f, origin.y + GROUND_Y);
+        dummy->setPosition(pos);
+        dummy->setAutoRemoveOnDeath(false);
+        addChild(dummy, 5);
+        _testMonsters.push_back(dummy);
+        CCLOG("DebugScene - 已生成训练木桩，HP=%.0f", dummy->getCurrentHP());
     }
 }
 

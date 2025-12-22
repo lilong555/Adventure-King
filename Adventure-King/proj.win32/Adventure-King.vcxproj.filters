@@ -87,6 +87,9 @@
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GobluMonster.cpp">
       <Filter>src\Character\Monster\Monsters</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.cpp">
+      <Filter>src\Character\Monster\Monsters</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Character\Monster\MonsterBase.cpp">
       <Filter>src\Character\Monster</Filter>
     </ClCompile>
@@ -216,6 +219,9 @@
       <Filter>src\Character\Monster\Monsters</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\Monster\Monsters\GobluMonster.h">
+      <Filter>src\Character\Monster\Monsters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.h">
       <Filter>src\Character\Monster\Monsters</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\Monster\MonsterBase.h">
