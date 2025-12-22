@@ -58,7 +58,7 @@ void OriginMushroomScene::setupRegistry()
     // 第一步：放入所有固定的、不需要拼接的字符串
     std::vector<std::string> paths = {
         // --- 公共资源 ---
-        "Particle/particle_texture.png",
+        // 粒子特效使用 plist 内嵌纹理，不需要预加载 particle_texture.png
 
         // --- 地图选择 UI (防首次卡顿) ---
         "Scene/Backgrounds/MapBackground.png",

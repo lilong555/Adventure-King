@@ -103,7 +103,7 @@
 	<key>tangentialAcceleration</key>
 	<real>0</real>
 	<key>textureFileName</key>
-	<string>Particle/particle_texture.png</string>
+	<string></string>
 	<key>textureImageData</key>
 	<string>H4sIAAAAAAAAA+sM8HPn5ZLiYmBg4PX0cAkC0nIgzMEGJK0N1i0CUt6eLo4hHp1vr23kZVDgYA0skJrrerxU/PhB0bpG1o/r1Co5WQ8qH5rSppv54UZZ6jrPV80NjY2vD99LzlquvfN/GC8Pz5xpn4sZmZmnN+vnKfIt7epLeQU0lsHT1c9lnVNCEwA52Is9hAAAAA==</string>
 </dict>

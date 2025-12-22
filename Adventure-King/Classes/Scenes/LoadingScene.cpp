@@ -5,6 +5,8 @@
 #include"Scenes/LevelScenes/OriginMushroomScene.h"
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include"Managers/MusicManager.h"
+#include "Utils/ParticlePreloadHelper.h"
+#include "2d/CCTransition.h"
 #include <algorithm>
 #include <unordered_set>
 
@@ -38,6 +40,12 @@ LoadingScene::~LoadingScene()
         {
             cache->unbindImageAsync(_callbackKey);
         }
+    }
+
+    if (_pendingDestinationScene)
+    {
+        _pendingDestinationScene->release();
+        _pendingDestinationScene = nullptr;
     }
 }
 
@@ -197,6 +205,13 @@ void LoadingScene::finishPreload()
     if (_finished) return;
     _finished = true;
 
+    // 粒子预热：使用 plist 内嵌纹理的粒子首次触发会解码/上传贴图，提前在加载阶段完成
+    if (_label)
+    {
+        _label->setString("粒子预热中...");
+    }
+    ParticlePreloadHelper::preloadCommonParticles();
+
     auto info = SceneRegistry::getInstance()->getSceneInfo(_mapId);
 
     if (info) {
@@ -208,15 +223,59 @@ void LoadingScene::finishPreload()
         // 2. 使用工厂方法创建目标场景
         if (info->creator) {
             auto destinationScene = info->creator();
-            // 切换场景逻辑...
-            Director::getInstance()->replaceScene(destinationScene);
+            if (destinationScene)
+            {
+                // 延迟到 TransitionScene 结束后再切，避免嵌套 replaceScene 导致崩溃
+                if (_pendingDestinationScene)
+                {
+                    _pendingDestinationScene->release();
+                }
+                _pendingDestinationScene = destinationScene;
+                _pendingDestinationScene->retain();
+                tryReplacePendingScene();
+                return;
+            }
             return;
         }
     }
 
     // 容错处理：如果注册表中没找到，回退到默认
     CCLOG("Error: MapID %d not found in registry!", _mapId);
-    Director::getInstance()->replaceScene(MapScene::createScene());
+    auto fallback = MapScene::createScene();
+    if (fallback)
+    {
+        if (_pendingDestinationScene)
+        {
+            _pendingDestinationScene->release();
+        }
+        _pendingDestinationScene = fallback;
+        _pendingDestinationScene->retain();
+        tryReplacePendingScene();
+    }
+}
+
+void LoadingScene::tryReplacePendingScene()
+{
+    if (!_pendingDestinationScene)
+    {
+        return;
+    }
+
+    auto director = Director::getInstance();
+    auto running = director ? director->getRunningScene() : nullptr;
+    if (running && dynamic_cast<TransitionScene*>(running))
+    {
+        // 仍处于过渡场景中（比如从 MapScene 淡入 LoadingScene），延后一帧再尝试切换
+        scheduleOnce([this](float)
+                     { this->tryReplacePendingScene(); },
+                     0.0f,
+                     "TryReplacePendingScene");
+        return;
+    }
+
+    director->replaceScene(_pendingDestinationScene);
+    _pendingDestinationScene->release();
+    _pendingDestinationScene = nullptr;
 }
 
 void LoadingScene::updateProgressUI()
@@ -254,7 +313,7 @@ std::vector<std::string> LoadingScene::buildPreloadList(int mapId) const
 
     // 1. 加载所有场景通用的基础资源 (UI 等)
     paths.push_back("Scene/Backgrounds/MapBackground.png");
-    paths.push_back("Particle/particle_texture.png");
+    // 粒子特效使用 plist 内嵌纹理，不需要预加载 particle_texture.png
 
     // 2. 从注册表中获取该 ID 特有的资源
     auto info = SceneRegistry::getInstance()->getSceneInfo(mapId);

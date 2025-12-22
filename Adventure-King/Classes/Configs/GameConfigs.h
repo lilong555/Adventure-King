@@ -342,6 +342,7 @@ namespace GameConfig
             inline constexpr float HITBOX_WIDTH = 380.0f;
             inline constexpr float HITBOX_HEIGHT = 30.0f;
             inline constexpr float HITBOX_LIFE_SECONDS = 0.12f;
+            inline constexpr float REMOTE_HITBOX_VFX_HOLD_SECONDS = 0.35f; // 远程攻击特效展示时间（碰撞禁用后仍保留节点）
             inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
         }
 

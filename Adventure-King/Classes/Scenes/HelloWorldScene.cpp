@@ -274,15 +274,6 @@ bool HelloWorld::init()
         }
         else
         {
-            auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
-            if (!particleTexture)
-            {
-                problemLoading("Particle/particle_texture.png");
-            }
-            else
-            {
-                dragonFire->setTexture(particleTexture);
-            }
             dragonFire->setAnchorPoint(Vec2(0.0f, 0.0f));
             dragonFire->setPosition(Vec2(80.0f, 85.0f)); // dragon2 的左下角
             dragonFire->setPositionType(ParticleSystem::PositionType::GROUPED);
@@ -308,15 +299,6 @@ bool HelloWorld::init()
         {
             problemLoading("Particle/par_warfire.plist");
             continue;
-        }
-        auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
-        if (!particleTexture)
-        {
-            problemLoading("Particle/particle_texture.png");
-        }
-        else
-        {
-            particleSystem->setTexture(particleTexture);
         }
         particleSystem->setScale(0.3f);
         particleSystem->setPosition(Vec2(particleBaseX, y));

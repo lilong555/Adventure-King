@@ -17,6 +17,7 @@ namespace
     const char* const DEFAULT_DAMAGE_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
     const char* const HURT_PARTICLE_LEFT_PATH = "Particle/par_chararcter_hurt_L.plist";
     const char* const HURT_PARTICLE_RIGHT_PATH = "Particle/par_chararcter_hurt_R.plist";
+    const char* const RESTORE_HEALTH_PARTICLE_PATH = "Particle/par_Restore_health.plist";
 
     // 受击飘字字体存在性缓存：使用 call_once，避免每次受击触发 IO，同时保证线程安全
     std::once_flag s_damageFontCheckOnce;
@@ -251,11 +252,6 @@ void CharacterBase::spawnHurtVfx(const DamageInfo& info)
     }
 
     const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
-    auto particleTexture = Director::getInstance()->getTextureCache()->addImage("Particle/particle_texture.png");
-    if (particleTexture)
-    {
-        particle->setTexture(particleTexture);
-    }
 
     // 增强可见性：增加数量与寿命，扩大粒子尺寸
     particle->setTotalParticles(HurtVfxParams::TOTAL_PARTICLES);
@@ -405,6 +401,8 @@ void CharacterBase::die()
 
 void CharacterBase::setCurrentHP(float hp)
 {
+    const float oldHp = _currentHP;
+
     float maxHp = hp; // 默认值
     if (auto attr = getAttributeComponent())
     {
@@ -413,7 +411,30 @@ void CharacterBase::setCurrentHP(float hp)
     // 确保 maxHp 至少为 1，防止除零或逻辑错误
     maxHp = std::max(1.0f, maxHp);
 
-    _currentHP = clampf(hp, 0.0f, maxHp);
+    const float newHp = clampf(hp, 0.0f, maxHp);
+    _currentHP = newHp;
+
+    // 只有“真正回血”时才播放恢复特效，避免初始化/复活等场景刷屏
+    constexpr float kRestoreHpMinDelta = 0.5f;
+    constexpr long long kRestoreVfxCooldownMs = 500;
+    if (isRunning() && oldHp > 0.0f && newHp >= oldHp + kRestoreHpMinDelta)
+    {
+        const long long nowMs = utils::getTimeInMilliseconds();
+        if (nowMs - _lastRestoreHealthVfxMs >= kRestoreVfxCooldownMs)
+        {
+            _lastRestoreHealthVfxMs = nowMs;
+
+            auto particle = ParticleSystemQuad::create(RESTORE_HEALTH_PARTICLE_PATH);
+            if (particle)
+            {
+                particle->setAutoRemoveOnFinish(true);
+                particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+                const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
+                particle->setPosition(bodyInfo.center);
+                addChild(particle, 999);
+            }
+        }
+    }
 }
 
 void CharacterBase::setCurrentMP(float mp)

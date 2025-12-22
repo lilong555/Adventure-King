@@ -7,6 +7,7 @@
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include "Configs/GameConfigs.h"
 #include "Scenes/LoadingScene.h"
+#include "Utils/ParticlePreloadHelper.h"
 #include <unordered_set>
 USING_NS_CC;
 
@@ -378,8 +379,8 @@ void MapScene::startPreloadOriginMushroom(bool showUI)
         addPath(info.selectedImage);
     }
 
-    // 常用粒子贴图：避免首次受击/爆炸时加载造成卡顿
-    addPath("Particle/particle_texture.png");
+    // 粒子特效现均使用粒子 plist 中内嵌的纹理，不再依赖单独的 particle_texture.png；
+    // 因此这里不需要再通过 addPath 预加载对应 PNG 贴图。
 
     // 哥布林资源（首刷会卡）：贴图先入 TextureCache
     addPath("Sprites/Enemies/Goblin/Goblin_idle.png");
@@ -451,6 +452,14 @@ void MapScene::onPreloadTextureLoaded(Texture2D* /*texture*/)
 
 void MapScene::onOriginMushroomPreloadFinished()
 {
+    // 粒子预热：使用 plist 内嵌纹理的粒子首次触发会解码/上传贴图，提前在地图预加载阶段完成
+    if (_preloadLabel)
+    {
+        _preloadLabel->setVisible(true);
+        _preloadLabel->setString("粒子预热中...");
+    }
+    ParticlePreloadHelper::preloadCommonParticles();
+
     _originMushroomAssetsReady = true;
     _originMushroomPreloading = false;
     _originMushroomFinishScheduled = false;

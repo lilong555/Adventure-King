@@ -505,11 +505,56 @@ void GobluMonster::attack()
                                  }
                              }
 
-                             spawnMeleeHitbox(
+                             auto hitboxNode = spawnMeleeHitbox(
                                  offset,
                                  hitboxSize,
                                  std::max(1, damageTag),
-                                 GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS); }),
+                                 GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS);
+
+                             // 哥布鲁远程攻击：在判定框上挂一个粒子，便于玩家感知命中范围
+                             if (!useNearHitbox && hitboxNode)
+                             {
+                                 // 提高层级：避免被地图/背景遮挡导致“看不到”
+                                 hitboxNode->setLocalZOrder(999);
+
+                                 // hitbox 本身存活时间很短(0.12s)，而粒子配置是持续发射型；
+                                 // 这里将其改成“短爆发”，并在禁用碰撞后延长节点存活一小段时间用于展示粒子
+                                 hitboxNode->stopAllActions();
+                                 const float hitboxActiveTime = GameConfig::Monster::Goblu::HITBOX_LIFE_SECONDS;
+                                 const float vfxHoldTime = GameConfig::Monster::Goblu::REMOTE_HITBOX_VFX_HOLD_SECONDS;
+                                 hitboxNode->runAction(Sequence::create(
+                                     DelayTime::create(std::max(0.0f, hitboxActiveTime)),
+                                     CallFunc::create([hitboxNode]()
+                                                      {
+                                                          if (auto body = hitboxNode->getPhysicsBody())
+                                                          {
+                                                              body->setEnabled(false);
+                                                          } }),
+                                     DelayTime::create(std::max(0.0f, vfxHoldTime)),
+                                     RemoveSelf::create(),
+                                     nullptr));
+
+                                 auto particle = ParticleSystemQuad::create("Particle/par_GobluRemoteHit.plist");
+                                 if (particle)
+                                 {
+                                     // 运行时覆盖：hitbox 生命周期很短，如果完全依赖 plist 的持续发射配置，玩家很难看清命中范围；
+                                     // 因此这里将其调整为短爆发（更高发射率/粒子数/尺寸），确保瞬间反馈可见。
+                                     particle->setAutoRemoveOnFinish(true);
+                                     particle->setDuration(0.15f);
+                                     particle->setTotalParticles(60);
+                                     particle->setEmissionRate(260.0f);
+                                     particle->setLife(0.25f);
+                                     particle->setLifeVar(0.10f);
+                                     particle->setStartSize(18.0f);
+                                     particle->setStartSizeVar(6.0f);
+                                     particle->setEndSize(8.0f);
+
+                                     particle->setPositionType(ParticleSystem::PositionType::GROUPED);
+                                     particle->setPosition(hitboxNode->getContentSize() * 0.5f);
+                                     hitboxNode->addChild(particle, 1);
+                                     particle->resetSystem();
+                                 }
+                             } }),
         nullptr);
 
     auto spawn = Spawn::create(animateAction, logicSequence, nullptr);

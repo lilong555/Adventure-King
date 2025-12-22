@@ -106,10 +106,11 @@ protected:
 
     // 生成一次性的近战判定框（默认伤害通过 PhysicsBody::tag 传递给 onContactBegin）
     /// @brief 生成近战判定框
-    void spawnMeleeHitbox(const cocos2d::Vec2 &offsetInParentSpace,
-                          const cocos2d::Size &hitboxSize,
-                          int damageTag,
-                          float lifeSeconds = 0.1f);
+    /// @return 判定框节点（已 addChild 到父节点），创建失败返回 nullptr
+    cocos2d::Node* spawnMeleeHitbox(const cocos2d::Vec2 &offsetInParentSpace,
+                                    const cocos2d::Size &hitboxSize,
+                                    int damageTag,
+                                    float lifeSeconds = 0.1f);
 
     // 工具
     /// @brief 朝向目标节点
