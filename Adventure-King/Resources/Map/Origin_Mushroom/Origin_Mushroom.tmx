@@ -271,7 +271,7 @@
    <polyline points="-364,8 0,0 224,-140 412,-4"/>
   </object>
  </objectgroup>
- <objectgroup id="8" name="born">
+ <objectgroup id="8" name="PlayerSpawn">
   <object id="22" x="687.579" y="1008.37">
    <point/>
   </object>

@@ -231,8 +231,4 @@ private:
     void showMapLoadFailedUI();
 };
 
-
-
-
-
 #endif // __GAME_SCENE_H__

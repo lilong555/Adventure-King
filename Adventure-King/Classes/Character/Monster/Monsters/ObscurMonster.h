@@ -20,7 +20,11 @@ public:
     static ObscurMonster* create(const std::string& spriteFrameName = "Sprites/Enemies/Obscur/Obscur_idle.png");
 
     // 预热资源（贴图/动画缓存），避免首次生成/首次攻击卡顿
-    static void preloadResources();
+    //经过测试这东西作用不大，只要预加载所有散图即可满足需求
+    
+    //static void preloadResources();
+
+    static std::vector<std::string> getPreloadResourcePaths();
 
     virtual bool init(const std::string& spriteFrameName) override;
     virtual void attack() override;

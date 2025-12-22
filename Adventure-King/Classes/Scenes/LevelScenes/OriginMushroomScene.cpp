@@ -1,6 +1,7 @@
 #include "OriginMushroomScene.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
+#include"Character/Monster/Monsters/ObscurMonster.h"
 #include "Configs/GameConfigs.h"
 #include "Managers/SceneRegistry.h"
 USING_NS_CC;
@@ -145,6 +146,14 @@ void OriginMushroomScene::setupRegistry()
     {
         paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
     }
+
+    //通过接口获取 Obscur 预加载资源路径并合并
+    auto obscurPaths = ObscurMonster::getPreloadResourcePaths();
+    paths.insert(paths.end(), obscurPaths.begin(), obscurPaths.end());
+
+    //资源去重
+    std::sort(paths.begin(), paths.end());
+    paths.erase(std::unique(paths.begin(), paths.end()), paths.end());
 
     // 将整理好的 vector 赋值给 info
     info.imagePaths = paths;

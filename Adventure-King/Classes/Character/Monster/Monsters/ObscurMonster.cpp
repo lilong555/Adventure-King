@@ -125,18 +125,45 @@ ObscurMonster* ObscurMonster::create(const std::string& spriteFrameName)
     return nullptr;
 }
 
-void ObscurMonster::preloadResources()
+//void ObscurMonster::preloadResources()
+//{
+//    ensureSingleFrameAnimationCached("obscur_idle", "Sprites/Enemies/Obscur/Obscur_idle.png");
+//    ensureSingleFrameAnimationCached("obscur_hurt", "Sprites/Enemies/Obscur/Obscur_beattacked.png");
+//    // 无 walk 素材：走路阶段复用 idle
+//    ensureAnimationCached(OBSCUR_MELEE_ATTACK_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_attack_%d.png", 4,
+//                          GameConfig::Monster::Obscur::ATTACK_ANIM_FRAME_DELAY);
+//    ensureAnimationCached(OBSCUR_USEICE_LOOP_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_useice_%d.png", 2,
+//                          GameConfig::Monster::Obscur::USEICE_ANIM_FRAME_DELAY);
+//    ensureAnimationCached(OBSCUR_ICE_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_ice_%d.png", 5,
+//                          GameConfig::Monster::Obscur::ICE_ANIM_FRAME_DELAY);
+//}
+
+std::vector<std::string> ObscurMonster::getPreloadResourcePaths()
 {
-    ensureSingleFrameAnimationCached("obscur_idle", "Sprites/Enemies/Obscur/Obscur_idle.png");
-    ensureSingleFrameAnimationCached("obscur_hurt", "Sprites/Enemies/Obscur/Obscur_beattacked.png");
-    // 无 walk 素材：走路阶段复用 idle
-    ensureAnimationCached(OBSCUR_MELEE_ATTACK_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_attack_%d.png", 4,
-                          GameConfig::Monster::Obscur::ATTACK_ANIM_FRAME_DELAY);
-    ensureAnimationCached(OBSCUR_USEICE_LOOP_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_useice_%d.png", 2,
-                          GameConfig::Monster::Obscur::USEICE_ANIM_FRAME_DELAY);
-    ensureAnimationCached(OBSCUR_ICE_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_ice_%d.png", 5,
-                          GameConfig::Monster::Obscur::ICE_ANIM_FRAME_DELAY);
+    std::vector<std::string> paths;
+
+    // 1. 基础状态素材
+    paths.push_back("Sprites/Enemies/Obscur/Obscur_idle.png");
+    paths.push_back("Sprites/Enemies/Obscur/Obscur_beattacked.png");
+
+    // 2. 近战攻击序列帧 (按逻辑对应 4 帧)
+    for (int i = 1; i <= 4; ++i) {
+        paths.push_back(cocos2d::StringUtils::format("Sprites/Enemies/Obscur/Obscur_attack_%d.png", i));
+    }
+
+    // 3. 施法动作序列帧 (按逻辑对应 2 帧)
+    for (int i = 1; i <= 2; ++i) {
+        paths.push_back(cocos2d::StringUtils::format("Sprites/Enemies/Obscur/Obscur_useice_%d.png", i));
+    }
+
+    // 4. 冰刺特效序列帧 (按逻辑对应 5 帧)
+    for (int i = 1; i <= 5; ++i) {
+        paths.push_back(cocos2d::StringUtils::format("Sprites/Enemies/Obscur/Obscur_ice_%d.png", i));
+    }
+
+    return paths;
 }
+
 
 bool ObscurMonster::init(const std::string& spriteFrameName)
 {
@@ -235,7 +262,7 @@ void ObscurMonster::initAnimations()
     CC_SAFE_RELEASE(_meleeAttackAnimate);
     _meleeAttackAnimate = nullptr;
 
-    preloadResources();
+    //preloadResources();
 
     if (auto anim = AnimationCache::getInstance()->getAnimation(OBSCUR_MELEE_ATTACK_ANIM_KEY))
     {
