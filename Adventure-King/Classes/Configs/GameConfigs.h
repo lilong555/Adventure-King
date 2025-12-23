@@ -468,7 +468,7 @@ namespace GameConfig
             inline constexpr float HITBOX_DELAY_SECONDS = 0.05f;
             inline constexpr float HITBOX_WIDTH_RATIO = 0.60f;
             inline constexpr float HITBOX_HEIGHT_RATIO = 0.70f;
-            inline constexpr float HITBOX_OFFSET_X_RATIO = 0.60f;
+            inline constexpr float HITBOX_OFFSET_X_RATIO = 0.35f;
             inline constexpr float HITBOX_OFFSET_Y = 6.0f;
         }
     }
