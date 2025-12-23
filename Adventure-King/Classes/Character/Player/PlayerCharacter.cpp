@@ -135,7 +135,17 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     }
 
     this->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-    this->setScale(GameConfig::Player::SCALE);
+    // 不同职业的素材原始尺寸不一致：这里做“素材尺寸补偿缩放”，确保游戏内可视体/物理体/攻击判定更接近预期
+    float visualScale = GameConfig::Player::SCALE;
+    if (role == CharacterRole::WARRIOR)
+    {
+        visualScale *= GameConfig::Player::WARRIOR_SPRITE_SCALE_MULTIPLIER;
+    }
+    else if (role == CharacterRole::ASSASSIN)
+    {
+        visualScale *= GameConfig::Player::ASSASSIN_SPRITE_SCALE_MULTIPLIER;
+    }
+    this->setScale(visualScale);
 
     _role = role;
     _isGrounded = true;
