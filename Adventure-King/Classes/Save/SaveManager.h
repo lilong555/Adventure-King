@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SaveData.h"
+#include "Character/Base/CharacterData.h"
 #include "Configs/GameConfigs.h"
 #include "Configs/GameSceneConfig.h"
 #include "cocos2d.h"
