@@ -87,6 +87,13 @@ void SaveManager::setSessionSelectedRole(CharacterRole role)
 {
     _sessionSelectedRole = role;
     _hasSessionSelectedRole = true;
+
+    // 主菜单切换职业通常意味着“新开局”：
+    // 如果不清理运行时数据，GameScene 进图时会优先 applyRuntimePlayerData，
+    // 造成“换了职业但进图仍然是上一局职业”的问题。
+    clearRuntimePlayerData();
+    clearRuntimePlayerPosition();
+
     CCLOG("SaveManager::setSessionSelectedRole - 已设置会话职业：%d", static_cast<int>(role));
 }
 
