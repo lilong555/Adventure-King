@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SaveData.h"
+#include "Character/Base/CharacterData.h"
 #include "Configs/GameConfigs.h"
 #include "Configs/GameSceneConfig.h"
 #include "cocos2d.h"
@@ -157,6 +158,29 @@ public:
      */
     void clearRuntimePlayerData();
 
+    //================== 会话角色选择（不落盘） ==================
+
+    /**
+     * 设置本次会话“新开局”的职业选择（不落盘）
+     * @note 与 runtimePlayerData 不同：该字段只用于“创建玩家实例时决定职业/贴图”，不会覆盖现有存档数据。
+     */
+    void setSessionSelectedRole(CharacterRole role);
+
+    /**
+     * 当前是否存在会话职业选择
+     */
+    bool hasSessionSelectedRole() const { return _hasSessionSelectedRole; }
+
+    /**
+     * 获取会话职业选择（调用前请先判断 hasSessionSelectedRole）
+     */
+    CharacterRole getSessionSelectedRole() const { return _sessionSelectedRole; }
+
+    /**
+     * 清空会话职业选择（例如返回主菜单后不再沿用上次选择）
+     */
+    void clearSessionSelectedRole();
+
     //================== 运行时位置（不落盘） ==================
 
     /**
@@ -197,6 +221,10 @@ private:
     // 运行时玩家数据：用于关卡切换时保持进度，不落盘
     bool _hasRuntimePlayerData = false;
     PlayerSaveData _runtimePlayerData;
+
+    // 会话职业选择：用于“新开局”决定创建职业/贴图，不落盘
+    bool _hasSessionSelectedRole = false;
+    CharacterRole _sessionSelectedRole = CharacterRole::MAGE;
 
     // 运行时玩家位置：用于读档后恢复落点（只对下一次进入 GameScene 生效）
     bool _hasRuntimePlayerPosition = false;

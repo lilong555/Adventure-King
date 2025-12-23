@@ -25,6 +25,7 @@
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Configs/GamePhysicsCategory.h"
+#include "Configs/PlayerRoleConfig.h"
 #include "Managers/SceneRegistry.h"
 #include"Character/StatusEffects/StatusEffectFactory.h"
 #include "MapScene.h"
@@ -296,8 +297,8 @@ void DebugScene::initPlayer()
     // 玩家初始位置：屏幕中央、地面上方（用于创建失败占位符；创建成功后会按角色高度修正 Y）
     Vec2 startPos(origin.x + visibleSize.width * 0.5f, origin.y + GROUND_Y + 40.0f);
 
-    // 创建玩家角色（战士职业）
-    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/default/spr_klee_run.png");
+    // 创建玩家角色（默认法师；素材沿用 Klee）
+    _player = PlayerCharacter::create(CharacterRole::MAGE, PlayerRoleConfig::getDefaultSpritePath(CharacterRole::MAGE));
 
     if (!_player)
     {
@@ -316,9 +317,9 @@ void DebugScene::initPlayer()
         return;
     }
 
-    // 配置玩家锚点与缩放（与 GameScene 保持一致）
+    // 注意：玩家缩放统一由 PlayerCharacter 内部管理（基准 SCALE + 职业素材补偿倍率）。
+    // DebugScene 不再额外 setScale，避免覆盖职业补偿导致体型不一致。
     _player->setAnchorPoint(Vec2(0.5f, 0.5f)); // 物理引擎要求锚点在中心
-    _player->setScale(GameConfig::Player::SCALE);
 
     // 计算玩家初始位置（屏幕中央，地面上方）
     const float scaledHalfHeight = (_player->getContentSize().height * std::fabs(_player->getScaleY())) * 0.5f;
@@ -329,10 +330,17 @@ void DebugScene::initPlayer()
     // 创建玩家物理刚体
     //-------------------------------------------------------------------------
 
-    // 计算碰撞体尺寸（略小于精灵以获得更好的游戏体验）
+    // 计算碰撞体尺寸：
+    // - 默认：按贴图尺寸比例生成
+    // - 刺客：素材横向留白很大，使用固定碰撞盒尺寸（再叠加 SCALE 与职业倍率）避免碰撞过宽
     Size playerSize = _player->getContentSize();
     float boxWidth = playerSize.width * GameConfig::Player::COLLISION_BOX_RATIO_W;
     float boxHeight = playerSize.height * GameConfig::Player::COLLISION_BOX_RATIO_H;
+    if (_player->getRole() == CharacterRole::ASSASSIN)
+    {
+        boxWidth = GameConfig::Player::ASSASSIN_COLLISION_BOX_WIDTH;
+        boxHeight = GameConfig::Player::ASSASSIN_COLLISION_BOX_HEIGHT;
+    }
 
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), GameConfig::Material::PLAYER);
     physicsBody->setDynamic(true);         // 动态刚体，受力影响

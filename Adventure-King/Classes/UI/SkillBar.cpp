@@ -213,7 +213,7 @@ std::string SkillBar::getIconPathForSkillId(int skillId) const
 {
     if (skillId == GameConfig::Fireball::FIREBALL_ID)
     {
-        return "Sprites/Characters/Player/Klee/rpg/spr_vfx_rocket_trail_long_1.png";
+        return "Sprites/Characters/Player/Klee/rocket/spr_vfx_rocket_trail_long_1.png";
     }
     if (skillId == GameConfig::Bomb::BOMB_ID)
     {

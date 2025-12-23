@@ -15,6 +15,7 @@
 #include"Managers/SceneRegistry.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
+#include "Configs/PlayerRoleConfig.h"
 
 USING_NS_CC;
 
@@ -53,6 +54,15 @@ bool HelloWorld::init()
     }
     auto visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
+
+    // 默认职业：如果会话中已选择过，则沿用
+    if (auto saveManager = SaveManager::getInstance())
+    {
+        if (saveManager->hasSessionSelectedRole())
+        {
+            _selectedRole = saveManager->getSessionSelectedRole();
+        }
+    }
 
     // ==========================================================
     // 布局常量和参考点定义
@@ -310,6 +320,49 @@ bool HelloWorld::init()
         this->addChild(particleSystem, contentZOrder + 1);
     }
 
+    // ==========================================================
+    // 7. 职业选择提示（不影响主菜单布局）
+    // ==========================================================
+    _roleHintLabel = Label::createWithTTF("", GameSceneConfig::Scene::DEFAULT_FONT_PATH, 22);
+    if (_roleHintLabel)
+    {
+        _roleHintLabel->setAnchorPoint(Vec2(0.0f, 0.0f));
+        _roleHintLabel->setPosition(Vec2(origin.x + 18.0f, origin.y + 18.0f));
+        _roleHintLabel->setColor(Color3B(230, 230, 230));
+        this->addChild(_roleHintLabel, GameSceneConfig::UI::Z_ORDER);
+        updateRoleHintLabel();
+    }
+
+    // 1/2/3 快捷切换职业（战士/刺客/法师）
+    auto keyListener = EventListenerKeyboard::create();
+    keyListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event*)
+    {
+        CharacterRole newRole = _selectedRole;
+        if (keyCode == EventKeyboard::KeyCode::KEY_1)
+        {
+            newRole = CharacterRole::WARRIOR;
+        }
+        else if (keyCode == EventKeyboard::KeyCode::KEY_2)
+        {
+            newRole = CharacterRole::ASSASSIN;
+        }
+        else if (keyCode == EventKeyboard::KeyCode::KEY_3)
+        {
+            newRole = CharacterRole::MAGE;
+        }
+
+        if (newRole != _selectedRole)
+        {
+            _selectedRole = newRole;
+            updateRoleHintLabel();
+            if (auto saveManager = SaveManager::getInstance())
+            {
+                saveManager->setSessionSelectedRole(_selectedRole);
+            }
+        }
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyListener, this);
+
     std::string musicFile = "Scene/MusicOfScene/Music_HelloWorldScene.mp3";
     float musicVolume = GameSceneConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
@@ -320,6 +373,17 @@ bool HelloWorld::init()
         GameSceneConfig::UI::MainMenu::BGM_DELAY_SECONDS, // 必须加一定延迟否则会被场景切换截断
         "PlayMusicAfterSceneChange");
     return true;
+}
+
+void HelloWorld::updateRoleHintLabel()
+{
+    if (!_roleHintLabel)
+    {
+        return;
+    }
+
+    _roleHintLabel->setString(StringUtils::format("当前职业：%s（按 1 战士 / 2 刺客 / 3 法师）",
+        PlayerRoleConfig::getDisplayName(_selectedRole)));
 }
 
 void HelloWorld::menuCloseCallback(Ref *pSender)
@@ -339,6 +403,14 @@ void HelloWorld::menuStartCallback(Ref* pSender)
     // 在异步加载场景前，防止用户多次点击导致创建多个 LoadingScene
     if (pSender) {
         static_cast<MenuItem*>(pSender)->setEnabled(false);
+    }
+
+    // 新开局：清空运行时数据，避免“上一局的等级/装备”带入
+    if (auto saveManager = SaveManager::getInstance())
+    {
+        saveManager->clearRuntimePlayerData();
+        saveManager->clearRuntimePlayerPosition();
+        saveManager->setSessionSelectedRole(_selectedRole);
     }
 
     // 2. 使用强类型 SceneID 替换 HomeScene::MAP_ID (int)

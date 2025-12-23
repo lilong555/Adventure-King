@@ -66,9 +66,13 @@ namespace SpriteFrameCacheHelper
             return cocos2d::SpriteFrameCache::getInstance()->getSpriteFrameByName(filePath);
         }
 
+        // 注意：SpriteFrame::createWithTexture(texture, rect, rotated, offset, originalSize)
+        // 这里的 rect / offset / originalSize 需要使用“像素”单位（引擎内部会再换算为 points）。
+        // 如果误用 points，会导致 offsetPosition 计算异常，从而出现“角色移动时整体飞起来/漂移”的现象。
+
         const std::string cacheKey = filePath + "#orig=" +
-                                     std::to_string(static_cast<int>(originalSize.width)) + "x" +
-                                     std::to_string(static_cast<int>(originalSize.height)) +
+                                     std::to_string(static_cast<int>(CC_SIZE_POINTS_TO_PIXELS(originalSize).width)) + "x" +
+                                     std::to_string(static_cast<int>(CC_SIZE_POINTS_TO_PIXELS(originalSize).height)) +
                                      (alignBottom ? "#bottom" : "") +
                                      (alignLeft ? "#left" : "");
 
@@ -85,19 +89,27 @@ namespace SpriteFrameCacheHelper
             return nullptr;
         }
 
-        auto size = texture->getContentSize();
-        cocos2d::Rect rect(0, 0, size.width, size.height);
-        cocos2d::Vec2 offset = cocos2d::Vec2::ZERO;
+        const auto sizeInPixels = texture->getContentSizeInPixels();
+        cocos2d::Rect rectInPixels(0, 0, sizeInPixels.width, sizeInPixels.height);
+
+        auto originalSizeInPixels = CC_SIZE_POINTS_TO_PIXELS(originalSize);
+        if (originalSizeInPixels.width <= 0.0f || originalSizeInPixels.height <= 0.0f)
+        {
+            // 未提供稳定尺寸时，退回使用当前纹理尺寸
+            originalSizeInPixels = rectInPixels.size;
+        }
+
+        cocos2d::Vec2 offsetInPixels = cocos2d::Vec2::ZERO;
         if (alignBottom)
         {
-            offset.y = (rect.size.height - originalSize.height) * 0.5f;
+            offsetInPixels.y = (rectInPixels.size.height - originalSizeInPixels.height) * 0.5f;
         }
         if (alignLeft)
         {
-            offset.x = (rect.size.width - originalSize.width) * 0.5f;
+            offsetInPixels.x = (rectInPixels.size.width - originalSizeInPixels.width) * 0.5f;
         }
 
-        auto frame = cocos2d::SpriteFrame::createWithTexture(texture, rect, false, offset, originalSize);
+        auto frame = cocos2d::SpriteFrame::createWithTexture(texture, rectInPixels, false, offsetInPixels, originalSizeInPixels);
         if (!frame)
         {
             return nullptr;

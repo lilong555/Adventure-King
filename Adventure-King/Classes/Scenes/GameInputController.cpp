@@ -180,6 +180,26 @@ void GameInputController::update(float dt)
     velocity.x = targetVelocityX;
     physicsBody->setVelocity(velocity);
 
+    // 动画同步：
+    // - 受击状态结束后 StateMachine 会回到 IDLE，但玩家可能仍在按住移动键
+    //   （此时不会再次触发 onKeyPressed），会出现“人在跑但播放 idle”的错位。
+    // - 因此在非动作锁、非受击/死亡时，按当前输入状态持续对齐移动动画。
+    if (!_player->isActionLocked())
+    {
+        if (auto sm = _player->getStateMachineComponent())
+        {
+            auto state = sm->getCurrentState();
+            if (state != CharacterState::HURT && state != CharacterState::DEAD)
+            {
+                _player->setMoving(_movingLeft || _movingRight, _runPressed);
+            }
+        }
+        else
+        {
+            _player->setMoving(_movingLeft || _movingRight, _runPressed);
+        }
+    }
+
     if (_groundContactCount > 0 && std::fabs(velocity.y) < GROUND_VELOCITY_THRESHOLD)
     {
         _grounded = true;

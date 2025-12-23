@@ -22,12 +22,14 @@
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include "Character/Monster/Monsters/ObscurMonster.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Configs/PlayerRoleConfig.h"
 #include "GameUI.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
 #include "Utils/ImeHelper.h"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <memory>
 
 USING_NS_CC;
@@ -203,27 +205,61 @@ bool GameScene::initLevelMap(const LevelConfig &config)
 
 void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSpritePath)
 {
-    // 创建玩家角色（战士职业）
-    const std::string spritePath = playerSpritePath.empty() ? DEFAULT_PLAYER_SPRITE : playerSpritePath;
-    auto playerSprite = PlayerCharacter::create(CharacterRole::WARRIOR, spritePath);
+    // 创建玩家角色：默认法师（Klee）
+    // - 若存在运行时存档（关卡切换/读档），以存档职业为准
+    // - 否则若存在会话职业选择（主菜单新开局），以会话选择为准
+    CharacterRole role = CharacterRole::MAGE;
+    bool hasRuntimeData = false;
+    bool hasSessionRole = false;
+    if (auto saveManager = SaveManager::getInstance())
+    {
+        hasRuntimeData = saveManager->hasRuntimePlayerData();
+        if (hasRuntimeData)
+        {
+            role = static_cast<CharacterRole>(saveManager->getRuntimePlayerData().role);
+        }
+        else if (saveManager->hasSessionSelectedRole())
+        {
+            role = saveManager->getSessionSelectedRole();
+            hasSessionRole = true;
+        }
+    }
+
+    // 若存在运行时存档：优先按职业选择默认贴图，避免“职业已切换但贴图仍是默认 Klee”
+    std::string spritePath = playerSpritePath;
+    if (spritePath.empty() || hasRuntimeData || hasSessionRole)
+    {
+        spritePath = PlayerRoleConfig::getDefaultSpritePath(role);
+    }
+
+    auto playerSprite = PlayerCharacter::create(role, spritePath);
     if (!playerSprite)
     {
         CCLOG("Error: Failed to create player character");
         return;
     }
 
-    Size originalSize = playerSprite->getContentSize();
-    float scale = GameConfig::Player::SCALE;
-    playerSprite->setScale(scale);
-
-    float scaledHeight = originalSize.height * scale;
-    playerSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
+    // 注意：玩家的缩放（可视体/物理体/攻击判定）统一由 PlayerCharacter 内部管理：
+    // - 先使用 GameConfig::Player::SCALE 作为基准
+    // - 再按职业对“素材原始 PNG 尺寸差异”做补偿倍率
+    // 因此这里不要再 setScale，否则会覆盖职业补偿导致体型不生效。
+    const Size originalSize = playerSprite->getContentSize();
+    const float scale = std::fabs(playerSprite->getScaleY());
+    const float scaledHeight = originalSize.height * scale;
 
     Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
     playerSprite->setPosition(playerPos);
 
+    // 玩家碰撞盒尺寸：
+    // - 默认：按贴图尺寸比例生成
+    // - 刺客：素材横向留白很大，使用固定碰撞盒尺寸（再叠加 SCALE 与职业倍率）避免碰撞过宽
     float boxWidth = originalSize.width * GameConfig::Player::COLLISION_BOX_RATIO_W;
     float boxHeight = originalSize.height * GameConfig::Player::COLLISION_BOX_RATIO_H;
+    if (role == CharacterRole::ASSASSIN)
+    {
+        boxWidth = GameConfig::Player::ASSASSIN_COLLISION_BOX_WIDTH;
+        boxHeight = GameConfig::Player::ASSASSIN_COLLISION_BOX_HEIGHT;
+    }
 
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), PLAYER_PHYSICS_MATERIAL);
     physicsBody->setDynamic(true);

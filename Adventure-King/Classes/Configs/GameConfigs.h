@@ -188,6 +188,19 @@ namespace GameConfig
         inline constexpr int MAX_JUMP_COUNT = 2;
         inline constexpr float JUMP_IMPULSE = 650.0f; ///< 跳跃冲量
         inline constexpr float SCALE = 0.25f;
+        // 角色素材缩放补偿：
+        // 不同职业的原始 PNG 像素尺寸/留白不一致（例如战士素材更“宽大”，刺客素材更“扁平”），
+        // 如果统一使用同一个 SCALE，会导致游戏内可视体/物理体/攻击判定范围的“实际大小”不合理。
+        // 因此这里以 SCALE 为基准，按职业追加倍率做统一补偿。
+        //
+        // 注意：这是“素材尺寸补偿”，不是数值设计上的体型差异；后续若替换为统一尺寸素材，可将倍率调回 1.0。
+        inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 1.6f;
+        inline constexpr float ASSASSIN_SPRITE_SCALE_MULTIPLIER = 2.2f;
+        // 刺客碰撞盒基础尺寸（未缩放）：
+        // 由于刺客素材（700x370）横向留白较大，若按贴图尺寸比例生成碰撞盒会导致碰撞范围过宽。
+        // 这里参考 Goblu 的“固定物理体尺寸”思路，给刺客使用固定碰撞盒（再叠加 SCALE 与职业倍率）。
+        inline constexpr float ASSASSIN_COLLISION_BOX_WIDTH = 137.0f;
+        inline constexpr float ASSASSIN_COLLISION_BOX_HEIGHT = 280.0f;
         inline constexpr float COLLISION_BOX_RATIO_W = 0.8f; ///< 碰撞盒宽度比例
         inline constexpr float COLLISION_BOX_RATIO_H = 0.9f; ///< 碰撞盒高度比例
         inline constexpr float ANIM_DELAY_RUN = 0.15f;
@@ -463,6 +476,30 @@ namespace GameConfig
         }
     }
 
+    // --- 刺客配置 ---
+    namespace Assassin
+    {
+        // 近战技能：斩击（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
+        namespace SlashSkill
+        {
+            const int SLASH_ID = 1003;   // 斩击技能ID
+            const float SLASH_CD = 0.8f; // 冷却时间
+            const float SLASH_MP = 0.0f; // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 0;
+
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f;
+            inline constexpr float DAMAGE_SCALE = 1.2f; // 基于攻击力的倍率
+
+            // 命中判定框：相对角色包围盒比例（可调参）
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+            inline constexpr float HITBOX_DELAY_SECONDS = 0.05f;
+            inline constexpr float HITBOX_WIDTH_RATIO = 0.60f;
+            inline constexpr float HITBOX_HEIGHT_RATIO = 0.70f;
+            inline constexpr float HITBOX_OFFSET_X_RATIO = 0.35f;
+            inline constexpr float HITBOX_OFFSET_Y = 6.0f;
+        }
+    }
+
     namespace StatusEffect
     {
         namespace Burning
@@ -505,7 +542,6 @@ namespace GameConfig
         inline constexpr float ARMOR_CONST = 100.0f;
     }
 
-    
     // --- 物理材质 (密度, 弹性, 摩擦) ---
     // 可以在代码中直接使用: PhysicsBody::createBox(size, GameConfig::Material::DEFAULT)
     namespace Material

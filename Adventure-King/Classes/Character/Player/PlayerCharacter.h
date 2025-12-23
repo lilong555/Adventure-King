@@ -119,6 +119,20 @@ public:
     /// @brief 播放技能动画
     void castSkillAnimated(const std::function<void()>& onFinished = nullptr);
 
+    // =============================================================
+    // 战斗判定 (Hitbox)
+    // =============================================================
+    /**
+     * @brief 生成玩家近战攻击判定框（用于 PLAYER_ATTACK -> MONSTER）
+     * @note 通过 PhysicsBody::tag 传递伤害值；若 isCritical=true，则用负值编码（碰撞回调中会还原）。
+     */
+    cocos2d::Node* spawnPlayerAttackHitbox(const cocos2d::Vec2& centerPosInParentSpace,
+                                          const cocos2d::Size& hitboxSize,
+                                          float damage,
+                                          bool isCritical,
+                                          float lifeSeconds,
+                                          int localZOrder = 10);
+
     // 辅助：统一播放一次性动画
     /// @brief 播放一次性动画序列
     void playOneShotAnimation(const std::vector<std::string>& paths, float delayPerUnit, int actionTag, const std::function<void()>& onFinished);
@@ -198,6 +212,10 @@ private:
     void refreshHpMpFromAttributes();
     /// @brief 初始化资源路径
     void initAssetPaths(const std::string& spriteFrameName);
+    /// @brief 获取“稳定尺寸”的精灵帧（用于避免动画帧尺寸不一致导致的物理体漂移/跳动）
+    cocos2d::SpriteFrame* getStableSpriteFrame(const std::string& framePath,
+                                               bool alignBottom = true,
+                                               bool alignLeft = false) const;
     /// @brief 创建技能集
     void createSkillSet();
 
@@ -259,6 +277,7 @@ private:
     std::string _attackAnimationPrefix = "default";
     std::string _defaultAttackAnimationPrefix = "default";
     int _attackFrameCount = 3;
+    cocos2d::Size _stableFrameOriginalSize = cocos2d::Size::ZERO; // 动画帧统一原始尺寸（避免漂移/抖动）
 
     // 组件与对象
     std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;

@@ -648,6 +648,12 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     }
 
     float dmg = info.amount;
+    // 暴击伤害：MonsterBase 过去只用于飘字显示，没有参与结算，导致“暴击伤害=×1”。
+    // 这里补齐：暴击时按倍率放大，倍率由 DamageInfo::critMultiplier 决定（默认 1.5）。
+    if (info.isCritical)
+    {
+        dmg *= info.critMultiplier;
+    }
 
     float hp = getCurrentHP();
     hp -= dmg;
