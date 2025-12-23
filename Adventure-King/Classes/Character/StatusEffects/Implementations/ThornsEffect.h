@@ -7,8 +7,6 @@ class CharacterBase;
 class ThornsEffect : public StatusEffect {
 public:
     ThornsEffect(float reflectRate, float cooldown);
-
-    // 只声明，不在这里写实现
     virtual void onModifyReceiveDamage(CharacterBase* owner, CharacterBase* attacker, DamageInfo& info) override;
     virtual void onTick(CharacterBase* owner, float dt) override;
 

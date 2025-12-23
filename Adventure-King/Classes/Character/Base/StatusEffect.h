@@ -20,6 +20,7 @@ public:
 
     virtual void onApply(CharacterBase* owner) {}
     virtual void onTick(CharacterBase* owner, float dt);
+    virtual void doEffectAction(CharacterBase* owner) {};
     virtual void onRemove(CharacterBase* owner) {}
     virtual void onModifyDealDamage(CharacterBase* owner, CharacterBase* target, DamageInfo& info) {}
     virtual void onModifyReceiveDamage(CharacterBase* owner, CharacterBase* attacker, DamageInfo& info) {}

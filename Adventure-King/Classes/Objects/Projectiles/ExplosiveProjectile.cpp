@@ -1,6 +1,7 @@
 #include "Objects/Projectiles/ExplosiveProjectile.h"
 
 #include "Character/components/AttributeComponent.h"
+#include"Character/StatusEffects/StatusEffectFactory.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -274,30 +275,30 @@ void ExplosiveProjectile::applyAoEDamage()
     dmg.hitWorldPos = explosionWorld;
     dmg.hasHitWorldPos = true;
 
-    std::vector<CharacterBase *> targets;
+    std::vector<CharacterBase*> targets;
     targets.reserve(8);
 
-    std::function<void(Node *)> collectTargets = [&](Node *node)
-    {
-        if (!node)
+    std::function<void(Node*)> collectTargets = [&](Node* node)
         {
-            return;
-        }
-
-        if (auto character = dynamic_cast<CharacterBase *>(node))
-        {
-            if (character != _attacker && !character->isDead())
+            if (!node)
             {
-                targets.push_back(character);
+                return;
             }
-        }
 
-        auto children = node->getChildren();
-        for (auto child : children)
-        {
-            collectTargets(child);
-        }
-    };
+            if (auto character = dynamic_cast<CharacterBase*>(node))
+            {
+                if (character != _attacker && !character->isDead())
+                {
+                    targets.push_back(character);
+                }
+            }
+
+            auto children = node->getChildren();
+            for (auto child : children)
+            {
+                collectTargets(child);
+            }
+        };
 
     // 递归遍历场景树，后续用距离做过滤。
     collectTargets(root);
@@ -323,11 +324,11 @@ void ExplosiveProjectile::applyAoEDamage()
                 switch (shape->getType())
                 {
                 case PhysicsShape::Type::BOX:
-                    shapeSizeWorld = static_cast<PhysicsShapeBox *>(shape)->getSize();
+                    shapeSizeWorld = static_cast<PhysicsShapeBox*>(shape)->getSize();
                     break;
                 case PhysicsShape::Type::CIRCLE:
                 {
-                    float r = static_cast<PhysicsShapeCircle *>(shape)->getRadius();
+                    float r = static_cast<PhysicsShapeCircle*>(shape)->getRadius();
                     shapeSizeWorld = Size(r * 2.0f, r * 2.0f);
                     break;
                 }
@@ -338,14 +339,14 @@ void ExplosiveProjectile::applyAoEDamage()
                 if (shapeSizeWorld.width > 0.0f && shapeSizeWorld.height > 0.0f)
                 {
                     Vec2 centerLocal(target->getContentSize().width * 0.5f,
-                                     target->getContentSize().height * 0.5f);
+                        target->getContentSize().height * 0.5f);
                     Vec2 bodyCenterWorld = target->convertToWorldSpace(centerLocal);
                     Vec2 rectCenterWorld = bodyCenterWorld + shape->getCenter();
 
                     hitRectWorld = Rect(rectCenterWorld.x - shapeSizeWorld.width / 2.0f,
-                                        rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
-                                        shapeSizeWorld.width,
-                                        shapeSizeWorld.height);
+                        rectCenterWorld.y - shapeSizeWorld.height / 2.0f,
+                        shapeSizeWorld.width,
+                        shapeSizeWorld.height);
                     hasHitRectWorld = true;
                 }
             }
@@ -396,31 +397,34 @@ void ExplosiveProjectile::applyAoEDamage()
         if (!_onHitStatusEffects.empty())
         {
             auto attr = target->getAttributeComponent();
-            if (!attr)
+            if (attr) // 简化判断
             {
-                continue;
-            }
+                for (const auto& tmpl : _onHitStatusEffects)
+                {
+                    auto inst = StatusEffectFactory::createEffectByType(
+                        tmpl.type,
+                        tmpl.baseDamageScale,
+                        tmpl.duration
+                    );
 
-            for (const auto &tmpl : _onHitStatusEffects)
-            {
-                auto inst = StatusEffect::create();
-                inst->type = tmpl.type;
-                inst->duration = tmpl.duration;
-                inst->elapsed = 0.0f;
-                inst->attributeBonus = tmpl.attributeBonus;
+                    if (inst)
+                    {
+                        // 1. 传递关键战斗快照（必须！否则伤害为 0）
+                        inst->sourceAttackPower = sourceAttackPower;
 
-                inst->stacks = tmpl.stacks;
-                inst->maxStacks = tmpl.maxStacks;
-                inst->stackable = tmpl.stackable;
-                inst->refreshOnAdd = tmpl.refreshOnAdd;
+                        // 2. 复制模板中的其他配置
+                        inst->attributeBonus = tmpl.attributeBonus;
+                        inst->stacks = tmpl.stacks;
+                        inst->maxStacks = tmpl.maxStacks;
+                        inst->stackable = tmpl.stackable;
+                        inst->refreshOnAdd = tmpl.refreshOnAdd;
+                        inst->tickInterval = tmpl.tickInterval;
+                        inst->perStackDamageScale = tmpl.perStackDamageScale;
 
-                inst->tickInterval = tmpl.tickInterval;
-                inst->tickAccumulator = 0.0f;
-                inst->sourceAttackPower = sourceAttackPower;
-                inst->baseDamageScale = tmpl.baseDamageScale;
-                inst->perStackDamageScale = tmpl.perStackDamageScale;
-
-                attr->addStatusEffect(inst);
+                        // 3. 挂载到目标身上
+                        attr->addStatusEffect(inst);
+                    }
+                }
             }
         }
     }
