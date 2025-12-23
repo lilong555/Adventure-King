@@ -195,6 +195,11 @@ namespace GameConfig
         // 注意：这是“素材尺寸补偿”，不是数值设计上的体型差异；后续若替换为统一尺寸素材，可将倍率调回 1.0。
         inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 1.6f;
         inline constexpr float ASSASSIN_SPRITE_SCALE_MULTIPLIER = 2.2f;
+        // 刺客碰撞盒基础尺寸（未缩放）：
+        // 由于刺客素材（700x370）横向留白较大，若按贴图尺寸比例生成碰撞盒会导致碰撞范围过宽。
+        // 这里参考 Goblu 的“固定物理体尺寸”思路，给刺客使用固定碰撞盒（再叠加 SCALE 与职业倍率）。
+        inline constexpr float ASSASSIN_COLLISION_BOX_WIDTH = 137.0f;
+        inline constexpr float ASSASSIN_COLLISION_BOX_HEIGHT = 370.0f;
         inline constexpr float COLLISION_BOX_RATIO_W = 0.8f; ///< 碰撞盒宽度比例
         inline constexpr float COLLISION_BOX_RATIO_H = 0.9f; ///< 碰撞盒高度比例
         inline constexpr float ANIM_DELAY_RUN = 0.15f;

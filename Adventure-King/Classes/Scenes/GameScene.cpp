@@ -250,8 +250,16 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
     Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
     playerSprite->setPosition(playerPos);
 
+    // 玩家碰撞盒尺寸：
+    // - 默认：按贴图尺寸比例生成
+    // - 刺客：素材横向留白很大，使用固定碰撞盒尺寸（再叠加 SCALE 与职业倍率）避免碰撞过宽
     float boxWidth = originalSize.width * GameConfig::Player::COLLISION_BOX_RATIO_W;
     float boxHeight = originalSize.height * GameConfig::Player::COLLISION_BOX_RATIO_H;
+    if (role == CharacterRole::ASSASSIN)
+    {
+        boxWidth = GameConfig::Player::ASSASSIN_COLLISION_BOX_WIDTH;
+        boxHeight = GameConfig::Player::ASSASSIN_COLLISION_BOX_HEIGHT;
+    }
 
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), PLAYER_PHYSICS_MATERIAL);
     physicsBody->setDynamic(true);

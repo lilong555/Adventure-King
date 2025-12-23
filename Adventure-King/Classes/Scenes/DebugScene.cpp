@@ -329,10 +329,17 @@ void DebugScene::initPlayer()
     // 创建玩家物理刚体
     //-------------------------------------------------------------------------
 
-    // 计算碰撞体尺寸（略小于精灵以获得更好的游戏体验）
+    // 计算碰撞体尺寸：
+    // - 默认：按贴图尺寸比例生成
+    // - 刺客：素材横向留白很大，使用固定碰撞盒尺寸（再叠加 SCALE 与职业倍率）避免碰撞过宽
     Size playerSize = _player->getContentSize();
     float boxWidth = playerSize.width * GameConfig::Player::COLLISION_BOX_RATIO_W;
     float boxHeight = playerSize.height * GameConfig::Player::COLLISION_BOX_RATIO_H;
+    if (_player->getRole() == CharacterRole::ASSASSIN)
+    {
+        boxWidth = GameConfig::Player::ASSASSIN_COLLISION_BOX_WIDTH;
+        boxHeight = GameConfig::Player::ASSASSIN_COLLISION_BOX_HEIGHT;
+    }
 
     auto physicsBody = PhysicsBody::createBox(Size(boxWidth, boxHeight), GameConfig::Material::PLAYER);
     physicsBody->setDynamic(true);         // 动态刚体，受力影响
