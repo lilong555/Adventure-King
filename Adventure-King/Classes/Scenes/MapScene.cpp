@@ -5,6 +5,7 @@
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
+#include "Character/Monster/Monsters/ObscurMonster.h"
 #include "Configs/GameConfigs.h"
 #include "Scenes/LoadingScene.h"
 #include "Utils/ParticlePreloadHelper.h"
@@ -406,6 +407,12 @@ void MapScene::startPreloadOriginMushroom(bool showUI)
     for (int i = 1; i <= 6; ++i)
     {
         addPath(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
+    }
+
+    // Obscur 资源：Origin_Mushroom 地图内会首次出现，必须提前预载避免刷怪瞬间卡顿
+    for (const auto& path : ObscurMonster::getPreloadResourcePaths())
+    {
+        addPath(path);
     }
 
     _preloadTotal = static_cast<int>(paths.size());
