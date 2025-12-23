@@ -90,7 +90,7 @@ void OriginMushroomScene::setupRegistry()
     // klee相关
     // 1. 路径前缀准备 (注意：此处使用你代码中定义的路径)
     std::string kleeBase = "Sprites/Characters/Player/Klee/default/";
-    std::string kleeRpg = "Sprites/Characters/Player/Klee/rpg/";
+    std::string kleeRpg = "Sprites/Characters/Player/Klee/rocket/";
     std::string kKey = "klee";
 
     // 2. 普通攻击与基础动作 (Normal Attack & Base)
@@ -101,7 +101,7 @@ void OriginMushroomScene::setupRegistry()
     paths.push_back(kleeBase + "TNT.png");    // 炸弹模型
     paths.push_back(kleeBase + "BOOM_1.png"); // 基础爆炸特效
 
-    // 3. 火球术技能资源 (Fireball Skill / RPG Dir)
+    // 3. 火球术技能资源 (Fireball Skill / Rocket Dir)
     // A. 技能动作帧 (根据 framePlan：1, 4, 5, 6)
     std::vector<int> fireballActionFrames = { 1, 4, 5, 6 };
     for (int f : fireballActionFrames) {

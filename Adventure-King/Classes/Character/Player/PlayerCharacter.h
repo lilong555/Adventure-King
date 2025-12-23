@@ -211,6 +211,10 @@ private:
     void refreshHpMpFromAttributes();
     /// @brief 初始化资源路径
     void initAssetPaths(const std::string& spriteFrameName);
+    /// @brief 获取“稳定尺寸”的精灵帧（用于避免动画帧尺寸不一致导致的物理体漂移/跳动）
+    cocos2d::SpriteFrame* getStableSpriteFrame(const std::string& framePath,
+                                               bool alignBottom = true,
+                                               bool alignLeft = false) const;
     /// @brief 创建技能集
     void createSkillSet();
 
@@ -270,6 +274,7 @@ private:
     std::string _attackAnimationPrefix = "default";
     std::string _defaultAttackAnimationPrefix = "default";
     int _attackFrameCount = 3;
+    cocos2d::Size _stableFrameOriginalSize = cocos2d::Size::ZERO; // 动画帧统一原始尺寸（避免漂移/抖动）
 
     // 组件与对象
     std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;

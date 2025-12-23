@@ -41,15 +41,19 @@ namespace
     // 满血判断的容差：避免浮点误差导致“看似满血却判定不满”
     constexpr float HP_COMPARISON_EPSILON = 0.01f;
 
+    using FrameLoader = std::function<cocos2d::SpriteFrame*(const std::string&)>;
+
     // 辅助：创建动画对象
-    Animation* createAnimationFromPaths(const std::vector<std::string>& paths, float delayPerUnit)
+    Animation* createAnimationFromPaths(const std::vector<std::string>& paths,
+                                        float delayPerUnit,
+                                        const FrameLoader& loadFrame)
     {
         Vector<SpriteFrame*> frames;
         frames.reserve(paths.size());
 
         for (const auto& path : paths)
         {
-            auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+            auto frame = loadFrame ? loadFrame(path) : SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
             if (!frame)
             {
 #if COCOS2D_DEBUG > 0
@@ -65,12 +69,15 @@ namespace
     }
 
     // 辅助：缓存动画（原成员函数 ensureMoveAnimationCached）
-    void helperEnsureAnimationCached(const std::string& key, const std::vector<std::string>& paths, float delay)
+    void helperEnsureAnimationCached(const std::string& key,
+                                     const std::vector<std::string>& paths,
+                                     float delay,
+                                     const FrameLoader& loadFrame)
     {
         auto cache = AnimationCache::getInstance();
         if (!cache->getAnimation(key))
         {
-            if (auto anim = createAnimationFromPaths(paths, delay))
+            if (auto anim = createAnimationFromPaths(paths, delay, loadFrame))
             {
                 cache->addAnimation(anim, key);
             }
@@ -136,6 +143,8 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
 
     // 解析资源路径
     initAssetPaths(spriteFrameName);
+    // 记录角色动画的“稳定原始尺寸”，用于后续创建统一尺寸的 SpriteFrame，避免不同 PNG 尺寸导致物理体漂移/跳动
+    _stableFrameOriginalSize = getContentSize();
 
     // 2. 组件挂载
     if (!getAttributeComponent())    this->addComponent(AttributeComponent::create());
@@ -176,6 +185,27 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     ensureDefaultInventory();
 
     return true;
+}
+
+cocos2d::SpriteFrame* PlayerCharacter::getStableSpriteFrame(const std::string& framePath,
+                                                            bool alignBottom,
+                                                            bool alignLeft) const
+{
+    // 精灵表帧名：无法在这里改原始尺寸，直接返回缓存帧
+    if (!SpriteFrameCacheHelper::isFilePath(framePath))
+    {
+        return SpriteFrameCache::getInstance()->getSpriteFrameByName(framePath);
+    }
+
+    // 未记录稳定尺寸：退回普通加载
+    if (_stableFrameOriginalSize.width <= 0.0f || _stableFrameOriginalSize.height <= 0.0f)
+    {
+        return SpriteFrameCacheHelper::getOrCreateSpriteFrame(framePath);
+    }
+
+    // 关键：所有帧统一 originalSize，避免 contentSize 变化引发“锚点->物理体”映射漂移
+    return SpriteFrameCacheHelper::getOrCreateSpriteFrameWithOriginalSize(
+        framePath, _stableFrameOriginalSize, alignBottom, alignLeft);
 }
 
 void PlayerCharacter::onEnter()
@@ -826,7 +856,7 @@ void PlayerCharacter::setMoving(bool moving, bool running)
             sm->changeState(CharacterState::IDLE);
 
             // 兜底：设回默认帧
-            auto defaultFrame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+            auto defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
             if (defaultFrame)
             {
                 setSpriteFrame(defaultFrame);
@@ -838,7 +868,13 @@ void PlayerCharacter::setMoving(bool moving, bool running)
 
 void PlayerCharacter::playOneShotAnimation(const std::vector<std::string>& paths, float delayPerUnit, int actionTag, const std::function<void()>& onFinished)
 {
-    auto animation = createAnimationFromPaths(paths, delayPerUnit);
+    auto animation = createAnimationFromPaths(
+        paths,
+        delayPerUnit,
+        [this](const std::string& path) {
+            // 玩家动画统一按“底部对齐”，保证脚底不跳动
+            return getStableSpriteFrame(path, true, false);
+        });
     if (!animation)
     {
         if (onFinished) onFinished();
@@ -1335,7 +1371,7 @@ bool PlayerCharacter::onProjectileContactBegin(PhysicsContact& contact)
 void PlayerCharacter::initAssetPaths(const std::string& spriteFrameName)
 {
     _defaultSpriteDir = "Sprites/Characters/Player/Klee/default";
-    _skillSpriteDir = "Sprites/Characters/Player/Klee/rpg";
+    _skillSpriteDir = "Sprites/Characters/Player/Klee/rocket";
     _characterKey = "klee";
 
     if (SpriteFrameCacheHelper::isFilePath(spriteFrameName))
@@ -1378,36 +1414,36 @@ void PlayerCharacter::initAssetPaths(const std::string& spriteFrameName)
                 _characterKey = dirName;
             }
 
-            // 技能目录：统一约定为 <角色根目录>/rpg（素材缺失时由加载失败兜底，不在这里做 IO 判断）
-            _skillSpriteDir = characterRootDir + "/rpg";
+            // 技能目录：按职业约定（素材缺失时由加载失败兜底，不在这里做 IO 判断）
+            // - 法师（Klee）：rocket
+            // - 刺客：slash
+            // - 战士：暂无技能（留空）
+            if (_role == CharacterRole::MAGE)
+            {
+                _skillSpriteDir = characterRootDir + "/rocket";
+            }
+            else if (_role == CharacterRole::ASSASSIN)
+            {
+                _skillSpriteDir = characterRootDir + "/slash";
+            }
+            else
+            {
+                _skillSpriteDir.clear();
+            }
         }
     }
 
     std::transform(_characterKey.begin(), _characterKey.end(), _characterKey.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-    // 资源命名兼容：maaer 文件前缀是 spr_male_*，因此 key 需要映射为 male
-    if (_characterKey == "maaer")
-    {
-        _characterKey = "male";
-    }
-
     _animationKeyPrefix = "player_" + _characterKey;
     _defaultAttackAnimationPrefix = "spr_" + _characterKey + "_attack";
     _attackAnimationPrefix = _defaultAttackAnimationPrefix;
 
-    // 不同角色的占位攻击帧命名不同：先做兼容映射，后续素材补齐后再统一为 spr_<key>_attack_x
+    // 不同角色的攻击帧数量可能不同（按素材实际情况做兼容）
     _attackFrameCount = 3;
-    if (_characterKey == "man")
+    if (_characterKey == "maaer")
     {
-        _defaultAttackAnimationPrefix = "spr_man_hit";
-        _attackAnimationPrefix = _defaultAttackAnimationPrefix;
-        _attackFrameCount = 3;
-    }
-    else if (_characterKey == "male")
-    {
-        _defaultAttackAnimationPrefix = "spr_male_hit1";
-        _attackAnimationPrefix = _defaultAttackAnimationPrefix;
         _attackFrameCount = 4;
     }
 }
@@ -1439,34 +1475,26 @@ void PlayerCharacter::ensureMoveAnimations()
     std::vector<std::string> movePaths;
     movePaths.reserve(12);
 
-    // man 的素材命名目前为导出序号，不走 spr_man_run_x 的约定；这里做一次兼容映射
-    if (_characterKey == "man")
+    // 通用：尽量兼容 run_1..run_n + run.png 的命名（缺失的帧会被自动跳过）
+    for (int i = 1; i <= 8; ++i)
     {
-        movePaths = {
-            _defaultSpriteDir + "/1765093576488638789_6025_01.png",
-            _defaultSpriteDir + "/1765093576488638789_6025_02.png",
-            _defaultSpriteDir + "/1765093576488638789_6025_03.png",
-            _defaultSpriteDir + "/1765093576488638789_6025_04.png",
-            _defaultSpriteDir + "/1765093576488638789_6025_06.png",
-            _defaultSpriteDir + "/1765093576488638789_6025_08.png",
-            _defaultSpriteDir + "/1765093576488638789_6025_09.png",
-        };
+        movePaths.push_back(StringUtils::format("%s/spr_%s_run_%d.png",
+            _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
     }
-    else
-    {
-        // 通用：尽量兼容 run_1..run_n + run.png 的命名（缺失的帧会被自动跳过）
-        for (int i = 1; i <= 8; ++i)
-        {
-            movePaths.push_back(StringUtils::format("%s/spr_%s_run_%d.png",
-                _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
-        }
-        movePaths.push_back(StringUtils::format("%s/spr_%s_run.png",
-            _defaultSpriteDir.c_str(), _characterKey.c_str()));
-    }
+    movePaths.push_back(StringUtils::format("%s/spr_%s_run.png",
+        _defaultSpriteDir.c_str(), _characterKey.c_str()));
 
     // 调用内部静态辅助函数
-    helperEnsureAnimationCached(_animationKeyPrefix + "_run", movePaths, ANIM_DELAY_RUN);
-    helperEnsureAnimationCached(_animationKeyPrefix + "_walk", movePaths, ANIM_DELAY_WALK);
+    helperEnsureAnimationCached(
+        _animationKeyPrefix + "_run",
+        movePaths,
+        ANIM_DELAY_RUN,
+        [this](const std::string& path) { return getStableSpriteFrame(path, true, false); });
+    helperEnsureAnimationCached(
+        _animationKeyPrefix + "_walk",
+        movePaths,
+        ANIM_DELAY_WALK,
+        [this](const std::string& path) { return getStableSpriteFrame(path, true, false); });
 }
 
 void PlayerCharacter::ensureStateAnimations()
@@ -1482,13 +1510,13 @@ void PlayerCharacter::ensureStateAnimations()
         return;
     }
 
-    auto ensureSingleFrame = [cache](const std::string& key, const std::string& framePath) {
+    auto ensureSingleFrame = [this, cache](const std::string& key, const std::string& framePath) {
         if (cache->getAnimation(key))
         {
             return;
         }
 
-        auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(framePath);
+        auto frame = getStableSpriteFrame(framePath, true, false);
         if (!frame)
         {
 #if COCOS2D_DEBUG > 0
@@ -1510,25 +1538,9 @@ void PlayerCharacter::ensureStateAnimations()
         _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
     ensureSingleFrame(_animationKeyPrefix + "_idle",
         _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
-    if (_characterKey == "man")
-    {
-        ensureSingleFrame(_animationKeyPrefix + "_idle",
-            _defaultSpriteDir + "/1765093576488638789_6025_01.png");
-    }
-
     // HURT：受击贴图（spr_<角色>_beattacked.png）
     ensureSingleFrame(_animationKeyPrefix + "_hurt",
         _defaultSpriteDir + "/spr_" + _characterKey + "_beattacked.png");
-    if (_characterKey == "man")
-    {
-        ensureSingleFrame(_animationKeyPrefix + "_hurt",
-            _defaultSpriteDir + "/spr_man_hit_2.png");
-    }
-    else if (_characterKey == "male")
-    {
-        ensureSingleFrame(_animationKeyPrefix + "_hurt",
-            _defaultSpriteDir + "/spr_male_hit2_1.png");
-    }
     // 最后兜底：仍然使用 idle 的静帧避免状态机报错
     ensureSingleFrame(_animationKeyPrefix + "_hurt",
         _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");

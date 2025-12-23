@@ -436,6 +436,30 @@ namespace GameConfig
         }
     }
 
+    // --- 刺客配置 ---
+    namespace Assassin
+    {
+        // 近战技能：斩击（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
+        namespace SlashSkill
+        {
+            const int SLASH_ID = 1003;     // 斩击技能ID
+            const float SLASH_CD = 0.8f;   // 冷却时间
+            const float SLASH_MP = 0.0f;   // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 0;
+
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.06f;
+            inline constexpr float DAMAGE_SCALE = 1.2f; // 基于攻击力的倍率
+
+            // 命中判定框：相对角色包围盒比例（可调参）
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+            inline constexpr float HITBOX_DELAY_SECONDS = 0.05f;
+            inline constexpr float HITBOX_WIDTH_RATIO = 0.60f;
+            inline constexpr float HITBOX_HEIGHT_RATIO = 0.70f;
+            inline constexpr float HITBOX_OFFSET_X_RATIO = 0.60f;
+            inline constexpr float HITBOX_OFFSET_Y = 6.0f;
+        }
+    }
+
     namespace StatusEffect
     {
         namespace Burning

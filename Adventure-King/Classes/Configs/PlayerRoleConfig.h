@@ -14,9 +14,9 @@ namespace PlayerRoleConfig
         switch (role)
         {
         case CharacterRole::WARRIOR:
-            return "Sprites/Characters/Player/man/1765093576488638789_6025_01.png";
+            return "Sprites/Characters/Player/man/default/spr_man_run.png";
         case CharacterRole::ASSASSIN:
-            return "Sprites/Characters/Player/maaer/spr_male_run_1.png";
+            return "Sprites/Characters/Player/maaer/default/spr_maaer_run.png";
         case CharacterRole::MAGE:
         default:
             // 目前“法师”沿用 Klee 的素材与技能实现
@@ -41,4 +41,3 @@ namespace PlayerRoleConfig
         }
     }
 } // namespace PlayerRoleConfig
-

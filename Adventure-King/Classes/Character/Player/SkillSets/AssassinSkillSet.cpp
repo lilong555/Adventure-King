@@ -2,9 +2,13 @@
 
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/AttributeComponent.h"
-#include "Configs/GamePhysicsCategory.h"
+#include "Character/components/SkillComponent.h"
+#include "Configs/GameConfigs.h"
 #include "cocos2d.h"
 #include <cmath>
+#include <memory>
+#include <string>
+#include <vector>
 
 USING_NS_CC;
 
@@ -33,9 +37,31 @@ namespace
     }
 }
 
-void AssassinSkillSet::initSkills(PlayerCharacter& /*player*/)
+void AssassinSkillSet::initSkills(PlayerCharacter& player)
 {
-    // 刺客当前不默认解锁主动技能
+    auto skillComp = player.getSkillComponent();
+    if (!skillComp)
+    {
+        return;
+    }
+
+    // 斩击：默认解锁并装备到 0 号槽位（E/K）
+    auto existing = std::dynamic_pointer_cast<ActiveSkill>(
+        skillComp->findLearnedSkillById(GameConfig::Assassin::SlashSkill::SLASH_ID));
+    std::shared_ptr<ActiveSkill> slashSkill = existing;
+    if (!slashSkill)
+    {
+        slashSkill = std::make_shared<ActiveSkill>();
+        slashSkill->id = GameConfig::Assassin::SlashSkill::SLASH_ID;
+        slashSkill->name = "斩击";
+        slashSkill->description = "向前挥出一道斩击，对前方敌人造成伤害。";
+        slashSkill->manaCost = GameConfig::Assassin::SlashSkill::SLASH_MP;
+        slashSkill->cooldown = GameConfig::Assassin::SlashSkill::SLASH_CD;
+        slashSkill->currentCooldown = 0.0f;
+        skillComp->learnSkill(slashSkill);
+    }
+
+    skillComp->equipActiveSkill(slashSkill, GameConfig::Assassin::SlashSkill::SKILL_SLOT);
 }
 
 bool AssassinSkillSet::tryNormalAttack(PlayerCharacter& player, const std::function<void()>& onFinished)
@@ -87,8 +113,96 @@ bool AssassinSkillSet::tryNormalAttack(PlayerCharacter& player, const std::funct
     return ok;
 }
 
-bool AssassinSkillSet::tryUseSkill(PlayerCharacter& /*player*/, size_t /*slotIndex*/, const std::function<void()>& /*onFinished*/)
+bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, const std::function<void()>& onFinished)
 {
-    return false;
-}
+    auto skillComp = player.getSkillComponent();
+    if (!skillComp)
+    {
+        return false;
+    }
 
+    const auto& slots = skillComp->getActiveSlots();
+    if (slotIndex >= slots.size() || !slots[slotIndex])
+    {
+        return false;
+    }
+
+    const ActiveSkill& skill = *slots[slotIndex];
+    if (skill.id != GameConfig::Assassin::SlashSkill::SLASH_ID)
+    {
+        return false;
+    }
+
+    const std::string& skillDir = player.getSkillSpriteDir();
+    const std::string& characterKey = player.getCharacterKey();
+    if (skillDir.empty() || characterKey.empty())
+    {
+        return false;
+    }
+
+    std::vector<std::string> castPaths;
+    castPaths.reserve(4);
+    for (int i = 1; i <= 4; ++i)
+    {
+        castPaths.push_back(StringUtils::format("%s/spr_%s_slash_%d.png", skillDir.c_str(), characterKey.c_str(), i));
+    }
+
+    bool ok = player.runActionLocked(
+        [&player, slotIndex]()
+        {
+            auto sc = player.getSkillComponent();
+            if (!sc)
+            {
+                return false;
+            }
+            return sc->useActiveSkill(slotIndex);
+        },
+        [&player, castPaths](const std::function<void()>& done)
+        {
+            // 在技能动画中间生成命中判定框
+            player.scheduleOnce(
+                [&player](float)
+                {
+                    if (player.isDead())
+                    {
+                        return;
+                    }
+
+                    const float damage = player.getAttackPower() * GameConfig::Assassin::SlashSkill::DAMAGE_SCALE;
+                    const Rect box = player.getBoundingBox();
+                    const float w = std::max(10.0f, box.size.width * GameConfig::Assassin::SlashSkill::HITBOX_WIDTH_RATIO);
+                    const float h = std::max(10.0f, box.size.height * GameConfig::Assassin::SlashSkill::HITBOX_HEIGHT_RATIO);
+
+                    const float dirX = player.isFlippedX() ? -1.0f : 1.0f;
+                    const float cx = box.getMidX() + dirX * (box.size.width * GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_X_RATIO);
+                    const float cy = box.getMidY() + GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_Y;
+
+                    player.spawnPlayerAttackHitbox(Vec2(cx, cy),
+                                                   Size(w, h),
+                                                   damage,
+                                                   false,
+                                                   GameConfig::Assassin::SlashSkill::HITBOX_LIFE_SECONDS);
+                },
+                GameConfig::Assassin::SlashSkill::HITBOX_DELAY_SECONDS,
+                "assassin_slash_hitbox");
+
+            player.playOneShotAnimation(castPaths,
+                                        GameConfig::Assassin::SlashSkill::CAST_ANIM_FRAME_DELAY,
+                                        PlayerCharacter::ACTION_TAG_SKILL_ANIM,
+                                        done);
+        },
+        nullptr,
+        [onFinished]()
+        {
+            if (onFinished)
+            {
+                onFinished();
+            }
+        });
+
+    if (ok)
+    {
+        CCLOG("AssassinSkillSet: slash skill started");
+    }
+    return ok;
+}
