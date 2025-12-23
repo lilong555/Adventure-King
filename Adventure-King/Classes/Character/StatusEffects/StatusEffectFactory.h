@@ -11,4 +11,5 @@ public:
      * @brief 根据装备 ID 创建对应的逻辑效果对象
      */
     static StatusEffect* createEffectByItemId(int itemId, int level);
+    static StatusEffect* createEffectByType(StatusEffectType type, float power, float duration);
 };
