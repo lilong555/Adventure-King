@@ -312,9 +312,9 @@ int StatusEffectVfxComponent::getStacks(AttributeComponent* attr, StatusEffectTy
     const auto& effects = attr->getStatusEffects();
     for (const auto& eff : effects)
     {
-        if (eff.type == type && !eff.isExpired())
+        if (eff->type == type && !eff->isExpired())
         {
-            return std::max(1, eff.stacks);
+            return std::max(1, eff->stacks);
         }
     }
     return 0;
