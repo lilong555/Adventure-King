@@ -316,9 +316,9 @@ void DebugScene::initPlayer()
         return;
     }
 
-    // 配置玩家锚点与缩放（与 GameScene 保持一致）
+    // 注意：玩家缩放统一由 PlayerCharacter 内部管理（基准 SCALE + 职业素材补偿倍率）。
+    // DebugScene 不再额外 setScale，避免覆盖职业补偿导致体型不一致。
     _player->setAnchorPoint(Vec2(0.5f, 0.5f)); // 物理引擎要求锚点在中心
-    _player->setScale(GameConfig::Player::SCALE);
 
     // 计算玩家初始位置（屏幕中央，地面上方）
     const float scaledHalfHeight = (_player->getContentSize().height * std::fabs(_player->getScaleY())) * 0.5f;

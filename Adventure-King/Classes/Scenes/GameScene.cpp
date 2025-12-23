@@ -29,6 +29,7 @@
 #include "Utils/ImeHelper.h"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <memory>
 
 USING_NS_CC;
@@ -238,12 +239,13 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
         return;
     }
 
-    Size originalSize = playerSprite->getContentSize();
-    float scale = GameConfig::Player::SCALE;
-    playerSprite->setScale(scale);
-
-    float scaledHeight = originalSize.height * scale;
-    playerSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
+    // 注意：玩家的缩放（可视体/物理体/攻击判定）统一由 PlayerCharacter 内部管理：
+    // - 先使用 GameConfig::Player::SCALE 作为基准
+    // - 再按职业对“素材原始 PNG 尺寸差异”做补偿倍率
+    // 因此这里不要再 setScale，否则会覆盖职业补偿导致体型不生效。
+    const Size originalSize = playerSprite->getContentSize();
+    const float scale = std::fabs(playerSprite->getScaleY());
+    const float scaledHeight = originalSize.height * scale;
 
     Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
     playerSprite->setPosition(playerPos);
