@@ -10,6 +10,7 @@
 #include "Scenes/Layers/SetMenuLayer.h"
 #include"Utils/ParticlePreloadHelper.h"
 #include "Managers/MusicManager.h"
+#include "audio/include/AudioEngine.h"
 #include "Configs/GameConfigs.h"
 #include"Managers/SceneRegistry.h"
 #include "Save/SaveData.h"
@@ -474,13 +475,7 @@ std::vector<std::string> HelloWorld::getPreloadResourcePaths() {
         "Scene/UI/SaveNormal.png",
         "Scene/UI/SaveSelect.png",
         "Scene/UI/CloseNormal.png",     // 虽然被注释，建议预载
-        "Scene/UI/CloseSelected.png",
-
-        // --- 字体资源 ---
-        "fonts/ZCOOLKuaiLe-Regular.ttf", // 预热字体可以防止 Label 首次渲染卡顿
-
-        // --- 音频资源 ---
-        "Scene/MusicOfScene/Music_HelloWorldScene.mp3"
+        "Scene/UI/CloseSelected.png"
     };
 }
 
@@ -502,8 +497,9 @@ void HelloWorld::setupRegistry()
         // 2. 预热主菜单特有粒子（如果有不在 Common 列表里的）
         // ParticlePreloadHelper::preloadParticlePlists({"Particle/special_menu_effect.plist"});
 
-        // 3. 预热音频
-        //cocos2d::AudioEngine::preload("Scene/MusicOfScene/Music_HelloWorldScene.mp3");
+        // 3. 预热音频（把 AudioEngine 的首次初始化/解码开销挪到 LoadingScene，避免主菜单粒子“卡住一秒”）
+        cocos2d::experimental::AudioEngine::preload("Scene/MusicOfScene/Music_HelloWorldScene.mp3");
+        cocos2d::experimental::AudioEngine::preload("Scene/MusicOfScene/Music_HomeScene.mp3");
         };
 
     SceneRegistry::getInstance()->registerScene(SceneID::HELLO_WORLD, info);
