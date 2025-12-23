@@ -984,12 +984,12 @@ void DebugScene::updateDebugInfo()
             std::string effectStr = "状态效果: ";
             for (size_t i = 0; i < effects.size(); ++i)
             {
-                const auto &eff = effects[i];
-                float remaining = eff.duration - eff.elapsed;
+                const auto& eff = effects.at(i);
+                float remaining = eff->duration - eff->elapsed;
 
                 // 状态类型转名称
                 std::string effectName;
-                switch (eff.type)
+                switch (eff->type)
                 {
                 case StatusEffectType::POISONED:
                     effectName = "中毒";
@@ -1011,9 +1011,9 @@ void DebugScene::updateDebugInfo()
                     break;
                 }
 
-                if (eff.stackable && eff.stacks > 1)
+                if (eff->stackable && eff->stacks > 1)
                 {
-                    effectName += StringUtils::format("x%d", eff.stacks);
+                    effectName += StringUtils::format("x%d", eff->stacks);
                 }
                 effectStr += StringUtils::format("%s(%.1fs)", effectName.c_str(), remaining);
                 if (i < effects.size() - 1)
@@ -1215,7 +1215,7 @@ void DebugScene::onResetClicked(Ref *sender)
         auto effects = attr->getStatusEffects();
         for (const auto &eff : effects)
         {
-            attr->removeStatusEffect(eff.type);
+            attr->removeStatusEffect(eff->type);
         }
 
         _player->setCurrentHP(attr->getAttributeValue(AttributeType::MAX_HP));
@@ -1282,22 +1282,22 @@ void DebugScene::onPoisonClicked(Ref *sender)
         return;
     }
 
-    StatusEffectInstance inst;
-    inst.type = StatusEffectType::POISONED;
-    inst.duration = std::max(0.0f, GameConfig::StatusEffect::Poisoned::DURATION_SECONDS);
-    inst.elapsed = 0.0f;
-    inst.attributeBonus.clear();
+    auto inst = StatusEffect::create();
+    inst->type = StatusEffectType::POISONED;
+    inst->duration = std::max(0.0f, GameConfig::StatusEffect::Poisoned::DURATION_SECONDS);
+    inst->elapsed = 0.0f;
+    inst->attributeBonus.clear();
 
-    inst.stacks = 1;
-    inst.maxStacks = 0;
-    inst.stackable = true;
-    inst.refreshOnAdd = true;
+    inst->stacks = 1;
+    inst->maxStacks = 0;
+    inst->stackable = true;
+    inst->refreshOnAdd = true;
 
-    inst.tickInterval = std::max(0.0f, GameConfig::StatusEffect::Poisoned::TICK_INTERVAL_SECONDS);
-    inst.tickAccumulator = 0.0f;
-    inst.sourceAttackPower = _player->getAttackPower();
-    inst.baseDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::BASE_DAMAGE_SCALE);
-    inst.perStackDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::PER_STACK_DAMAGE_SCALE);
+    inst->tickInterval = std::max(0.0f, GameConfig::StatusEffect::Poisoned::TICK_INTERVAL_SECONDS);
+    inst->tickAccumulator = 0.0f;
+    inst->sourceAttackPower = _player->getAttackPower();
+    inst->baseDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::BASE_DAMAGE_SCALE);
+    inst->perStackDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::PER_STACK_DAMAGE_SCALE);
 
     attr->addStatusEffect(inst);
 
@@ -1327,11 +1327,11 @@ void DebugScene::onExcitedClicked(Ref *sender)
         return;
     }
 
-    StatusEffectInstance excited;
-    excited.type = StatusEffectType::EXCITED;
-    excited.duration = std::max(0.0f, GameConfig::StatusEffect::Excited::DURATION_SECONDS);
-    excited.elapsed = 0.0f;
-    excited.attributeBonus.set(AttributeType::MOVE_SPEED, GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
+    auto excited = StatusEffect::create();
+    excited->type = StatusEffectType::EXCITED;
+    excited->duration = std::max(0.0f, GameConfig::StatusEffect::Excited::DURATION_SECONDS);
+    excited->elapsed = 0.0f;
+    excited->attributeBonus.set(AttributeType::MOVE_SPEED, GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
 
     attr->addStatusEffect(excited);
 
@@ -1359,11 +1359,11 @@ void DebugScene::onStunnedClicked(Ref *sender)
     if (!attr)
         return;
 
-    StatusEffectInstance stunned;
-    stunned.type = StatusEffectType::STUNNED;
-    stunned.duration = 3.0f;
-    stunned.elapsed = 0.0f;
-    stunned.attributeBonus.set(AttributeType::MOVE_SPEED, -200.0f);
+    auto stunned = StatusEffect::create();
+    stunned->type = StatusEffectType::STUNNED;
+    stunned->duration = 3.0f;
+    stunned->elapsed = 0.0f;
+    stunned->attributeBonus.set(AttributeType::MOVE_SPEED, -200.0f);
 
     attr->addStatusEffect(stunned);
 

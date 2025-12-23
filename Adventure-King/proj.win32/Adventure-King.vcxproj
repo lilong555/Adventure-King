@@ -158,8 +158,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
   <ItemGroup>
     <ClCompile Include="..\Classes\AppDelegate.cpp" />
     <ClCompile Include="..\Classes\Character\Base\CharacterBase.cpp" />
+    <ClCompile Include="..\Classes\Character\Base\StatusEffect.cpp" />
     <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp" />
-    <ClCompile Include="..\Classes\Character\components\EquipmentComponent.cpp" />
+    <ClCompile Include="..\Classes\Character\components\InventoryComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\SkillComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\StateMachineComponent.cpp" />
     <ClCompile Include="..\Classes\Character\components\StatusEffectVfxComponent.cpp" />
@@ -168,12 +169,14 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\Monster\Monsters\GobluMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\ObscurMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.cpp" />
-    <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
-    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp" />
-    <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp" />
-    <ClCompile Include="..\Classes\Character\Player\SkillSets\WarriorSkillSet.cpp" />
-    <ClCompile Include="..\Classes\Character\Player\SkillSets\AssassinSkillSet.cpp" />
-    <ClCompile Include="..\Classes\GameUI.cpp" />
+	    <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
+	    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp" />
+	    <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp" />
+	    <ClCompile Include="..\Classes\Character\Player\SkillSets\WarriorSkillSet.cpp" />
+	    <ClCompile Include="..\Classes\Character\Player\SkillSets\AssassinSkillSet.cpp" />
+	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.cpp" />
+	    <ClCompile Include="..\Classes\Character\StatusEffects\StatusEffectFactory.cpp" />
+	    <ClCompile Include="..\Classes\GameUI.cpp" />
     <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
     <ClCompile Include="..\Classes\Managers\SceneRegistry.cpp" />
     <ClCompile Include="..\Classes\Managers\SceneTransitionManager.cpp" />
@@ -211,8 +214,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\AppDelegate.h" />
     <ClInclude Include="..\Classes\Character\Base\CharacterBase.h" />
     <ClInclude Include="..\Classes\Character\Base\CharacterData.h" />
+    <ClInclude Include="..\Classes\Character\Base\StatusEffect.h" />
     <ClInclude Include="..\Classes\Character\components\AttributeComponent.h" />
-    <ClInclude Include="..\Classes\Character\components\EquipmentComponent.h" />
+    <ClInclude Include="..\Classes\Character\components\InventoryComponent.h" />
     <ClInclude Include="..\Classes\Character\components\SkillComponent.h" />
     <ClInclude Include="..\Classes\Character\components\StateMachineComponent.h" />
     <ClInclude Include="..\Classes\Character\components\StatusEffectVfxComponent.h" />
@@ -227,6 +231,8 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Player\SkillSets\WarriorSkillSet.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\AssassinSkillSet.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h" />
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.h" />
+    <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h" />
     <ClInclude Include="..\Classes\Configs\GameConfigs.h" />
     <ClInclude Include="..\Classes\Configs\GamePhysicsCategory.h" />
     <ClInclude Include="..\Classes\Configs\GameSceneConfig.h" />

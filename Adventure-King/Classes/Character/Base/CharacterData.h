@@ -71,7 +71,8 @@ enum class StatusEffectType : uint8_t
     BURNING,  // 燃烧
     EXCITED,  // 亢奋
     STUNNED,  // 眩晕
-    FULL_HP_CRIT // 满血暴击
+    FULL_HP_CRIT, // 满血暴击
+    THORNS
 };
 
 //================== 属性结构 ==================

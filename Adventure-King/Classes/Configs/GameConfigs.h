@@ -1,6 +1,7 @@
 // 游戏相关数值配置
 #pragma once
 #include "cocos2d.h"
+#include "Character/Base/CharacterData.h"
 #include <algorithm>
 // ============================================================================
 // 1. 游戏数值配置 (Game Constants)
@@ -225,6 +226,32 @@ namespace GameConfig
                     level = 1;
                 }
                 return level * REQUIRED_EXP_PER_LEVEL;
+            }
+            // 不同职业的成长数值
+            inline Attributes getGrowthByRole(CharacterRole role)
+            {
+                Attributes growth;
+                switch (role)
+                {
+                case CharacterRole::WARRIOR:
+                    growth.set(AttributeType::MAX_HP, 15.0f);
+                    growth.set(AttributeType::MAX_MP, 2.0f);
+                    growth.set(AttributeType::STRENGTH, 3.0f);
+                    growth.set(AttributeType::DEFENSE, 1.5f);
+                    break;
+                case CharacterRole::MAGE:
+                    growth.set(AttributeType::MAX_HP, 8.0f);
+                    growth.set(AttributeType::MAX_MP, 10.0f);
+                    growth.set(AttributeType::STRENGTH, 1.0f);
+                    growth.set(AttributeType::DEFENSE, 0.5f);
+                    break;
+                    // 其他职业...
+                default:
+                    growth.set(AttributeType::MAX_HP, 10.0f);
+                    growth.set(AttributeType::STRENGTH, 2.0f);
+                    break;
+                }
+                return growth;
             }
         }
 

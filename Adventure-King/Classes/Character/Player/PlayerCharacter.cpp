@@ -7,6 +7,7 @@
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/StatusEffectVfxComponent.h"
+#include "Character/StatusEffects/StatusEffectFactory.h"
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfigs.h"
 #include "Configs/GamePhysicsCategory.h"
@@ -320,13 +321,18 @@ void PlayerCharacter::updateFullHpCritEffect()
 
     if (isFullHp && !_fullHpCritActive)
     {
-        StatusEffectInstance fullHpCrit;
-        fullHpCrit.type = StatusEffectType::FULL_HP_CRIT;
-        fullHpCrit.duration = 0.0f;
-        fullHpCrit.elapsed = 0.0f;
-        fullHpCrit.permanent = true; // 由 updateFullHpCritEffect 显式移除
-        fullHpCrit.attributeBonus.set(AttributeType::CRITICAL_RATE, GameConfig::Skill::PassiveEffect::FULL_HP_CRIT_BONUS);
-        attr->addStatusEffect(fullHpCrit);
+
+        auto effect = StatusEffect::create();
+        effect->type = StatusEffectType::FULL_HP_CRIT;
+        effect->duration = 0.0f;
+        effect->elapsed = 0.0f;
+        effect->isPermanent = true;
+
+        Attributes bonus;
+        bonus.set(AttributeType::CRITICAL_RATE, GameConfig::Skill::PassiveEffect::FULL_HP_CRIT_BONUS);
+        effect->setAttributeBonus(bonus); // 确保 StatusEffect 类有此 setter 或成员为 public
+
+        attr->addStatusEffect(std::move(effect));
         _fullHpCritActive = true;
     }
     else if (!isFullHp && _fullHpCritActive)
@@ -378,22 +384,23 @@ void PlayerCharacter::tryApplyDotStatus(CharacterBase *target,
         return;
     }
 
-    StatusEffectInstance inst;
-    inst.type = type;
-    inst.duration = std::max(0.0f, duration);
-    inst.elapsed = 0.0f;
-    inst.attributeBonus.clear();
+    auto inst = StatusEffect::create();
+    inst->type = type;
+    inst->duration = std::max(0.0f, duration);
+    inst->elapsed = 0.0f;
+    inst->isPermanent = (duration <= 0.0f);
+    //inst->attributeBonus.clear();
 
-    inst.stacks = std::max(1, stacks);
-    inst.maxStacks = 0;
-    inst.stackable = true;
-    inst.refreshOnAdd = true;
+    inst->stacks = std::max(1, stacks);
+    inst->maxStacks = 0;
+    inst->stackable = true;
+    inst->refreshOnAdd = true;
 
-    inst.tickInterval = std::max(0.0f, tickInterval);
-    inst.tickAccumulator = 0.0f;
-    inst.sourceAttackPower = getAttackPower();
-    inst.baseDamageScale = std::max(0.0f, baseDamageScale);
-    inst.perStackDamageScale = std::max(0.0f, perStackDamageScale);
+    inst->tickInterval = std::max(0.0f, tickInterval);
+    inst->tickAccumulator = 0.0f;
+    inst->sourceAttackPower = getAttackPower();
+    inst->baseDamageScale = std::max(0.0f, baseDamageScale);
+    inst->perStackDamageScale = std::max(0.0f, perStackDamageScale);
 
     targetAttr->addStatusEffect(inst);
 }
@@ -401,16 +408,18 @@ void PlayerCharacter::tryApplyDotStatus(CharacterBase *target,
 void PlayerCharacter::applyExcitedBuff(float durationSeconds, float moveSpeedBonus)
 {
     auto attr = getAttributeComponent();
-    if (!attr)
-    {
-        return;
-    }
+    if (!attr) return;
 
-    StatusEffectInstance excited;
-    excited.type = StatusEffectType::EXCITED;
-    excited.duration = std::max(0.0f, durationSeconds);
-    excited.elapsed = 0.0f;
-    excited.attributeBonus.set(AttributeType::MOVE_SPEED, moveSpeedBonus);
+    // --- 修正点：改为使用 unique_ptr ---
+    auto excited = StatusEffect::create();
+    excited->type = StatusEffectType::EXCITED;
+    excited->duration = std::max(0.0f, durationSeconds);
+    excited->elapsed = 0.0f;
+    excited->isPermanent = (durationSeconds <= 0.0f);
+
+    Attributes bonus;
+    bonus.set(AttributeType::MOVE_SPEED, moveSpeedBonus);
+    excited->setAttributeBonus(bonus);
 
     attr->addStatusEffect(excited);
 }
@@ -438,35 +447,58 @@ void PlayerCharacter::addExperience(int amount)
 
 void PlayerCharacter::levelUp()
 {
+    // 1. 基础等级与点数更新
     _level++;
     _activeSkillPoints += GameConfig::Player::SkillPoint::ACTIVE_POINTS_PER_LEVEL;
     _passiveSkillPoints += GameConfig::Player::SkillPoint::PASSIVE_POINTS_PER_LEVEL;
     _attributePoints += GameConfig::Player::AttributePoint::POINTS_PER_LEVEL;
 
-    if (auto attr = getAttributeComponent())
-    {
-        auto base = attr->getBaseAttributes();
-        // 简单成长数值
-        base.add(AttributeType::MAX_HP, 10.0f);
-        base.add(AttributeType::MAX_MP, 5.0f);
-        base.add(AttributeType::STRENGTH, 2.0f);
-        base.add(AttributeType::DEFENSE, 1.0f);
-        attr->setBaseAttributes(base);
-    }
+    // 2. 属性成长逻辑 (数据驱动)
+    applyAttributeGrowth();
 
-    // 升级后恢复状态或刷新上限
+    // 3. 状态恢复
     refreshHpMpFromAttributes();
 
-    // 升级粒子特效
-    auto particle = ParticleSystemQuad::create("Particle/par_levelup.plist");
-    if (particle)
-    {
-        particle->setAutoRemoveOnFinish(true);
-        particle->setPositionType(ParticleSystem::PositionType::GROUPED);
-        const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
-        particle->setPosition(bodyInfo.center);
-        addChild(particle, 999);
-    }
+    // 4. 触发升级特效 (表现分离)
+    playLevelUpVFX();
+
+    CCLOG("Character Level Up: Level %d", _level);
+}
+
+/**
+ * @brief 处理不同职业的属性成长
+ */
+void PlayerCharacter::applyAttributeGrowth()
+{
+    auto attr = getAttributeComponent();
+    if (!attr) return;
+
+    auto base = attr->getBaseAttributes();
+
+    // 从配置中获取当前职业的成长率
+    // 建议在 GameConfig 中定义类似：static Attributes getGrowthByRole(CharacterRole role);
+    Attributes growth = GameConfig::Player::Leveling::getGrowthByRole(_role);
+
+    base += growth; // 利用之前重载的 += 运算符
+    attr->setBaseAttributes(base);
+}
+
+/**
+ * @brief 播放升级视觉特效
+ */
+void PlayerCharacter::playLevelUpVFX()
+{
+    auto particle = cocos2d::ParticleSystemQuad::create("Particle/par_levelup.plist");
+    if (!particle) return;
+
+    particle->setAutoRemoveOnFinish(true);
+    particle->setPositionType(cocos2d::ParticleSystem::PositionType::GROUPED);
+
+    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
+    particle->setPosition(bodyInfo.center);
+
+    // --- 修正点：添加 Z-Order 参数 (例如 999 或配置常量) ---
+    this->addChild(particle, 999);
 }
 
 bool PlayerCharacter::upgradeAttribute(AttributeType type)
@@ -618,25 +650,58 @@ void PlayerCharacter::equip(const std::shared_ptr<Equipment>& item)
     auto attr = getAttributeComponent();
     if (!attr) return;
 
-    auto slot = item->slot;
+    const auto slot = item->slot;
+
+    // ==========================================
+    // 1. 处理旧装备的卸载
+    // ==========================================
     auto it = _equippedItems.find(slot);
     if (it != _equippedItems.end())
     {
-        attr->removeEquipmentBonus(it->second->attributeBonus);
+        auto oldItem = it->second;
+        // 移除属性加成
+        attr->removeEquipmentBonus(oldItem->attributeBonus);
+
+        // 核心：移除旧装备关联的逻辑效果（如旧装备提供的反伤或吸血）
+        // 这里建议根据类型移除，或者在 StatusEffect 中标记来源
+        attr->removeStatusEffect(StatusEffectType::THORNS); // 举例：通用移除
+        // 如果有更复杂的逻辑，可以在 Factory 中定义移除逻辑
     }
 
+    // ==========================================
+    // 2. 挂载新装备
+    // ==========================================
     _equippedItems[slot] = item;
     attr->addEquipmentBonus(item->attributeBonus);
 
+    // ==========================================
+    // 3. 核心解耦：通过工厂注入逻辑效果
+    // ==========================================
+    // 不再判断 item->id == THORNS_ARMOR，全部交给工厂
+    auto effect = StatusEffectFactory::createEffectByItemId(item->id, item->level);
+    if (effect)
+    {
+        attr->addStatusEffect(effect);
+    }
+
+    // ==========================================
+    // 4. 处理武器特有表现
+    // ==========================================
     if (slot == EquipmentSlot::WEAPON)
     {
         auto weapon = std::dynamic_pointer_cast<Weapon>(item);
         onWeaponChanged(weapon);
     }
 
-    refreshHpMpFromAttributes(); // 简单回满，根据需求调整
+    // ==========================================
+    // 5. 状态更新与回调
+    // ==========================================
+    refreshHpMpFromAttributes();
 
-    if (_equipmentChangeCallback) _equipmentChangeCallback(slot, item);
+    if (_equipmentChangeCallback)
+    {
+        _equipmentChangeCallback(slot, item);
+    }
 }
 
 void PlayerCharacter::unequip(EquipmentSlot slot)
@@ -1069,58 +1134,69 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     _actionLocked = false;
 }
 
-void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool /*wouldDieBeforeCallback*/)
-{
-    (void)info;
+//逻辑下放
 
-    if (finalDamage <= 0.0f)
-    {
-        return;
-    }
+//void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool /*wouldDieBeforeCallback*/)
+//{
+//    (void)info;
+//
+//    if (finalDamage <= 0.0f)
+//    {
+//        return;
+//    }
+//
+//    // -----------------------------
+//    // 装备特效：荆棘甲（反伤）
+//    // -----------------------------
+//    if (_thornsCooldownRemaining <= 0.0f && attacker && attacker != this && !attacker->isDead())
+//    {
+//        auto thorns = findEquippedItemById(GameConfig::Equipment::Armor::THORNS_ARMOR);
+//        if (thorns)
+//        {
+//            const float rate = GameConfig::EquipmentEffect::ThornsArmor::getReflectRate(thorns->level);
+//            // 反伤按比例计算；最小为 1，避免“触发了但没有伤害”的反馈落差
+//            float reflect = std::max(1.0f, finalDamage * rate);
+//            DamageInfo thornDmg;
+//            thornDmg.amount = reflect;
+//            // 设置 attacker=nullptr：反伤不触发任何 onDealDamage/吸血/命中特效，避免链式循环
+//            thornDmg.attacker = nullptr;
+//            thornDmg.isCritical = false;
+//            thornDmg.penetration = 0.0f;
+//            thornDmg.causesHitStun = false;   // 反伤不打断，避免“互相锁死”
+//            attacker->takeDamage(thornDmg);
+//
+//            _thornsCooldownRemaining = GameConfig::EquipmentEffect::ThornsArmor::PROC_COOLDOWN;
+//        }
+//    }
+//
+//    // -----------------------------
+//    // 装备特效：急救面罩（低血量救援）
+//    // -----------------------------
+//    if (_emergencyMaskCooldownRemaining <= 0.0f && findEquippedItemById(GameConfig::Equipment::Helmet::EMERGENCY_MASK))
+//    {
+//        auto attr = getAttributeComponent();
+//        if (attr && !isDead())
+//        {
+//            const float maxHp = attr->getAttributeValue(AttributeType::MAX_HP);
+//            const float triggerHp = maxHp * GameConfig::EquipmentEffect::EmergencyMask::TRIGGER_HP_RATIO;
+//            if (getCurrentHP() <= triggerHp)
+//            {
+//                const float targetHp = maxHp * GameConfig::EquipmentEffect::EmergencyMask::HEAL_TARGET_HP_RATIO;
+//                // 显式夹取：避免配置错误导致目标血量超过最大血量（不依赖 setCurrentHP 的内部夹取）
+//                const float clampedTargetHp = std::min(targetHp, maxHp);
+//                setCurrentHP(std::max(getCurrentHP(), clampedTargetHp));
+//                _emergencyMaskCooldownRemaining = GameConfig::EquipmentEffect::EmergencyMask::PROC_COOLDOWN;
+//            }
+//        }
+//    }
+//}
+void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback) {
+    if (finalDamage <= 0.0f) return;
 
-    // -----------------------------
-    // 装备特效：荆棘甲（反伤）
-    // -----------------------------
-    if (_thornsCooldownRemaining <= 0.0f && attacker && attacker != this && !attacker->isDead())
-    {
-        auto thorns = findEquippedItemById(GameConfig::Equipment::Armor::THORNS_ARMOR);
-        if (thorns)
-        {
-            const float rate = GameConfig::EquipmentEffect::ThornsArmor::getReflectRate(thorns->level);
-            // 反伤按比例计算；最小为 1，避免“触发了但没有伤害”的反馈落差
-            float reflect = std::max(1.0f, finalDamage * rate);
-            DamageInfo thornDmg;
-            thornDmg.amount = reflect;
-            // 设置 attacker=nullptr：反伤不触发任何 onDealDamage/吸血/命中特效，避免链式循环
-            thornDmg.attacker = nullptr;
-            thornDmg.isCritical = false;
-            thornDmg.penetration = 0.0f;
-            thornDmg.causesHitStun = false;   // 反伤不打断，避免“互相锁死”
-            attacker->takeDamage(thornDmg);
-
-            _thornsCooldownRemaining = GameConfig::EquipmentEffect::ThornsArmor::PROC_COOLDOWN;
-        }
-    }
-
-    // -----------------------------
-    // 装备特效：急救面罩（低血量救援）
-    // -----------------------------
-    if (_emergencyMaskCooldownRemaining <= 0.0f && findEquippedItemById(GameConfig::Equipment::Helmet::EMERGENCY_MASK))
-    {
-        auto attr = getAttributeComponent();
-        if (attr && !isDead())
-        {
-            const float maxHp = attr->getAttributeValue(AttributeType::MAX_HP);
-            const float triggerHp = maxHp * GameConfig::EquipmentEffect::EmergencyMask::TRIGGER_HP_RATIO;
-            if (getCurrentHP() <= triggerHp)
-            {
-                const float targetHp = maxHp * GameConfig::EquipmentEffect::EmergencyMask::HEAL_TARGET_HP_RATIO;
-                // 显式夹取：避免配置错误导致目标血量超过最大血量（不依赖 setCurrentHP 的内部夹取）
-                const float clampedTargetHp = std::min(targetHp, maxHp);
-                setCurrentHP(std::max(getCurrentHP(), clampedTargetHp));
-                _emergencyMaskCooldownRemaining = GameConfig::EquipmentEffect::EmergencyMask::PROC_COOLDOWN;
-            }
-        }
+    // --- 只需要这一行！---
+    // 所有的装备特效（荆棘、护盾、减伤）都会在这里被自动触发
+    if (auto attr = getAttributeComponent()) {
+        attr->executeReceiveDamageHooks(attacker, const_cast<DamageInfo&>(info));
     }
 }
 
