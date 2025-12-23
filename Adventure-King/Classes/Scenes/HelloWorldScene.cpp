@@ -10,6 +10,7 @@
 #include "Scenes/Layers/SetMenuLayer.h"
 #include"Utils/ParticlePreloadHelper.h"
 #include "Managers/MusicManager.h"
+#include "audio/include/AudioEngine.h"
 #include "Configs/GameConfigs.h"
 #include"Managers/SceneRegistry.h"
 #include "Save/SaveData.h"
