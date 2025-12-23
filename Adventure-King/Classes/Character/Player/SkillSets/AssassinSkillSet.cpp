@@ -184,10 +184,12 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
                         const float cx = box.getMidX() + dirX * (box.size.width * GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_X_RATIO);
                         const float cy = box.getMidY() + GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_Y;
 
+                        // 斩击每段都允许暴击：每段独立按暴击率判定
+                        const bool isCrit = rollCritical(player);
                         player.spawnPlayerAttackHitbox(Vec2(cx, cy),
                                                        Size(w, h),
                                                        damage,
-                                                       false,
+                                                       isCrit,
                                                        GameConfig::Assassin::SlashSkill::HITBOX_LIFE_SECONDS);
                     },
                     delay,
