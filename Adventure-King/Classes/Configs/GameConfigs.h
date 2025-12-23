@@ -199,7 +199,7 @@ namespace GameConfig
         // 由于刺客素材（700x370）横向留白较大，若按贴图尺寸比例生成碰撞盒会导致碰撞范围过宽。
         // 这里参考 Goblu 的“固定物理体尺寸”思路，给刺客使用固定碰撞盒（再叠加 SCALE 与职业倍率）。
         inline constexpr float ASSASSIN_COLLISION_BOX_WIDTH = 137.0f;
-        inline constexpr float ASSASSIN_COLLISION_BOX_HEIGHT = 370.0f;
+        inline constexpr float ASSASSIN_COLLISION_BOX_HEIGHT = 280.0f;
         inline constexpr float COLLISION_BOX_RATIO_W = 0.8f; ///< 碰撞盒宽度比例
         inline constexpr float COLLISION_BOX_RATIO_H = 0.9f; ///< 碰撞盒高度比例
         inline constexpr float ANIM_DELAY_RUN = 0.15f;
@@ -455,12 +455,12 @@ namespace GameConfig
         // 近战技能：斩击（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
         namespace SlashSkill
         {
-            const int SLASH_ID = 1003;     // 斩击技能ID
-            const float SLASH_CD = 0.8f;   // 冷却时间
-            const float SLASH_MP = 0.0f;   // 蓝耗（暂不消耗）
+            const int SLASH_ID = 1003;   // 斩击技能ID
+            const float SLASH_CD = 0.8f; // 冷却时间
+            const float SLASH_MP = 0.0f; // 蓝耗（暂不消耗）
             inline constexpr size_t SKILL_SLOT = 0;
 
-            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.06f;
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f;
             inline constexpr float DAMAGE_SCALE = 1.2f; // 基于攻击力的倍率
 
             // 命中判定框：相对角色包围盒比例（可调参）
@@ -515,7 +515,6 @@ namespace GameConfig
         inline constexpr float ARMOR_CONST = 100.0f;
     }
 
-    
     // --- 物理材质 (密度, 弹性, 摩擦) ---
     // 可以在代码中直接使用: PhysicsBody::createBox(size, GameConfig::Material::DEFAULT)
     namespace Material

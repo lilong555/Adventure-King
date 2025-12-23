@@ -159,32 +159,40 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
         },
         [&player, castPaths](const std::function<void()>& done)
         {
-            // 在技能动画中间生成命中判定框
-            player.scheduleOnce(
-                [&player](float)
-                {
-                    if (player.isDead())
+            // 斩击：每一帧生成一次 hitbox（一次技能=4次伤害）
+            // 说明：用 scheduleOnce 绑定“实时包围盒”，动作期间移动/转身时判定仍贴合角色位置。
+            constexpr int HIT_COUNT = 4;
+            for (int i = 0; i < HIT_COUNT; ++i)
+            {
+                const float delay = GameConfig::Assassin::SlashSkill::HITBOX_DELAY_SECONDS +
+                                    GameConfig::Assassin::SlashSkill::CAST_ANIM_FRAME_DELAY * static_cast<float>(i);
+
+                player.scheduleOnce(
+                    [&player](float)
                     {
-                        return;
-                    }
+                        if (player.isDead())
+                        {
+                            return;
+                        }
 
-                    const float damage = player.getAttackPower() * GameConfig::Assassin::SlashSkill::DAMAGE_SCALE;
-                    const Rect box = player.getBoundingBox();
-                    const float w = std::max(10.0f, box.size.width * GameConfig::Assassin::SlashSkill::HITBOX_WIDTH_RATIO);
-                    const float h = std::max(10.0f, box.size.height * GameConfig::Assassin::SlashSkill::HITBOX_HEIGHT_RATIO);
+                        const float damage = player.getAttackPower() * GameConfig::Assassin::SlashSkill::DAMAGE_SCALE;
+                        const Rect box = player.getBoundingBox();
+                        const float w = std::max(10.0f, box.size.width * GameConfig::Assassin::SlashSkill::HITBOX_WIDTH_RATIO);
+                        const float h = std::max(10.0f, box.size.height * GameConfig::Assassin::SlashSkill::HITBOX_HEIGHT_RATIO);
 
-                    const float dirX = player.isFlippedX() ? -1.0f : 1.0f;
-                    const float cx = box.getMidX() + dirX * (box.size.width * GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_X_RATIO);
-                    const float cy = box.getMidY() + GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_Y;
+                        const float dirX = player.isFlippedX() ? -1.0f : 1.0f;
+                        const float cx = box.getMidX() + dirX * (box.size.width * GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_X_RATIO);
+                        const float cy = box.getMidY() + GameConfig::Assassin::SlashSkill::HITBOX_OFFSET_Y;
 
-                    player.spawnPlayerAttackHitbox(Vec2(cx, cy),
-                                                   Size(w, h),
-                                                   damage,
-                                                   false,
-                                                   GameConfig::Assassin::SlashSkill::HITBOX_LIFE_SECONDS);
-                },
-                GameConfig::Assassin::SlashSkill::HITBOX_DELAY_SECONDS,
-                "assassin_slash_hitbox");
+                        player.spawnPlayerAttackHitbox(Vec2(cx, cy),
+                                                       Size(w, h),
+                                                       damage,
+                                                       false,
+                                                       GameConfig::Assassin::SlashSkill::HITBOX_LIFE_SECONDS);
+                    },
+                    delay,
+                    StringUtils::format("assassin_slash_hitbox_%d", i + 1));
+            }
 
             player.playOneShotAnimation(castPaths,
                                         GameConfig::Assassin::SlashSkill::CAST_ANIM_FRAME_DELAY,
