@@ -64,6 +64,12 @@
     <Filter Include="src\Scenes\LevelScenes">
       <UniqueIdentifier>{49342bb6-151c-4a1b-9b8c-d9af38d23459}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Character\StatusEffects">
+      <UniqueIdentifier>{0f42dd16-8879-462f-9c82-7997744a4ce7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Character\StatusEffects\Implementations">
+      <UniqueIdentifier>{8b3ca06b-9fbc-4cfa-bfc4-866b4a025ea9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -204,11 +210,20 @@
     <ClCompile Include="..\Classes\Character\components\StatusEffectVfxComponent.cpp">
       <Filter>src\Character\components</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Character\components\EquipmentComponent.cpp">
+    <ClCompile Include="..\Classes\Character\components\InventoryComponent.cpp">
       <Filter>src\Character\components</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\Layers\BagLayer.cpp">
       <Filter>src\Scenes\Layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Base\StatusEffect.cpp">
+      <Filter>src\Character\Base</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\StatusEffectFactory.cpp">
+      <Filter>src\Character\StatusEffects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -365,7 +380,7 @@
     <ClInclude Include="..\Classes\Character\components\StatusEffectVfxComponent.h">
       <Filter>src\Character\components</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\components\EquipmentComponent.h">
+    <ClInclude Include="..\Classes\Character\components\InventoryComponent.h">
       <Filter>src\Character\components</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\Layers\BagLayer.h">
@@ -379,6 +394,15 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Utils\SpriteFrameCacheHelper.h">
       <Filter>src\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Base\StatusEffect.h">
+      <Filter>src\Character\Base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h">
+      <Filter>src\Character\StatusEffects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

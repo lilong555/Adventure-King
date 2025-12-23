@@ -2,6 +2,7 @@
 
 #include "Character/Base/CharacterBase.h"
 #include "Character/Base/CharacterData.h"
+
 #include <functional>
 #include <map>
 #include <memory>
@@ -232,6 +233,8 @@ private:
     void onWeaponChanged(const std::shared_ptr<Weapon>& weapon);
     /// @brief 升级处理
     void levelUp();
+    void applyAttributeGrowth();
+    void playLevelUpVFX();
 
     // 物理回调
     /// @brief 投掷物碰撞回调

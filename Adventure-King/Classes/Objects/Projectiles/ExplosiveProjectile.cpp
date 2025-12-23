@@ -403,22 +403,22 @@ void ExplosiveProjectile::applyAoEDamage()
 
             for (const auto &tmpl : _onHitStatusEffects)
             {
-                StatusEffectInstance inst;
-                inst.type = tmpl.type;
-                inst.duration = tmpl.duration;
-                inst.elapsed = 0.0f;
-                inst.attributeBonus = tmpl.attributeBonus;
+                auto inst = StatusEffect::create();
+                inst->type = tmpl.type;
+                inst->duration = tmpl.duration;
+                inst->elapsed = 0.0f;
+                inst->attributeBonus = tmpl.attributeBonus;
 
-                inst.stacks = tmpl.stacks;
-                inst.maxStacks = tmpl.maxStacks;
-                inst.stackable = tmpl.stackable;
-                inst.refreshOnAdd = tmpl.refreshOnAdd;
+                inst->stacks = tmpl.stacks;
+                inst->maxStacks = tmpl.maxStacks;
+                inst->stackable = tmpl.stackable;
+                inst->refreshOnAdd = tmpl.refreshOnAdd;
 
-                inst.tickInterval = tmpl.tickInterval;
-                inst.tickAccumulator = 0.0f;
-                inst.sourceAttackPower = sourceAttackPower;
-                inst.baseDamageScale = tmpl.baseDamageScale;
-                inst.perStackDamageScale = tmpl.perStackDamageScale;
+                inst->tickInterval = tmpl.tickInterval;
+                inst->tickAccumulator = 0.0f;
+                inst->sourceAttackPower = sourceAttackPower;
+                inst->baseDamageScale = tmpl.baseDamageScale;
+                inst->perStackDamageScale = tmpl.perStackDamageScale;
 
                 attr->addStatusEffect(inst);
             }

@@ -3,333 +3,268 @@
 #include <algorithm>
 #include <cmath>
 
-AttributeComponent::AttributeComponent()
-{
-    // 设置组件名字，方便通过 getComponent("AttributeComponent") 获取
+AttributeComponent::AttributeComponent() {
     setName("AttributeComponent");
 }
 
-AttributeComponent::~AttributeComponent()
-{
-}
+AttributeComponent::~AttributeComponent() {}
 
-// 初始化函数
-bool AttributeComponent::init()
-{
-    if (!Component::init())
-    {
-        return false;
-    }
-
-    // 或者更简单的 Cocos2d-x 写法，Component 默认支持 update，
-    // 只要 owner 启用了 scheduleUpdate，组件的 update 就会被调用。
-    // 通常组件不需要手动 schedule，只要实现 update 方法并在 init 里 setName 即可。
-
+bool AttributeComponent::init() {
+    if (!cocos2d::Component::init()) return false;
     return true;
 }
-void AttributeComponent::onAdd()
-{
-    // 当组件被挂载到节点上时，Cocos会自动调用这个函数
-    if (getOwner())
-    {
-        // 开启宿主节点的 update调度，这样组件的 update(dt) 也会被自动调用
+
+void AttributeComponent::onAdd() {
+    if (getOwner()) {
+        // 开启每帧更新，驱动 update(dt)
         getOwner()->scheduleUpdate();
     }
 }
-// 每帧更新
-void AttributeComponent::update(float dt)
-{
-    // 调用原本的状态更新逻辑
-    updateStatusEffectsLogic(dt);
-}
 
-void AttributeComponent::updateStatusEffectsLogic(float dt)
-{
-    if (_statusEffects.empty())
-        return;
+// =================================================================
+// 核心生命周期
+// =================================================================
+void AttributeComponent::update(float dt) {
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    if (!owner || owner->isDead() || _effects.empty()) return;
 
-    auto owner = dynamic_cast<CharacterBase*>(getOwner());
+    bool needsCleanup = false;
 
-    for (auto& effect : _statusEffects)
-    {
-        float activeDt = dt;
-        if (!effect.permanent)
-        {
-            float remaining = effect.duration - effect.elapsed;
-            activeDt = std::max(0.0f, std::min(dt, remaining));
-            effect.elapsed += activeDt;
+    // 1. 驱动所有效果的 Tick 逻辑
+    for (auto& effect : _effects) {
+        if (!effect->isPermanent) {
+            effect->elapsed += dt;
         }
 
-        // DOT：按 tickInterval 结算；伤害来源攻击力在施加时已写入 effect.sourceAttackPower
-        if (owner && !owner->isDead() && effect.tickInterval > 0.0f && effect.sourceAttackPower > 0.0f)
-        {
-            effect.tickAccumulator += activeDt;
+        // 触发状态的每帧逻辑（如中毒扣血）
+        effect->onTick(owner, dt);
 
-            int tickCount = static_cast<int>(std::floor(effect.tickAccumulator / effect.tickInterval));
-            if (tickCount <= 0)
-            {
-                continue;
-            }
-
-            effect.tickAccumulator -= effect.tickInterval * static_cast<float>(tickCount);
-
-            const int stacks = std::max(1, effect.stacks);
-            const float scale = effect.baseDamageScale + effect.perStackDamageScale * static_cast<float>(stacks);
-            const float dmgAmount = std::floor(std::max(0.0f, scale * effect.sourceAttackPower));
-            if (dmgAmount <= 0.0f)
-            {
-                continue;
-            }
-
-            DamageInfo dmg;
-            dmg.amount = dmgAmount;
-            dmg.attacker = nullptr;
-            dmg.isCritical = false;
-            dmg.penetration = 0.0f;
-            dmg.causesHitStun = false;
-
-            for (int i = 0; i < tickCount; ++i)
-            {
-                owner->takeDamage(dmg);
-            }
+        if (effect->isExpired()) {
+            needsCleanup = true;
         }
     }
 
-    // 清理过期效果
-    auto it = std::remove_if(_statusEffects.begin(), _statusEffects.end(),
-                             [](const StatusEffectInstance& eff) { return eff.isExpired(); });
-    bool anyRemoved = (it != _statusEffects.end());
-    if (anyRemoved)
-    {
-        _statusEffects.erase(it, _statusEffects.end());
-    }
-
-    // 只在状态变化时重算最终属性（主要用于带 attributeBonus 的效果）
-    if (anyRemoved)
-    {
-        _statusBonus.clear();
-        for (const auto& eff : _statusEffects)
-        {
-            _statusBonus += eff.attributeBonus;
+    // 2. 清理过期效果
+    if (needsCleanup) {
+        auto it = _effects.begin();
+        while (it != _effects.end()) {
+            if ((*it)->isExpired()) {
+                (*it)->onRemove(owner); // 触发移除时的逻辑（如停止特效）
+                it = _effects.erase(it);
+            }
+            else {
+                ++it;
+            }
         }
+        // 状态列表改变，必须重算最终属性
         recalculateFinalAttributes();
     }
 }
 
-//---------------- 基础属性 ----------------
+// =================================================================
+// 状态效果管理
+// =================================================================
 
-void AttributeComponent::setBaseAttributes(const Attributes &attributes)
-{
-    _baseAttributes = attributes;
-    recalculateFinalAttributes();
-}
+void AttributeComponent::addStatusEffect(StatusEffect* newEffect) {
+    if (!newEffect) return;
 
-const Attributes &AttributeComponent::getBaseAttributes() const
-{
-    return _baseAttributes;
-}
+    auto owner = static_cast<CharacterBase*>(getOwner());
 
-void AttributeComponent::setBaseAttribute(AttributeType type, float value)
-{
-    _baseAttributes.set(type, value);
-    recalculateFinalAttributes();
-}
+    // 查找同类型效果处理叠层/刷新
+    auto it = std::find_if(_effects.begin(), _effects.end(),
+        [newEffect](StatusEffect* existing) {
+            return existing->type == newEffect->type;
+        });
 
-float AttributeComponent::getBaseAttribute(AttributeType type) const
-{
-    return _baseAttributes.get(type);
-}
+    if (it != _effects.end()) {
+        auto existing = *it;
+        if (newEffect->stackable) {
+            // 叠层逻辑
+            int addStacks = std::max(1, newEffect->stacks);
+            int newTotal = existing->stacks + addStacks;
+            if (newEffect->maxStacks > 0) newTotal = std::min(newTotal, newEffect->maxStacks);
 
-//---------------- 装备加成 ----------------
-
-void AttributeComponent::addEquipmentBonus(const Attributes &attributes)
-{
-    _equipmentBonus += attributes;
-    recalculateFinalAttributes();
-}
-
-void AttributeComponent::removeEquipmentBonus(const Attributes &attributes)
-{
-    for (const auto &kv : attributes.values)
-    {
-        _equipmentBonus.add(kv.first, -kv.second);
+            existing->stacks = newTotal;
+            if (newEffect->refreshOnAdd) {
+                existing->duration = newEffect->duration;
+                existing->elapsed = 0.0f;
+            }
+            existing->updateParametersFrom(newEffect);
+        }
+        else {
+            // 覆盖逻辑
+            existing->onRemove(owner);
+            existing = std::move(newEffect);
+            existing->onApply(owner);
+        }
     }
-    recalculateFinalAttributes();
-}
-
-//---------------- 被动技能加成 ----------------
-
-void AttributeComponent::addPassiveSkillBonus(const Attributes &attributes)
-{
-    _passiveSkillBonus += attributes;
-    recalculateFinalAttributes();
-}
-
-void AttributeComponent::removePassiveSkillBonus(const Attributes &attributes)
-{
-    for (const auto &kv : attributes.values)
-    {
-        _passiveSkillBonus.add(kv.first, -kv.second);
+    else {
+        // 新增逻辑
+        newEffect->onApply(owner);
+        _effects.pushBack(newEffect);
     }
+
     recalculateFinalAttributes();
 }
 
-//---------------- 状态效果 ----------------
+bool AttributeComponent::removeStatusEffect(StatusEffectType type) {
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    bool anyRemoved = false;
 
-void AttributeComponent::addStatusEffect(const StatusEffectInstance &effect)
-{
-    auto merged = std::find_if(_statusEffects.begin(), _statusEffects.end(),
-                               [&effect](const StatusEffectInstance& existing) {
-                                   return existing.type == effect.type;
-                               });
-
-    if (merged != _statusEffects.end())
+    // 使用迭代器进行手动遍历
+    auto it = _effects.begin();
+    while (it != _effects.end())
     {
-        bool needRecalculate = false;
+        // 这里的 *it 是 StatusEffect* 指针
+        StatusEffect* e = *it;
 
-        if (effect.stackable)
+        if (e && e->type == type)
         {
-            const bool bonusChanged = (merged->attributeBonus.values != effect.attributeBonus.values);
+            // 1. 在移除前触发逻辑钩子（如停止该状态关联的粒子特效）
+            e->onRemove(owner);
 
-            int addStacks = std::max(1, effect.stacks);
-            int newStacks = merged->stacks + addStacks;
+            // 2. 从 Vector 中移除
+            // cocos2d::Vector::erase 会自动调用该对象的 release()
+            // 并返回指向下一个元素的有效迭代器
+            it = _effects.erase(it);
 
-            // 合并策略：以“最新施加”的配置为准（maxStacks/DOT 参数/刷新行为等）
-            int maxStacks = effect.maxStacks;
-            if (maxStacks > 0)
-            {
-                newStacks = std::min(newStacks, maxStacks);
-            }
-            merged->stacks = std::max(1, newStacks);
-
-            if (effect.refreshOnAdd)
-            {
-                merged->duration = effect.duration;
-                merged->elapsed = 0.0f;
-                merged->tickAccumulator = 0.0f;
-            }
-
-            // DOT/参数以最新施加为准（便于后续不同来源/配置覆盖）
-            merged->tickInterval = effect.tickInterval;
-            merged->sourceAttackPower = effect.sourceAttackPower;
-            merged->baseDamageScale = effect.baseDamageScale;
-            merged->perStackDamageScale = effect.perStackDamageScale;
-            merged->attributeBonus = effect.attributeBonus;
-            merged->stackable = effect.stackable;
-            merged->maxStacks = maxStacks;
-            merged->refreshOnAdd = effect.refreshOnAdd;
-
-            needRecalculate = bonusChanged;
+            anyRemoved = true;
         }
         else
         {
-            const bool bonusChanged = (merged->attributeBonus.values != effect.attributeBonus.values);
-            *merged = effect;
-            needRecalculate = bonusChanged;
+            ++it;
         }
-
-        if (needRecalculate)
-        {
-            _statusBonus.clear();
-            for (const auto& eff : _statusEffects)
-            {
-                _statusBonus += eff.attributeBonus;
-            }
-            recalculateFinalAttributes();
-        }
-        return;
     }
 
-    _statusEffects.push_back(effect);
-    if (!effect.attributeBonus.values.empty())
-    {
-        _statusBonus += effect.attributeBonus;
+    // 3. 如果确实有状态被移除，重算属性
+    if (anyRemoved) {
         recalculateFinalAttributes();
     }
+
+    return anyRemoved;
 }
 
-void AttributeComponent::updateStatusEffects(float dt)
-{
-    bool anyRemoved = false;
+bool AttributeComponent::hasStatusEffect(StatusEffectType type) const {
+    return std::any_of(_effects.begin(), _effects.end(),
+        [type](StatusEffect* e) {
+            return e->type == type && !e->isExpired();
+        });
+}
 
-    for (auto &effect : _statusEffects)
-    {
-        effect.elapsed += dt;
-    }
+// =================================================================
+// 战斗钩子分发
+// =================================================================
 
-    auto it = std::remove_if(_statusEffects.begin(), _statusEffects.end(),
-                             [](const StatusEffectInstance &eff)
-                             { return eff.isExpired(); });
-    if (it != _statusEffects.end())
-    {
-        _statusEffects.erase(it, _statusEffects.end());
-        anyRemoved = true;
-    }
-
-    if (anyRemoved)
-    {
-        _statusBonus.clear();
-        for (const auto &eff : _statusEffects)
-        {
-            _statusBonus += eff.attributeBonus;
-        }
-        recalculateFinalAttributes();
+void AttributeComponent::executeReceiveDamageHooks(CharacterBase* attacker, DamageInfo& info) {
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    for (auto& effect : _effects) {
+        effect->onModifyReceiveDamage(owner, attacker, info);
     }
 }
 
-bool AttributeComponent::hasStatusEffect(StatusEffectType type) const
-{
-    for (const auto &effect : _statusEffects)
-    {
-        if (effect.type == type && !effect.isExpired())
-        {
-            return true;
-        }
+void AttributeComponent::executeDealDamageHooks(CharacterBase* target, DamageInfo& info) {
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    for (auto& effect : _effects) {
+        effect->onModifyDealDamage(owner, target, info);
     }
-    return false;
 }
 
-bool AttributeComponent::removeStatusEffect(StatusEffectType type)
-{
-    if (_statusEffects.empty())
-    {
-        return false;
-    }
+// =================================================================
+// 属性计算逻辑 (核心)
+// =================================================================
 
-    const size_t before = _statusEffects.size();
-    _statusEffects.erase(std::remove_if(_statusEffects.begin(), _statusEffects.end(),
-                                        [type](const StatusEffectInstance &eff) {
-                                            return eff.type == type;
-                                        }),
-                         _statusEffects.end());
-
-    if (_statusEffects.size() == before)
-    {
-        return false;
-    }
-
-    // 状态变化：重算状态加成并刷新最终属性
-    _statusBonus.clear();
-    for (const auto &eff : _statusEffects)
-    {
-        _statusBonus += eff.attributeBonus;
-    }
-    recalculateFinalAttributes();
-    return true;
-}
-
-//---------------- 最终属性 ----------------
-
-void AttributeComponent::recalculateFinalAttributes()
-{
+void AttributeComponent::recalculateFinalAttributes() {
     _finalAttributes.clear();
+    _statusBonus.clear();
+
+    // 1. 汇总当前所有 StatusEffect 提供的属性加成
+    for (const auto& effect : _effects) {
+        _statusBonus += effect->getAttributeBonus();
+    }
+
+    // 2. 叠加所有维度
     _finalAttributes += _baseAttributes;
     _finalAttributes += _equipmentBonus;
     _finalAttributes += _passiveSkillBonus;
     _finalAttributes += _statusBonus;
 }
 
-float AttributeComponent::getAttributeValue(AttributeType type) const
-{
+// =================================================================
+// 基础属性与加成接口
+// =================================================================
+
+void AttributeComponent::setBaseAttributes(const Attributes& attributes) {
+    _baseAttributes = attributes;
+    recalculateFinalAttributes();
+}
+
+const Attributes& AttributeComponent::getBaseAttributes() const {
+    return _baseAttributes;
+}
+
+void AttributeComponent::setBaseAttribute(AttributeType type, float value) {
+    _baseAttributes.set(type, value);
+    recalculateFinalAttributes();
+}
+
+float AttributeComponent::getBaseAttribute(AttributeType type) const {
+    return _baseAttributes.get(type);
+}
+
+void AttributeComponent::addEquipmentBonus(const Attributes& attributes) {
+    _equipmentBonus += attributes;
+    recalculateFinalAttributes();
+}
+
+void AttributeComponent::removeEquipmentBonus(const Attributes& attributes) {
+    for (const auto& kv : attributes.values) {
+        _equipmentBonus.add(kv.first, -kv.second);
+    }
+    recalculateFinalAttributes();
+}
+
+void AttributeComponent::addPassiveSkillBonus(const Attributes& attributes) {
+    _passiveSkillBonus += attributes;
+    recalculateFinalAttributes();
+}
+
+void AttributeComponent::removePassiveSkillBonus(const Attributes& attributes) {
+    for (const auto& kv : attributes.values) {
+        _passiveSkillBonus.add(kv.first, -kv.second);
+    }
+    recalculateFinalAttributes();
+}
+
+// =================================================================
+// 点数、冷却与查询
+// =================================================================
+
+void AttributeComponent::setAttributePoints(int points) {
+    _attributePoints = std::max(0, points);
+}
+
+int AttributeComponent::getAttributePoints() const {
+    return _attributePoints;
+}
+
+void AttributeComponent::setProcCooldown(AttributeType type, float duration) {
+    _procCooldowns[type] = duration;
+}
+
+float AttributeComponent::getProcCooldown(AttributeType type) const {
+    auto it = _procCooldowns.find(type);
+    return (it != _procCooldowns.end()) ? it->second : 0.0f;
+}
+
+float AttributeComponent::getAttributeValue(AttributeType type) const {
     return _finalAttributes.get(type);
+}
+
+const Attributes& AttributeComponent::getFinalAttributes() const {
+    return _finalAttributes;
+}
+
+// 在 .cpp 文件中
+const cocos2d::Vector<StatusEffect*>& AttributeComponent::getStatusEffects() const {
+    return _effects;
 }
