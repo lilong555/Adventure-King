@@ -11,6 +11,8 @@
 
 // 定义场景信息的结构体
 struct SceneInfo {
+    // 0. 场景名（用于存档中的 currentSceneName 反查 mapId/creator）
+    std::string sceneName;
     // 1. 如何创建这个场景？ (工厂方法)
     std::function<cocos2d::Scene* ()> creator;
     // 2. 这个场景需要加载哪些图片路径？
@@ -28,6 +30,12 @@ public:
 
     // 获取场景信息
     const SceneInfo* getSceneInfo(int mapId) const;
+
+    // 通过场景名查找场景信息（用于读档等场景恢复）
+    const SceneInfo* getSceneInfoBySceneName(const std::string& sceneName) const;
+
+    // 通过场景名反查 mapId（找不到返回 -1）
+    int getMapIdBySceneName(const std::string& sceneName) const;
 
 private:
     std::map<int, SceneInfo> _registry;

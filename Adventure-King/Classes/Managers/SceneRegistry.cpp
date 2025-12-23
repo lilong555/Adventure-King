@@ -39,3 +39,37 @@ const SceneInfo* SceneRegistry::getSceneInfo(int mapId) const
     // 未找到，返回空指针
     return nullptr;
 }
+
+const SceneInfo* SceneRegistry::getSceneInfoBySceneName(const std::string& sceneName) const
+{
+    if (sceneName.empty())
+    {
+        return nullptr;
+    }
+
+    for (const auto& kv : _registry)
+    {
+        if (kv.second.sceneName == sceneName)
+        {
+            return &(kv.second);
+        }
+    }
+    return nullptr;
+}
+
+int SceneRegistry::getMapIdBySceneName(const std::string& sceneName) const
+{
+    if (sceneName.empty())
+    {
+        return -1;
+    }
+
+    for (const auto& kv : _registry)
+    {
+        if (kv.second.sceneName == sceneName)
+        {
+            return kv.first;
+        }
+    }
+    return -1;
+}
