@@ -125,18 +125,29 @@ ObscurMonster* ObscurMonster::create(const std::string& spriteFrameName)
     return nullptr;
 }
 
-//void ObscurMonster::preloadResources()
-//{
-//    ensureSingleFrameAnimationCached("obscur_idle", "Sprites/Enemies/Obscur/Obscur_idle.png");
-//    ensureSingleFrameAnimationCached("obscur_hurt", "Sprites/Enemies/Obscur/Obscur_beattacked.png");
-//    // 无 walk 素材：走路阶段复用 idle
-//    ensureAnimationCached(OBSCUR_MELEE_ATTACK_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_attack_%d.png", 4,
-//                          GameConfig::Monster::Obscur::ATTACK_ANIM_FRAME_DELAY);
-//    ensureAnimationCached(OBSCUR_USEICE_LOOP_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_useice_%d.png", 2,
-//                          GameConfig::Monster::Obscur::USEICE_ANIM_FRAME_DELAY);
-//    ensureAnimationCached(OBSCUR_ICE_ANIM_KEY, "Sprites/Enemies/Obscur/Obscur_ice_%d.png", 5,
-//                          GameConfig::Monster::Obscur::ICE_ANIM_FRAME_DELAY);
-//}
+void ObscurMonster::preloadResources()
+{
+    // 说明：这里预热的是 AnimationCache（不是 TextureCache）。
+    // 贴图可以通过 LoadingScene/MapScene 预加载，但如果不创建 AnimationCache：
+    // - Obscur_attack/useice/ice 的动画会缺失（只能走兜底 DelayTime）
+    // - 或首次播放时临时拼帧造成卡顿
+    ensureSingleFrameAnimationCached("obscur_idle", "Sprites/Enemies/Obscur/Obscur_idle.png");
+    ensureSingleFrameAnimationCached("obscur_hurt", "Sprites/Enemies/Obscur/Obscur_beattacked.png");
+
+    // 无 walk 素材：走路阶段复用 idle
+    ensureAnimationCached(OBSCUR_MELEE_ATTACK_ANIM_KEY,
+                          "Sprites/Enemies/Obscur/Obscur_attack_%d.png",
+                          4,
+                          GameConfig::Monster::Obscur::ATTACK_ANIM_FRAME_DELAY);
+    ensureAnimationCached(OBSCUR_USEICE_LOOP_ANIM_KEY,
+                          "Sprites/Enemies/Obscur/Obscur_useice_%d.png",
+                          2,
+                          GameConfig::Monster::Obscur::USEICE_ANIM_FRAME_DELAY);
+    ensureAnimationCached(OBSCUR_ICE_ANIM_KEY,
+                          "Sprites/Enemies/Obscur/Obscur_ice_%d.png",
+                          5,
+                          GameConfig::Monster::Obscur::ICE_ANIM_FRAME_DELAY);
+}
 
 std::vector<std::string> ObscurMonster::getPreloadResourcePaths()
 {
@@ -262,7 +273,8 @@ void ObscurMonster::initAnimations()
     CC_SAFE_RELEASE(_meleeAttackAnimate);
     _meleeAttackAnimate = nullptr;
 
-    //preloadResources();
+    // 确保近战/远程所需动画已进入 AnimationCache（即便未走 LoadingScene 也能正常播放）
+    preloadResources();
 
     if (auto anim = AnimationCache::getInstance()->getAnimation(OBSCUR_MELEE_ATTACK_ANIM_KEY))
     {

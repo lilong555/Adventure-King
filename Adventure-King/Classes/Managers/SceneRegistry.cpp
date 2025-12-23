@@ -35,3 +35,44 @@ cocos2d::Scene* SceneRegistry::createSceneInstance(SceneID id)
     CCLOG("Error: SceneRegistry - No creator found for SceneID %d", static_cast<int>(id));
     return nullptr;
 }
+
+const SceneInfo* SceneRegistry::getSceneInfoBySceneName(const std::string& sceneName) const
+{
+    if (sceneName.empty())
+    {
+        return nullptr;
+    }
+
+    for (const auto& kv : _registry)
+    {
+        if (kv.second.sceneName == sceneName)
+        {
+            return &(kv.second);
+        }
+    }
+    return nullptr;
+}
+
+SceneID SceneRegistry::getSceneIDByName(const std::string& sceneName) const
+{
+
+    // 1. 基础防御
+    if (sceneName.empty())
+    {
+        return SceneID::NONE;
+    }
+
+    // 2. 遍历注册表进行反向查找
+    // 使用 C++17 结构化绑定 [id, info] 代替 kv.first/kv.second
+    for (const auto& [id, info] : _registry)
+    {
+        if (info.sceneName == sceneName)
+        {
+            return id;
+        }
+    }
+
+    // 3. 容错处理：未找到时记录日志并返回 NONE
+    CCLOG("SceneRegistry: No SceneID found for name '%s'", sceneName.c_str());
+    return SceneID::NONE;
+}

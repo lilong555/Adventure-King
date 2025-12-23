@@ -2,6 +2,8 @@
 #include "Scenes/HelloWorldScene.h"
 #include "Managers/SceneRegistry.h"
 #include "Managers/MusicManager.h"
+#include "Scenes/MapScene.h"
+#include"Managers/MusicManager.h"
 #include "Utils/ParticlePreloadHelper.h"
 #include "Utils/ImeHelper.h"
 #include "Configs/GameSceneConfig.h"

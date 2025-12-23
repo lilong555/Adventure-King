@@ -81,6 +81,19 @@ void SaveManager::clearRuntimePlayerData()
     CCLOG("SaveManager::clearRuntimePlayerData - 已清空运行时玩家数据");
 }
 
+void SaveManager::setRuntimePlayerPosition(const cocos2d::Vec2& pos)
+{
+    _runtimePlayerPosition = pos;
+    _hasRuntimePlayerPosition = true;
+    CCLOG("SaveManager::setRuntimePlayerPosition - 已设置运行时玩家位置 (%.1f, %.1f)", pos.x, pos.y);
+}
+
+void SaveManager::clearRuntimePlayerPosition()
+{
+    _hasRuntimePlayerPosition = false;
+    _runtimePlayerPosition = Vec2::ZERO;
+}
+
 //================== 辅助方法 ==================
 
 std::string SaveManager::getSaveFilePath(int slotIndex) const

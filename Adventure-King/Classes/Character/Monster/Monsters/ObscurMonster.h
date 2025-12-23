@@ -3,6 +3,7 @@
 #include "Character/Monster/MonsterBase.h"
 #include "Configs/GameConfigs.h"
 #include <string>
+#include <vector>
 
 /**
  * @brief Obscur：普通怪物（近战 + 远程冰）
@@ -19,10 +20,9 @@ public:
 
     static ObscurMonster* create(const std::string& spriteFrameName = "Sprites/Enemies/Obscur/Obscur_idle.png");
 
-    // 预热资源（贴图/动画缓存），避免首次生成/首次攻击卡顿
-    //经过测试这东西作用不大，只要预加载所有散图即可满足需求
-    
-    //static void preloadResources();
+    /// @brief 预热动画缓存（AnimationCache），保证近战/远程动作可播放，并降低首次攻击卡顿
+    /// @note 贴图预加载只解决“首刷卡顿”，但不创建动画缓存会导致动作缺失或首次播放抖动
+    static void preloadResources();
 
     static std::vector<std::string> getPreloadResourcePaths();
 

@@ -13,6 +13,8 @@
  * @brief 场景注册信息
  */
 struct SceneInfo {
+    // 场景名称（用于 UI 显示与存档标识）
+    std::string sceneName;
     // 场景创建工厂函数
     std::function<cocos2d::Scene* ()> creator;
     // 场景依赖的资源路径列表
@@ -44,6 +46,12 @@ public:
      * @brief 直接根据 ID 创建场景实例
      */
     cocos2d::Scene* createSceneInstance(SceneID id);
+
+    // 通过场景名查找场景信息（用于读档等场景恢复）
+    const SceneInfo* getSceneInfoBySceneName(const std::string& sceneName) const;
+
+    // 通过场景名反查 mapId（找不到返回 -1）
+    SceneID getSceneIDByName(const std::string& sceneName) const;
 
 private:
     SceneRegistry() = default;

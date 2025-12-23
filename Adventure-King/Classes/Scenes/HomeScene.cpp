@@ -18,6 +18,7 @@ void HomeScene::setupRegistry()
     SceneInfo info;
     info.creator = []()
     { return HomeScene::createScene(); };
+    info.sceneName = "冒险王之家";
 
     // 资源列表：用于 LoadingScene 预加载，避免首次进图卡顿
     // 说明：TMX 会引用 tileset 图片，这里也一并预热到 TextureCache
@@ -37,6 +38,7 @@ bool HomeScene::init() {
     // 2. 关卡特化配置
     LevelConfig config;
     config.tmxMapPath = "Scene/Backgrounds/HomeBackground_1.tmx";
+    config.playerSpritePath = GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
 
     // 对应 Tiled 里的图层名
     config.collisionLayerName = "collisions"; // 包含地面和左右边界

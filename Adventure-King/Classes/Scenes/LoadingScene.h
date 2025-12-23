@@ -1,3 +1,16 @@
+//createScene(mapId)
+//↓
+//init()
+//↓
+//initWithMapId(mapId)
+//↓
+//startPreload()
+//↓
+//onTextureLoaded()   ← 多次回调
+//↓
+//finishPreload()     ← 触发 SceneRegistry 的 onResourcesLoaded + creator
+//↓
+//切换到真正关卡
 #pragma once
 #include "cocos2d.h"
 #include "Configs/GameSceneConfig.h" // 确保包含 SceneID
@@ -29,7 +42,7 @@ private:
     void updateProgressUI();
 
     // 数据驱动方法
-    std::vector<std::string> buildPreloadList(SceneID id) const;
+    std::vector<std::string> buildPreloadList(SceneID id)const;
 
     // UI 组件
     cocos2d::LayerColor* _barBg = nullptr;
