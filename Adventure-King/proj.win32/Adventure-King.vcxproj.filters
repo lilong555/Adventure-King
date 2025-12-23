@@ -168,6 +168,12 @@
     <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp">
       <Filter>src\Character\Player\SkillSets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\Player\SkillSets\WarriorSkillSet.cpp">
+      <Filter>src\Character\Player\SkillSets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\Player\SkillSets\AssassinSkillSet.cpp">
+      <Filter>src\Character\Player\SkillSets</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Managers\SceneRegistry.cpp">
       <Filter>src\Managers</Filter>
     </ClCompile>
@@ -338,6 +344,12 @@
     <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h">
       <Filter>src\Character\Player\SkillSets</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Character\Player\SkillSets\WarriorSkillSet.h">
+      <Filter>src\Character\Player\SkillSets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\Player\SkillSets\AssassinSkillSet.h">
+      <Filter>src\Character\Player\SkillSets</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h">
       <Filter>src\Character\Player\SkillSets</Filter>
     </ClInclude>
@@ -348,6 +360,9 @@
       <Filter>src\Configs</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Configs\GameSceneConfig.h">
+      <Filter>src\Configs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Configs\PlayerRoleConfig.h">
       <Filter>src\Configs</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Managers\SceneRegistry.h">

@@ -25,6 +25,7 @@
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Configs/GamePhysicsCategory.h"
+#include "Configs/PlayerRoleConfig.h"
 #include "Managers/SceneRegistry.h"
 #include "MapScene.h"
 #include "Save/SaveData.h"
@@ -295,8 +296,8 @@ void DebugScene::initPlayer()
     // 玩家初始位置：屏幕中央、地面上方（用于创建失败占位符；创建成功后会按角色高度修正 Y）
     Vec2 startPos(origin.x + visibleSize.width * 0.5f, origin.y + GROUND_Y + 40.0f);
 
-    // 创建玩家角色（战士职业）
-    _player = PlayerCharacter::create(CharacterRole::WARRIOR, "Sprites/Characters/Player/Klee/default/spr_klee_run.png");
+    // 创建玩家角色（默认法师；素材沿用 Klee）
+    _player = PlayerCharacter::create(CharacterRole::MAGE, PlayerRoleConfig::getDefaultSpritePath(CharacterRole::MAGE));
 
     if (!_player)
     {

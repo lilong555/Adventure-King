@@ -1,6 +1,7 @@
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/Player/SkillSets/KleeSkillSet.h"
-// #include "Character/Player/SkillSets/WarriorSkillSet.h" // 以后扩展
+#include "Character/Player/SkillSets/WarriorSkillSet.h"
+#include "Character/Player/SkillSets/AssassinSkillSet.h"
 
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
@@ -1232,6 +1233,53 @@ void PlayerCharacter::addToCombatLayer(Node* node, int zOrder)
     }
 }
 
+Node* PlayerCharacter::spawnPlayerAttackHitbox(const Vec2& centerPosInParentSpace,
+                                               const Size& hitboxSize,
+                                               float damage,
+                                               bool isCritical,
+                                               float lifeSeconds,
+                                               int localZOrder)
+{
+    auto parent = getCombatLayer();
+    if (!parent)
+    {
+        return nullptr;
+    }
+
+    auto attackNode = Node::create();
+    attackNode->setPosition(centerPosInParentSpace);
+    attackNode->setContentSize(hitboxSize);
+    attackNode->setAnchorPoint(Vec2(0.5f, 0.5f));
+    // 记录攻击来源，便于后续扩展（例如受击方向判定）
+    attackNode->setUserObject(this);
+    parent->addChild(attackNode, localZOrder);
+
+    auto body = PhysicsBody::createBox(hitboxSize);
+    body->setDynamic(false);
+    body->setGravityEnable(false);
+    body->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER_ATTACK));
+    body->setContactTestBitmask(ToMask(GamePhysicsCategory::MONSTER));
+    body->setCollisionBitmask(0);
+
+    // 用 tag 传递伤害值：为兼容现有碰撞回调（只读 int tag），这里做一次取整。
+    // 负值编码暴击，碰撞回调中会做还原。
+    int damageTag = static_cast<int>(std::round(std::max(0.0f, damage)));
+    if (isCritical)
+    {
+        damageTag = -damageTag;
+    }
+    body->setTag(damageTag);
+
+    attackNode->setPhysicsBody(body);
+
+    attackNode->runAction(Sequence::create(
+        DelayTime::create(std::max(0.0f, lifeSeconds)),
+        RemoveSelf::create(),
+        nullptr));
+
+    return attackNode;
+}
+
 Vec2 PlayerCharacter::getProjectileSpawnPosition(float spawnOffsetXRatio, float spawnOffsetX, float spawnOffsetYRatio, float spawnOffsetY) const
 {
     bool facingLeft = isFlippedX();
@@ -1299,43 +1347,88 @@ void PlayerCharacter::initAssetPaths(const std::string& spriteFrameName)
         if (lastSlash != std::string::npos)
         {
             _defaultSpriteDir = normalized.substr(0, lastSlash);
-
-            size_t prevSlash = _defaultSpriteDir.find_last_of('/');
-            if (prevSlash != std::string::npos)
+            // 兼容两种目录结构：
+            // 1) Sprites/Characters/Player/<角色>/default/xxx.png（例如 Klee）
+            // 2) Sprites/Characters/Player/<角色>/xxx.png（例如 man、maaer）
+            std::string dirName;
+            size_t dirSlash = _defaultSpriteDir.find_last_of('/');
+            if (dirSlash != std::string::npos)
             {
-                std::string parentDir = _defaultSpriteDir.substr(0, prevSlash);
-                _skillSpriteDir = parentDir + "/rpg";
+                dirName = _defaultSpriteDir.substr(dirSlash + 1);
+            }
 
-                size_t charSlash = parentDir.find_last_of('/');
-                if (charSlash != std::string::npos)
+            std::string characterRootDir = _defaultSpriteDir;
+            if (dirName == "default" || dirName == "defalt")
+            {
+                // default 目录的上一级才是角色根目录
+                size_t prevSlash = _defaultSpriteDir.find_last_of('/');
+                if (prevSlash != std::string::npos)
                 {
-                    _characterKey = parentDir.substr(charSlash + 1);
+                    characterRootDir = _defaultSpriteDir.substr(0, prevSlash);
                 }
             }
+
+            size_t charSlash = characterRootDir.find_last_of('/');
+            if (charSlash != std::string::npos)
+            {
+                _characterKey = characterRootDir.substr(charSlash + 1);
+            }
+            else
+            {
+                _characterKey = dirName;
+            }
+
+            // 技能目录：统一约定为 <角色根目录>/rpg（素材缺失时由加载失败兜底，不在这里做 IO 判断）
+            _skillSpriteDir = characterRootDir + "/rpg";
         }
     }
 
     std::transform(_characterKey.begin(), _characterKey.end(), _characterKey.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
+    // 资源命名兼容：maaer 文件前缀是 spr_male_*，因此 key 需要映射为 male
+    if (_characterKey == "maaer")
+    {
+        _characterKey = "male";
+    }
+
     _animationKeyPrefix = "player_" + _characterKey;
     _defaultAttackAnimationPrefix = "spr_" + _characterKey + "_attack";
     _attackAnimationPrefix = _defaultAttackAnimationPrefix;
+
+    // 不同角色的占位攻击帧命名不同：先做兼容映射，后续素材补齐后再统一为 spr_<key>_attack_x
     _attackFrameCount = 3;
+    if (_characterKey == "man")
+    {
+        _defaultAttackAnimationPrefix = "spr_man_hit";
+        _attackAnimationPrefix = _defaultAttackAnimationPrefix;
+        _attackFrameCount = 3;
+    }
+    else if (_characterKey == "male")
+    {
+        _defaultAttackAnimationPrefix = "spr_male_hit1";
+        _attackAnimationPrefix = _defaultAttackAnimationPrefix;
+        _attackFrameCount = 4;
+    }
 }
 
 void PlayerCharacter::createSkillSet()
 {
     if (_skillSet) return;
 
-    if (_characterKey == "klee")
+    // 以“职业”为准选择技能集；角色贴图仅影响表现层（素材命名/路径）。
+    switch (_role)
     {
+    case CharacterRole::WARRIOR:
+        _skillSet = std::make_unique<WarriorSkillSet>();
+        break;
+    case CharacterRole::ASSASSIN:
+        _skillSet = std::make_unique<AssassinSkillSet>();
+        break;
+    case CharacterRole::MAGE:
+    default:
         _skillSet = std::make_unique<KleeSkillSet>();
-    }
-    else
-    {
-        // 默认回退到 Klee，或者可以打印警告
-        _skillSet = std::make_unique<KleeSkillSet>();
+        break;
     }
 }
 
@@ -1343,15 +1436,33 @@ void PlayerCharacter::ensureMoveAnimations()
 {
     if (_defaultSpriteDir.empty() || _characterKey.empty()) return;
 
-    auto makePath = [this](const std::string& suffix) {
-        return _defaultSpriteDir + "/spr_" + _characterKey + suffix;
-        };
+    std::vector<std::string> movePaths;
+    movePaths.reserve(12);
 
-    std::vector<std::string> movePaths = {
-        makePath("_run_1.png"),
-        makePath("_run_2.png"),
-        makePath("_run.png"),
-    };
+    // man 的素材命名目前为导出序号，不走 spr_man_run_x 的约定；这里做一次兼容映射
+    if (_characterKey == "man")
+    {
+        movePaths = {
+            _defaultSpriteDir + "/1765093576488638789_6025_01.png",
+            _defaultSpriteDir + "/1765093576488638789_6025_02.png",
+            _defaultSpriteDir + "/1765093576488638789_6025_03.png",
+            _defaultSpriteDir + "/1765093576488638789_6025_04.png",
+            _defaultSpriteDir + "/1765093576488638789_6025_06.png",
+            _defaultSpriteDir + "/1765093576488638789_6025_08.png",
+            _defaultSpriteDir + "/1765093576488638789_6025_09.png",
+        };
+    }
+    else
+    {
+        // 通用：尽量兼容 run_1..run_n + run.png 的命名（缺失的帧会被自动跳过）
+        for (int i = 1; i <= 8; ++i)
+        {
+            movePaths.push_back(StringUtils::format("%s/spr_%s_run_%d.png",
+                _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
+        }
+        movePaths.push_back(StringUtils::format("%s/spr_%s_run.png",
+            _defaultSpriteDir.c_str(), _characterKey.c_str()));
+    }
 
     // 调用内部静态辅助函数
     helperEnsureAnimationCached(_animationKeyPrefix + "_run", movePaths, ANIM_DELAY_RUN);
@@ -1395,8 +1506,32 @@ void PlayerCharacter::ensureStateAnimations()
     // IDLE：用默认 run 静帧兜底（多角色兼容）
     ensureSingleFrame(_animationKeyPrefix + "_idle",
         _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+    ensureSingleFrame(_animationKeyPrefix + "_idle",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
+    ensureSingleFrame(_animationKeyPrefix + "_idle",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
+    if (_characterKey == "man")
+    {
+        ensureSingleFrame(_animationKeyPrefix + "_idle",
+            _defaultSpriteDir + "/1765093576488638789_6025_01.png");
+    }
 
     // HURT：受击贴图（spr_<角色>_beattacked.png）
     ensureSingleFrame(_animationKeyPrefix + "_hurt",
         _defaultSpriteDir + "/spr_" + _characterKey + "_beattacked.png");
+    if (_characterKey == "man")
+    {
+        ensureSingleFrame(_animationKeyPrefix + "_hurt",
+            _defaultSpriteDir + "/spr_man_hit_2.png");
+    }
+    else if (_characterKey == "male")
+    {
+        ensureSingleFrame(_animationKeyPrefix + "_hurt",
+            _defaultSpriteDir + "/spr_male_hit2_1.png");
+    }
+    // 最后兜底：仍然使用 idle 的静帧避免状态机报错
+    ensureSingleFrame(_animationKeyPrefix + "_hurt",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+    ensureSingleFrame(_animationKeyPrefix + "_hurt",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
 }

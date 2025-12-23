@@ -5,6 +5,8 @@
 #include "Configs/GamePhysicsCategory.h"
 #include "Scenes/GameInputController.h"
 
+#include <cmath>
+
 USING_NS_CC;
 
 namespace
@@ -128,11 +130,15 @@ bool CombatContactHelper::handleContactBegin(PhysicsContact& contact,
         if (monster && !monster->isDead())
         {
             float rawDamage = static_cast<float>(attackBody->getTag());
-            if (rawDamage > 0.0f)
+            if (rawDamage != 0.0f)
             {
+                const bool isCrit = rawDamage < 0.0f;
+                rawDamage = std::fabs(rawDamage);
+
                 DamageInfo dmg{};
                 dmg.amount = rawDamage;
                 dmg.attacker = player;
+                dmg.isCritical = isCrit;
                 if (auto attackNode = attackBody->getNode())
                 {
                     dmg.hitWorldPos = getWorldPos(attackNode);
@@ -239,4 +245,3 @@ bool CombatContactHelper::handleContactPreSolve(PhysicsContact& contact, Physics
 
     return true;
 }
-

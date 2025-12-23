@@ -118,6 +118,20 @@ public:
     /// @brief 播放技能动画
     void castSkillAnimated(const std::function<void()>& onFinished = nullptr);
 
+    // =============================================================
+    // 战斗判定 (Hitbox)
+    // =============================================================
+    /**
+     * @brief 生成玩家近战攻击判定框（用于 PLAYER_ATTACK -> MONSTER）
+     * @note 通过 PhysicsBody::tag 传递伤害值；若 isCritical=true，则用负值编码（碰撞回调中会还原）。
+     */
+    cocos2d::Node* spawnPlayerAttackHitbox(const cocos2d::Vec2& centerPosInParentSpace,
+                                          const cocos2d::Size& hitboxSize,
+                                          float damage,
+                                          bool isCritical,
+                                          float lifeSeconds,
+                                          int localZOrder = 10);
+
     // 辅助：统一播放一次性动画
     /// @brief 播放一次性动画序列
     void playOneShotAnimation(const std::vector<std::string>& paths, float delayPerUnit, int actionTag, const std::function<void()>& onFinished);

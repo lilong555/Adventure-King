@@ -9,6 +9,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Configs/GameConfigs.h"
 #include "Configs/GameSceneConfig.h"
+#include "Configs/PlayerRoleConfig.h"
 #include "ui/CocosGUI.h"
 #include <algorithm>
 #include <cmath>
@@ -130,10 +131,13 @@ namespace
             nullptr));
     }
 
-    std::string getPlayerDisplayName()
+    std::string getPlayerDisplayName(const PlayerCharacter* player)
     {
-        // 当前项目默认玩家为 Klee；后续可接入真实角色名/存档数据
-        return "可莉";
+        if (!player)
+        {
+            return "角色";
+        }
+        return PlayerRoleConfig::getDisplayName(player->getRole());
     }
 
     int getEquipmentDisplayLevel(const std::shared_ptr<Equipment> &item, const PlayerCharacter *player)
@@ -1523,7 +1527,7 @@ void InventoryLayer::refreshEquipmentPage()
     drawPanelRect(rightBg, rightStatsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _equipmentPage->addChild(rightBg, 1);
 
-    const std::string playerName = getPlayerDisplayName();
+    const std::string playerName = getPlayerDisplayName(_player);
     if (auto title = createUiLabel(playerName, 34.0f, TITLE_COLOR, true, 3))
     {
         title->setAnchorPoint(Vec2(0.0f, 1.0f));
@@ -1822,7 +1826,7 @@ void InventoryLayer::refreshSkillPage()
     auto statsBg = DrawNode::create();
     drawPanelRect(statsBg, statsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _skillPage->addChild(statsBg, 1);
-    const std::string playerName = getPlayerDisplayName();
+    const std::string playerName = getPlayerDisplayName(_player);
     if (auto nameBar = createUiLabel(playerName, 34.0f, TITLE_COLOR, true, 3))
     {
         nameBar->setAnchorPoint(Vec2(0.0f, 1.0f));
@@ -2130,7 +2134,7 @@ void InventoryLayer::refreshPassiveSkillPage()
     auto statsBg = DrawNode::create();
     drawPanelRect(statsBg, statsRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
     _passiveSkillPage->addChild(statsBg, 1);
-    const std::string playerName = getPlayerDisplayName();
+    const std::string playerName = getPlayerDisplayName(_player);
     if (auto nameBar = createUiLabel(playerName, 34.0f, TITLE_COLOR, true, 3))
     {
         nameBar->setAnchorPoint(Vec2(0.0f, 1.0f));

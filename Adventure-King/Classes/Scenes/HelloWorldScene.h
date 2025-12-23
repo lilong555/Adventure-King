@@ -1,6 +1,7 @@
 #ifndef __HELLOWORLD_SCENE_H__
 #define __HELLOWORLD_SCENE_H__
 #include "cocos2d.h"
+#include "Character/Base/CharacterData.h"
 class HelloWorld : public cocos2d::Scene
 {
 public:
@@ -45,6 +46,13 @@ public:
     static std::vector<std::string> getPreloadResourcePaths();
     static void setupRegistry();
     CREATE_FUNC(HelloWorld);
+
+private:
+    // 主菜单会话内的职业选择：用于“新开局”
+    CharacterRole _selectedRole = CharacterRole::MAGE;
+    cocos2d::Label* _roleHintLabel = nullptr;
+
+    void updateRoleHintLabel();
 };
 
 #endif // __HELLOWORLD_SCENE_H__

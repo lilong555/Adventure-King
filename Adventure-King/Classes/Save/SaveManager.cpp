@@ -81,6 +81,22 @@ void SaveManager::clearRuntimePlayerData()
     CCLOG("SaveManager::clearRuntimePlayerData - 已清空运行时玩家数据");
 }
 
+//================== 会话角色选择（不落盘） ==================
+
+void SaveManager::setSessionSelectedRole(CharacterRole role)
+{
+    _sessionSelectedRole = role;
+    _hasSessionSelectedRole = true;
+    CCLOG("SaveManager::setSessionSelectedRole - 已设置会话职业：%d", static_cast<int>(role));
+}
+
+void SaveManager::clearSessionSelectedRole()
+{
+    _hasSessionSelectedRole = false;
+    _sessionSelectedRole = CharacterRole::MAGE;
+    CCLOG("SaveManager::clearSessionSelectedRole - 已清空会话职业选择");
+}
+
 void SaveManager::setRuntimePlayerPosition(const cocos2d::Vec2& pos)
 {
     _runtimePlayerPosition = pos;
@@ -592,14 +608,18 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
     AttributeComponent *attrComp = player->getAttributeComponent();
     if (attrComp)
     {
-        Attributes baseAttrs;
-        for (std::map<int, float>::const_iterator it = data.baseAttributes.values.begin();
-             it != data.baseAttributes.values.end(); ++it)
+        // 兼容：如果存档里没有基础属性（例如“新开局仅写入职业”），则保留玩家创建时按职业初始化的默认属性
+        if (!data.baseAttributes.values.empty())
         {
-            baseAttrs.values[static_cast<AttributeType>(it->first)] = it->second;
+            Attributes baseAttrs;
+            for (std::map<int, float>::const_iterator it = data.baseAttributes.values.begin();
+                 it != data.baseAttributes.values.end(); ++it)
+            {
+                baseAttrs.values[static_cast<AttributeType>(it->first)] = it->second;
+            }
+            attrComp->setBaseAttributes(baseAttrs);
+            attrComp->recalculateFinalAttributes();
         }
-        attrComp->setBaseAttributes(baseAttrs);
-        attrComp->recalculateFinalAttributes();
     }
 
     // 清空当前装备（移除已有加成）
