@@ -1578,15 +1578,24 @@ void PlayerCharacter::ensureMoveAnimations()
         _defaultSpriteDir.c_str(), _characterKey.c_str());
     const bool hasNumberedRun = FileUtils::getInstance()->isFileExist(run1Path);
 
+    auto fileUtils = FileUtils::getInstance();
     for (int i = 1; i <= 8; ++i)
     {
-        movePaths.push_back(StringUtils::format("%s/spr_%s_run_%d.png",
-            _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
+        const std::string path = StringUtils::format("%s/spr_%s_run_%d.png",
+            _defaultSpriteDir.c_str(), _characterKey.c_str(), i);
+        if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+        {
+            movePaths.push_back(path);
+        }
     }
     if (!hasNumberedRun)
     {
-        movePaths.push_back(StringUtils::format("%s/spr_%s_run.png",
-            _defaultSpriteDir.c_str(), _characterKey.c_str()));
+        const std::string path = StringUtils::format("%s/spr_%s_run.png",
+            _defaultSpriteDir.c_str(), _characterKey.c_str());
+        if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+        {
+            movePaths.push_back(path);
+        }
     }
 
     // 调用内部静态辅助函数
