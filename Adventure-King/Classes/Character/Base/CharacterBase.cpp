@@ -214,6 +214,26 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     }
 }
 
+void CharacterBase::heal(float amount) {
+    if (isDead() || amount <= 0.0f) return;
+
+    float oldHP = _currentHP;
+
+    // 增加血量并使用 setCurrentHP 自动夹取到 [0, MAX_HP]
+    setCurrentHP(_currentHP + amount);
+
+    // 计算实际恢复量（满血时恢复量为 0）
+    float actualHeal = _currentHP - oldHP;
+
+    if (actualHeal > 0.0f) {
+        // 触发 UI 表现
+        showHealNumber(actualHeal);
+
+        // 如果有治疗回调（如触发某些被动），可以在此调用
+        // onHealReceived(actualHeal); 
+    }
+}
+
 void CharacterBase::spawnHurtVfx(const DamageInfo& info)
 {
     if (!info.causesHitStun)
@@ -351,6 +371,36 @@ void CharacterBase::showDamageNumber(float damage, bool isCritical)
         nullptr
     ));
 }
+void CharacterBase::showHealNumber(float amount) {
+    if (amount <= 0.0f) return;
+
+    auto parent = getParent();
+    if (!parent) return;
+
+    std::string healText = StringUtils::format("+%.0f", amount);
+
+    // 创建绿色标签
+    auto label = Label::createWithSystemFont(healText, "Arial", 22);
+    if (!label) return;
+
+    label->setColor(Color3B(50, 255, 50)); // 绿色表示治疗
+    label->enableOutline(Color4B::BLACK, 2);
+
+    // 设置位置（可以稍微偏移，避免和伤害数字重叠）
+    Rect bbox = getBoundingBox();
+    label->setPosition(Vec2(bbox.getMidX(), bbox.getMaxY() + 10));
+    parent->addChild(label, 9999);
+
+    // 同样的飘字动作
+    auto moveUp = MoveBy::create(0.8f, Vec2(0, 40));
+    auto fadeOut = FadeOut::create(0.4f);
+    label->runAction(Sequence::create(
+        Spawn::create(moveUp, fadeOut, nullptr),
+        RemoveSelf::create(),
+        nullptr
+    ));
+}
+
 
 void CharacterBase::setVisualSprite(cocos2d::Sprite* sprite)
 {
@@ -402,7 +452,11 @@ void CharacterBase::die()
 void CharacterBase::setCurrentHP(float hp)
 {
     const float oldHp = _currentHP;
-
+    if (hp > _currentHP + 0.1f)
+    {
+        // 在这一行打一个普通的红色断点
+        CCLOG("Caught healing call! Current: %.1f, New: %.1f", _currentHP, hp);
+    }
     float maxHp = hp; // 默认值
     if (auto attr = getAttributeComponent())
     {

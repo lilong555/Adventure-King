@@ -204,9 +204,6 @@
     <ClCompile Include="..\Classes\UI\SkillBar.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClCompile>
     <ClCompile Include="..\Classes\Character\components\StatusEffectVfxComponent.cpp">
       <Filter>src\Character\components</Filter>
     </ClCompile>
@@ -224,6 +221,21 @@
     </ClCompile>
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.cpp">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\BurningEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\RegenEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Projectiles\ProjectilesBase.cpp">
+      <Filter>src\Objects\Projectiles</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -374,9 +386,6 @@
     <ClInclude Include="..\Classes\Scenes\LevelScenes\MysteryForestScene.h">
       <Filter>src\Scenes\LevelScenes</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClInclude>
     <ClInclude Include="..\Classes\Character\components\StatusEffectVfxComponent.h">
       <Filter>src\Character\components</Filter>
     </ClInclude>
@@ -403,6 +412,21 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h">
       <Filter>src\Character\StatusEffects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\BurningEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\RegenEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">
+      <Filter>src\Objects\Projectiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Projectiles\ProjectilesBase.h">
+      <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

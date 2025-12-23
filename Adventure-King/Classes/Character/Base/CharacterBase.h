@@ -52,9 +52,10 @@ public:
     virtual void attack() = 0;                           // 普通攻击（子类必须实现）
     /// @brief 受击处理
     virtual void takeDamage(const DamageInfo& info);     // 受击
+    virtual void heal(float amount);                     // 治疗
     /// @brief 死亡处理
     virtual void die();                                  // 死亡
-
+     
     // 伤害事件回调：用于装备/被动等“触发型机制”（默认空实现）
     /// @brief 自己造成伤害后回调（在目标 HP 已扣除、死亡判定完成后触发）
     virtual void onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied) {}
@@ -136,7 +137,7 @@ protected:
     // 显示受击飘字（添加到角色父节点上，避免跟随角色移动）
     /// @brief 显示受击飘字
     void showDamageNumber(float damage, bool isCritical);
-
+    void showHealNumber(float Amount);
     /// @brief 设置用于播放动画的精灵（默认是自身）
     void setVisualSprite(cocos2d::Sprite* sprite);
     /// @brief 停止视觉层动画（用于打断攻击/技能）
@@ -157,7 +158,7 @@ protected:
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
     long long _lastRestoreHealthVfxMs = 0; ///< 回血特效节流：0.5s 内多次回血只播一次
 
-    bool _damageNumbersEnabled = false; ///< 是否启用受击飘字
+    bool _damageNumbersEnabled = true; ///< 是否启用受击飘字
     cocos2d::Sprite* _visualSprite = nullptr; ///< 实际播放动画的精灵
     float _visualBaseScaleX = 1.0f;
     float _visualBaseScaleY = 1.0f;

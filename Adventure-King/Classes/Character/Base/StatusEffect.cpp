@@ -7,29 +7,16 @@
 void StatusEffect::onTick(CharacterBase* owner, float dt) {
     if (!owner || owner->isDead() || tickInterval <= 0.0f) return;
 
-    // 1. 累计时间
     tickAccumulator += dt;
-
-    // 2. 计算触发次数（处理可能出现的掉帧或高频 Tick）
     int tickCount = static_cast<int>(std::floor(tickAccumulator / tickInterval));
     if (tickCount <= 0) return;
 
     tickAccumulator -= tickInterval * static_cast<float>(tickCount);
 
-    // 3. 计算 DOT 伤害逻辑 [参考自 AttributeComponent 原实现]
-    const float scale = baseDamageScale + perStackDamageScale * static_cast<float>(stacks);
-    const float dmgAmount = std::floor(std::max(0.0f, scale * sourceAttackPower));
-
-    if (dmgAmount > 0.0f) {
-        DamageInfo dotDmg;
-        dotDmg.amount = dmgAmount;
-        dotDmg.attacker = nullptr; // DOT 通常不触发反伤
-        dotDmg.isCritical = false;
-        dotDmg.causesHitStun = false;
-
-        for (int i = 0; i < tickCount; ++i) {
-            owner->takeDamage(dotDmg);
-        }
+    // --- 修改点：不再写死扣血，而是调用虚函数 ---
+    for (int i = 0; i < tickCount; ++i) {
+        this->doEffectAction(owner);
+        CCLOG("Tick Triggered! Effect Type: %d, Memory Address: %p", (int)this->type, this);
     }
 }
 

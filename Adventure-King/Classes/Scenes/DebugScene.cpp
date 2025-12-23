@@ -26,6 +26,7 @@
 #include "Character/components/SkillComponent.h"
 #include "Configs/GamePhysicsCategory.h"
 #include "Managers/SceneRegistry.h"
+#include"Character/StatusEffects/StatusEffectFactory.h"
 #include "MapScene.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
@@ -377,7 +378,7 @@ void DebugScene::initTestMonsters()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // 训练木桩：21 亿血，固定站立，用于测试伤害/技能/状态/粒子
+    // 测试哥布林：21 亿血，固定站立，用于测试伤害/技能/状态/粒子
     if (auto dummy = TrainingDummyMonster::create())
     {
         Vec2 pos(origin.x + visibleSize.width * 0.75f, origin.y + GROUND_Y);
@@ -1115,19 +1116,12 @@ void DebugScene::onTakeCriticalDamageClicked(Ref *sender)
  * @brief 治疗按钮回调 - 恢复20点HP
  * @param sender 按钮引用（未使用）
  */
-void DebugScene::onHealClicked(Ref *sender)
+void DebugScene::onHealClicked(Ref* sender)
 {
-    if (!_player)
-        return;
+    if (!_player) return;
+    // 使用封装方法：一行代码处理加血、夹取、弹出绿色数字
+    _player->heal(20.0f);
 
-    float hpBefore = _player->getCurrentHP();
-    _player->setCurrentHP(hpBefore + 20.0f);
-    float hpAfter = _player->getCurrentHP();
-
-    addDamageLog(StringUtils::format("治疗: %.0f -> %.0f (+%.0f)",
-                                     hpBefore, hpAfter, hpAfter - hpBefore));
-
-    CCLOG("Player healed, HP: %.0f", _player->getCurrentHP());
 }
 
 /**
@@ -1252,115 +1246,58 @@ void DebugScene::onBackClicked(Ref *sender)
 // 第4部分：状态效果系统
 //=============================================================================
 
-/**
- * @brief 中毒按钮回调 - 添加5秒中毒效果
- *
- * 中毒效果特点：
- * - 持续5秒
- * - 每秒造成5点真实伤害（无视防御）
- * - 显示绿色伤害飘字
- *
- * @param sender 按钮引用（未使用）
- */
-void DebugScene::onPoisonClicked(Ref *sender)
-{
-    if (!_player || _player->isDead())
-        return;
+//统一的辅助函数
+void DebugScene::applyDebugEffect(StatusEffectType type, float power, float duration, const std::string& logMsg) {
+    if (!_player || _player->isDead()) return;
 
-    // 与正式战斗逻辑一致：DOT 参数必须设置 tickInterval/sourceAttackPower，交给 AttributeComponent 自动结算
     auto attr = _player->getAttributeComponent();
-    if (!attr)
-    {
-        return;
-    }
+    if (!attr) return;
 
-    auto inst = StatusEffect::create();
-    inst->type = StatusEffectType::POISONED;
-    inst->duration = std::max(0.0f, GameConfig::StatusEffect::Poisoned::DURATION_SECONDS);
-    inst->elapsed = 0.0f;
-    inst->attributeBonus.clear();
+    // 通过工厂创建具有具体逻辑的子类实例
+    auto inst = StatusEffectFactory::createEffectByType(type, power, duration);
+    if (!inst) return;
 
-    inst->stacks = 1;
-    inst->maxStacks = 0;
-    inst->stackable = true;
-    inst->refreshOnAdd = true;
-
-    inst->tickInterval = std::max(0.0f, GameConfig::StatusEffect::Poisoned::TICK_INTERVAL_SECONDS);
-    inst->tickAccumulator = 0.0f;
+    // 统一配置通用参数
     inst->sourceAttackPower = _player->getAttackPower();
-    inst->baseDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::BASE_DAMAGE_SCALE);
-    inst->perStackDamageScale = std::max(0.0f, GameConfig::StatusEffect::Poisoned::PER_STACK_DAMAGE_SCALE);
+
+    // 针对特定类型的特殊配置（可选）
+    if (type == StatusEffectType::EXCITED) {
+        inst->attributeBonus.set(AttributeType::MOVE_SPEED, GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
+    }
+    else if (type == StatusEffectType::STUNNED) {
+        inst->attributeBonus.set(AttributeType::MOVE_SPEED, -200.0f);
+    }
 
     attr->addStatusEffect(inst);
-
-    addDamageLog(StringUtils::format("中毒! 持续%.1f秒", GameConfig::StatusEffect::Poisoned::DURATION_SECONDS));
-    CCLOG("Poison effect applied");
+    addDamageLog(logMsg);
 }
 
-/**
- * @brief 亢奋按钮回调 - 添加8秒亢奋效果
- *
- * 亢奋效果特点：
- * - 持续8秒
- * - 移速+50
- * - 暴击率+10%
- * - 力量+10
- *
- * @param sender 按钮引用（未使用）
- */
-void DebugScene::onExcitedClicked(Ref *sender)
-{
-    if (!_player || _player->isDead())
-        return;
-
-    auto attr = _player->getAttributeComponent();
-    if (!attr)
-    {
-        return;
-    }
-
-    auto excited = StatusEffect::create();
-    excited->type = StatusEffectType::EXCITED;
-    excited->duration = std::max(0.0f, GameConfig::StatusEffect::Excited::DURATION_SECONDS);
-    excited->elapsed = 0.0f;
-    excited->attributeBonus.set(AttributeType::MOVE_SPEED, GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
-
-    attr->addStatusEffect(excited);
-
-    addDamageLog(StringUtils::format("亢奋! 移速+%.0f (%.1f秒)",
-                                     GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS,
-                                     GameConfig::StatusEffect::Excited::DURATION_SECONDS));
-    CCLOG("Excited effect applied");
+//简化后的按钮回调
+void DebugScene::onPoisonClicked(Ref* sender) {
+    applyDebugEffect(
+        StatusEffectType::POISONED,
+        GameConfig::StatusEffect::Poisoned::BASE_DAMAGE_SCALE,
+        GameConfig::StatusEffect::Poisoned::DURATION_SECONDS,
+        StringUtils::format("施加中毒 (%.1fs)", GameConfig::StatusEffect::Poisoned::DURATION_SECONDS)
+    );
 }
 
-/**
- * @brief 眩晕按钮回调 - 添加3秒眩晕效果
- *
- * 眩晕效果特点：
- * - 持续3秒
- * - 移速大幅降低（-200）
- *
- * @param sender 按钮引用（未使用）
- */
-void DebugScene::onStunnedClicked(Ref *sender)
-{
-    if (!_player || _player->isDead())
-        return;
+void DebugScene::onExcitedClicked(Ref* sender) {
+    applyDebugEffect(
+        StatusEffectType::EXCITED,
+        0.0f,
+        GameConfig::StatusEffect::Excited::DURATION_SECONDS,
+        "进入亢奋状态！移速提升"
+    );
+}
 
-    auto attr = _player->getAttributeComponent();
-    if (!attr)
-        return;
-
-    auto stunned = StatusEffect::create();
-    stunned->type = StatusEffectType::STUNNED;
-    stunned->duration = 3.0f;
-    stunned->elapsed = 0.0f;
-    stunned->attributeBonus.set(AttributeType::MOVE_SPEED, -200.0f);
-
-    attr->addStatusEffect(stunned);
-
-    addDamageLog("眩晕! 无法移动 (3秒)");
-    CCLOG("Stunned effect applied for 3 seconds");
+void DebugScene::onStunnedClicked(Ref* sender) {
+    applyDebugEffect(
+        StatusEffectType::STUNNED,
+        0.0f,
+        3.0f,
+        "遭到眩晕！无法移动"
+    );
 }
 
 //=============================================================================

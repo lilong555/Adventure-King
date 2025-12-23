@@ -12,10 +12,14 @@ D:.
 |   |       CharacterBase.cpp
 |   |       CharacterBase.h
 |   |       CharacterData.h
+|   |       StatusEffect.cpp
+|   |       StatusEffect.h
 |   |       
 |   +---components
 |   |       AttributeComponent.cpp
 |   |       AttributeComponent.h
+|   |       InventoryComponent.cpp
+|   |       InventoryComponent.h
 |   |       SkillComponent.cpp
 |   |       SkillComponent.h
 |   |       StateMachineComponent.cpp
@@ -32,19 +36,31 @@ D:.
 |   |           GoblinMonster.h
 |   |           GobluMonster.cpp
 |   |           GobluMonster.h
+|   |           ObscurMonster.cpp
+|   |           ObscurMonster.h
+|   |           TrainingDummyMonster.cpp
+|   |           TrainingDummyMonster.h
 |   |           
-|   \---Player
-|       |   PlayerCharacter.cpp
-|       |   PlayerCharacter.h
+|   +---Player
+|   |   |   PlayerCharacter.cpp
+|   |   |   PlayerCharacter.h
+|   |   |   
+|   |   +---Players
+|   |   |       PlayerKlee.cpp
+|   |   |       PlayerKlee.h
+|   |   |       
+|   |   \---SkillSets
+|   |           KleeSkillSet.cpp
+|   |           KleeSkillSet.h
+|   |           PlayerSkillSet.h
+|   |           
+|   \---StatusEffects
+|       |   StatusEffectFactory.cpp
+|       |   StatusEffectFactory.h
 |       |   
-|       +---Players
-|       |       PlayerKlee.cpp
-|       |       PlayerKlee.h
-|       |       
-|       \---SkillSets
-|               KleeSkillSet.cpp
-|               KleeSkillSet.h
-|               PlayerSkillSet.h
+|       \---Implementations
+|               ThornsEffect.cpp
+|               ThornsEffect.h
 |               
 +---Configs
 |       GameConfigs.h
@@ -79,10 +95,14 @@ D:.
 |       SaveManager.h
 |       
 +---Scenes
+|   |   CombatContactHelper.cpp
+|   |   CombatContactHelper.h
 |   |   DebugScene.cpp
 |   |   DebugScene.h
 |   |   GameInputController.cpp
 |   |   GameInputController.h
+|   |   GamePauseHelper.cpp
+|   |   GamePauseHelper.h
 |   |   GameScene.cpp
 |   |   GameScene.h
 |   |   GameUIController.cpp
@@ -99,6 +119,8 @@ D:.
 |   |   MapScene.h
 |   |   
 |   +---Layers
+|   |       BagLayer.cpp
+|   |       BagLayer.h
 |   |       SaveMenuLayer.cpp
 |   |       SaveMenuLayer.h
 |   |       SetMenuLayer.cpp
@@ -113,6 +135,8 @@ D:.
 +---UI
 |       BossHealthBar.cpp
 |       BossHealthBar.h
+|       InventoryLayer.cpp
+|       InventoryLayer.h
 |       PauseMenu.cpp
 |       PauseMenu.h
 |       PlayerStatusBar.cpp
@@ -121,6 +145,9 @@ D:.
 |       SkillBar.h
 |       
 \---Utils
+        ImeHelper.cpp
+        ImeHelper.h
+        ParticlePreloadHelper.h
         PhysicsBodyLocalInfoHelper.h
         SpriteFrameCacheHelper.h
         
