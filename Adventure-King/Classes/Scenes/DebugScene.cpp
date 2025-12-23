@@ -63,6 +63,7 @@ void DebugScene::setupRegistry()
     SceneInfo info;
     info.creator = []()
     { return DebugScene::createScene(); };
+    info.sceneName = "调试场景";
 
     // DebugScene 主要用于功能验证，资源依赖较分散；这里保持最小注册即可。
     // 若后续需要进一步降低首次进入卡顿，可逐步补齐 imagePaths。

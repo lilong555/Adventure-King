@@ -8,9 +8,7 @@
 //↓
 //onTextureLoaded()   ← 多次回调
 //↓
-//finishPreload()
-//↓
-//createDestinationScene()
+//finishPreload()     ← 触发 SceneRegistry 的 onResourcesLoaded + creator
 //↓
 //切换到真正关卡
 #pragma once
@@ -48,8 +46,6 @@ private:
 
     // 根据 mapId 构建需要预加载的资源列表
     std::vector<std::string> buildPreloadList(int mapId) const;
-    // 根据 mapId 创建目标场景
-    cocos2d::Scene* createDestinationScene(int mapId) const;
 
     // UI
     cocos2d::LayerColor* _barBg = nullptr;

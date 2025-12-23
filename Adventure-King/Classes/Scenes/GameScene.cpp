@@ -10,9 +10,8 @@
 
 #include "GameScene.h"
 #include "MapScene.h"
-#include "HomeScene.h"
-#include"Scenes/LevelScenes/OriginMushroomScene.h"
-#include"Scenes/LevelScenes/MysteryForestScene.h"
+#include "LoadingScene.h"
+#include "Managers/SceneRegistry.h"
 #include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"
 #include "Scenes/CombatContactHelper.h"
@@ -67,6 +66,30 @@ void GameScene::onEnter()
 {
     Scene::onEnter();
     ImeHelper::pushDisableIme();
+
+    // 读档进入关卡：恢复玩家位置
+    // 说明：延后一帧执行，确保派生场景（如 HomeScene）对 _gameLayer 的缩放等初始化已完成
+    if (_player)
+    {
+        if (auto saveManager = SaveManager::getInstance())
+        {
+            if (saveManager->hasRuntimePlayerPosition())
+            {
+                const Vec2 savedPos = saveManager->getRuntimePlayerPosition();
+                saveManager->clearRuntimePlayerPosition();
+
+                scheduleOnce([this, savedPos](float)
+                             {
+                                 if (this->_player)
+                                 {
+                                     this->_player->setPosition(savedPos);
+                                 }
+                             },
+                             0.0f,
+                             "ApplyRuntimePlayerPosition");
+            }
+        }
+    }
 }
 
 void GameScene::onExit()
@@ -114,7 +137,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     // 步骤3：初始化玩家角色（从 born 图层获取出生点）
     //-------------------------------------------------------------------------
     Vec2 playerStartPos = _levelMap ? _levelMap->getPlayerSpawnPoint(config.bornLayerName) : Vec2::ZERO;
-    initPlayer(playerStartPos);
+    initPlayer(playerStartPos, config.playerSpritePath);
 
     //-------------------------------------------------------------------------
     // 步骤4：初始化物理碰撞监听和输入
@@ -179,10 +202,11 @@ bool GameScene::initLevelMap(const LevelConfig &config)
     return true;
 }
 
-void GameScene::initPlayer(const Vec2 &startPos)
+void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSpritePath)
 {
     // 创建玩家角色（战士职业）
-    auto playerSprite = PlayerCharacter::create(CharacterRole::WARRIOR, DEFAULT_PLAYER_SPRITE);
+    const std::string spritePath = playerSpritePath.empty() ? DEFAULT_PLAYER_SPRITE : playerSpritePath;
+    auto playerSprite = PlayerCharacter::create(CharacterRole::WARRIOR, spritePath);
     if (!playerSprite)
     {
         CCLOG("Error: Failed to create player character");
@@ -312,65 +336,36 @@ void GameScene::initUIController()
         {
             CCLOG("GameScene - 加载存档成功，场景: %s", saveData.progressData.currentSceneName.c_str());
 
-            Scene *targetScene = nullptr;
             const std::string &sceneName = saveData.progressData.currentSceneName;
 
-            if (sceneName == "起源之菇")
+            // 统一走 SceneRegistry：通过 sceneName 反查 mapId，再进入 LoadingScene（预加载 + 创建目标场景）
+            auto registry = SceneRegistry::getInstance();
+            const int mapId = registry ? registry->getMapIdBySceneName(sceneName) : -1;
+            if (mapId < 0)
             {
-                targetScene = OriginMushroomScene::createScene();
-            }
-            else if (sceneName == "神秘之森")
-            {
-                targetScene = MysteryForestScene::createScene();
-            }
-            else if (sceneName == "冒险王之家")
-            {
-                targetScene = HomeScene::createScene();
-            }
-            else
-            {
-                CCLOG("GameScene - 未知的场景名称: %s", sceneName.c_str());
+                CCLOG("GameScene - 未在注册表中找到场景: %s", sceneName.c_str());
                 return;
             }
 
-            if (!targetScene)
+            auto saveManager = SaveManager::getInstance();
+            const auto playerData = saveData.playerData;
+            const Vec2 playerPos(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
+
+            // 读档数据先写入运行时缓存：目标关卡创建玩家时会自动恢复等级/经验/装备等
+            if (saveManager)
             {
+                saveManager->setRuntimePlayerData(playerData);
+                saveManager->setRuntimePlayerPosition(playerPos);
+            }
+
+            auto loadingScene = LoadingScene::createScene(mapId);
+            if (!loadingScene)
+            {
+                CCLOG("GameScene - 创建 LoadingScene 失败，mapId=%d", mapId);
                 return;
             }
 
-            auto gameScene = dynamic_cast<GameScene *>(targetScene);
-            if (gameScene)
-            {
-                auto saveManager = SaveManager::getInstance();
-                auto playerData = saveData.playerData;
-                auto playerPos = Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
-
-                // 同步运行时数据：保证新场景创建玩家时即可拿到正确的等级/经验等（避免先用旧数据刷怪/显示）
-                if (saveManager)
-                {
-                    saveManager->setRuntimePlayerData(playerData);
-                }
-
-                gameScene->scheduleOnce([saveManager, playerData, playerPos](float dt)
-                                        {
-                                            auto currentScene = Director::getInstance()->getRunningScene();
-                                            auto currentGameScene = dynamic_cast<GameScene *>(currentScene);
-                                            if (!currentGameScene)
-                                                return;
-
-                                            auto player = currentGameScene->getPlayer();
-                                            if (!player)
-                                                return;
-
-                                            saveManager->applyPlayerData(player, playerData);
-                                            player->setPosition(playerPos);
-                                            CCLOG("GameScene - 玩家数据已恢复，位置: (%.1f, %.1f)", playerPos.x, playerPos.y);
-                                        },
-                                        0.1f,
-                                        "apply_save_data");
-            }
-
-            auto transition = TransitionFade::create(0.5f, targetScene, Color3B::BLACK);
+            auto transition = TransitionFade::create(0.5f, loadingScene, Color3B::BLACK);
             Director::getInstance()->replaceScene(transition);
         });
 

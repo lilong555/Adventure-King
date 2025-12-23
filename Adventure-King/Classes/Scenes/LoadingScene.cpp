@@ -1,10 +1,6 @@
 #include "Scenes/LoadingScene.h"
 #include "Managers/SceneRegistry.h"
-#include "Scenes/DebugScene.h"
-#include "Scenes/HomeScene.h"
 #include "Scenes/MapScene.h"
-#include"Scenes/LevelScenes/OriginMushroomScene.h"
-#include"Scenes/LevelScenes/MysteryForestScene.h"
 #include"Managers/MusicManager.h"
 #include "Utils/ParticlePreloadHelper.h"
 #include "Utils/ImeHelper.h"
@@ -346,27 +342,4 @@ std::vector<std::string> LoadingScene::buildPreloadList(int mapId) const
     }
 
     return paths;
-}
-
-Scene* LoadingScene::createDestinationScene(int mapId) const
-{
-    Scene* scene = nullptr;
-    switch (mapId)
-    {
-    case HomeScene::MAP_ID:
-        scene = HomeScene::createScene();
-        break;
-    case 1:
-        scene = OriginMushroomScene::createScene();
-        break;
-    case 2:
-        scene = MysteryForestScene::createScene();
-        break;
-    case 99:
-        scene = DebugScene::createScene();
-        break;
-    default:
-        break;
-    }
-    return scene;
 }

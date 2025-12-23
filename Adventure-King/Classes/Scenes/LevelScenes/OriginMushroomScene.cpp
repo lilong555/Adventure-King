@@ -54,6 +54,7 @@ void OriginMushroomScene::setupRegistry()
     info.creator = []() {
         return OriginMushroomScene::createScene();
         };
+    info.sceneName = "起源之菇";
 
     // 2. 准备资源路径列表
     // 第一步：放入所有固定的、不需要拼接的字符串
@@ -157,6 +158,14 @@ void OriginMushroomScene::setupRegistry()
 
     // 将整理好的 vector 赋值给 info
     info.imagePaths = paths;
+
+    // 贴图加载完毕后预热 AnimationCache：补齐 Obscur 的动态动作（attack/useice/ice）
+    // 避免首次刷出怪物时出现“动作缺失/首帧卡顿”
+    info.onResourcesLoaded = []()
+    {
+        GoblinMonster::preloadResources();
+        ObscurMonster::preloadResources();
+    };
 
     // 注册到管理器 (ID = 1)
     SceneRegistry::getInstance()->registerScene(1, info);

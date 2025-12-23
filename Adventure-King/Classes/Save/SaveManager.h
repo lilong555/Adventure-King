@@ -156,6 +156,29 @@ public:
      */
     void clearRuntimePlayerData();
 
+    //================== 运行时位置（不落盘） ==================
+
+    /**
+     * 设置运行时玩家位置（用于“读档”后恢复到存档点）
+     * @note 不会写入磁盘，仅保存在内存中
+     */
+    void setRuntimePlayerPosition(const cocos2d::Vec2& pos);
+
+    /**
+     * 当前是否存在运行时玩家位置
+     */
+    bool hasRuntimePlayerPosition() const { return _hasRuntimePlayerPosition; }
+
+    /**
+     * 获取运行时玩家位置（调用前请先判断 hasRuntimePlayerPosition）
+     */
+    cocos2d::Vec2 getRuntimePlayerPosition() const { return _runtimePlayerPosition; }
+
+    /**
+     * 清空运行时玩家位置（一般在新场景应用完成后调用）
+     */
+    void clearRuntimePlayerPosition();
+
 private:
     // 私有构造，外部不可实例化
     SaveManager();
@@ -173,6 +196,10 @@ private:
     // 运行时玩家数据：用于关卡切换时保持进度，不落盘
     bool _hasRuntimePlayerData = false;
     PlayerSaveData _runtimePlayerData;
+
+    // 运行时玩家位置：用于读档后恢复落点（只对下一次进入 GameScene 生效）
+    bool _hasRuntimePlayerPosition = false;
+    cocos2d::Vec2 _runtimePlayerPosition = cocos2d::Vec2::ZERO;
 
     // 构建存档文件路径
     std::string getSaveFilePath(int slotIndex) const;
