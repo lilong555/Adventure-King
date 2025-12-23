@@ -156,7 +156,7 @@ void SaveMenuLayer::layoutUI()
     auto origin = Director::getInstance()->getVisibleOrigin();
 
     
-    float targetHeight = visibleSize.height * GameConfig::UI::SaveMenu::TARGET_HEIGHT_RATIO;
+    float targetHeight = visibleSize.height * GameSceneConfig::UI::SaveMenu::TARGET_HEIGHT_RATIO;
 
     float scaleY = targetHeight / _background->getContentSize().height;
     _background->setScale(scaleY);

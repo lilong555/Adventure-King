@@ -69,7 +69,7 @@ void DebugScene::setupRegistry()
     // 若后续需要进一步降低首次进入卡顿，可逐步补齐 imagePaths。
     info.imagePaths = {};
 
-    SceneRegistry::getInstance()->registerScene(99, info);
+    SceneRegistry::getInstance()->registerScene(SceneID::DEBUG, info);
 }
 
 /**
@@ -749,7 +749,7 @@ void DebugScene::returnToMapScene()
 
     auto director = Director::getInstance();
     director->popToRootScene();
-    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION, mapScene, Color3B::BLACK);
+    auto transition = TransitionFade::create(GameSceneConfig::Scene::MENU_TRANSITION_DURATION, mapScene, Color3B::BLACK);
     director->replaceScene(transition);
 }
 

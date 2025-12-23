@@ -28,7 +28,7 @@ void HomeScene::setupRegistry()
         "Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png",
     };
 
-    SceneRegistry::getInstance()->registerScene(MAP_ID, info);
+    SceneRegistry::getInstance()->registerScene(ID, info);
 }
 
 bool HomeScene::init() {
@@ -38,7 +38,7 @@ bool HomeScene::init() {
     // 2. 关卡特化配置
     LevelConfig config;
     config.tmxMapPath = "Scene/Backgrounds/HomeBackground_1.tmx";
-    config.playerSpritePath = GameConfig::Scene::DEFAULT_PLAYER_SPRITE;
+    config.playerSpritePath = GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
 
     // 对应 Tiled 里的图层名
     config.collisionLayerName = "collisions"; // 包含地面和左右边界
@@ -76,7 +76,7 @@ bool HomeScene::init() {
     }
     // 4.播放背景音乐
     std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
-    float musicVolume = GameConfig::UI::MainMenu::BGM_VOLUME;
+    float musicVolume = GameSceneConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
         [musicFile, musicVolume](float dt)
         {

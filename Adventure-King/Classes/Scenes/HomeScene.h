@@ -17,8 +17,8 @@ public:
     void menuReturnCallback(Ref* pSender);
 
     // HomeScene 在 LoadingScene/SceneRegistry 中使用的地图 ID
-    static constexpr int MAP_ID = 3;
-
+    //static constexpr int MAP_ID = 3;
+    static constexpr SceneID ID = SceneID::HOME;
     // 注册到场景注册表（供 LoadingScene 预加载使用）
     static void setupRegistry();
 

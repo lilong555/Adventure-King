@@ -11,7 +11,7 @@
 #include "UI/InventoryLayer.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/Base/CharacterBase.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 
 USING_NS_CC;
 
@@ -38,31 +38,31 @@ bool GameUI::init()
     auto origin = Director::getInstance()->getVisibleOrigin();
 
     // 计算 UI 元素相对于屏幕的位置
-    float padding = GameConfig::UI::PADDING;
+    float padding = GameSceneConfig::UI::PADDING;
 
     // 玩家状态栏位置：左上角
-    _statusBarPos = Vec2(origin.x + padding + GameConfig::UI::STATUS_BAR_OFFSET_X,
+    _statusBarPos = Vec2(origin.x + padding + GameSceneConfig::UI::STATUS_BAR_OFFSET_X,
                          origin.y + visibleSize.height - padding);
 
     // 技能栏位置：屏幕底部中央偏右
-    _skillBarPos = Vec2(origin.x + visibleSize.width - GameConfig::UI::SKILL_BAR_OFFSET_X,
-                        origin.y + GameConfig::UI::SKILL_BAR_OFFSET_Y);
+    _skillBarPos = Vec2(origin.x + visibleSize.width - GameSceneConfig::UI::SKILL_BAR_OFFSET_X,
+                        origin.y + GameSceneConfig::UI::SKILL_BAR_OFFSET_Y);
 
     // Boss血条位置：屏幕顶部中央
     _bossHealthBarPos = Vec2(origin.x + visibleSize.width / 2,
-                             origin.y + visibleSize.height - GameConfig::UI::BOSS_BAR_OFFSET_Y);
+                             origin.y + visibleSize.height - GameSceneConfig::UI::BOSS_BAR_OFFSET_Y);
 
     // 地图按钮位置：右上角
-    _mapButtonPos = Vec2(origin.x + visibleSize.width - padding - GameConfig::UI::MAP_BUTTON_OFFSET,
-                         origin.y + visibleSize.height - padding - GameConfig::UI::MAP_BUTTON_OFFSET);
+    _mapButtonPos = Vec2(origin.x + visibleSize.width - padding - GameSceneConfig::UI::MAP_BUTTON_OFFSET,
+                         origin.y + visibleSize.height - padding - GameSceneConfig::UI::MAP_BUTTON_OFFSET);
 
     // 交互提示位置：屏幕底部中央
     _interactionHintPos = Vec2(origin.x + visibleSize.width / 2,
-                               origin.y + GameConfig::UI::INTERACTION_HINT_OFFSET_Y);
+                               origin.y + GameSceneConfig::UI::INTERACTION_HINT_OFFSET_Y);
 
     // 关卡名称位置：右上角（地图按钮下方）
-    _levelNamePos = Vec2(origin.x + visibleSize.width - GameConfig::UI::LEVEL_NAME_OFFSET_X,
-                         origin.y + visibleSize.height - GameConfig::UI::LEVEL_NAME_OFFSET_Y);
+    _levelNamePos = Vec2(origin.x + visibleSize.width - GameSceneConfig::UI::LEVEL_NAME_OFFSET_X,
+                         origin.y + visibleSize.height - GameSceneConfig::UI::LEVEL_NAME_OFFSET_Y);
 
     // 创建 UI 元素
     createPlayerStatusBar();
@@ -90,7 +90,7 @@ void GameUI::createPlayerStatusBar()
 
 void GameUI::createSkillBar()
 {
-    _skillBar = SkillBar::create(GameConfig::UI::SKILL_BAR_SLOT_COUNT);
+    _skillBar = SkillBar::create(GameSceneConfig::UI::SKILL_BAR_SLOT_COUNT);
     if (_skillBar)
     {
         _skillBar->setPosition(_skillBarPos);

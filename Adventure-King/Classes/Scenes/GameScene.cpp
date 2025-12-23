@@ -23,7 +23,6 @@
 #include "Character/Monster/Monsters/ObscurMonster.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "GameUI.h"
-#include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
 #include "Utils/ImeHelper.h"
@@ -35,9 +34,9 @@ USING_NS_CC;
 
 namespace
 {
-    const char *const DEFAULT_FONT_PATH = GameConfig::Scene::DEFAULT_FONT_PATH;
-    const char *const DEFAULT_PLAYER_SPRITE = GameConfig::Scene::DEFAULT_PLAYER_SPRITE;
-    const char *const MAP_LOAD_FAILED_TEXT = GameConfig::Scene::MAP_LOAD_FAILED_TEXT;
+    const char *const DEFAULT_FONT_PATH = GameSceneConfig::Scene::DEFAULT_FONT_PATH;
+    const char *const DEFAULT_PLAYER_SPRITE = GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
+    const char *const MAP_LOAD_FAILED_TEXT = GameSceneConfig::Scene::MAP_LOAD_FAILED_TEXT;
 
     const PhysicsMaterial PLAYER_PHYSICS_MATERIAL = GameConfig::Material::PLAYER;
 }
@@ -324,49 +323,46 @@ void GameScene::initUIController()
         this,
         _player,
         getLevelName(),
-        [this]()
-        { returnToMapScene(); },
-        [this](bool paused)
-        { setGamePaused(paused); },
-        [this]()
-        {
+        [this]() { returnToMapScene(); },
+        [this](bool paused) { setGamePaused(paused); },
+        [this]() {
             return _levelMap && _player && _levelMap->isPointAtGate(_player->getPosition());
         },
-        [](const SaveSlotData &saveData)
+        [](const SaveSlotData& saveData) // 读档回调
         {
-            CCLOG("GameScene - 加载存档成功，场景: %s", saveData.progressData.currentSceneName.c_str());
+            const std::string& sceneName = saveData.progressData.currentSceneName;
 
-            const std::string &sceneName = saveData.progressData.currentSceneName;
-
-            // 统一走 SceneRegistry：通过 sceneName 反查 mapId，再进入 LoadingScene（预加载 + 创建目标场景）
+            // 1. 利用重构后的注册表：通过名称获取强类型 SceneID
             auto registry = SceneRegistry::getInstance();
-            const int mapId = registry ? registry->getMapIdBySceneName(sceneName) : -1;
-            if (mapId < 0)
+            SceneID targetID = registry ? registry->getSceneIDByName(sceneName) : SceneID::NONE;
+
+            if (targetID == SceneID::NONE)
             {
-                CCLOG("GameScene - 未在注册表中找到场景: %s", sceneName.c_str());
+                CCLOG("GameScene - 读档失败：注册表中不存在场景 [%s]", sceneName.c_str());
                 return;
             }
 
+            // 2. 运行时数据同步
+            // 目标关卡在创建玩家时会优先检查 SaveManager 里的 runtime 数据
             auto saveManager = SaveManager::getInstance();
-            const auto playerData = saveData.playerData;
-            const Vec2 playerPos(saveData.progressData.playerPosX, saveData.progressData.playerPosY);
-
-            // 读档数据先写入运行时缓存：目标关卡创建玩家时会自动恢复等级/经验/装备等
             if (saveManager)
             {
-                saveManager->setRuntimePlayerData(playerData);
-                saveManager->setRuntimePlayerPosition(playerPos);
+                saveManager->setRuntimePlayerData(saveData.playerData);
+                saveManager->setRuntimePlayerPosition(Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY));
             }
 
-            auto loadingScene = LoadingScene::createScene(mapId);
-            if (!loadingScene)
+            // 3. 统一进入 LoadingScene
+            // 现在的 LoadingScene 会根据 targetID 自动去 SceneRegistry 读资源列表并预热
+            auto loadingScene = LoadingScene::createScene(targetID);
+            if (loadingScene)
             {
-                CCLOG("GameScene - 创建 LoadingScene 失败，mapId=%d", mapId);
-                return;
-            }
+                // 使用 GameSceneConfig 中统一定义的转场时间
+                float duration = GameSceneConfig::Scene::TRANSITION_DURATION;
+                auto transition = TransitionFade::create(duration, loadingScene, Color3B::BLACK);
+                Director::getInstance()->replaceScene(transition);
 
-            auto transition = TransitionFade::create(0.5f, loadingScene, Color3B::BLACK);
-            Director::getInstance()->replaceScene(transition);
+                CCLOG("GameScene - 读档成功，开始通过 LoadingScene 切换至 ID: %d", static_cast<int>(targetID));
+            }
         });
 
     if (!ok)

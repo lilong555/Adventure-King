@@ -15,7 +15,7 @@ LevelConfig MysteryForestScene::getLevelConfig() const
 {
     LevelConfig config;
     config.tmxMapPath = "Map/dungeon/dungeon.tmx";
-    config.playerSpritePath = GameConfig::Scene::DEFAULT_PLAYER_SPRITE;
+    config.playerSpritePath = GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
     // 神秘之森：背景由 1~4 四张图从左到右拼接（不重叠）
     config.backgroundSeriesPaths = {
         "Map/dungeon/1.png",
@@ -50,7 +50,6 @@ void MysteryForestScene::setupRegistry()
     info.creator = []()
     { return MysteryForestScene::createScene(); };
     info.sceneName = "神秘之森";
-
     // 2. 资源列表（神秘之森：地牢 tileset）
     info.imagePaths = {
         // 粒子特效使用 plist 内嵌纹理，不需要预加载 particle_texture.png
@@ -59,6 +58,6 @@ void MysteryForestScene::setupRegistry()
         "Map/dungeon/3.png",
         "Map/dungeon/4.png",
     };
-
-    SceneRegistry::getInstance()->registerScene(2, info);
+    //注意，这里不用硬编码的MapID
+    SceneRegistry::getInstance()->registerScene(SceneID::LEVEL_MYSTERY_FOREST, info);
 }

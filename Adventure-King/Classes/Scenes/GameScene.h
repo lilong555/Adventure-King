@@ -116,11 +116,11 @@ protected:
     // -------------------------------
     // 常量定义
     // -------------------------------
-    static constexpr float SCENE_TRANSITION_DURATION = GameConfig::Scene::TRANSITION_DURATION;        ///< 场景切换时间
-    static constexpr int UI_Z_ORDER = GameConfig::UI::Z_ORDER;                                       ///< UI 层级
-    static constexpr int BACKGROUND_Z_ORDER = GameConfig::Scene::BACKGROUND_Z_ORDER;                 ///< 背景层级
-    static constexpr int PLAYER_Z_ORDER = GameConfig::Scene::PLAYER_Z_ORDER;                         ///< 玩家层级
-    static constexpr int COLLISION_DEBUG_Z_ORDER = GameConfig::Scene::COLLISION_DEBUG_Z_ORDER;       ///< 碰撞调试层级
+    static constexpr float SCENE_TRANSITION_DURATION = GameSceneConfig::Scene::TRANSITION_DURATION;        ///< 场景切换时间
+    static constexpr int UI_Z_ORDER = GameSceneConfig::UI::Z_ORDER;                                       ///< UI 层级
+    static constexpr int BACKGROUND_Z_ORDER = GameSceneConfig::Scene::BACKGROUND_Z_ORDER;                 ///< 背景层级
+    static constexpr int PLAYER_Z_ORDER = GameSceneConfig::Scene::PLAYER_Z_ORDER;                         ///< 玩家层级
+    static constexpr int COLLISION_DEBUG_Z_ORDER = GameSceneConfig::Scene::COLLISION_DEBUG_Z_ORDER;       ///< 碰撞调试层级
 
     // ===================================================================
     // 初始化方法

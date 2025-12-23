@@ -763,7 +763,7 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
         }
 
         // 恢复主动技能槽位
-        const size_t requiredActiveSlots = static_cast<size_t>(GameConfig::UI::SKILL_BAR_SLOT_COUNT);
+        const size_t requiredActiveSlots = static_cast<size_t>(GameSceneConfig::UI::SKILL_BAR_SLOT_COUNT);
         std::vector<std::shared_ptr<ActiveSkill>> activeSlots;
         activeSlots.reserve(requiredActiveSlots);
         for (size_t i = 0; i < requiredActiveSlots; ++i)

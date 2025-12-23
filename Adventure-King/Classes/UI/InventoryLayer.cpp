@@ -8,6 +8,7 @@
 #include "Character/components/SkillComponent.h"
 #include "Character/components/AttributeComponent.h"
 #include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 #include "ui/CocosGUI.h"
 #include <algorithm>
 #include <cmath>
@@ -2017,7 +2018,7 @@ void InventoryLayer::refreshSkillPage()
     float slotY = treeRect.getMaxY() - 140.0f;
 
     const auto &activeSlots = skillComp->getActiveSlots();
-    const size_t activeSlotCount = static_cast<size_t>(GameConfig::UI::SKILL_BAR_SLOT_COUNT);
+    const size_t activeSlotCount = static_cast<size_t>(GameSceneConfig::UI::SKILL_BAR_SLOT_COUNT);
 
     for (size_t i = 0; i < activeSlotCount; ++i)
     {

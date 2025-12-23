@@ -41,10 +41,9 @@ public:
     void menuMapCallback(cocos2d::Ref *pSender);
     /// @brief 打开设置菜单
     void menuSetCallback(cocos2d::Ref *pSender);
-
-    /// @brief 关闭存档菜单
-    void menuSaveCloseCallback(cocos2d::Ref *pSender);
     // implement the "static create()" method manually
+    static std::vector<std::string> getPreloadResourcePaths();
+    static void setupRegistry();
     CREATE_FUNC(HelloWorld);
 };
 

@@ -19,15 +19,15 @@ LevelConfig OriginMushroomScene::getLevelConfig() const
     LevelConfig config;
     config.tmxMapPath = "Map/Origin_Mushroom/Origin_Mushroom.tmx";
     config.backgroundPath = "";
-    config.backgroundSeriesPaths.reserve(GameConfig::Map::OriginMushroom::BACKGROUND_COUNT);
-    for (int i = 0; i < GameConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
+    config.backgroundSeriesPaths.reserve(GameSceneConfig::Map::OriginMushroom::BACKGROUND_COUNT);
+    for (int i = 0; i < GameSceneConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
     {
         config.backgroundSeriesPaths.emplace_back(
             StringUtils::format("%s%02d.png",
-                GameConfig::Map::OriginMushroom::BACKGROUND_PREFIX,
+                GameSceneConfig::Map::OriginMushroom::BACKGROUND_PREFIX,
                 i));
     }
-    config.playerSpritePath = GameConfig::Scene::DEFAULT_PLAYER_SPRITE;
+    config.playerSpritePath = GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
     config.collisionLayerName = "collisions";
     config.bornLayerName = "born";
     config.gateLayerName = "gate";
@@ -83,9 +83,9 @@ void OriginMushroomScene::setupRegistry()
     // 第二步：追加动态生成的序列帧路径 (原逻辑迁移至此)
 
     // 背景序列
-    for (int i = 0; i < GameConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
+    for (int i = 0; i < GameSceneConfig::Map::OriginMushroom::BACKGROUND_COUNT; ++i)
     {
-        paths.push_back(StringUtils::format("%s%02d.png", GameConfig::Map::OriginMushroom::BACKGROUND_PREFIX, i));
+        paths.push_back(StringUtils::format("%s%02d.png", GameSceneConfig::Map::OriginMushroom::BACKGROUND_PREFIX, i));
     }
     // klee相关
     // 1. 路径前缀准备 (注意：此处使用你代码中定义的路径)
@@ -168,5 +168,5 @@ void OriginMushroomScene::setupRegistry()
     };
 
     // 注册到管理器 (ID = 1)
-    SceneRegistry::getInstance()->registerScene(1, info);
+    SceneRegistry::getInstance()->registerScene(SceneID::LEVEL_ORIGIN_MUSHROOM, info);
 }

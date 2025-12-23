@@ -1,6 +1,6 @@
 #include "SceneTransitionManager.h"
 #include "MusicManager.h"
-#include "Configs/GameConfigs.h"
+
 
 USING_NS_CC;
 
@@ -37,7 +37,7 @@ void SceneTransitionManager::transitionToScene(
     // 2. 提示文字
     if (!message.empty())
     {
-        auto label = Label::createWithTTF(message, GameConfig::Scene::DEFAULT_FONT_PATH, 48);
+        auto label = Label::createWithTTF(message, GameSceneConfig::Scene::DEFAULT_FONT_PATH, 48);
         label->setPosition(center);
         label->setOpacity(0);
         overlay->addChild(label);
