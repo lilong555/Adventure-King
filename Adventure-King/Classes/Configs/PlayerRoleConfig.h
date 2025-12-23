@@ -16,7 +16,8 @@ namespace PlayerRoleConfig
         case CharacterRole::WARRIOR:
             return "Sprites/Characters/Player/man/default/spr_man_run.png";
         case CharacterRole::ASSASSIN:
-            return "Sprites/Characters/Player/maaer/default/spr_maaer_run.png";
+            // 刺客素材存在 run_1..run_n：优先使用 run_1 作为默认入口，避免 run.png 作为单帧时导致跑步动画闪一下
+            return "Sprites/Characters/Player/maaer/default/spr_maaer_run_1.png";
         case CharacterRole::MAGE:
         default:
             // 目前“法师”沿用 Klee 的素材与技能实现

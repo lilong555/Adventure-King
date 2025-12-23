@@ -931,7 +931,15 @@ void PlayerCharacter::setMoving(bool moving, bool running)
             sm->changeState(CharacterState::IDLE);
 
             // 兜底：设回默认帧
-            auto defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+            auto defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png", true, false);
+            if (!defaultFrame)
+            {
+                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
+            }
+            if (!defaultFrame)
+            {
+                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+            }
             if (defaultFrame)
             {
                 setSpriteFrame(defaultFrame);
@@ -1562,13 +1570,23 @@ void PlayerCharacter::ensureMoveAnimations()
     movePaths.reserve(12);
 
     // 通用：尽量兼容 run_1..run_n + run.png 的命名（缺失的帧会被自动跳过）
+    // 但如果 run_1 存在，通常说明这是“序列动画”；此时再把 run.png 追加到末尾，
+    // 可能会出现 1 帧的“姿势突变”（看起来像突然闪到 idle/静帧）。
+    // 因此：优先使用 run_1..run_n；只有当 run_1 不存在时，才回退到 run.png。
+    const std::string run1Path = StringUtils::format("%s/spr_%s_run_1.png",
+        _defaultSpriteDir.c_str(), _characterKey.c_str());
+    const bool hasNumberedRun = FileUtils::getInstance()->isFileExist(run1Path);
+
     for (int i = 1; i <= 8; ++i)
     {
         movePaths.push_back(StringUtils::format("%s/spr_%s_run_%d.png",
             _defaultSpriteDir.c_str(), _characterKey.c_str(), i));
     }
-    movePaths.push_back(StringUtils::format("%s/spr_%s_run.png",
-        _defaultSpriteDir.c_str(), _characterKey.c_str()));
+    if (!hasNumberedRun)
+    {
+        movePaths.push_back(StringUtils::format("%s/spr_%s_run.png",
+            _defaultSpriteDir.c_str(), _characterKey.c_str()));
+    }
 
     // 调用内部静态辅助函数
     helperEnsureAnimationCached(
@@ -1619,17 +1637,19 @@ void PlayerCharacter::ensureStateAnimations()
 
     // IDLE：用默认 run 静帧兜底（多角色兼容）
     ensureSingleFrame(_animationKeyPrefix + "_idle",
-        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+        _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
     ensureSingleFrame(_animationKeyPrefix + "_idle",
         _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
     ensureSingleFrame(_animationKeyPrefix + "_idle",
-        _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
     // HURT：受击贴图（spr_<角色>_beattacked.png）
     ensureSingleFrame(_animationKeyPrefix + "_hurt",
         _defaultSpriteDir + "/spr_" + _characterKey + "_beattacked.png");
     // 最后兜底：仍然使用 idle 的静帧避免状态机报错
     ensureSingleFrame(_animationKeyPrefix + "_hurt",
-        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+        _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
     ensureSingleFrame(_animationKeyPrefix + "_hurt",
         _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
+    ensureSingleFrame(_animationKeyPrefix + "_hurt",
+        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
 }
