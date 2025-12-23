@@ -934,11 +934,12 @@ void PlayerCharacter::setMoving(bool moving, bool running)
             auto defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png", true, false);
             if (!defaultFrame)
             {
-                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
+                // 多数角色（法师/战士/Klee）使用 run.png 作为静态待机帧
+                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
             }
             if (!defaultFrame)
             {
-                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
             }
             if (defaultFrame)
             {
@@ -1614,6 +1615,64 @@ void PlayerCharacter::ensureStateAnimations()
         return;
     }
 
+    // ============================
+    // IDLE：优先使用 idle_1..idle_n（存在则循环播放），否则回退到 run.png 作为静态待机帧
+    // 说明：
+    // - 刺客（maaer）存在 idle_1..idle_4，需要循环播放，否则看起来“不会呼吸”；
+    // - 法师/战士当前没有 idle_x，run.png 实际是待机帧（不是 run_1..run_n 的跑步序列）。
+    // ============================
+    const std::string idleKey = _animationKeyPrefix + "_idle";
+    if (!cache->getAnimation(idleKey))
+    {
+        std::vector<std::string> idlePaths;
+        idlePaths.reserve(8);
+
+        // 优先拼出 idle_1..idle_8（存在就加入，不存在就跳过，避免日志噪音）
+        auto fileUtils = FileUtils::getInstance();
+        for (int i = 1; i <= 8; ++i)
+        {
+            const std::string path = StringUtils::format("%s/spr_%s_idle_%d.png",
+                _defaultSpriteDir.c_str(), _characterKey.c_str(), i);
+            if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+            {
+                idlePaths.push_back(path);
+            }
+        }
+
+        // 有序列就创建循环动画；否则回退到 run.png 作为静态待机
+        if (!idlePaths.empty())
+        {
+            if (auto idleAnim = createAnimationFromPaths(
+                    idlePaths,
+                    0.2f,
+                    [this](const std::string& path) { return getStableSpriteFrame(path, true, false); }))
+            {
+                cache->addAnimation(idleAnim, idleKey);
+            }
+        }
+
+        if (!cache->getAnimation(idleKey))
+        {
+            // 静态待机：优先 run.png（法师/战士/Klee），再兜底 run_1.png / idle_1.png
+            auto frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+            if (!frame)
+            {
+                frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
+            }
+            if (!frame)
+            {
+                frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png", true, false);
+            }
+            if (frame)
+            {
+                cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+                frames.pushBack(frame);
+                auto idleAnim = Animation::createWithSpriteFrames(frames, 0.2f);
+                cache->addAnimation(idleAnim, idleKey);
+            }
+        }
+    }
+
     auto ensureSingleFrame = [this, cache](const std::string& key, const std::string& framePath) {
         if (cache->getAnimation(key))
         {
@@ -1635,13 +1694,6 @@ void PlayerCharacter::ensureStateAnimations()
         cache->addAnimation(anim, key);
     };
 
-    // IDLE：用默认 run 静帧兜底（多角色兼容）
-    ensureSingleFrame(_animationKeyPrefix + "_idle",
-        _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
-    ensureSingleFrame(_animationKeyPrefix + "_idle",
-        _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
-    ensureSingleFrame(_animationKeyPrefix + "_idle",
-        _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
     // HURT：受击贴图（spr_<角色>_beattacked.png）
     ensureSingleFrame(_animationKeyPrefix + "_hurt",
         _defaultSpriteDir + "/spr_" + _characterKey + "_beattacked.png");
