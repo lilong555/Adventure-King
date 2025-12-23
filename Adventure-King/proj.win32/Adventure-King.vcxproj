@@ -189,6 +189,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Scenes\GameUIController.cpp" />
     <ClCompile Include="..\Classes\Scenes\HelloWorldScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\HomeScene.cpp" />
+    <ClCompile Include="..\Classes\Scenes\Layers\BagLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\SaveMenuLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\SetMenuLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\LevelMap.cpp" />
@@ -231,6 +232,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h" />
     <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h" />
     <ClInclude Include="..\Classes\Scenes\CombatContactHelper.h" />
+    <ClInclude Include="..\Classes\Scenes\Layers\BagLayer.h" />
     <ClInclude Include="..\Classes\Scenes\LevelScenes\MysteryForestScene.h" />
     <ClInclude Include="..\Classes\Scenes\LevelScenes\OriginMushroomScene.h" />
     <ClInclude Include="..\Classes\UI\PlayerStatusBar.h" />
@@ -256,6 +258,9 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Scenes\LoadingScene.h" />
     <ClInclude Include="..\Classes\Scenes\MapScene.h" />
     <ClInclude Include="..\Classes\Utils\ImeHelper.h" />
+    <ClInclude Include="..\Classes\Utils\ParticlePreloadHelper.h" />
+    <ClInclude Include="..\Classes\Utils\PhysicsBodyLocalInfoHelper.h" />
+    <ClInclude Include="..\Classes\Utils\SpriteFrameCacheHelper.h" />
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>

@@ -3,6 +3,7 @@
 
 #include "cocos2d.h"
 #include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 #include <functional>
 #include <string>
 
@@ -23,8 +24,8 @@ public:
         cocos2d::Scene* currentScene,
         cocos2d::Scene* targetScene,
         const std::string& message = "",
-        float delayBeforeFadeOut = GameConfig::Scene::TRANSITION_MESSAGE_DELAY,
-        float fadeDuration = GameConfig::Scene::TRANSITION_FADE_DURATION
+        float delayBeforeFadeOut = GameSceneConfig::Scene::TRANSITION_MESSAGE_DELAY,
+        float fadeDuration = GameSceneConfig::Scene::TRANSITION_FADE_DURATION
     );
     static void fadeReplace(
         cocos2d::Scene* target,

@@ -24,7 +24,6 @@
 #include "Character/Monster/Monsters/ObscurMonster.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "GameUI.h"
-#include "Configs/GameConfigs.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
 #include "Utils/ImeHelper.h"
@@ -36,9 +35,9 @@ USING_NS_CC;
 
 namespace
 {
-    const char *const DEFAULT_FONT_PATH = GameConfig::Scene::DEFAULT_FONT_PATH;
-    const char *const DEFAULT_PLAYER_SPRITE = GameConfig::Scene::DEFAULT_PLAYER_SPRITE;
-    const char *const MAP_LOAD_FAILED_TEXT = GameConfig::Scene::MAP_LOAD_FAILED_TEXT;
+    const char *const DEFAULT_FONT_PATH = GameSceneConfig::Scene::DEFAULT_FONT_PATH;
+    const char *const DEFAULT_PLAYER_SPRITE = GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
+    const char *const MAP_LOAD_FAILED_TEXT = GameSceneConfig::Scene::MAP_LOAD_FAILED_TEXT;
 
     const PhysicsMaterial PLAYER_PHYSICS_MATERIAL = GameConfig::Material::PLAYER;
 }

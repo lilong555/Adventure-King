@@ -14,15 +14,15 @@ namespace ParticlePreloadHelper
     {
         return {
             "Particle/par_chararcter_hurt_L.plist",
-            "Particle/par_chararcter_hurt_R.plist",
-            "Particle/par_levelup.plist",
-            "Particle/par_Restore_health.plist",
-            "Particle/par_Poison.plist",
-            "Particle/par_GobluRemoteHit.plist",
-            "Particle/par_dragon_fire.plist",
-            "Particle/par_warfire.plist",
-            "Particle/par_warfire1.plist",
-            "Particle/par_warfire_2.plist",
+        "Particle/par_chararcter_hurt_R.plist",
+        "Particle/par_levelup.plist",
+        "Particle/par_Restore_health.plist",
+        "Particle/par_Poison.plist",
+        "Particle/par_GobluRemoteHit.plist",
+        "Particle/par_dragon_fire.plist",
+        "Particle/par_warfire.plist",
+        "Particle/par_warfire1.plist",
+        "Particle/par_warfire_2.plist"
         };
     }
 

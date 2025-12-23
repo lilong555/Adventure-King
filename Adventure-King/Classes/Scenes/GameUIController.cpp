@@ -11,15 +11,15 @@
 #include "Save/SaveData.h"
 #include "UI/PauseMenu.h"
 #include "UI/InventoryLayer.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 
 USING_NS_CC;
 
 namespace
 {
-    const char *const GATE_INTERACTION_HINT = GameConfig::UI::GATE_INTERACTION_HINT;
-    constexpr int UI_Z_ORDER = GameConfig::UI::Z_ORDER;
-    constexpr float UI_UPDATE_INTERVAL_SECONDS = GameConfig::UI::UPDATE_INTERVAL_SECONDS;
+    const char *const GATE_INTERACTION_HINT = GameSceneConfig::UI::GATE_INTERACTION_HINT;
+    constexpr int UI_Z_ORDER = GameSceneConfig::UI::Z_ORDER;
+    constexpr float UI_UPDATE_INTERVAL_SECONDS = GameSceneConfig::UI::UPDATE_INTERVAL_SECONDS;
 }
 
 bool GameUIController::init(Scene *scene,

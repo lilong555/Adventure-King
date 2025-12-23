@@ -1,88 +1,38 @@
+#pragma once
 #ifndef __MAP_SCENE_H__
 #define __MAP_SCENE_H__
 
 #include "cocos2d.h"
+#include "Configs/GameSceneConfig.h"
 #include <vector>
-#include <string>
+#include <map>
 
 class MapScene : public cocos2d::Scene
 {
 public:
-    /**
-     * @brief 创建地图选择场景
-     */
-    static cocos2d::Scene *createScene();
-    /**
-     * @brief 析构：清理地图标记资源
-     */
-    ~MapScene() override;
-    enum NodeTags
-    {
-        TAG_CONTENT_CONTAINER = 5,
-        TAG_MAP_MENU = 10,
-    };
-    /**
-     * @brief 创建菜单项图片按钮
-     */
-    cocos2d::MenuItemImage *createMenuItem(
-        const char *normal,
-        const char *selected,
-        const cocos2d::ccMenuCallback &callback);
 
-    /**
-     * @brief 初始化地图选择界面
-     */
-    virtual bool init();
-
-    // 回调函数
-    /// @brief 关闭地图场景
-    void mapCloseCallback(cocos2d::Ref *pSender);
-    /// @brief 选择地图（旧入口，保留兼容）
-    void mapSelectCallback(cocos2d::Ref *pSender);
-
-    // 地图操作方法
-    /// @brief 解锁指定地图
-    void unlockMap(int id);
-    /// @brief 地标点击回调
-    void onMapMarkerClicked(int mapId);
+    static cocos2d::Scene* createScene();
+    virtual bool init() override;
     CREATE_FUNC(MapScene);
-    // 地图标记信息结构体
-    struct MapMarkerInfo
-    {
-        std::string normalImage;   // 正常状态图片路径
-        std::string selectedImage; // 选中状态图片路径
-        cocos2d::Vec2 position;    // 相对位置
-        int mapId;                 // 地图ID
-        float scale;               // 缩放比例
-        std::string name;          // 地图名称
+
+    struct MapMarkerInfo {
+        SceneID id;
+        std::string name;
+        std::string normalImage;
+        std::string selectedImage;
+        cocos2d::Vec2 position;
+        float scale;
     };
 
 private:
-    std::vector<cocos2d::Sprite *> _mapMarkers; // 地标精灵列表
-    std::vector<MapMarkerInfo> _markerInfos;    // 地图标记数据列表
-    bool _isTransitioning = false;              // 是否正在切场景（避免重复点击触发多次切换）
-    bool _originMushroomAssetsReady = false;    // 起源之菇资源是否已预加载
-    bool _originMushroomPreloading = false;     // 起源之菇资源是否正在预加载
-    bool _originMushroomFinishScheduled = false;// 防止重复触发完成回调
-    int _preloadTotal = 0;                      // 预加载总数（贴图数量）
-    int _preloadLoaded = 0;                     // 已完成预加载数量
-    cocos2d::Label* _preloadLabel = nullptr;    // 加载提示 UI
-    std::string _preloadCallbackKey;            // TextureCache 回调解绑 key
+    void onMapMarkerClicked(SceneID id);
+    void enterMap(SceneID id);
+    void mapCloseCallback(cocos2d::Ref* pSender);
+    void updateMarkerTextures(const cocos2d::Vec2& mousePos);
 
-    // 创建目标场景（进入地图后的场景）
-    /// @brief 根据 mapId 创建目标关卡场景
-    cocos2d::Scene *createDestinationScene(int mapId);
-
-    /// @brief 进入地图（保持原有 replaceScene 逻辑）
-    void enterMap(int mapId);
-    /// @brief 启动起源之菇关卡资源预加载
-    void startPreloadOriginMushroom(bool showUI);
-    /// @brief 预加载进度回调（单个贴图完成）
-    void onPreloadTextureLoaded(cocos2d::Texture2D* texture);
-    /// @brief 起源之菇预加载全部完成
-    void onOriginMushroomPreloadFinished();
-    /// @brief 更新加载提示文字
-    void updatePreloadLabel();
+    std::vector<cocos2d::Sprite*> _mapMarkers;
+    std::map<SceneID, MapMarkerInfo> _markerMap;
+    bool _isTransitioning = false;
 };
 
-#endif // __MAP_SCENE_H__
+#endif

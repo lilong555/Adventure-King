@@ -4,6 +4,7 @@
 #include"Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/HomeScene.h"
 #include "Scenes/DebugScene.h"
+#include "Scenes/LoadingScene.h"
 #include "Scenes/HelloWorldScene.h"
 #include "Configs/GameConfigs.h"
 #include <cstdlib>
@@ -108,18 +109,18 @@ bool AppDelegate::applicationDidFinishLaunching()
     }
 
     // 注意在这里创建游戏资源的注册表
-
+    HelloWorld::setupRegistry();
     OriginMushroomScene::setupRegistry();
     MysteryForestScene::setupRegistry();
     HomeScene::setupRegistry();
     DebugScene::setupRegistry();
+    
 
     register_all_packages();
 
     // create a scene. it's an autorelease object
-    auto scene = HelloWorld::createScene();
+    auto scene = LoadingScene::createScene(SceneID::HELLO_WORLD);
 
-    // run
     director->runWithScene(scene);
 
     return true;

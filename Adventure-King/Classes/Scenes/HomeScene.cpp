@@ -27,7 +27,7 @@ void HomeScene::setupRegistry()
         "Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png",
     };
 
-    SceneRegistry::getInstance()->registerScene(MAP_ID, info);
+    SceneRegistry::getInstance()->registerScene(ID, info);
 }
 
 bool HomeScene::init() {
@@ -74,7 +74,7 @@ bool HomeScene::init() {
     }
     // 4.播放背景音乐
     std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
-    float musicVolume = GameConfig::UI::MainMenu::BGM_VOLUME;
+    float musicVolume = GameSceneConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
         [musicFile, musicVolume](float dt)
         {

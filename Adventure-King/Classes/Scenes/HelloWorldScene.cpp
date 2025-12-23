@@ -8,9 +8,10 @@
 #include "Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Scenes/Layers/SetMenuLayer.h"
-#include "Managers/SceneTransitionManager.h"
+#include"Utils/ParticlePreloadHelper.h"
 #include "Managers/MusicManager.h"
 #include "Configs/GameConfigs.h"
+#include"Managers/SceneRegistry.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
 
@@ -59,11 +60,11 @@ bool HelloWorld::init()
     Vec2 center = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
     // 按钮之间的水平间距
-    const float buttonHorizontalSpacing = GameConfig::UI::MainMenu::BUTTON_HORIZONTAL_SPACING;
-    const float subMenuYMultiplier = GameConfig::UI::MainMenu::SUB_MENU_Y_MULTIPLIER;
-    const float menuOffsetYDivisor = GameConfig::UI::MainMenu::MENU_OFFSET_Y_DIVISOR;
-    const int contentZOrder = GameConfig::UI::MainMenu::CONTENT_Z_ORDER;
-    const int menuZOrder = GameConfig::UI::MainMenu::MENU_Z_ORDER;
+    const float buttonHorizontalSpacing = GameSceneConfig::UI::MainMenu::BUTTON_HORIZONTAL_SPACING;
+    const float subMenuYMultiplier = GameSceneConfig::UI::MainMenu::SUB_MENU_Y_MULTIPLIER;
+    const float menuOffsetYDivisor = GameSceneConfig::UI::MainMenu::MENU_OFFSET_Y_DIVISOR;
+    const int contentZOrder = GameSceneConfig::UI::MainMenu::CONTENT_Z_ORDER;
+    const int menuZOrder = GameSceneConfig::UI::MainMenu::MENU_Z_ORDER;
 
     // ===============================================
     // 内容容器节点，用于统一缩放和定位
@@ -301,7 +302,7 @@ bool HelloWorld::init()
             problemLoading("Particle/par_warfire.plist");
             continue;
         }
-        particleSystem->setScale(0.3f);
+        particleSystem->setScale(0.7f);
         particleSystem->setPosition(Vec2(particleBaseX, y));
         particleSystem->setPositionType(ParticleSystem::PositionType::FREE);
         particleSystem->resetSystem();
@@ -309,13 +310,13 @@ bool HelloWorld::init()
     }
 
     std::string musicFile = "Scene/MusicOfScene/Music_HelloWorldScene.mp3";
-    float musicVolume = GameConfig::UI::MainMenu::BGM_VOLUME;
+    float musicVolume = GameSceneConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
         [musicFile, musicVolume](float dt)
         {
             MusicManager::getInstance()->playBGM(musicFile, true, musicVolume);
         },
-        GameConfig::UI::MainMenu::BGM_DELAY_SECONDS, // 必须加一定延迟否则会被场景切换截断
+        GameSceneConfig::UI::MainMenu::BGM_DELAY_SECONDS, // 必须加一定延迟否则会被场景切换截断
         "PlayMusicAfterSceneChange");
     return true;
 }
@@ -331,15 +332,28 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
     //_eventDispatcher->dispatchEvent(&customEndEvent);
 }
 
-void HelloWorld::menuStartCallback(Ref *pSender)
+void HelloWorld::menuStartCallback(Ref* pSender)
 {
-    // 通过 LoadingScene 统一预加载 Home 资源，避免首次进图卡顿
-    auto newScene = LoadingScene::createScene(HomeScene::MAP_ID);
-    SceneTransitionManager::transitionToScene(
-        this, // 当前场景
-        newScene,
-        "进入冒险王之家..." // 文字
-    );
+    // 1. [最佳实践] 禁用按钮防止“连点”
+    // 在异步加载场景前，防止用户多次点击导致创建多个 LoadingScene
+    if (pSender) {
+        static_cast<MenuItem*>(pSender)->setEnabled(false);
+    }
+
+    // 2. 使用强类型 SceneID 替换 HomeScene::MAP_ID (int)
+    // 确保 LoadingScene::createScene 的参数也已经改成了 SceneID 类型
+    auto newScene = LoadingScene::createScene(SceneID::HOME);
+
+    // 3. 执行切换
+    if (newScene) {
+        // 使用 replaceScene 释放主菜单资源
+        Director::getInstance()->replaceScene(newScene);
+    }
+    else {
+        CCLOG("Error: Failed to create LoadingScene for SceneID::HOME");
+        // 如果创建失败，记得恢复按钮点击
+        if (pSender) static_cast<MenuItem*>(pSender)->setEnabled(true);
+    }
 }
 
 void HelloWorld::menuSaveCallback(Ref *pSender)
@@ -411,7 +425,7 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
             }
 
             // 切换到目标场景
-            auto transition = TransitionFade::create(GameConfig::Scene::TRANSITION_DURATION, targetScene, Color3B::BLACK);
+            auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, targetScene, Color3B::BLACK);
             Director::getInstance()->replaceScene(transition);
         }
         else
@@ -420,7 +434,7 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
         } });
 
     // 直接添加到场景而不是 contentContainer，避免受容器缩放影响
-    this->addChild(saveMenu, GameConfig::UI::Z_ORDER);
+    this->addChild(saveMenu, GameSceneConfig::UI::Z_ORDER);
 }
 
 void HelloWorld::menuMapCallback(Ref *pSender)
@@ -432,7 +446,7 @@ void HelloWorld::menuMapCallback(Ref *pSender)
         return;
     }
 
-    auto transition = TransitionFade::create(GameConfig::Scene::MENU_TRANSITION_DURATION, mapScene, Color3B::BLACK);
+    auto transition = TransitionFade::create(GameSceneConfig::Scene::MENU_TRANSITION_DURATION, mapScene, Color3B::BLACK);
     Director::getInstance()->pushScene(transition);
 }
 void HelloWorld::menuSetCallback(Ref *pSender)
@@ -440,5 +454,57 @@ void HelloWorld::menuSetCallback(Ref *pSender)
     auto setMenu = SettingMenuLayer::create();
 
     // 直接添加到场景而不是 contentContainer，避免受容器缩放影响
-    this->addChild(setMenu, GameConfig::UI::Z_ORDER);
+    this->addChild(setMenu, GameSceneConfig::UI::Z_ORDER);
+}
+std::vector<std::string> HelloWorld::getPreloadResourcePaths() {
+    return {
+        // --- 核心背景 ---
+        "Scene/Backgrounds/startMenu.png",
+        "Scene/Backgrounds/backman.png",
+        "Scene/Backgrounds/dragon1.png",
+        "Scene/Backgrounds/dragon2.png",
+
+        // --- 菜单按钮 UI ---
+        "Scene/UI/StartItemNormal.png",
+        "Scene/UI/StartItemSelect.png",
+        "Scene/UI/SetingNormal.png",
+        "Scene/UI/SetingSelect.png",
+        "Scene/UI/MapNormal.png",
+        "Scene/UI/MapSelect.png",
+        "Scene/UI/SaveNormal.png",
+        "Scene/UI/SaveSelect.png",
+        "Scene/UI/CloseNormal.png",     // 虽然被注释，建议预载
+        "Scene/UI/CloseSelected.png",
+
+        // --- 字体资源 ---
+        "fonts/ZCOOLKuaiLe-Regular.ttf", // 预热字体可以防止 Label 首次渲染卡顿
+
+        // --- 音频资源 ---
+        "Scene/MusicOfScene/Music_HelloWorldScene.mp3"
+    };
+}
+
+//此函数可以作为模板，注册主菜单场景到全局场景注册中心
+void HelloWorld::setupRegistry()
+{
+    SceneInfo info;
+
+    info.creator = []() { return HelloWorld::createScene(); };
+    info.imagePaths = HelloWorld::getPreloadResourcePaths();
+
+    // 利用你的 Helper 进行预热
+    info.onResourcesLoaded = []() {
+        CCLOG("HelloWorld: Pre-warming particles via Helper...");
+
+        // 1. 预热通用粒子（伤害、升级等，防止战斗卡顿）
+        ParticlePreloadHelper::preloadCommonParticles();
+
+        // 2. 预热主菜单特有粒子（如果有不在 Common 列表里的）
+        // ParticlePreloadHelper::preloadParticlePlists({"Particle/special_menu_effect.plist"});
+
+        // 3. 预热音频
+        //cocos2d::AudioEngine::preload("Scene/MusicOfScene/Music_HelloWorldScene.mp3");
+        };
+
+    SceneRegistry::getInstance()->registerScene(SceneID::HELLO_WORLD, info);
 }

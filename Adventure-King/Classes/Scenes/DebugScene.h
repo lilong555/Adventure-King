@@ -268,7 +268,7 @@ private:
     float _cachedPhysicsSpeed = 1.0f;   ///< 暂停前物理世界 speed 值
 
     /// 地面Y坐标基准线
-    static constexpr float GROUND_Y = GameConfig::Debug::GROUND_Y;
+    static constexpr float GROUND_Y = GameSceneConfig::Debug::GROUND_Y;
 
     /// 平台列表（存储平台的矩形区域，用于可视化）
     std::vector<cocos2d::Rect> _platforms;
@@ -326,7 +326,7 @@ private:
     //=========================================================================
 
     std::vector<std::string> _damageLog;   ///< 伤害日志记录
-    static constexpr size_t MAX_LOG_LINES = GameConfig::Debug::MAX_LOG_LINES; ///< 日志最大显示行数
+    static constexpr size_t MAX_LOG_LINES = GameSceneConfig::Debug::MAX_LOG_LINES; ///< 日志最大显示行数
 
     //=========================================================================
     // 成员变量 - 死亡重置系统
@@ -334,5 +334,5 @@ private:
 
     bool _isDeathResetPending = false;               ///< 是否正在等待死亡重置
     float _deathResetTimer = 0.0f;                   ///< 死亡重置倒计时
-    static constexpr float DEATH_RESET_DELAY = GameConfig::Debug::DEATH_RESET_DELAY; ///< 死亡后重置延迟（秒）
+    static constexpr float DEATH_RESET_DELAY = GameSceneConfig::Debug::DEATH_RESET_DELAY; ///< 死亡后重置延迟（秒）
 };

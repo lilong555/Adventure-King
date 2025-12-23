@@ -1,5 +1,5 @@
 #include "SetMenuLayer.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 #include "Managers/MusicManager.h" // 引入音乐管理器
 #include "ui/UISlider.h"  // 引入 Slider
 #include "cocos2d.h"
@@ -190,7 +190,7 @@ void SettingMenuLayer::layoutUI()
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    float targetHeight = visibleSize.height * GameConfig::UI::SettingMenu::TARGET_HEIGHT_RATIO;
+    float targetHeight = visibleSize.height * GameSceneConfig::UI::SettingMenu::TARGET_HEIGHT_RATIO;
 
     float scaleY = targetHeight / _background->getContentSize().height;
     _background->setScale(scaleY);

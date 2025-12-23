@@ -1,3 +1,4 @@
+// 游戏相关数值配置
 #pragma once
 #include "cocos2d.h"
 #include <algorithm>
@@ -477,88 +478,7 @@ namespace GameConfig
         inline constexpr float ARMOR_CONST = 100.0f;
     }
 
-    namespace Scene
-    {
-        const char *const DEFAULT_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
-        const char *const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/default/spr_klee_run.png";
-        const char *const MAP_LOAD_FAILED_TEXT = " - Map Load Failed";
-        // 场景切换
-        inline constexpr float TRANSITION_DURATION = 0.5f;
-        inline constexpr float MENU_TRANSITION_DURATION = 0.6f;
-        inline constexpr float TRANSITION_MESSAGE_DELAY = 1.0f;
-        inline constexpr float TRANSITION_FADE_DURATION = 0.8f;
-        // 层级
-        inline constexpr int BACKGROUND_Z_ORDER = -1;
-        inline constexpr int PLAYER_Z_ORDER = 5;
-        inline constexpr int COLLISION_DEBUG_Z_ORDER = 100;
-    }
-
-    namespace Map
-    {
-        namespace OriginMushroom
-        {
-            inline constexpr int BACKGROUND_COUNT = 6;
-            const char *const BACKGROUND_PREFIX = "Map/Origin_Mushroom/Origin_Mushroom_";
-        }
-    }
-    namespace UI
-    {
-        const char *const GATE_INTERACTION_HINT = "Press W to enter gate";
-        inline constexpr int Z_ORDER = 100;
-        inline constexpr float UPDATE_INTERVAL_SECONDS = 0.05f;
-        inline constexpr int SKILL_BAR_SLOT_COUNT = 4;
-
-        inline constexpr float PADDING = 20.0f;
-        inline constexpr float STATUS_BAR_OFFSET_X = 50.0f;
-        // 技能栏默认 4 个槽位：偏移适当增大，避免最右侧槽位超出屏幕
-        inline constexpr float SKILL_BAR_OFFSET_X = 220.0f;
-        inline constexpr float SKILL_BAR_OFFSET_Y = 80.0f;
-        inline constexpr float BOSS_BAR_OFFSET_Y = 60.0f;
-        inline constexpr float MAP_BUTTON_OFFSET = 40.0f;
-        inline constexpr float INTERACTION_HINT_OFFSET_Y = 80.0f;
-        inline constexpr float LEVEL_NAME_OFFSET_X = 100.0f;
-        inline constexpr float LEVEL_NAME_OFFSET_Y = 100.0f;
-
-        namespace MainMenu
-        {
-            // 主菜单布局与音乐
-            inline constexpr float BUTTON_HORIZONTAL_SPACING = 180.0f;
-            inline constexpr float SUB_MENU_Y_MULTIPLIER = 1.2f;
-            inline constexpr float MENU_OFFSET_Y_DIVISOR = 20.0f;
-            inline constexpr int CONTENT_Z_ORDER = 5;
-            inline constexpr int MENU_Z_ORDER = 1;
-            inline constexpr float BGM_VOLUME = 0.5f;
-            inline constexpr float BGM_DELAY_SECONDS = 0.1f;
-        }
-
-        namespace SaveMenu
-        {
-            // 存档菜单整体缩放
-            inline constexpr float TARGET_HEIGHT_RATIO = 0.7f;
-        }
-
-        namespace SettingMenu
-        {
-            // 设置菜单整体缩放
-            inline constexpr float TARGET_HEIGHT_RATIO = 0.6f;
-        }
-    }
-
-    namespace Save
-    {
-        // 存档槽位与自动存档
-        inline constexpr int MAX_SLOTS = 5;
-        inline constexpr float AUTO_SAVE_INTERVAL_SECONDS = 300.0f;
-    }
-
-    namespace Debug
-    {
-        // 调试场景常量
-        inline constexpr float JUMP_IMPULSE = 350.0f;
-        inline constexpr float GROUND_Y = 100.0f;
-        inline constexpr size_t MAX_LOG_LINES = 5;
-        inline constexpr float DEATH_RESET_DELAY = 2.0f;
-    }
+    
     // --- 物理材质 (密度, 弹性, 摩擦) ---
     // 可以在代码中直接使用: PhysicsBody::createBox(size, GameConfig::Material::DEFAULT)
     namespace Material

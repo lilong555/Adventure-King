@@ -1,32 +1,20 @@
 #include "Scenes/LoadingScene.h"
+#include "Scenes/HelloWorldScene.h"
 #include "Managers/SceneRegistry.h"
-#include "Scenes/DebugScene.h"
-#include "Scenes/HomeScene.h"
-#include "Scenes/MapScene.h"
-#include"Scenes/LevelScenes/OriginMushroomScene.h"
-#include"Scenes/LevelScenes/MysteryForestScene.h"
-#include"Managers/MusicManager.h"
+#include "Managers/MusicManager.h"
 #include "Utils/ParticlePreloadHelper.h"
 #include "Utils/ImeHelper.h"
-#include "2d/CCTransition.h"
-#include <algorithm>
-#include <unordered_set>
+#include "Configs/GameSceneConfig.h"
 
 USING_NS_CC;
 
-namespace
-{
-    constexpr float kBarWidthRatio = 0.75f;
-    constexpr float kBarHeight = 16.0f;
-    constexpr float kBarBottomPadding = 22.0f;
-    constexpr float kBarFillPadding = 2.0f;
-}
+// 使用配置中的常量缩写
+using namespace GameSceneConfig::UI::Loading;
 
-Scene* LoadingScene::createScene(int mapId)
-{
+// --- 静态创建方法 ---
+Scene* LoadingScene::createScene(SceneID id) {
     auto scene = new (std::nothrow) LoadingScene();
-    if (scene && scene->initWithMapId(mapId))
-    {
+    if (scene && scene->initWithSceneId(id)) {
         scene->autorelease();
         return scene;
     }
@@ -34,339 +22,220 @@ Scene* LoadingScene::createScene(int mapId)
     return nullptr;
 }
 
-LoadingScene::~LoadingScene()
-{
-    if (!_callbackKey.empty())
-    {
-        if (auto cache = Director::getInstance()->getTextureCache())
-        {
-            cache->unbindImageAsync(_callbackKey);
-        }
+// --- 析构函数：清理异步回调和待切换场景 ---
+LoadingScene::~LoadingScene() {
+    if (!_callbackKey.empty()) {
+        Director::getInstance()->getTextureCache()->unbindImageAsync(_callbackKey);
     }
 
-    if (_pendingDestinationScene)
-    {
+    if (_pendingDestinationScene) {
         _pendingDestinationScene->release();
         _pendingDestinationScene = nullptr;
     }
 }
 
-bool LoadingScene::init()
-{
-    if (!Scene::init())
-    {
-        return false;
-    }
+// --- 初始化与 UI 布局 ---
+bool LoadingScene::init() {
+    if (!Scene::init()) return false;
     return true;
 }
 
-void LoadingScene::onEnter()
-{
-    Scene::onEnter();
-    ImeHelper::pushDisableIme();
-}
+bool LoadingScene::initWithSceneId(SceneID id) {
+    if (!init()) return false;
 
-void LoadingScene::onExit()
-{
-    ImeHelper::popDisableIme();
-    Scene::onExit();
-}
-
-bool LoadingScene::initWithMapId(int mapId)
-{
-    if (!init())
-    {
-        return false;
-    }
-    MusicManager::getInstance()->stopBGM();
-    _mapId = mapId;
+    _targetId = id;
     _callbackKey = StringUtils::format("LoadingScene_%p", this);
+
+    // 1. 停止背景音乐，准备进入新环境
+    MusicManager::getInstance()->stopBGM();
 
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
 
-    // 背景遮罩（简洁黑底）
+    // 2. 绘制纯黑背景
     auto bg = LayerColor::create(Color4B(0, 0, 0, 255));
     addChild(bg);
 
-    // 文本
-    _label = Label::createWithTTF("加载中...", "fonts/ZCOOLKuaiLe-Regular.ttf", 28);
-    if (_label)
-    {
-        _label->setPosition(Vec2(origin.x + visibleSize.width * 0.5f,
-                                 origin.y + visibleSize.height * 0.55f));
+    // 3. 创建加载提示文本
+    _label = Label::createWithTTF("正在读取资源...", GameSceneConfig::Scene::DEFAULT_FONT_PATH, 28);
+    if (_label) {
+        _label->setPosition(Vec2(origin.x + visibleSize.width * 0.5f, origin.y + visibleSize.height * 0.55f));
         _label->setColor(Color3B(240, 240, 240));
         addChild(_label, 10);
     }
 
-    // 进度条（底部）
-    const float barWidth = visibleSize.width * kBarWidthRatio;
+    // 4. 创建进度条 UI
+    const float barWidth = visibleSize.width * BAR_WIDTH_RATIO;
     const float barX = origin.x + (visibleSize.width - barWidth) * 0.5f;
-    const float barY = origin.y + kBarBottomPadding;
+    const float barY = origin.y + BAR_BOTTOM_PADDING;
 
-    _barBg = LayerColor::create(Color4B(40, 40, 40, 255), barWidth, kBarHeight);
-    _barBg->setAnchorPoint(Vec2::ANCHOR_BOTTOM_LEFT);
+    _barBg = LayerColor::create(Color4B(40, 40, 40, 255), barWidth, BAR_HEIGHT);
     _barBg->setPosition(Vec2(barX, barY));
     addChild(_barBg, 10);
 
-    const float fillWidth = std::max(0.0f, barWidth - kBarFillPadding * 2.0f);
-    const float fillHeight = std::max(0.0f, kBarHeight - kBarFillPadding * 2.0f);
-    _barFill = LayerColor::create(Color4B(180, 220, 255, 255), 0.0f, fillHeight);
-    _barFill->setAnchorPoint(Vec2::ANCHOR_BOTTOM_LEFT);
-    _barFill->setPosition(Vec2(barX + kBarFillPadding, barY + kBarFillPadding));
+    _barFill = LayerColor::create(Color4B(180, 220, 255, 255), 0.0f, BAR_HEIGHT - BAR_FILL_PADDING * 2.0f);
+    _barFill->setPosition(Vec2(barX + BAR_FILL_PADDING, barY + BAR_FILL_PADDING));
     addChild(_barFill, 11);
 
-    // 第一帧开始加载（确保 UI 先显示出来）
-    runAction(Sequence::create(DelayTime::create(0.0f),
-                               CallFunc::create([this]()
-                                                { this->startPreload(); }),
-                               nullptr));
+    // 5. 延迟一帧启动预加载，确保 UI 先显示出来
+    this->scheduleOnce([this](float) { this->startPreload(); }, 0.0f, "StartPreloadLogic");
+
     return true;
 }
 
-void LoadingScene::startPreload()
-{
-    if (_finished)
-    {
-        return;
-    }
+// --- 核心预加载逻辑 ---
+void LoadingScene::startPreload() {
+    if (_finished) return;
 
     _finishScheduled = false;
-    _paths = buildPreloadList(_mapId);
+    _paths = buildPreloadList(_targetId);
     _total = static_cast<int>(_paths.size());
     _loaded = 0;
 
-    if (_total <= 0)
-    {
-        // 延后一帧执行，避免与 startPreload 的调用栈重入
+    // 如果没有资源需要加载，直接结束
+    if (_total <= 0) {
         _finishScheduled = true;
-        runAction(Sequence::create(DelayTime::create(0.0f),
-                                   CallFunc::create([this]()
-                                                    { this->finishPreload(); }),
-                                   nullptr));
+        this->scheduleOnce([this](float) { this->finishPreload(); }, 0.0f, "FinishImmediate");
         return;
     }
 
     auto textureCache = Director::getInstance()->getTextureCache();
     auto fileUtils = FileUtils::getInstance();
 
-    std::vector<std::string> pending;
-    pending.reserve(_paths.size());
-
-    // 已缓存/缺失资源直接计入完成，避免 addImageAsync 在已加载路径上走同步回调导致重入
-    for (const auto& path : _paths)
-    {
-        const std::string fullPath = fileUtils ? fileUtils->fullPathForFilename(path) : "";
-        if (fullPath.empty())
-        {
-            CCLOG("LoadingScene: 预加载资源缺失：%s", path.c_str());
-            _loaded = std::min(_loaded + 1, _total);
+    std::vector<std::string> pendingPaths;
+    for (const auto& path : _paths) {
+        std::string fullPath = fileUtils->fullPathForFilename(path);
+        // 如果资源不存在或已在内存中，直接计入完成
+        if (fullPath.empty() || textureCache->getTextureForKey(fullPath)) {
+            _loaded++;
             continue;
         }
-        if (textureCache && textureCache->getTextureForKey(fullPath))
-        {
-            _loaded = std::min(_loaded + 1, _total);
-            continue;
-        }
-        pending.push_back(path);
+        pendingPaths.push_back(path);
     }
 
     updateProgressUI();
-    if (_loaded >= _total)
-    {
+
+    // 如果所有资源都在内存里了
+    if (_loaded >= _total) {
         _finishScheduled = true;
-        runAction(Sequence::create(DelayTime::create(0.0f),
-                                   CallFunc::create([this]()
-                                                    { this->finishPreload(); }),
-                                   nullptr));
+        this->scheduleOnce([this](float) { this->finishPreload(); }, 0.0f, "FinishCached");
         return;
     }
 
-    for (const auto& path : pending)
-    {
-        textureCache->addImageAsync(path,
-                                    [this](Texture2D* texture)
-                                    {
-                                        this->onTextureLoaded(texture);
-                                    },
-                                    _callbackKey);
+    // 执行异步加载
+    for (const auto& path : pendingPaths) {
+        textureCache->addImageAsync(path, [this](Texture2D* tex) {
+            this->onTextureLoaded(tex);
+            }, _callbackKey);
     }
 }
 
-void LoadingScene::onTextureLoaded(Texture2D* /*texture*/)
-{
-    if (_finished)
-    {
-        return;
-    }
+// --- 单个贴图加载回调 ---
+void LoadingScene::onTextureLoaded(Texture2D* texture) {
+    if (_finished) return;
 
     _loaded = std::min(_loaded + 1, _total);
     updateProgressUI();
 
-    if (_loaded >= _total && !_finishScheduled)
-    {
+    if (_loaded >= _total && !_finishScheduled) {
         _finishScheduled = true;
-        // 避免在 addImageAsync 的同步回调路径里直接触发换场景，延后一帧执行
-        runAction(Sequence::create(DelayTime::create(0.0f),
-                                   CallFunc::create([this]()
-                                                    { this->finishPreload(); }),
-                                   nullptr));
+        // 延后一帧结束，确保 UI 更新完毕且避免回调死循环
+        this->scheduleOnce([this](float) { this->finishPreload(); }, 0.0f, "DelayFinish");
     }
 }
 
-void LoadingScene::finishPreload()
-{
+// --- 预加载全部完成后的清理与场景创建 ---
+void LoadingScene::finishPreload() {
     if (_finished) return;
     _finished = true;
 
-    // 粒子预热：使用 plist 内嵌纹理的粒子首次触发会解码/上传贴图，提前在加载阶段完成
-    if (_label)
-    {
-        _label->setString("粒子预热中...");
-    }
-    ParticlePreloadHelper::preloadCommonParticles();
+    if (_label) _label->setString("正在初始化关卡...");
 
-    auto info = SceneRegistry::getInstance()->getSceneInfo(_mapId);
-    Scene* destinationScene = nullptr;
+    auto registry = SceneRegistry::getInstance();
+    auto info = registry->getSceneInfo(_targetId);
 
     if (info) {
-        // 1. 执行注册好的预热回调 (AnimationCache 等)
+        // 1. 执行逻辑预热 (如生成动画缓存)
         if (info->onResourcesLoaded) {
             info->onResourcesLoaded();
         }
 
-        // 2. 使用工厂方法创建目标场景
-        if (info->creator) {
-            destinationScene = info->creator();
+        // 2. 粒子系统通用预热
+        ParticlePreloadHelper::preloadCommonParticles();
+
+        // 3. 利用注册表工厂方法创建目标场景
+        auto destScene = registry->createSceneInstance(_targetId);
+        if (destScene) {
+            destScene->retain(); // 手动引用计数加1，防止在切换前被销毁
+            _pendingDestinationScene = destScene;
+            tryReplacePendingScene();
+            return;
         }
     }
 
-    if (destinationScene)
-    {
-        // 延迟到 TransitionScene 结束后再切，避免嵌套 replaceScene 导致崩溃
-        if (_pendingDestinationScene)
-        {
-            _pendingDestinationScene->release();
-        }
-        _pendingDestinationScene = destinationScene;
-        _pendingDestinationScene->retain();
-        tryReplacePendingScene();
-        return;
+    // 容错：如果失败，回到主菜单
+    CCLOG("LoadingScene Error: SceneID %d creation failed!", (int)_targetId);
+    auto fallback = HelloWorld::createScene();
+    fallback->retain();
+    _pendingDestinationScene = fallback;
+    tryReplacePendingScene();
+}
+
+// --- 进度条刷新 ---
+void LoadingScene::updateProgressUI() {
+    float percent = (_total > 0) ? (static_cast<float>(_loaded) / _total) : 1.0f;
+
+    if (_label) {
+        _label->setString(StringUtils::format("加载中... (%d/%d)", _loaded, _total));
     }
 
-    // 容错处理：如果注册表中没找到，回退到默认
-    if (!info)
-    {
-        CCLOG("Error: MapID %d not found in registry!", _mapId);
-    }
-    else
-    {
-        CCLOG("Error: MapID %d create scene failed (creator is %s)", _mapId, info->creator ? "set" : "null");
-    }
-
-    auto fallback = MapScene::createScene();
-    if (fallback)
-    {
-        if (_pendingDestinationScene)
-        {
-            _pendingDestinationScene->release();
-        }
-        _pendingDestinationScene = fallback;
-        _pendingDestinationScene->retain();
-        tryReplacePendingScene();
+    if (_barFill && _barBg) {
+        float availableWidth = _barBg->getContentSize().width - BAR_FILL_PADDING * 2.0f;
+        _barFill->setContentSize(Size(availableWidth * percent, _barFill->getContentSize().height));
     }
 }
 
-void LoadingScene::tryReplacePendingScene()
-{
-    if (!_pendingDestinationScene)
-    {
-        return;
-    }
-
-    auto director = Director::getInstance();
-    auto running = director ? director->getRunningScene() : nullptr;
-    if (running && dynamic_cast<TransitionScene*>(running))
-    {
-        // 仍处于过渡场景中（比如从 MapScene 淡入 LoadingScene），延后一帧再尝试切换
-        scheduleOnce([this](float)
-                     { this->tryReplacePendingScene(); },
-                     0.0f,
-                     "TryReplacePendingScene");
-        return;
-    }
-
-    director->replaceScene(_pendingDestinationScene);
-    _pendingDestinationScene->release();
-    _pendingDestinationScene = nullptr;
-}
-
-void LoadingScene::updateProgressUI()
-{
-    float percent = 0.0f;
-    if (_total > 0)
-    {
-        percent = 100.0f * static_cast<float>(_loaded) / static_cast<float>(_total);
-        percent = std::max(0.0f, std::min(100.0f, percent));
-    }
-
-    if (_label)
-    {
-        if (_total > 0)
-        {
-            _label->setString(StringUtils::format("加载中... (%d/%d)", _loaded, _total));
-        }
-        else
-        {
-            _label->setString("加载中...");
-        }
-    }
-
-    if (_barBg && _barFill)
-    {
-        const float totalWidth = _barBg->getContentSize().width - kBarFillPadding * 2.0f;
-        const float fillWidth = std::max(0.0f, totalWidth * (percent / 100.0f));
-        _barFill->setContentSize(Size(fillWidth, _barFill->getContentSize().height));
-    }
-}
-
-std::vector<std::string> LoadingScene::buildPreloadList(int mapId) const
-{
+// --- 根据注册表构建资源列表 ---
+std::vector<std::string> LoadingScene::buildPreloadList(SceneID id) const {
     std::vector<std::string> paths;
 
-    // 1. 加载所有场景通用的基础资源 (UI 等)
-    paths.push_back("Scene/Backgrounds/MapBackground.png");
-    // 粒子特效使用 plist 内嵌纹理，不需要预加载 particle_texture.png
+    // 通用资源 (如所有关卡都用的 UI 框)
+    paths.push_back("Scene/Backgrounds/CommonLoading.png");
 
-    // 2. 从注册表中获取该 ID 特有的资源
-    auto info = SceneRegistry::getInstance()->getSceneInfo(mapId);
+    // 从注册表获取特定场景资源
+    auto info = SceneRegistry::getInstance()->getSceneInfo(id);
     if (info) {
-        // 将特定场景的资源合并进来
         paths.insert(paths.end(), info->imagePaths.begin(), info->imagePaths.end());
     }
 
     return paths;
 }
 
-Scene* LoadingScene::createDestinationScene(int mapId) const
-{
-    Scene* scene = nullptr;
-    switch (mapId)
-    {
-    case HomeScene::MAP_ID:
-        scene = HomeScene::createScene();
-        break;
-    case 1:
-        scene = OriginMushroomScene::createScene();
-        break;
-    case 2:
-        scene = MysteryForestScene::createScene();
-        break;
-    case 99:
-        scene = DebugScene::createScene();
-        break;
-    default:
-        break;
+// --- 安全切换场景：处理 TransitionScene 的冲突 ---
+void LoadingScene::tryReplacePendingScene() {
+    if (!_pendingDestinationScene) return;
+
+    auto director = Director::getInstance();
+    auto runningScene = director->getRunningScene();
+
+    // 如果当前正在执行淡入淡出等过渡动画，则等待下一帧再试
+    if (dynamic_cast<TransitionScene*>(runningScene)) {
+        this->scheduleOnce([this](float) { this->tryReplacePendingScene(); }, 0.0f, "RetrySceneReplace");
+        return;
     }
-    return scene;
+
+    // 执行最终替换
+    director->replaceScene(_pendingDestinationScene);
+    _pendingDestinationScene->release(); // 释放 retain
+    _pendingDestinationScene = nullptr;
+}
+
+void LoadingScene::onEnter() {
+    Scene::onEnter();
+    ImeHelper::pushDisableIme(); // 加载期间禁止输入法干扰
+}
+
+void LoadingScene::onExit() {
+    ImeHelper::popDisableIme();
+    Scene::onExit();
 }

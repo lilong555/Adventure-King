@@ -207,6 +207,9 @@
     <ClCompile Include="..\Classes\Character\components\EquipmentComponent.cpp">
       <Filter>src\Character\components</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\Layers\BagLayer.cpp">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -364,6 +367,18 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Character\components\EquipmentComponent.h">
       <Filter>src\Character\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\Layers\BagLayer.h">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Utils\ParticlePreloadHelper.h">
+      <Filter>src\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Utils\PhysicsBodyLocalInfoHelper.h">
+      <Filter>src\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Utils\SpriteFrameCacheHelper.h">
+      <Filter>src\Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

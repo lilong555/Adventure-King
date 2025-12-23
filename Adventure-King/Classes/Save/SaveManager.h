@@ -2,6 +2,7 @@
 
 #include "SaveData.h"
 #include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 #include "cocos2d.h"
 #include <chrono>
 #include <functional>
@@ -24,7 +25,7 @@ public:
     static void destroyInstance();
 
     // 存档槽位数量
-    static constexpr int MAX_SAVE_SLOTS = GameConfig::Save::MAX_SLOTS;
+    static constexpr int MAX_SAVE_SLOTS = GameSceneConfig::Save::MAX_SLOTS;
     static constexpr int AUTO_SAVE_SLOT = MAX_SAVE_SLOTS - 1; // 预留自动存档槽
 
     //================== 核心存档操作 ==================
@@ -166,7 +167,7 @@ private:
 
     // 自动存档相关
     bool _autoSaveEnabled = false;
-    float _autoSaveInterval = GameConfig::Save::AUTO_SAVE_INTERVAL_SECONDS; // 默认 5 分钟
+    float _autoSaveInterval = GameSceneConfig::Save::AUTO_SAVE_INTERVAL_SECONDS; // 默认 5 分钟
     float _autoSaveTimer = 0.0f;
     int _lastAutoSaveSlot = -1; // 上次自动存档的槽位
 

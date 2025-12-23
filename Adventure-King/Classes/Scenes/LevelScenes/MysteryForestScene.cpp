@@ -57,6 +57,6 @@ void MysteryForestScene::setupRegistry()
         "Map/dungeon/3.png",
         "Map/dungeon/4.png",
     };
-
-    SceneRegistry::getInstance()->registerScene(2, info);
+    //注意，这里不用硬编码的MapID
+    SceneRegistry::getInstance()->registerScene(SceneID::LEVEL_MYSTERY_FOREST, info);
 }

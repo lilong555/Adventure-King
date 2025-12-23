@@ -1,7 +1,7 @@
 #include "SkillComponent.h"
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h" // 确保包含属性组件头文件
-#include "Configs/GameConfigs.h"
+#include "Configs/GameSceneConfig.h"
 
 USING_NS_CC;
 
@@ -21,7 +21,7 @@ bool SkillComponent::init()
         return false;
     }
     // 初始化主动技能槽位，防止越界
-    _activeSlots.resize(GameConfig::UI::SKILL_BAR_SLOT_COUNT, nullptr);
+    _activeSlots.resize(GameSceneConfig::UI::SKILL_BAR_SLOT_COUNT, nullptr);
     // 被动技能取消槽位限制：用列表表示“已装备的被动技能”
     _passiveSlots.clear();
     return true;
