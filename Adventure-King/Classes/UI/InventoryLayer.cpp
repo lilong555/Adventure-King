@@ -371,7 +371,6 @@ bool InventoryLayer::init()
     createBackground();
     createPanel();
     createTabs();
-    buildSkillTemplates();
     createPages();
     createDetailOverlay();
 
@@ -411,7 +410,11 @@ void InventoryLayer::bindPlayer(PlayerCharacter *player)
 {
     _player = player;
     // 绑定新角色后需要重新构建模板，否则会出现“战士/刺客仍显示法师技能”的问题。
+    _selectedActiveSlotIndex = 0;
+    _selectedEquipSlotIndex = -1;
+    _selectedInventoryItemId = -1;
     _selectedSkillId = -1;
+    hideDetailOverlay();
     buildSkillTemplates();
     refresh();
 }
@@ -424,6 +427,12 @@ void InventoryLayer::show()
     }
     _isShowing = true;
     setVisible(true);
+
+    // 保险：如果 UI 先创建、后绑定玩家，则模板在 init 阶段不会生成，这里兜底一次。
+    if (_player && _skillTemplates.empty())
+    {
+        buildSkillTemplates();
+    }
 
     refresh();
     _container->setOpacity(0);
@@ -596,7 +605,7 @@ void InventoryLayer::buildSkillTemplates()
     _skillTemplates.clear();
 
     // 主动技能模板需要按职业区分，否则不同职业会错误显示“法师技能”。
-    CharacterRole role = CharacterRole::MAGE;
+    CharacterRole role = CharacterRole::WARRIOR;
     if (_player)
     {
         role = _player->getRole();
@@ -614,13 +623,9 @@ void InventoryLayer::buildSkillTemplates()
         t.manaCost = GameConfig::Assassin::SlashSkill::SLASH_MP;
         _skillTemplates.push_back(t);
     }
-    else if (role == CharacterRole::WARRIOR)
+    else if (role == CharacterRole::MAGE)
     {
-        // 战士：当前暂无可学习/可装备的主动技能（后续新增时在这里补模板）
-    }
-    else
-    {
-        // 法师/默认：炸弹 + 火球
+        // 法师：炸弹 + 火球
         {
             SkillTemplate t;
             t.id = GameConfig::Bomb::BOMB_ID;
@@ -642,6 +647,10 @@ void InventoryLayer::buildSkillTemplates()
             t.manaCost = GameConfig::Fireball::FIREBALL_MP;
             _skillTemplates.push_back(t);
         }
+    }
+    else
+    {
+        // 战士/坦克/其它：当前暂无可学习/可装备的主动技能（后续新增时在这里补模板）
     }
 
     // 被动：体魄
@@ -1939,15 +1948,6 @@ void InventoryLayer::refreshSkillPage()
         center + Vec2(0, -220),
     };
 
-    // 连线占位（仅用于布局示意）
-    auto lines = DrawNode::create();
-    const Color4F lineColor(0.65f, 0.65f, 0.75f, 0.55f);
-    for (size_t i = 1; i < nodePositions.size(); ++i)
-    {
-        lines->drawLine(nodePositions[0], nodePositions[i], lineColor);
-    }
-    treeScroll->getInnerContainer()->addChild(lines, 0);
-
     // 主动技能节点：仅展示主动技能模板
     std::vector<const SkillTemplate *> activeTemplates;
     activeTemplates.reserve(_skillTemplates.size());
@@ -1960,6 +1960,29 @@ void InventoryLayer::refreshSkillPage()
     }
 
     const size_t showCount = std::min(nodePositions.size(), activeTemplates.size());
+
+    // 连线：仅连接“实际会显示出来”的节点，避免出现连到空气上的线
+    if (showCount > 1)
+    {
+        auto lines = DrawNode::create();
+        const Color4F lineColor(0.65f, 0.65f, 0.75f, 0.55f);
+        for (size_t i = 1; i < showCount; ++i)
+        {
+            lines->drawLine(nodePositions[0], nodePositions[i], lineColor);
+        }
+        treeScroll->getInnerContainer()->addChild(lines, 0);
+    }
+
+    if (showCount == 0)
+    {
+        // 当前职业没有主动技能：给出明确提示，避免玩家以为 UI 出问题
+        if (auto hint = createUiLabel("当前职业暂无主动技能", 30.0f, Color3B(200, 200, 200)))
+        {
+            hint->setPosition(Vec2(treeRect.size.width * 0.5f, treeRect.size.height * 0.5f));
+            treeScroll->getInnerContainer()->addChild(hint, 2);
+        }
+    }
+
     for (size_t i = 0; i < showCount; ++i)
     {
         const auto &tpl = *activeTemplates[i];
