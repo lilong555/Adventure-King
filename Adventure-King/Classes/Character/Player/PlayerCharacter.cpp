@@ -12,6 +12,7 @@
 #include "Configs/GameConfigs.h"
 #include "Configs/GamePhysicsCategory.h"
 #include "Utils/PhysicsBodyLocalInfoHelper.h"
+#include "Utils/ParticleVfxHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 
@@ -488,17 +489,7 @@ void PlayerCharacter::applyAttributeGrowth()
  */
 void PlayerCharacter::playLevelUpVFX()
 {
-    auto particle = cocos2d::ParticleSystemQuad::create("Particle/par_levelup.plist");
-    if (!particle) return;
-
-    particle->setAutoRemoveOnFinish(true);
-    particle->setPositionType(cocos2d::ParticleSystem::PositionType::GROUPED);
-
-    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
-    particle->setPosition(bodyInfo.center);
-
-    // --- 修正点：添加 Z-Order 参数 (例如 999 或配置常量) ---
-    this->addChild(particle, 999);
+    ParticleVfxHelper::playOnce(this, "Particle/par_levelup.plist");
 }
 
 bool PlayerCharacter::upgradeAttribute(AttributeType type)
