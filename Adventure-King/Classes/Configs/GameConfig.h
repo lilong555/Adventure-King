@@ -187,7 +187,7 @@ namespace GameConfig
         inline constexpr float JUMP_FORCE = 400.0f;
         inline constexpr int MAX_JUMP_COUNT = 2;
         inline constexpr float JUMP_IMPULSE = 650.0f; ///< 跳跃冲量
-        inline constexpr float SCALE = 0.25f;
+        inline constexpr float SCALE = 0.4f;
         // 角色素材缩放补偿：
         // 不同职业的原始 PNG 像素尺寸/留白不一致（例如战士素材更“宽大”，刺客素材更“扁平”），
         // 如果统一使用同一个 SCALE，会导致游戏内可视体/物理体/攻击判定范围的“实际大小”不合理。
@@ -391,7 +391,7 @@ namespace GameConfig
         namespace Obscur
         {
             // 基础属性（可后续按数值体验再调）
-            inline constexpr float MAX_HP = 1200.0f;
+            inline constexpr float MAX_HP = 700.0f;
             inline constexpr float MAX_MP = 0.0f;
             inline constexpr float STRENGTH = 18.0f;
             inline constexpr float DEFENSE = 4.0f;
@@ -413,7 +413,7 @@ namespace GameConfig
             inline constexpr bool PATROL_ENABLED = true;
 
             // 体型/碰撞盒：要求像 Goblu 一样自定义“实际碰撞箱”
-            inline constexpr float SCALE = Base::SCALE;
+            inline constexpr float SCALE = (1.5f) * Base::SCALE;
             inline constexpr float HP_BAR_SCALE = 2.0f;
             inline constexpr float PHYSICS_BOX_WIDTH = 235.0f;
             inline constexpr float PHYSICS_BOX_HEIGHT = 449.0f;

@@ -2,7 +2,7 @@
 #define __SCENE_TRANSITION_MANAGER_H__
 
 #include "cocos2d.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Configs/GameSceneConfig.h"
 #include <functional>
 #include <string>

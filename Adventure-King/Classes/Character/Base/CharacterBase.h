@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cocos2d.h"
+#include <functional> 
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/Base/CharacterData.h"
@@ -101,7 +102,7 @@ public:
     /// @brief 设置经验值
     void setExperience(int exp) { _experience = exp; }
 
-    // SkillComponent 使用技能时的回调
+    // SkillComponent 使用技能时的回调（子类重写）
     virtual void onUseActiveSkill(const ActiveSkill& skill) {}
 
     // 角色攻击力（用于 DOT 等需要“来源攻击力”计算的场景）
@@ -109,9 +110,16 @@ public:
     /// @brief 获取攻击力（用于 DOT 计算）
     virtual float getAttackPower();
 
+    // 定义回调类型：将死亡的角色自身指针传回，方便外部识别是谁死了
+    using DeathCallback = std::function<void(CharacterBase*)>;
+
+    /// @brief 设置死亡回调
+    void setOnDeathCallback(const DeathCallback& callback) { _onDeathCallback = callback; }
+
 protected:
     CharacterBase();
 
+    DeathCallback _onDeathCallback = nullptr;
     // 受击特效调参（在头文件修改即可生效）
     struct HurtVfxParams
     {

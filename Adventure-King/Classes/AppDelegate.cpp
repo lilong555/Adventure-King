@@ -6,7 +6,7 @@
 #include "Scenes/DebugScene.h"
 #include "Scenes/LoadingScene.h"
 #include "Scenes/HelloWorldScene.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include <cstdlib>
 
 #if USE_AUDIO_ENGINE && USE_SIMPLE_AUDIO_ENGINE

@@ -2,7 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>

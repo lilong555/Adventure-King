@@ -4,7 +4,7 @@
 #include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
 #include "Managers/SceneRegistry.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 
 USING_NS_CC;
 

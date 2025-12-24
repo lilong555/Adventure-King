@@ -6,7 +6,7 @@
 #include "PlayerStatusBar.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/AttributeComponent.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 
 USING_NS_CC;
 

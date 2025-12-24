@@ -3,7 +3,7 @@
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "cocos2d.h"
 #include <cmath>
 #include <memory>

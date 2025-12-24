@@ -204,10 +204,11 @@ public:
     /// @brief 获取角色关键字
     const std::string& getCharacterKey() const { return _characterKey; }
 
-private:
+protected:
     // 构造函数私有化，强制使用 create
     PlayerCharacter() = default;
 
+private:
     // 内部初始化流程
     /// @brief 根据职业初始化属性
     void initAttributesByRole(CharacterRole role);

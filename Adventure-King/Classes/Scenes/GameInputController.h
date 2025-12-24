@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Configs/GameSceneConfig.h"
-#include"Configs/GameConfigs.h"
+#include"Configs/GameConfig.h"
 #include "cocos2d.h"
 #include <functional>
 
