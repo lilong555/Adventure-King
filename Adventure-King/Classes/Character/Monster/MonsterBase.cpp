@@ -669,16 +669,27 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     spawnHurtVfx(info);
 
     setCurrentHP(hp);
-    updateHpBar();
 
     const bool wouldDieBeforeCallback = (hp <= 0.0f);
+
+    // 统一走“伤害结算后”钩子：用于装备/被动等触发型机制（例如：急救面罩、反伤）
+    if (auto attr = getAttributeComponent())
+    {
+        attr->executeAfterReceiveDamageHooks(info.attacker, dmg, info, wouldDieBeforeCallback);
+    }
     onReceiveDamage(info.attacker, dmg, info, wouldDieBeforeCallback);
 
     const bool died = isDead();
     if (info.attacker && info.attacker != this)
     {
+        if (auto attackerAttr = info.attacker->getAttributeComponent())
+        {
+            attackerAttr->executeAfterDealDamageHooks(this, dmg, info, died);
+        }
         info.attacker->onDealDamage(this, dmg, info, died);
     }
+
+    updateHpBar();
 
     if (died)
     {
