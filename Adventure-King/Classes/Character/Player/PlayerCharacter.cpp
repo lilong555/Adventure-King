@@ -44,23 +44,6 @@ namespace
 
     using FrameLoader = std::function<cocos2d::SpriteFrame*(const std::string&)>;
 
-    cocos2d::SpriteFrame* tryGetStableSpriteFrameNoLog(const PlayerCharacter* player, const std::string& framePath)
-    {
-        if (!player)
-        {
-            return nullptr;
-        }
-
-        // 避免探测不存在的文件导致引擎打印 “fullPathForFilename: No file found ...” 的噪音日志
-        if (SpriteFrameCacheHelper::isFilePath(framePath) && !SpriteFrameCacheHelper::isFileExistNoLog(framePath))
-        {
-            return nullptr;
-        }
-
-        // 玩家动画统一按“底部对齐”，保证脚底不跳动
-        return player->getStableSpriteFrame(framePath, true, false);
-    }
-
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths,
                                         float delayPerUnit,
@@ -234,6 +217,18 @@ cocos2d::SpriteFrame* PlayerCharacter::getStableSpriteFrame(const std::string& f
     // 关键：所有帧统一 originalSize，避免 contentSize 变化引发“锚点->物理体”映射漂移
     return SpriteFrameCacheHelper::getOrCreateSpriteFrameWithOriginalSize(
         framePath, _stableFrameOriginalSize, alignBottom, alignLeft);
+}
+
+cocos2d::SpriteFrame* PlayerCharacter::tryGetStableSpriteFrameNoLog(const std::string& framePath) const
+{
+    // 避免探测不存在的文件导致引擎打印 “fullPathForFilename: No file found ...” 的噪音日志
+    if (SpriteFrameCacheHelper::isFilePath(framePath) && !SpriteFrameCacheHelper::isFileExistNoLog(framePath))
+    {
+        return nullptr;
+    }
+
+    // 玩家动画统一按“底部对齐”，保证脚底不跳动
+    return getStableSpriteFrame(framePath, true, false);
 }
 
 void PlayerCharacter::onEnter()
@@ -949,17 +944,17 @@ void PlayerCharacter::setMoving(bool moving, bool running)
 
             // 兜底：设回默认帧
             auto defaultFrame = tryGetStableSpriteFrameNoLog(
-                this, _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
+                _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
             if (!defaultFrame)
             {
                 // 多数角色（法师/战士/Klee）使用 run.png 作为静态待机帧
                 defaultFrame = tryGetStableSpriteFrameNoLog(
-                    this, _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
             }
             if (!defaultFrame)
             {
                 defaultFrame = tryGetStableSpriteFrameNoLog(
-                    this, _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
             }
             if (defaultFrame)
             {
@@ -1682,16 +1677,16 @@ void PlayerCharacter::ensureStateAnimations()
         {
             // 静态待机：优先 run.png（法师/战士/Klee），再兜底 run_1.png / idle_1.png
             auto frame = tryGetStableSpriteFrameNoLog(
-                this, _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
+                _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
             if (!frame)
             {
                 frame = tryGetStableSpriteFrameNoLog(
-                    this, _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
             }
             if (!frame)
             {
                 frame = tryGetStableSpriteFrameNoLog(
-                    this, _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
             }
             if (frame)
             {
@@ -1709,7 +1704,7 @@ void PlayerCharacter::ensureStateAnimations()
             return;
         }
 
-        auto frame = tryGetStableSpriteFrameNoLog(this, framePath);
+        auto frame = this->tryGetStableSpriteFrameNoLog(framePath);
         if (!frame)
         {
 #if COCOS2D_DEBUG > 0

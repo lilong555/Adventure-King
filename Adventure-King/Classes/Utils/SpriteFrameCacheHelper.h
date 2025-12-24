@@ -80,19 +80,13 @@ namespace SpriteFrameCacheHelper
             return fileUtils->isFileExist(filePath);
         }
 
-        // 相对路径：用搜索路径拼接为绝对路径后再判断
-        const auto& searchPaths = fileUtils->getSearchPaths();
-        for (const auto& searchPath : searchPaths)
-        {
-            // 关键：getFullPathForDirectoryAndFilename 内部走 isFileExistInternal，不会触发 fullPathForFilename 的缺失日志
-            const std::string full = fileUtils->getFullPathForDirectoryAndFilename(searchPath, filePath);
-            if (!full.empty())
-            {
-                return true;
-            }
-        }
-
-        return false;
+        // 相对路径：使用引擎的 fullPathForFilename 解析搜索路径/分辨率目录。
+        // 关键：临时关闭 popupNotify，避免缺失时打印 “fullPathForFilename: No file found ...” 的噪音日志。
+        const bool oldPopupNotify = fileUtils->isPopupNotify();
+        fileUtils->setPopupNotify(false);
+        const std::string full = fileUtils->fullPathForFilename(filePath);
+        fileUtils->setPopupNotify(oldPopupNotify);
+        return !full.empty();
     }
 
     // 从文件创建帧，并强制使用固定原始尺寸（避免动画帧尺寸变化导致内容尺寸抖动）
