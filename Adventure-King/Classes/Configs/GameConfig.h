@@ -391,7 +391,7 @@ namespace GameConfig
         namespace Obscur
         {
             // 基础属性（可后续按数值体验再调）
-            inline constexpr float MAX_HP = 1200.0f;
+            inline constexpr float MAX_HP = 700.0f;
             inline constexpr float MAX_MP = 0.0f;
             inline constexpr float STRENGTH = 18.0f;
             inline constexpr float DEFENSE = 4.0f;
@@ -413,7 +413,7 @@ namespace GameConfig
             inline constexpr bool PATROL_ENABLED = true;
 
             // 体型/碰撞盒：要求像 Goblu 一样自定义“实际碰撞箱”
-            inline constexpr float SCALE = Base::SCALE;
+            inline constexpr float SCALE = (1.5f) * Base::SCALE;
             inline constexpr float HP_BAR_SCALE = 2.0f;
             inline constexpr float PHYSICS_BOX_WIDTH = 235.0f;
             inline constexpr float PHYSICS_BOX_HEIGHT = 449.0f;

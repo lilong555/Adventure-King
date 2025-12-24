@@ -221,14 +221,10 @@
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaTrigger"/>
-    <property name="waves">[
-    {&quot;goblin&quot;: 3},
-    {&quot;obscur&quot;: 2},
-    {&quot;goblin&quot;: 2, &quot;obscur&quot;: 2}
-]</property>
+    <property name="waves" value="[ {&quot;goblin&quot;: 3},    {&quot;obscur&quot;: 2},  {&quot;goblin&quot;: 2, &quot;obscur&quot;: 2}]"/>
    </properties>
   </object>
-  <object id="29" name="1" type="goblin" x="4720" y="528">
+  <object id="29" name="1" type="goblin" x="4660" y="508">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaSpawn"/>
@@ -242,7 +238,7 @@
    </properties>
    <point/>
   </object>
-  <object id="25" name="1" type="goblin" x="2300" y="544">
+  <object id="25" name="1" type="goblin" x="2408" y="500">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaSpawn"/>
@@ -262,7 +258,7 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="8" name="enemy_g" visible="0"/>
+ <objectgroup id="8" name="enemy_g"/>
  <objectgroup id="7" name="born">
   <object id="13" name="PlayerSpawn" x="1201.5" y="759.2">
    <point/>
