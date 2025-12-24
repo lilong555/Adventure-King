@@ -286,6 +286,8 @@ private:
 
     // 组件与对象
     std::unique_ptr<PlayerSkillSet> _skillSet;
+    // 背包组件缓存：避免频繁 getComponent/dynamic_cast（并规避 const_cast）
+    InventoryComponent* _inventoryComponent = nullptr;
 
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;
 

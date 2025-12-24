@@ -176,6 +176,13 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     if (!getStateMachineComponent()) addComponentNoUpdateWarning(StateMachineComponent::create());
     if (!getComponent("StatusEffectVfxComponent")) addComponentNoUpdateWarning(StatusEffectVfxComponent::create());
 
+    // 缓存背包组件指针，避免后续频繁 getComponent/dynamic_cast（并规避 const_cast）
+    _inventoryComponent = dynamic_cast<InventoryComponent*>(getComponent("InventoryComponent"));
+    if (!_inventoryComponent)
+    {
+        CCLOG("错误：PlayerCharacter 未能正确挂载 InventoryComponent");
+    }
+
     // 3. 数据层初始化
     initAttributesByRole(role);
     refreshHpMpFromAttributes();
@@ -627,32 +634,46 @@ void PlayerCharacter::refreshHpMpFromAttributes()
 // 装备系统
 // =================================================================
 
+namespace
+{
+const std::vector<std::shared_ptr<Equipment>> kEmptyInventoryItems;
+const std::map<EquipmentSlot, std::shared_ptr<Equipment>> kEmptyEquippedItems;
+
+void logMissingInventoryComponentOnce(const char* callsite)
+{
+    static bool logged = false;
+    if (logged)
+    {
+        return;
+    }
+    logged = true;
+    CCLOG("警告：%s 获取 InventoryComponent 失败，返回空容器；请检查 PlayerCharacter::init 是否挂载组件", callsite);
+}
+}
+
 InventoryComponent* PlayerCharacter::getInventoryComponent() const
 {
-    // 注意：Cocos2d-x 的 Node::getComponent 不是 const 接口，这里只做只读查询，不会修改状态；
-    // 因此使用 const_cast 解除 const 限定，避免 Win32 编译报错。
-    auto self = const_cast<PlayerCharacter*>(this);
-    return dynamic_cast<InventoryComponent*>(self->getComponent("InventoryComponent"));
+    return _inventoryComponent;
 }
 
 const std::vector<std::shared_ptr<Equipment>>& PlayerCharacter::getInventoryItems() const
 {
-    static const std::vector<std::shared_ptr<Equipment>> empty;
     auto inv = getInventoryComponent();
     if (!inv)
     {
-        return empty;
+        logMissingInventoryComponentOnce(__FUNCTION__);
+        return kEmptyInventoryItems;
     }
     return inv->getInventoryItems();
 }
 
 const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& PlayerCharacter::getEquippedItems() const
 {
-    static const std::map<EquipmentSlot, std::shared_ptr<Equipment>> empty;
     auto inv = getInventoryComponent();
     if (!inv)
     {
-        return empty;
+        logMissingInventoryComponentOnce(__FUNCTION__);
+        return kEmptyEquippedItems;
     }
     return inv->getEquippedItems();
 }

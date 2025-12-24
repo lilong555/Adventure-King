@@ -27,6 +27,7 @@ public:
 
     bool init() override;
     void onAdd() override;
+    void onRemove() override;
 
     // -------------------------
     // 背包（数据存取）
@@ -45,12 +46,14 @@ public:
     std::shared_ptr<Equipment> getEquipment(EquipmentSlot slot) const;
     std::shared_ptr<Weapon> getEquippedWeapon() const;
     const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& getEquippedItems() const { return _equippedItems; }
-    void setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& items) { _equippedItems = items; }
+    void setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& items);
 
     // 默认测试物品：用于背包系统初期调试（按 id 去重，不会重复添加）
     void ensureDefaultInventory();
 
 private:
+    // 注意：在 onAdd() 被调用前或 owner 已被销毁后，此函数可能返回 nullptr；
+    // 调用方需自行判空，或只在组件已成功挂载且 owner 生命周期受控的情况下使用。
     CharacterBase* getCharacterOwner() const { return _cachedOwner; }
 
     // 组件挂载后缓存 owner，避免频繁 dynamic_cast
@@ -60,4 +63,3 @@ private:
     std::vector<std::shared_ptr<Equipment>> _inventoryItems;
     std::unordered_set<int> _inventoryItemIds;
 };
-

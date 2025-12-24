@@ -9,6 +9,27 @@
 
 USING_NS_CC;
 
+namespace
+{
+void removeEquipmentStatusEffectByItemId(AttributeComponent* attr, int itemId)
+{
+    if (!attr)
+    {
+        return;
+    }
+
+    StatusEffectType type;
+    if (!StatusEffectFactory::tryGetEffectTypeByItemId(itemId, type))
+    {
+        return;
+    }
+
+    // 注意：当前 AttributeComponent 仅支持按 type 移除；
+    // 因此装备特效建议使用“只由装备系统控制”的专用类型，避免误删其他来源的同类效果。
+    attr->removeStatusEffect(type);
+}
+}
+
 InventoryComponent::InventoryComponent()
 {
     setName("InventoryComponent");
@@ -30,7 +51,17 @@ void InventoryComponent::onAdd()
     if (getOwner())
     {
         _cachedOwner = dynamic_cast<CharacterBase*>(getOwner());
+        if (!_cachedOwner)
+        {
+            CCLOG("错误：InventoryComponent 只能挂载到 CharacterBase 派生对象上");
+        }
     }
+}
+
+void InventoryComponent::onRemove()
+{
+    _cachedOwner = nullptr;
+    Component::onRemove();
 }
 
 void InventoryComponent::addToInventory(const std::shared_ptr<Equipment>& item)
@@ -94,11 +125,11 @@ bool InventoryComponent::equip(const std::shared_ptr<Equipment>& item)
         auto oldItem = it->second;
         attr->removeEquipmentBonus(oldItem->attributeBonus);
 
-        // 当前仅荆棘甲有“装备特效”映射到 StatusEffect（后续可扩展为按 itemId->type 移除）
-        if (oldItem->id == GameConfig::Equipment::Armor::THORNS_ARMOR)
-        {
-            attr->removeStatusEffect(StatusEffectType::THORNS);
-        }
+        // 移除旧装备自带的状态效果（如荆棘）
+        removeEquipmentStatusEffectByItemId(attr, oldItem->id);
+
+        // 将旧装备返回到背包，避免“仅在穿戴槽内存在”的物品丢失（addToInventory 内部会按 id 去重）
+        addToInventory(oldItem);
     }
 
     // 2) 挂载新装备并加成属性
@@ -106,6 +137,7 @@ bool InventoryComponent::equip(const std::shared_ptr<Equipment>& item)
     attr->addEquipmentBonus(item->attributeBonus);
 
     // 3) 装备特效：交给工厂创建（例如荆棘）
+    // 说明：对于不带特效的装备，createEffectByItemId 返回 nullptr 是“正常情况”
     if (auto effect = StatusEffectFactory::createEffectByItemId(item->id, std::max(1, item->level)))
     {
         attr->addStatusEffect(effect);
@@ -137,12 +169,13 @@ bool InventoryComponent::unequip(EquipmentSlot slot)
     auto item = it->second;
     attr->removeEquipmentBonus(item->attributeBonus);
 
-    if (item->id == GameConfig::Equipment::Armor::THORNS_ARMOR)
-    {
-        attr->removeStatusEffect(StatusEffectType::THORNS);
-    }
+    // 移除装备自带的状态效果（如荆棘）
+    removeEquipmentStatusEffectByItemId(attr, item->id);
 
     _equippedItems.erase(it);
+
+    // 确保卸下的装备仍然可在背包中找到（按 id 去重）
+    addToInventory(item);
     return true;
 }
 
@@ -156,6 +189,32 @@ std::shared_ptr<Weapon> InventoryComponent::getEquippedWeapon() const
 {
     auto equip = getEquipment(EquipmentSlot::WEAPON);
     return std::dynamic_pointer_cast<Weapon>(equip);
+}
+
+void InventoryComponent::setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& items)
+{
+    // 注意：该接口主要用于读档/同步场景，必须确保“属性加成/特效”与装备列表一致。
+
+    // 1) 先卸下现有装备（触发移除加成/特效）
+    std::vector<EquipmentSlot> slotsToClear;
+    slotsToClear.reserve(_equippedItems.size());
+    for (const auto& kv : _equippedItems)
+    {
+        slotsToClear.push_back(kv.first);
+    }
+    for (auto slot : slotsToClear)
+    {
+        unequip(slot);
+    }
+
+    // 2) 再逐个穿戴新装备（触发添加加成/特效）
+    for (const auto& kv : items)
+    {
+        if (kv.second)
+        {
+            equip(kv.second);
+        }
+    }
 }
 
 void InventoryComponent::ensureDefaultInventory()
