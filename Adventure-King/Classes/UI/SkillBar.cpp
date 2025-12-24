@@ -219,6 +219,10 @@ std::string SkillBar::getIconPathForSkillId(int skillId) const
     {
         return "Sprites/Characters/Player/Klee/default/TNT.png";
     }
+    if (skillId == GameConfig::Assassin::SlashSkill::SLASH_ID)
+    {
+        return "Sprites/Characters/Player/maaer/slash/spr_maaer_slash_1.png";
+    }
     return "";
 }
 

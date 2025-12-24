@@ -170,10 +170,7 @@ bool StatusEffectVfxComponent::init()
 
 void StatusEffectVfxComponent::onAdd()
 {
-    if (getOwner())
-    {
-        getOwner()->scheduleUpdate();
-    }
+    // 由 CharacterBase 统一调度 update，避免重复 scheduleUpdate 触发引擎 warning。
 }
 
 void StatusEffectVfxComponent::update(float dt)

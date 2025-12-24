@@ -243,7 +243,6 @@ void GameInputController::onGroundContactEnd(float normalY)
     {
         _groundContactCount = 0;
         _grounded = false;
-        CCLOG("Player left ground, contacts: 0");
     }
 }
 
@@ -270,7 +269,6 @@ void GameInputController::handleJump()
     physicsBody->applyImpulse(Vec2(0, GameConfig::Player::JUMP_IMPULSE));
     _grounded = false;
     _jumpCount++;
-    CCLOG(_jumpCount == 1 ? "Player jumped" : "Player double jumped");
 }
 
 void GameInputController::resumeMoveAnimationIfIdle()

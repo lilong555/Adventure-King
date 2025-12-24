@@ -12,6 +12,7 @@
 #include "Configs/GameConfig.h"
 #include "Configs/GamePhysicsCategory.h"
 #include "Utils/PhysicsBodyLocalInfoHelper.h"
+#include "Utils/ParticleVfxHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 
@@ -157,11 +158,22 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     // 记录角色动画的“稳定原始尺寸”，用于后续创建统一尺寸的 SpriteFrame，避免不同 PNG 尺寸导致物理体漂移/跳动
     _stableFrameOriginalSize = getContentSize();
 
+    // 说明：
+    // - Node::addComponent 内部会无条件调用 scheduleUpdate()；
+    // - 当连续 add 多个组件时，会触发引擎日志：warning: don't update it again
+    //   （Scheduler::schedulePerFrame 检测到重复 scheduleUpdate）。
+    // 这里通过在每次 addComponent 前先 unscheduleUpdate()，确保不会重复调度同一个 update。
+    auto addComponentNoUpdateWarning = [this](cocos2d::Component* component) {
+        if (!component) return false;
+        this->unscheduleUpdate();
+        return this->addComponent(component);
+    };
+
     // 2. 组件挂载
-    if (!getAttributeComponent())    this->addComponent(AttributeComponent::create());
-    if (!getSkillComponent())        this->addComponent(SkillComponent::create());
-    if (!getStateMachineComponent()) this->addComponent(StateMachineComponent::create());
-    if (!getComponent("StatusEffectVfxComponent")) this->addComponent(StatusEffectVfxComponent::create());
+    if (!getAttributeComponent())    addComponentNoUpdateWarning(AttributeComponent::create());
+    if (!getSkillComponent())        addComponentNoUpdateWarning(SkillComponent::create());
+    if (!getStateMachineComponent()) addComponentNoUpdateWarning(StateMachineComponent::create());
+    if (!getComponent("StatusEffectVfxComponent")) addComponentNoUpdateWarning(StatusEffectVfxComponent::create());
 
     // 3. 数据层初始化
     initAttributesByRole(role);
@@ -195,6 +207,8 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     // 8. 默认背包物品（占位）：用于背包系统初期调试
     ensureDefaultInventory();
 
+    // 恢复 CharacterBase 约定的 update 优先级（并确保组件 update 正常运行）
+    scheduleUpdateWithPriority(1);
     return true;
 }
 
@@ -217,6 +231,18 @@ cocos2d::SpriteFrame* PlayerCharacter::getStableSpriteFrame(const std::string& f
     // 关键：所有帧统一 originalSize，避免 contentSize 变化引发“锚点->物理体”映射漂移
     return SpriteFrameCacheHelper::getOrCreateSpriteFrameWithOriginalSize(
         framePath, _stableFrameOriginalSize, alignBottom, alignLeft);
+}
+
+cocos2d::SpriteFrame* PlayerCharacter::tryGetStableSpriteFrameNoLog(const std::string& framePath) const
+{
+    // 避免探测不存在的文件导致引擎打印 “fullPathForFilename: No file found ...” 的噪音日志
+    if (SpriteFrameCacheHelper::isFilePath(framePath) && !SpriteFrameCacheHelper::isFileExistNoLog(framePath))
+    {
+        return nullptr;
+    }
+
+    // 玩家动画统一按“底部对齐”，保证脚底不跳动
+    return getStableSpriteFrame(framePath, true, false);
 }
 
 void PlayerCharacter::onEnter()
@@ -488,17 +514,7 @@ void PlayerCharacter::applyAttributeGrowth()
  */
 void PlayerCharacter::playLevelUpVFX()
 {
-    auto particle = cocos2d::ParticleSystemQuad::create("Particle/par_levelup.plist");
-    if (!particle) return;
-
-    particle->setAutoRemoveOnFinish(true);
-    particle->setPositionType(cocos2d::ParticleSystem::PositionType::GROUPED);
-
-    const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
-    particle->setPosition(bodyInfo.center);
-
-    // --- 修正点：添加 Z-Order 参数 (例如 999 或配置常量) ---
-    this->addChild(particle, 999);
+    ParticleVfxHelper::playOnce(this, "Particle/par_levelup.plist");
 }
 
 bool PlayerCharacter::upgradeAttribute(AttributeType type)
@@ -931,15 +947,18 @@ void PlayerCharacter::setMoving(bool moving, bool running)
             sm->changeState(CharacterState::IDLE);
 
             // 兜底：设回默认帧
-            auto defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png", true, false);
+            auto defaultFrame = tryGetStableSpriteFrameNoLog(
+                _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
             if (!defaultFrame)
             {
                 // 多数角色（法师/战士/Klee）使用 run.png 作为静态待机帧
-                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+                defaultFrame = tryGetStableSpriteFrameNoLog(
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
             }
             if (!defaultFrame)
             {
-                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
+                defaultFrame = tryGetStableSpriteFrameNoLog(
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
             }
             if (defaultFrame)
             {
@@ -1576,14 +1595,13 @@ void PlayerCharacter::ensureMoveAnimations()
     // 因此：优先使用 run_1..run_n；只有当 run_1 不存在时，才回退到 run.png。
     const std::string run1Path = StringUtils::format("%s/spr_%s_run_1.png",
         _defaultSpriteDir.c_str(), _characterKey.c_str());
-    const bool hasNumberedRun = FileUtils::getInstance()->isFileExist(run1Path);
+    const bool hasNumberedRun = SpriteFrameCacheHelper::isFileExistNoLog(run1Path);
 
-    auto fileUtils = FileUtils::getInstance();
     for (int i = 1; i <= 8; ++i)
     {
         const std::string path = StringUtils::format("%s/spr_%s_run_%d.png",
             _defaultSpriteDir.c_str(), _characterKey.c_str(), i);
-        if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+        if (SpriteFrameCacheHelper::isFileExistNoLog(path))
         {
             movePaths.push_back(path);
         }
@@ -1592,7 +1610,7 @@ void PlayerCharacter::ensureMoveAnimations()
     {
         const std::string path = StringUtils::format("%s/spr_%s_run.png",
             _defaultSpriteDir.c_str(), _characterKey.c_str());
-        if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+        if (SpriteFrameCacheHelper::isFileExistNoLog(path))
         {
             movePaths.push_back(path);
         }
@@ -1637,12 +1655,11 @@ void PlayerCharacter::ensureStateAnimations()
         idlePaths.reserve(8);
 
         // 优先拼出 idle_1..idle_8（存在就加入，不存在就跳过，避免日志噪音）
-        auto fileUtils = FileUtils::getInstance();
         for (int i = 1; i <= 8; ++i)
         {
             const std::string path = StringUtils::format("%s/spr_%s_idle_%d.png",
                 _defaultSpriteDir.c_str(), _characterKey.c_str(), i);
-            if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+            if (SpriteFrameCacheHelper::isFileExistNoLog(path))
             {
                 idlePaths.push_back(path);
             }
@@ -1663,14 +1680,17 @@ void PlayerCharacter::ensureStateAnimations()
         if (!cache->getAnimation(idleKey))
         {
             // 静态待机：优先 run.png（法师/战士/Klee），再兜底 run_1.png / idle_1.png
-            auto frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+            auto frame = tryGetStableSpriteFrameNoLog(
+                _defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
             if (!frame)
             {
-                frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
+                frame = tryGetStableSpriteFrameNoLog(
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
             }
             if (!frame)
             {
-                frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png", true, false);
+                frame = tryGetStableSpriteFrameNoLog(
+                    _defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
             }
             if (frame)
             {
@@ -1688,7 +1708,7 @@ void PlayerCharacter::ensureStateAnimations()
             return;
         }
 
-        auto frame = getStableSpriteFrame(framePath, true, false);
+        auto frame = this->tryGetStableSpriteFrameNoLog(framePath);
         if (!frame)
         {
 #if COCOS2D_DEBUG > 0

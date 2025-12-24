@@ -16,7 +16,6 @@ void StatusEffect::onTick(CharacterBase* owner, float dt) {
     // --- 修改点：不再写死扣血，而是调用虚函数 ---
     for (int i = 0; i < tickCount; ++i) {
         this->doEffectAction(owner);
-        CCLOG("Tick Triggered! Effect Type: %d, Memory Address: %p", (int)this->type, this);
     }
 }
 

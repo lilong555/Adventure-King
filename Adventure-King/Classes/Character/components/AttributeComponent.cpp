@@ -15,10 +15,7 @@ bool AttributeComponent::init() {
 }
 
 void AttributeComponent::onAdd() {
-    if (getOwner()) {
-        // 开启每帧更新，驱动 update(dt)
-        getOwner()->scheduleUpdate();
-    }
+    // 由 CharacterBase 统一调度 update，避免重复 scheduleUpdate 触发引擎 warning。
 }
 
 // =================================================================

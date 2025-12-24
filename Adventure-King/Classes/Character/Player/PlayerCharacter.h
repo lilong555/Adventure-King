@@ -201,10 +201,11 @@ public:
     /// @brief 获取角色关键字
     const std::string& getCharacterKey() const { return _characterKey; }
 
-private:
+protected:
     // 构造函数私有化，强制使用 create
     PlayerCharacter() = default;
 
+private:
     // 内部初始化流程
     /// @brief 根据职业初始化属性
     void initAttributesByRole(CharacterRole role);
@@ -216,6 +217,8 @@ private:
     cocos2d::SpriteFrame* getStableSpriteFrame(const std::string& framePath,
                                                bool alignBottom = true,
                                                bool alignLeft = false) const;
+    /// @brief 在不产生缺失资源噪音日志的前提下，获取稳定尺寸的精灵帧（不存在则返回 nullptr）
+    cocos2d::SpriteFrame* tryGetStableSpriteFrameNoLog(const std::string& framePath) const;
     /// @brief 创建技能集
     void createSkillSet();
 

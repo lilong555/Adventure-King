@@ -2,6 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Configs/GameConfig.h"
+#include "Utils/ParticleVfxHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -534,12 +535,19 @@ void GobluMonster::attack()
                                      RemoveSelf::create(),
                                      nullptr));
 
-                                 auto particle = ParticleSystemQuad::create("Particle/par_GobluRemoteHit.plist");
+                                 ParticleVfxHelper::PlayOptions vfxOptions;
+                                 vfxOptions.zOrder = 1;
+                                 vfxOptions.useBodyCenter = false;
+                                 vfxOptions.positionType = ParticleSystem::PositionType::GROUPED;
+                                 const auto hitboxSize = hitboxNode->getContentSize();
+                                 vfxOptions.position = Vec2(hitboxSize.width * 0.5f, hitboxSize.height * 0.5f);
+                                 vfxOptions.resetSystem = false; // 先配置参数，再 resetSystem 做短爆发
+
+                                 auto particle = ParticleVfxHelper::playOnce(hitboxNode, "Particle/par_GobluRemoteHit.plist", vfxOptions);
                                  if (particle)
                                  {
                                      // 运行时覆盖：hitbox 生命周期很短，如果完全依赖 plist 的持续发射配置，玩家很难看清命中范围；
                                      // 因此这里将其调整为短爆发（更高发射率/粒子数/尺寸），确保瞬间反馈可见。
-                                     particle->setAutoRemoveOnFinish(true);
                                      particle->setDuration(0.15f);
                                      particle->setTotalParticles(60);
                                      particle->setEmissionRate(260.0f);
@@ -549,9 +557,6 @@ void GobluMonster::attack()
                                      particle->setStartSizeVar(6.0f);
                                      particle->setEndSize(8.0f);
 
-                                     particle->setPositionType(ParticleSystem::PositionType::GROUPED);
-                                     particle->setPosition(hitboxNode->getContentSize() * 0.5f);
-                                     hitboxNode->addChild(particle, 1);
                                      particle->resetSystem();
                                  }
                              } }),

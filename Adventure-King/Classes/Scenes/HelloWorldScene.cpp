@@ -543,13 +543,14 @@ std::vector<std::string> HelloWorld::getPreloadResourcePaths() {
         "Scene/UI/SetingNormal.png",
         "Scene/UI/SetingSelect.png",
         "Scene/UI/MapNormal.png",
-        "Scene/UI/MapSelect.png",
-        "Scene/UI/SaveNormal.png",
-        "Scene/UI/SaveSelect.png",
-        "Scene/UI/CloseNormal.png",     // 虽然被注释，建议预载
-        "Scene/UI/CloseSelected.png"
-    };
-}
+	        "Scene/UI/MapSelect.png",
+	        "Scene/UI/SaveNormal.png",
+	        "Scene/UI/SaveSelect.png",
+	        // 关闭按钮（MapScene 复用）
+	        "Scene/UI/CloseSaveMenu.png",
+	        "Scene/UI/CloseSaveMenuSelected.png"
+	    };
+	}
 
 //此函数可以作为模板，注册主菜单场景到全局场景注册中心
 void HelloWorld::setupRegistry()

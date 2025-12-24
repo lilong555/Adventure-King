@@ -217,7 +217,7 @@
   </object>
  </objectgroup>
  <objectgroup id="9" name="ArenaLayer">
-  <object id="32" name="ArenaTrigger" x="2280" y="4" width="2488" height="1144">
+  <object id="32" name="ArenaTrigger" x="2300" y="4" width="2444" height="1144">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaTrigger"/>

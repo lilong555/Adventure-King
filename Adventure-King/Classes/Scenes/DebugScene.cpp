@@ -402,18 +402,17 @@ void DebugScene::initTestMonsters()
  * @brief 初始化调试UI面板
  *
  * 创建以下UI元素：
- * - 左上角：HP/MP进度条
  * - 左侧：角色属性信息面板
  * - 右侧：状态信息面板（状态机状态、状态效果、装备、被动技能、伤害日志）
  *
  * UI层级说明：
- * - z-order 9：进度条背景
- * - z-order 10：进度条填充和标签
+ * - DebugScene 的调试信息需要显示在 GameUI 之上，因此统一使用更高的 z-order。
  */
 void DebugScene::initDebugUI()
 {
     auto visibleSize = Director::getInstance()->getVisibleSize();
     auto origin = Director::getInstance()->getVisibleOrigin();
+    constexpr int DEBUG_UI_Z_ORDER = GameSceneConfig::UI::Z_ORDER + 10;
 
     //=========================================================================
     // 左侧：属性信息面板
@@ -425,7 +424,7 @@ void DebugScene::initDebugUI()
     _infoLabel->setAnchorPoint(Vec2(0, 1));
     _infoLabel->setPosition(Vec2(panelX, panelY));
     _infoLabel->setColor(Color3B::WHITE);
-    this->addChild(_infoLabel, 10);
+    this->addChild(_infoLabel, DEBUG_UI_Z_ORDER);
 
     //=========================================================================
     // 右侧：状态信息面板
@@ -437,83 +436,35 @@ void DebugScene::initDebugUI()
     _stateLabel->setAnchorPoint(Vec2(0, 1));
     _stateLabel->setPosition(Vec2(rightPanelX, panelY));
     _stateLabel->setColor(Color3B::YELLOW);
-    this->addChild(_stateLabel, 10);
+    this->addChild(_stateLabel, DEBUG_UI_Z_ORDER);
 
     // 状态效果标签
     _statusEffectLabel = Label::createWithTTF("状态效果: 无", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
     _statusEffectLabel->setAnchorPoint(Vec2(0, 1));
     _statusEffectLabel->setPosition(Vec2(rightPanelX, panelY - 30));
     _statusEffectLabel->setColor(Color3B(200, 150, 255));
-    this->addChild(_statusEffectLabel, 10);
+    this->addChild(_statusEffectLabel, DEBUG_UI_Z_ORDER);
 
     // 装备信息标签
     _equipmentLabel = Label::createWithTTF("武器: 无", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
     _equipmentLabel->setAnchorPoint(Vec2(0, 1));
     _equipmentLabel->setPosition(Vec2(rightPanelX, panelY - 55));
     _equipmentLabel->setColor(Color3B(192, 192, 192));
-    this->addChild(_equipmentLabel, 10);
+    this->addChild(_equipmentLabel, DEBUG_UI_Z_ORDER);
 
     // 被动技能标签
     _passiveSkillLabel = Label::createWithTTF("被动技能: 无", "fonts/ZCOOLKuaiLe-Regular.ttf", 16);
     _passiveSkillLabel->setAnchorPoint(Vec2(0, 1));
     _passiveSkillLabel->setPosition(Vec2(rightPanelX, panelY - 80));
     _passiveSkillLabel->setColor(Color3B(100, 200, 100));
-    this->addChild(_passiveSkillLabel, 10);
+    this->addChild(_passiveSkillLabel, DEBUG_UI_Z_ORDER);
 
     // 伤害日志标签
     _damageLogLabel = Label::createWithTTF("--- 伤害日志 ---", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
     _damageLogLabel->setAnchorPoint(Vec2(0, 1));
     _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 155));
     _damageLogLabel->setColor(Color3B(200, 200, 200));
-    this->addChild(_damageLogLabel, 10);
-
-    //=========================================================================
-    // 左上角：HP/MP进度条
-    //=========================================================================
-    float barWidth = 200.0f;
-    float barHeight = 18.0f;
-    float barX = origin.x + 20;
-    float barY = origin.y + visibleSize.height - 20;
-
-    // HP标签（显示在进度条右侧）
-    _hpLabel = Label::createWithTTF("HP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
-    _hpLabel->setAnchorPoint(Vec2(0, 0.5f));
-    _hpLabel->setPosition(Vec2(barX + barWidth + 10, barY - barHeight / 2));
-    _hpLabel->setColor(Color3B::WHITE);
-    this->addChild(_hpLabel, 10);
-
-    // HP进度条背景（深红色）
-    _hpBarBg = DrawNode::create();
-    _hpBarBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.3f, 0.1f, 0.1f, 0.8f));
-    _hpBarBg->setPosition(Vec2(barX, barY - barHeight));
-    this->addChild(_hpBarBg, 9);
-
-    // HP进度条填充（红色）
-    _hpBarFill = DrawNode::create();
-    _hpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.8f, 0.2f, 0.2f, 1.0f));
-    _hpBarFill->setPosition(Vec2(barX, barY - barHeight));
-    _hpBarFill->setTag(100);
-    this->addChild(_hpBarFill, 10);
-
-    // MP标签
-    _mpLabel = Label::createWithTTF("MP: 0/0", "fonts/ZCOOLKuaiLe-Regular.ttf", 14);
-    _mpLabel->setAnchorPoint(Vec2(0, 0.5f));
-    _mpLabel->setPosition(Vec2(barX + barWidth + 10, barY - barHeight - 8 - barHeight / 2));
-    _mpLabel->setColor(Color3B::WHITE);
-    this->addChild(_mpLabel, 10);
-
-    // MP进度条背景（深蓝色）
-    _mpBarBg = DrawNode::create();
-    _mpBarBg->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.1f, 0.1f, 0.3f, 0.8f));
-    _mpBarBg->setPosition(Vec2(barX, barY - barHeight * 2 - 8));
-    this->addChild(_mpBarBg, 9);
-
-    // MP进度条填充（蓝色）
-    _mpBarFill = DrawNode::create();
-    _mpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth, barHeight), Color4F(0.2f, 0.4f, 0.9f, 1.0f));
-    _mpBarFill->setPosition(Vec2(barX, barY - barHeight * 2 - 8));
-    _mpBarFill->setTag(101);
-    this->addChild(_mpBarFill, 10);
+    this->addChild(_damageLogLabel, DEBUG_UI_Z_ORDER);
 }
 
 /**
@@ -883,7 +834,6 @@ void DebugScene::update(float dt)
  * - 角色属性面板
  * - 状态机状态
  * - 状态效果列表
- * - HP/MP进度条
  */
 void DebugScene::updateDebugInfo()
 {
@@ -1025,43 +975,6 @@ void DebugScene::updateDebugInfo()
         }
     }
 
-    //=========================================================================
-    // 更新HP/MP进度条
-    //=========================================================================
-    if (attr)
-    {
-        float maxHP = attr->getAttributeValue(AttributeType::MAX_HP);
-        float maxMP = attr->getAttributeValue(AttributeType::MAX_MP);
-        float currentHP = std::max(0.0f, std::min(_player->getCurrentHP(), maxHP));
-        float currentMP = std::max(0.0f, std::min(_player->getCurrentMP(), maxMP));
-
-        float hpPercent = maxHP > 0 ? currentHP / maxHP : 0;
-        float mpPercent = maxMP > 0 ? currentMP / maxMP : 0;
-
-        // 更新标签文本
-        if (_hpLabel)
-            _hpLabel->setString(StringUtils::format("HP: %.0f/%.0f", currentHP, maxHP));
-        if (_mpLabel)
-            _mpLabel->setString(StringUtils::format("MP: %.0f/%.0f", currentMP, maxMP));
-
-        // 更新进度条填充宽度
-        float barWidth = 200.0f;
-        float barHeight = 18.0f;
-
-        if (_hpBarFill)
-        {
-            _hpBarFill->clear();
-            _hpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth * hpPercent, barHeight),
-                                      Color4F(0.8f, 0.2f, 0.2f, 1.0f));
-        }
-
-        if (_mpBarFill)
-        {
-            _mpBarFill->clear();
-            _mpBarFill->drawSolidRect(Vec2(0, 0), Vec2(barWidth * mpPercent, barHeight),
-                                      Color4F(0.2f, 0.4f, 0.9f, 1.0f));
-        }
-    }
 }
 
 //=============================================================================

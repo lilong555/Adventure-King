@@ -93,12 +93,10 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
             {
                 onFinished();
             }
-            CCLOG("Attack animation finished");
         });
 
     if (ok)
     {
-        CCLOG("Normal attack started: Throw Bomb");
     }
     return ok;
 }
