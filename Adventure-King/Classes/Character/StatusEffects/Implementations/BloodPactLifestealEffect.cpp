@@ -1,7 +1,7 @@
 #include "Character/StatusEffects/Implementations/BloodPactLifestealEffect.h"
 
 #include "Character/Base/CharacterBase.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 
 #include <algorithm>
 

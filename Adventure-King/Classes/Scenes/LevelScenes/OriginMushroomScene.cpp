@@ -2,7 +2,8 @@
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include"Character/Monster/Monsters/ObscurMonster.h"
-#include "Configs/GameConfigs.h"
+#include"Character/Player/Players/PlayerKlee.h"
+#include "Configs/GameConfig.h"
 #include "Managers/SceneRegistry.h"
 USING_NS_CC;
 // ============================================================
@@ -87,40 +88,7 @@ void OriginMushroomScene::setupRegistry()
     {
         paths.push_back(StringUtils::format("%s%02d.png", GameSceneConfig::Map::OriginMushroom::BACKGROUND_PREFIX, i));
     }
-    // klee相关
-    // 1. 路径前缀准备 (注意：此处使用你代码中定义的路径)
-    std::string kleeBase = "Sprites/Characters/Player/Klee/default/";
-    std::string kleeRpg = "Sprites/Characters/Player/Klee/rocket/";
-    std::string kKey = "klee";
-
-    // 2. 普通攻击与基础动作 (Normal Attack & Base)
-    // 攻击动作帧 1-3
-    for (int i = 1; i <= 3; ++i) {
-        paths.push_back(StringUtils::format("%sspr_%s_attack_%d.png", kleeBase.c_str(), kKey.c_str(), i));
-    }
-    paths.push_back(kleeBase + "TNT.png");    // 炸弹模型
-    paths.push_back(kleeBase + "BOOM_1.png"); // 基础爆炸特效
-
-    // 3. 火球术技能资源 (Fireball Skill / Rocket Dir)
-    // A. 技能动作帧 (根据 framePlan：1, 4, 5, 6)
-    std::vector<int> fireballActionFrames = { 1, 4, 5, 6 };
-    for (int f : fireballActionFrames) {
-        paths.push_back(StringUtils::format("%sspr_%s_attack_%d.png", kleeRpg.c_str(), kKey.c_str(), f));
-    }
-
-    // B. 火球飞行尾迹特效 (rocket_trail_long 1-4)
-    for (int i = 1; i <= 4; ++i) {
-        paths.push_back(StringUtils::format("%sspr_vfx_rocket_trail_long_%d.png", kleeRpg.c_str(), i));
-    }
-
-    // C. 火球爆炸闪光特效 (explosion_flash 0-4)
-    for (int i = 0; i <= 4; ++i) {
-        paths.push_back(StringUtils::format("%sspr_vfx_explosion_flash_%d.png", kleeRpg.c_str(), i));
-    }
-
-    // 4. 补充基础状态帧 (确保 idle 和 beattacked 也在列表内)
-    paths.push_back(kleeBase + "spr_klee_run.png");
-    paths.push_back(kleeBase + "spr_klee_beattacked.png");
+    
     
     // 哥布林行走/攻击 (1-4)
     for (int i = 1; i <= 4; ++i)
@@ -147,6 +115,10 @@ void OriginMushroomScene::setupRegistry()
     {
         paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
     }
+
+    //通过接口获取 PlayerKlee 预加载资源路径并合并
+    auto KleePaths = PlayerKlee::getPreloadResourcePaths();
+    paths.insert(paths.end(), KleePaths.begin(), KleePaths.end());
 
     //通过接口获取 Obscur 预加载资源路径并合并
     auto obscurPaths = ObscurMonster::getPreloadResourcePaths();

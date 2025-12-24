@@ -17,7 +17,7 @@
 #include "2d/CCTMXTiledMap.h"
 #include "2d/CCTMXObjectGroup.h"
 #include "Configs/GamePhysicsCategory.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Configs/GameSceneConfig.h"
 #include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"

@@ -5,7 +5,7 @@
 
 #include "Objects/Projectiles/ExplosiveProjectile.h"
 #include "Configs/GamePhysicsCategory.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 
 class Bomb : public ExplosiveProjectile
 {

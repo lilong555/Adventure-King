@@ -1,6 +1,6 @@
 #include "Character/Monster/Monsters/TrainingDummyMonster.h"
 
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include <algorithm>
 
 USING_NS_CC;

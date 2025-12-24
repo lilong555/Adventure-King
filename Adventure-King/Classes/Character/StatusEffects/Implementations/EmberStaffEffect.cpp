@@ -3,7 +3,7 @@
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/StatusEffects/Implementations/BurningEffect.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "cocos2d.h"
 
 #include <algorithm>

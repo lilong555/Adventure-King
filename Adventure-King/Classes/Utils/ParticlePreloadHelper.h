@@ -1,7 +1,7 @@
 #pragma once
 
 #include "cocos2d.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include <algorithm>
 #include <string>
 #include <vector>

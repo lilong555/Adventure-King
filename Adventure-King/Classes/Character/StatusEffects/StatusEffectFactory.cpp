@@ -8,7 +8,7 @@
 #include "Character/StatusEffects/Implementations/EmberStaffEffect.h"
 #include "Character/StatusEffects/Implementations/EmergencyMaskEffect.h"
 #include "Character/StatusEffects/Implementations/HunterBootsEffect.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 
 // =================================================================
 // 按装备 ID 创建（用于装备系统）

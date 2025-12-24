@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Character/Monster/MonsterBase.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include <string>
 #include <vector>
 

@@ -50,15 +50,25 @@ D:.
 |   |   |       PlayerKlee.h
 |   |   |       
 |   |   \---SkillSets
+|   |           AssassinSkillSet.cpp
+|   |           AssassinSkillSet.h
 |   |           KleeSkillSet.cpp
 |   |           KleeSkillSet.h
 |   |           PlayerSkillSet.h
+|   |           WarriorSkillSet.cpp
+|   |           WarriorSkillSet.h
 |   |           
 |   \---StatusEffects
 |       |   StatusEffectFactory.cpp
 |       |   StatusEffectFactory.h
 |       |   
 |       \---Implementations
+|               BurningEffect.cpp
+|               BurningEffect.h
+|               PoisonEffect.cpp
+|               PoisonEffect.h
+|               RegenEffect.cpp
+|               RegenEffect.h
 |               ThornsEffect.cpp
 |               ThornsEffect.h
 |               
@@ -66,6 +76,7 @@ D:.
 |       GameConfigs.h
 |       GamePhysicsCategory.h
 |       GameSceneConfig.h
+|       PlayerRoleConfig.h
 |       
 +---Managers
 |       MusicManager.cpp

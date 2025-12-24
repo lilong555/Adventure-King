@@ -135,7 +135,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     }
 
     //-------------------------------------------------------------------------
-    // 步骤3：初始化玩家角色（从 born 图层获取出生点）
+    // 步骤3：初始化玩家角色（从特定图层获取出生点）
     //-------------------------------------------------------------------------
     Vec2 playerStartPos = _levelMap ? _levelMap->getPlayerSpawnPoint(config.bornLayerName) : Vec2::ZERO;
     initPlayer(playerStartPos, config.playerSpritePath);
@@ -200,6 +200,8 @@ bool GameScene::initLevelMap(const LevelConfig &config)
     _levelMap->createCollisionBodiesFromTMX(_gameLayer, config.collisionLayerName);
     _levelMap->loadGateAreas(config.gateLayerName);
     _levelMap->loadEnemySpawnPoints("enemy_g");
+    // --- 新增：加载连战竞技场数据 ---
+    _levelMap->loadArenas("ArenaLayer", _gameLayer);
     return true;
 }
 
@@ -247,7 +249,8 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
     const float scale = std::fabs(playerSprite->getScaleY());
     const float scaledHeight = originalSize.height * scale;
 
-    Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
+
+    Vec2 playerPos = startPos;//+ Vec2(0, scaledHeight / 2);
     playerSprite->setPosition(playerPos);
 
     // 玩家碰撞盒尺寸：
@@ -447,7 +450,7 @@ void GameScene::returnToMapScene()
     }
 
     auto transition = TransitionFade::create(SCENE_TRANSITION_DURATION, mapScene, Color3B::BLACK);
-    Director::getInstance()->pushScene(transition);
+    Director::getInstance()->replaceScene(transition);
 }
 
 void GameScene::togglePauseMenu()
@@ -573,6 +576,13 @@ void GameScene::update(float dt)
             { return this->createMonsterByType(type); },
             getEnemySpawnViewDistance(),
             dt);
+
+        // 2. 新增：连战竞技场逻辑
+        _levelMap->updateArenas(
+            _player,
+            _gameLayer,
+            [this](const std::string& type) { return this->createMonsterByType(type); }
+        );
     }
 
 }

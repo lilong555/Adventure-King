@@ -1,5 +1,5 @@
 #include "SaveMenuLayer.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Save/SaveManager.h"
 #include "Character/Player/PlayerCharacter.h"
 #include <ctime>

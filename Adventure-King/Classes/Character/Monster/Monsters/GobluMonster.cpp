@@ -1,7 +1,7 @@
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Utils/ParticleVfxHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>

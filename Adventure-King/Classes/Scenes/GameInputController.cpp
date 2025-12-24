@@ -5,7 +5,7 @@
 
 #include "Scenes/GameInputController.h"
 #include "Character/Player/PlayerCharacter.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include <cmath>
 
 USING_NS_CC;
