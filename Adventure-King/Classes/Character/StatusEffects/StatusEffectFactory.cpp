@@ -4,6 +4,10 @@
 #include "Character/StatusEffects/Implementations/BurningEffect.h"
 #include "Character/StatusEffects/Implementations/RegenEffect.h"
 #include "Character/StatusEffects/Implementations/PoisonEffect.h"
+#include "Character/StatusEffects/Implementations/BloodPactLifestealEffect.h"
+#include "Character/StatusEffects/Implementations/EmberStaffEffect.h"
+#include "Character/StatusEffects/Implementations/EmergencyMaskEffect.h"
+#include "Character/StatusEffects/Implementations/HunterBootsEffect.h"
 #include "Configs/GameConfigs.h"
 
 // =================================================================
@@ -13,12 +17,53 @@ StatusEffect* StatusEffectFactory::createEffectByItemId(int itemId, int level) {
 
     // 荆棘甲逻辑
     if (itemId == GameConfig::Equipment::Armor::THORNS_ARMOR) {
-        float rate = 0.2f;
-        float cd = 1.0f;
+        float rate = GameConfig::EquipmentEffect::ThornsArmor::getReflectRate(level);
+        float cd = GameConfig::EquipmentEffect::ThornsArmor::PROC_COOLDOWN;
         // 返回子类实例
         auto effect = new (std::nothrow) ThornsEffect(rate, cd);
         if (effect) {
             effect->autorelease();
+            return effect;
+        }
+    }
+
+    // 血契短剑：吸血（随装备等级成长）
+    if (itemId == GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD)
+    {
+        const float rate = GameConfig::EquipmentEffect::BloodPactSword::getLifestealRate(level);
+        if (auto effect = BloodPactLifestealEffect::create(rate))
+        {
+            return effect;
+        }
+    }
+
+    // 焰纹法杖：命中概率施加燃烧
+    if (itemId == GameConfig::Equipment::Weapon::EMBER_STAFF)
+    {
+        if (auto effect = EmberStaffEffect::create(GameConfig::EquipmentEffect::EmberStaff::PROC_CHANCE,
+                                                   GameConfig::EquipmentEffect::EmberStaff::PROC_COOLDOWN))
+        {
+            return effect;
+        }
+    }
+
+    // 急救面罩：低血量救援（带冷却）
+    if (itemId == GameConfig::Equipment::Helmet::EMERGENCY_MASK)
+    {
+        if (auto effect = EmergencyMaskEffect::create(GameConfig::EquipmentEffect::EmergencyMask::TRIGGER_HP_RATIO,
+                                                      GameConfig::EquipmentEffect::EmergencyMask::HEAL_TARGET_HP_RATIO,
+                                                      GameConfig::EquipmentEffect::EmergencyMask::PROC_COOLDOWN))
+        {
+            return effect;
+        }
+    }
+
+    // 追猎之靴：击杀触发亢奋加速
+    if (itemId == GameConfig::Equipment::Boots::HUNTER_BOOTS)
+    {
+        if (auto effect = HunterBootsEffect::create(GameConfig::EquipmentEffect::HunterBoots::BUFF_DURATION_SECONDS,
+                                                    GameConfig::EquipmentEffect::HunterBoots::MOVE_SPEED_BONUS))
+        {
             return effect;
         }
     }
@@ -35,6 +80,27 @@ bool StatusEffectFactory::tryGetEffectTypeByItemId(int itemId, StatusEffectType&
     if (itemId == GameConfig::Equipment::Armor::THORNS_ARMOR)
     {
         outType = StatusEffectType::THORNS;
+        return true;
+    }
+
+    if (itemId == GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD)
+    {
+        outType = StatusEffectType::EQUIP_BLOOD_PACT_SWORD;
+        return true;
+    }
+    if (itemId == GameConfig::Equipment::Weapon::EMBER_STAFF)
+    {
+        outType = StatusEffectType::EQUIP_EMBER_STAFF;
+        return true;
+    }
+    if (itemId == GameConfig::Equipment::Helmet::EMERGENCY_MASK)
+    {
+        outType = StatusEffectType::EQUIP_EMERGENCY_MASK;
+        return true;
+    }
+    if (itemId == GameConfig::Equipment::Boots::HUNTER_BOOTS)
+    {
+        outType = StatusEffectType::EQUIP_HUNTER_BOOTS;
         return true;
     }
 

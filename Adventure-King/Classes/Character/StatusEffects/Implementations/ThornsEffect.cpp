@@ -8,13 +8,18 @@ ThornsEffect::ThornsEffect(float reflectRate, float cooldown)
     this->isPermanent = true;
 }
 
-void ThornsEffect::onModifyReceiveDamage(CharacterBase* owner, CharacterBase* attacker, DamageInfo& info) {
+void ThornsEffect::onAfterReceiveDamage(CharacterBase* owner,
+                                       CharacterBase* attacker,
+                                       float finalDamage,
+                                       const DamageInfo& /*info*/,
+                                       bool /*wouldDieBeforeCallback*/) {
     if (_currentCooldown > 0.0f) return;
 
     // 此时 CharacterBase 是完整类型，可以进行比较和调用方法
     if (!attacker || attacker == owner || attacker->isDead()) return;
 
-    float reflectAmount = std::max(1.0f, info.amount * _reflectRate);
+    // 反伤按“实际最终伤害”计算，更贴近玩家直觉
+    float reflectAmount = std::max(1.0f, finalDamage * _reflectRate);
 
     DamageInfo thornDmg;
     thornDmg.amount = reflectAmount;

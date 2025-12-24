@@ -7,9 +7,9 @@ struct DamageInfo;
 
 // 继承自 Ref，使用 Cocos2d-x 原生引用计数
 class StatusEffect : public cocos2d::Ref {
-public:
-    StatusEffect() {}
-    virtual ~StatusEffect() {}
+	public:
+	    StatusEffect() {}
+	    virtual ~StatusEffect() {}
 
     // 静态创建方法，方便使用
     static StatusEffect* create() {
@@ -18,12 +18,26 @@ public:
         return p;
     }
 
-    virtual void onApply(CharacterBase* owner) {}
-    virtual void onTick(CharacterBase* owner, float dt);
-    virtual void doEffectAction(CharacterBase* owner) {};
-    virtual void onRemove(CharacterBase* owner) {}
-    virtual void onModifyDealDamage(CharacterBase* owner, CharacterBase* target, DamageInfo& info) {}
-    virtual void onModifyReceiveDamage(CharacterBase* owner, CharacterBase* attacker, DamageInfo& info) {}
+	    virtual void onApply(CharacterBase* owner) {}
+	    virtual void onTick(CharacterBase* owner, float dt);
+	    virtual void doEffectAction(CharacterBase* owner) {};
+	    virtual void onRemove(CharacterBase* owner) {}
+	    virtual void onModifyDealDamage(CharacterBase* owner, CharacterBase* target, DamageInfo& info) {}
+	    virtual void onModifyReceiveDamage(CharacterBase* owner, CharacterBase* attacker, DamageInfo& info) {}
+
+	    // 伤害结算后的回调（用于装备特效等“触发型机制”）
+	    // - onAfterReceiveDamage：在受击者扣血后、死亡判定前触发（可用于濒死救援/反伤等）
+	    // - onAfterDealDamage：在目标扣血与死亡判定完成后触发（可用于吸血/击杀触发等）
+	    virtual void onAfterReceiveDamage(CharacterBase* owner,
+	                                      CharacterBase* attacker,
+	                                      float finalDamage,
+	                                      const DamageInfo& info,
+	                                      bool wouldDieBeforeCallback) {}
+	    virtual void onAfterDealDamage(CharacterBase* owner,
+	                                   CharacterBase* target,
+	                                   float finalDamage,
+	                                   const DamageInfo& info,
+	                                   bool targetDied) {}
 
     virtual bool isExpired() const { return !isPermanent && elapsed >= duration; }
     virtual const Attributes& getAttributeBonus() const { return attributeBonus; }

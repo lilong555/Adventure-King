@@ -13,6 +13,7 @@
 #include "Configs/GamePhysicsCategory.h"
 #include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include "Utils/ParticleVfxHelper.h"
+#include "Utils/WeaponHitboxVfxHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include "cocos2d.h"
 
@@ -324,8 +325,6 @@ void PlayerCharacter::updateTriggerEffects(float dt)
     dec(_burnProcCooldownRemaining);
     dec(_poisonProcCooldownRemaining);
     dec(_critEchoCooldownRemaining);
-    dec(_thornsCooldownRemaining);
-    dec(_emergencyMaskCooldownRemaining);
 
     updateFullHpCritEffect();
 }
@@ -1127,14 +1126,14 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
 //        }
 //    }
 //}
-void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback) {
-    if (finalDamage <= 0.0f) return;
-
-    // --- 只需要这一行！---
-    // 所有的装备特效（荆棘、护盾、减伤）都会在这里被自动触发
-    if (auto attr = getAttributeComponent()) {
-        attr->executeReceiveDamageHooks(attacker, const_cast<DamageInfo&>(info));
-    }
+void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback)
+{
+    // 说明：装备特效已在 CharacterBase::takeDamage 内统一通过
+    // AttributeComponent::executeAfterReceiveDamageHooks 分发触发。
+    (void)attacker;
+    (void)finalDamage;
+    (void)info;
+    (void)wouldDieBeforeCallback;
 }
 
 void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied)
@@ -1149,48 +1148,24 @@ void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, con
     }
 
     // -----------------------------
-    // 被动/装备：吸血（按造成伤害回复）
+    // 被动：吸血（按造成伤害回复）
     // -----------------------------
-    float lifestealRate = 0.0f;
-    if (hasPassiveEquipped(GameConfig::Skill::Passive::BLOODTHIRST))
+    if (hasPassiveEquipped(GameConfig::Skill::Passive::BLOODTHIRST) && !isDead())
     {
-        lifestealRate += GameConfig::Skill::PassiveEffect::BLOODTHIRST_LIFESTEAL;
-    }
-    if (auto weapon = getEquippedWeapon())
-    {
-        if (weapon->id == GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD)
-        {
-            // 装备吸血：随装备等级成长
-            lifestealRate += GameConfig::EquipmentEffect::BloodPactSword::getLifestealRate(weapon->level);
-        }
-    }
-    if (lifestealRate > 0.0f && !isDead())
-    {
-        // 吸血允许来自“被动 + 装备”叠加，但做总上限夹取，便于后续扩展时控平衡
+        float lifestealRate = GameConfig::Skill::PassiveEffect::BLOODTHIRST_LIFESTEAL;
         lifestealRate = std::min(lifestealRate, GameConfig::Skill::PassiveEffect::LIFESTEAL_TOTAL_MAX);
-        setCurrentHP(getCurrentHP() + finalDamage * lifestealRate);
+        if (lifestealRate > 0.0f)
+        {
+            setCurrentHP(getCurrentHP() + finalDamage * lifestealRate);
+        }
     }
 
     // -----------------------------
-    // 被动/装备：命中附加 DOT（燃烧/中毒）
+    // 被动：命中附加 DOT（燃烧/中毒）
     // -----------------------------
-    if (_burnProcCooldownRemaining <= 0.0f)
+    if (_burnProcCooldownRemaining <= 0.0f && hasPassiveEquipped(GameConfig::Skill::Passive::EMBER_MARK))
     {
-        const bool hasPassiveEmber = hasPassiveEquipped(GameConfig::Skill::Passive::EMBER_MARK);
-        const auto weapon = getEquippedWeapon();
-        const bool hasEmberStaff = (weapon && weapon->id == GameConfig::Equipment::Weapon::EMBER_STAFF);
-
-        float chance = 0.0f;
-        if (hasPassiveEmber)
-        {
-            chance += GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_CHANCE;
-        }
-        if (hasEmberStaff)
-        {
-            chance += GameConfig::EquipmentEffect::EmberStaff::PROC_CHANCE;
-        }
-        chance = clampf(chance, 0.0f, 1.0f);
-
+        const float chance = clampf(GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_CHANCE, 0.0f, 1.0f);
         if (chance > 0.0f && RandomHelper::random_real(0.0f, 1.0f) < chance)
         {
             tryApplyDotStatus(target,
@@ -1201,17 +1176,7 @@ void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, con
                               GameConfig::StatusEffect::Burning::BASE_DAMAGE_SCALE,
                               GameConfig::StatusEffect::Burning::PER_STACK_DAMAGE_SCALE);
 
-            // 冷却：取“更长”的冷却（更严格），避免同帧多段伤害刷屏
-            float cd = 0.0f;
-            if (hasPassiveEmber)
-            {
-                cd = std::max(cd, GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_COOLDOWN);
-            }
-            if (hasEmberStaff)
-            {
-                cd = std::max(cd, GameConfig::EquipmentEffect::EmberStaff::PROC_COOLDOWN);
-            }
-            _burnProcCooldownRemaining = std::max(0.0f, cd);
+            _burnProcCooldownRemaining = GameConfig::Skill::PassiveEffect::EMBER_MARK_PROC_COOLDOWN;
         }
     }
 
@@ -1244,14 +1209,7 @@ void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, con
         }
     }
 
-    // -----------------------------
-    // 装备：击杀加速（追猎之靴）
-    // -----------------------------
-    if (targetDied && findEquippedItemById(GameConfig::Equipment::Boots::HUNTER_BOOTS))
-    {
-        applyExcitedBuff(GameConfig::StatusEffect::Excited::DURATION_SECONDS,
-                         GameConfig::StatusEffect::Excited::MOVE_SPEED_BONUS);
-    }
+    // 装备：击杀加速（追猎之靴）已下沉到装备特效（StatusEffectFactory::createEffectByItemId）
 }
 
 void PlayerCharacter::useSkill(size_t slotIndex)
@@ -1330,6 +1288,22 @@ Node* PlayerCharacter::spawnPlayerAttackHitbox(const Vec2& centerPosInParentSpac
     body->setTag(damageTag);
 
     attackNode->setPhysicsBody(body);
+
+    // 命中判定生成瞬间的武器粒子特效（可无）：
+    // 默认命名规则：Particle/par_weapon_hitbox_<weaponId>.plist（详见 Utils/WeaponHitboxVfxHelper.h）
+    if (auto weapon = getEquippedWeapon())
+    {
+        const std::string plistPath = WeaponHitboxVfxHelper::resolveHitboxVfxPlistPath(weapon->id);
+        if (!plistPath.empty())
+        {
+            ParticleVfxHelper::PlayOptions options;
+            options.zOrder = 1;
+            options.positionType = ParticleSystem::PositionType::GROUPED;
+            options.useBodyCenter = true;
+            options.name = "weapon_hitbox_vfx";
+            ParticleVfxHelper::playOnce(attackNode, plistPath, options);
+        }
+    }
 
     attackNode->runAction(Sequence::create(
         DelayTime::create(std::max(0.0f, lifeSeconds)),

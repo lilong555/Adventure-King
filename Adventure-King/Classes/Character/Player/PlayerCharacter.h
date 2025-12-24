@@ -307,7 +307,5 @@ private:
     float _burnProcCooldownRemaining = 0.0f;      // 命中燃烧触发冷却
     float _poisonProcCooldownRemaining = 0.0f;    // 命中中毒触发冷却
     float _critEchoCooldownRemaining = 0.0f;      // 暴击缩冷却触发冷却
-    float _thornsCooldownRemaining = 0.0f;        // 反伤触发冷却
-    float _emergencyMaskCooldownRemaining = 0.0f; // 急救面罩触发冷却
     bool _fullHpCritActive = false;               // 满血暴击状态是否已激活
 };

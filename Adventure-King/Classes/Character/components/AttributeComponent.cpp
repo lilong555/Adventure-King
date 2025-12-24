@@ -166,6 +166,24 @@ void AttributeComponent::executeDealDamageHooks(CharacterBase* target, DamageInf
     }
 }
 
+void AttributeComponent::executeAfterReceiveDamageHooks(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback)
+{
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    for (auto& effect : _effects)
+    {
+        effect->onAfterReceiveDamage(owner, attacker, finalDamage, info, wouldDieBeforeCallback);
+    }
+}
+
+void AttributeComponent::executeAfterDealDamageHooks(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied)
+{
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    for (auto& effect : _effects)
+    {
+        effect->onAfterDealDamage(owner, target, finalDamage, info, targetDied);
+    }
+}
+
 // =================================================================
 // 属性计算逻辑 (核心)
 // =================================================================
