@@ -178,6 +178,10 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
 	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.cpp" />
 	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\RegenEffect.cpp" />
 	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.cpp" />
+	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\BloodPactLifestealEffect.cpp" />
+	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\EmberStaffEffect.cpp" />
+	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\EmergencyMaskEffect.cpp" />
+	    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\HunterBootsEffect.cpp" />
 	    <ClCompile Include="..\Classes\Character\StatusEffects\StatusEffectFactory.cpp" />
 	    <ClCompile Include="..\Classes\GameUI.cpp" />
 	    <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
