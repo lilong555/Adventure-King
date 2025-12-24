@@ -9,7 +9,7 @@
 #include "Character/components/StatusEffectVfxComponent.h"
 #include "Character/StatusEffects/StatusEffectFactory.h"
 #include "Objects/Projectiles/Bomb.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Configs/GamePhysicsCategory.h"
 #include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"

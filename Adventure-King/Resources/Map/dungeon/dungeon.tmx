@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="298" height="45" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="32">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="298" height="45" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="37">
  <tileset firstgid="1" source="dungeon_1.tsx"/>
  <tileset firstgid="2921" source="2.tsx"/>
  <tileset firstgid="5961" source="3.tsx"/>
@@ -216,44 +216,53 @@
    <polygon points="0,0 476,-124 476,-8 4,96"/>
   </object>
  </objectgroup>
- <objectgroup id="8" name="enemy_g">
-  <object id="25" name="1" type="goblin" x="2300" y="492">
+ <objectgroup id="9" name="ArenaLayer">
+  <object id="32" name="ArenaTrigger" x="2280" y="4" width="2488" height="1144">
    <properties>
-    <property name="波次" type="int" value="1"/>
+    <property name="arenaID" value="Forest_AncientAltar_Arena"/>
+    <property name="type" value="ArenaTrigger"/>
+    <property name="waves">[
+    {&quot;goblin&quot;: 3},
+    {&quot;obscur&quot;: 2},
+    {&quot;goblin&quot;: 2, &quot;obscur&quot;: 2}
+]</property>
+   </properties>
+  </object>
+  <object id="29" name="1" type="goblin" x="4720" y="528">
+   <properties>
+    <property name="arenaID" value="Forest_AncientAltar_Arena"/>
+    <property name="type" value="ArenaSpawn"/>
    </properties>
    <point/>
   </object>
-  <object id="26" name="1" type="goblin" x="4720" y="484">
+  <object id="31" name="1" type="Goblu" x="3960" y="68">
    <properties>
-    <property name="波次" type="int" value="1"/>
+    <property name="arenaID" value="Forest_AncientAltar_Arena"/>
+    <property name="type" value="ArenaSpawn"/>
    </properties>
    <point/>
   </object>
-  <object id="27" name="1" type="Obscur" x="2300" y="520">
+  <object id="25" name="1" type="goblin" x="2300" y="544">
    <properties>
-    <property name="波次" type="int" value="2"/>
+    <property name="arenaID" value="Forest_AncientAltar_Arena"/>
+    <property name="type" value="ArenaSpawn"/>
    </properties>
    <point/>
   </object>
-  <object id="28" x="4720" y="508">
+  <object id="34" x="2012" y="0" width="272" height="1148">
    <properties>
-    <property name="波次" type="int" value="2"/>
+    <property name="arenaID" value="Forest_AncientAltar_Arena"/>
+    <property name="type" value="ArenaGate"/>
    </properties>
-   <point/>
   </object>
-  <object id="29" name="1" type="goblin" x="4720" y="532">
+  <object id="35" x="4760" y="-4" width="260" height="1144">
    <properties>
-    <property name="波次" type="int" value="2"/>
+    <property name="arenaID" value="Forest_AncientAltar_Arena"/>
+    <property name="type" value="ArenaGate"/>
    </properties>
-   <point/>
-  </object>
-  <object id="31" name="1" type="Goblu" x="3992" y="8">
-   <properties>
-    <property name="波次" type="int" value="3"/>
-   </properties>
-   <point/>
   </object>
  </objectgroup>
+ <objectgroup id="8" name="enemy_g" visible="0"/>
  <objectgroup id="7" name="born">
   <object id="13" name="PlayerSpawn" x="1201.5" y="759.2">
    <point/>

@@ -241,7 +241,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.h" />
     <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h" />
     <ClInclude Include="..\Classes\Configs\ArenaConfig.h" />
-    <ClInclude Include="..\Classes\Configs\GameConfigs.h" />
+    <ClInclude Include="..\Classes\Configs\GameConfig.h" />
     <ClInclude Include="..\Classes\Configs\GamePhysicsCategory.h" />
     <ClInclude Include="..\Classes\Configs\GameSceneConfig.h" />
     <ClInclude Include="..\Classes\Configs\PlayerRoleConfig.h" />

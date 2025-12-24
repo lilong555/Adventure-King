@@ -380,7 +380,7 @@
     <ClInclude Include="..\Classes\Character\Player\SkillSets\PlayerSkillSet.h">
       <Filter>src\Character\Player\SkillSets</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Configs\GameConfigs.h">
+    <ClInclude Include="..\Classes\Configs\GameConfig.h">
       <Filter>src\Configs</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Configs\GamePhysicsCategory.h">

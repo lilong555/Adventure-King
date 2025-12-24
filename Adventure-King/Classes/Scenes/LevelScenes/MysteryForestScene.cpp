@@ -1,5 +1,5 @@
 #include "MysteryForestScene.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Managers/SceneRegistry.h"
 USING_NS_CC;
 // ============================================================

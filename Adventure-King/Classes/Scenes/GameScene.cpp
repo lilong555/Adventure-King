@@ -200,6 +200,8 @@ bool GameScene::initLevelMap(const LevelConfig &config)
     _levelMap->createCollisionBodiesFromTMX(_gameLayer, config.collisionLayerName);
     _levelMap->loadGateAreas(config.gateLayerName);
     _levelMap->loadEnemySpawnPoints("enemy_g");
+    // --- 新增：加载连战竞技场数据 ---
+    _levelMap->loadArenas("ArenaLayer", _gameLayer);
     return true;
 }
 
@@ -448,7 +450,7 @@ void GameScene::returnToMapScene()
     }
 
     auto transition = TransitionFade::create(SCENE_TRANSITION_DURATION, mapScene, Color3B::BLACK);
-    Director::getInstance()->pushScene(transition);
+    Director::getInstance()->replaceScene(transition);
 }
 
 void GameScene::togglePauseMenu()
@@ -574,6 +576,13 @@ void GameScene::update(float dt)
             { return this->createMonsterByType(type); },
             getEnemySpawnViewDistance(),
             dt);
+
+        // 2. 新增：连战竞技场逻辑
+        _levelMap->updateArenas(
+            _player,
+            _gameLayer,
+            [this](const std::string& type) { return this->createMonsterByType(type); }
+        );
     }
 
 }

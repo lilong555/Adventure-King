@@ -1,7 +1,7 @@
 #include "MonsterBase.h"
 #include "Character/components/StatusEffectVfxComponent.h"
 #include "Character/Player/PlayerCharacter.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <cmath>

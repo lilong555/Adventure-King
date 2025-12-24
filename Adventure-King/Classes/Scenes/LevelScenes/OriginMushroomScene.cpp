@@ -2,7 +2,7 @@
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include"Character/Monster/Monsters/ObscurMonster.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Managers/SceneRegistry.h"
 USING_NS_CC;
 // ============================================================

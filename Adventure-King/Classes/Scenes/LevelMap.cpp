@@ -7,8 +7,11 @@
 #include "Scenes/GameScene.h"
 #include "Character/Monster/MonsterBase.h"
 #include "Character/Player/PlayerCharacter.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Configs/GamePhysicsCategory.h"
+#include "json/document.h"
+#include "json/writer.h"
+#include "json/stringbuffer.h"
 #include <algorithm>
 #include <cctype>
 #include <climits>
@@ -543,5 +546,158 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
         CCLOG("Enemy spawn triggered: type='%s', count=%d, pos=(%.0f, %.0f)",
               spawnPoint.monsterType.c_str(), count,
               spawnPoint.position.x, spawnPoint.position.y);
+    }
+}
+
+//下面实现连战逻辑相关代码
+
+void LevelMap::loadArenas(const std::string& layerName, Node* gameLayer) {
+    auto group = _tileMap->getObjectGroup(layerName);
+    if (!group) return;
+
+    auto& objects = group->getObjects();
+    for (auto& obj : objects) {
+        ValueMap dict = obj.asValueMap();
+        std::string type = dict["type"].asString();
+        std::string arenaID = dict["arenaID"].asString();
+        if (arenaID.empty()) continue;
+
+        if (_arenas.find(arenaID) == _arenas.end()) {
+            _arenas[arenaID] = new ArenaConfig();
+            _arenas[arenaID]->arenaID = arenaID;
+        }
+        auto* arena = _arenas[arenaID];
+
+        if (type == "ArenaTrigger") {
+            arena->triggerRect = Rect(dict["x"].asFloat(), dict["y"].asFloat(),
+                dict["width"].asFloat(), dict["height"].asFloat());
+            parseWaves(arena, dict["waves"].asString());
+        }
+        else if (type == "ArenaSpawn") {
+            arena->spawnPoints.push_back(Vec2(dict["x"].asFloat(), dict["y"].asFloat()));
+        }
+        else if (type == "ArenaGate") {
+            // 创建物理门
+            auto gate = Node::create();
+            float w = dict["width"].asFloat();
+            float h = dict["height"].asFloat();
+            gate->setPosition(dict["x"].asFloat() + w / 2, dict["y"].asFloat() + h / 2);
+
+            auto pb = PhysicsBody::createBox(Size(w, h), COLLISION_PHYSICS_MATERIAL);
+            pb->setDynamic(false);
+            // 设置为碰撞层，阻止玩家和怪穿过
+            pb->setCategoryBitmask(ToMask(GamePhysicsCategory::COLLISION));
+            pb->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER | GamePhysicsCategory::MONSTER));
+
+            gate->setPhysicsBody(pb);
+            gate->setVisible(false); // 默认不显示
+            pb->setEnabled(false);   // 默认不开启碰撞
+
+            _tileMap->addChild(gate); // 挂在地图上，随地图移动
+            arena->gates.push_back(gate);
+        }
+    }
+}
+
+void LevelMap::updateArenas(PlayerCharacter* player, Node* gameLayer,
+    const std::function<MonsterBase* (const std::string&)>& createMonsterByType) {
+    for (auto& pair : _arenas) {
+        auto* arena = pair.second;
+        if (arena->isFinished || arena->isActivated) continue;
+
+        // 触发检测
+        if (arena->triggerRect.containsPoint(player->getPosition())) {
+            arena->isActivated = true;
+
+            // 1. 关门：启用碰撞和显示（可以加特效）
+            for (auto gate : arena->gates) {
+                gate->setVisible(true);
+                gate->getPhysicsBody()->setEnabled(true);
+            }
+
+            // 2. 开启第一波
+            spawnNextWave(arena, player, gameLayer, createMonsterByType);
+
+            CCLOG("Arena [%s] Activated! Total Waves: %zu", arena->arenaID.c_str(), arena->waves.size());
+        }
+    }
+}
+
+void LevelMap::spawnNextWave(ArenaConfig* arena, PlayerCharacter* player, Node* gameLayer,
+    const std::function<MonsterBase* (const std::string&)>& createMonsterByType) {
+    // 检查是否所有波次已结束
+    if (arena->currentWaveIndex >= arena->waves.size()) {
+        arena->isFinished = true;
+        arena->isActivated = false;
+
+        // 开门逻辑
+        for (auto gate : arena->gates) {
+            gate->runAction(Sequence::create(
+                FadeOut::create(0.5f),
+                CallFunc::create([gate]() {
+                    gate->setVisible(false);
+                    gate->getPhysicsBody()->setEnabled(false);
+                    }),
+                nullptr
+            ));
+        }
+        CCLOG("Arena [%s] Cleared!", arena->arenaID.c_str());
+        return;
+    }
+
+    auto& wave = arena->waves[arena->currentWaveIndex];
+    arena->activeMonstersCount = 0;
+
+    CCLOG("Arena [%s] - Starting Wave %d", arena->arenaID.c_str(), arena->currentWaveIndex + 1);
+
+    for (auto const& [type, count] : wave.enemies) {
+        for (int i = 0; i < count; ++i) {
+            auto monster = createMonsterByType(type);
+            if (!monster) continue;
+
+            // 随机选择竞技场内的刷怪点
+            Vec2 spawnPos = arena->spawnPoints[random(0, (int)arena->spawnPoints.size() - 1)];
+            monster->setPosition(spawnPos);
+            monster->setTarget(player);
+            monster->setHome(spawnPos);
+
+            // --- 核心优化：使用 CharacterBase 的新接口 ---
+            monster->setOnDeathCallback([this, arena, player, gameLayer, createMonsterByType](CharacterBase* deadChar) {
+                arena->activeMonstersCount--;
+
+                // 当本波所有怪死亡
+                if (arena->activeMonstersCount <= 0) {
+                    arena->currentWaveIndex++;
+
+                    // 延迟进入下一波，给玩家喘息和拾取掉落的时间
+                    auto delay = DelayTime::create(1.5f);
+                    auto next = CallFunc::create([this, arena, player, gameLayer, createMonsterByType]() {
+                        this->spawnNextWave(arena, player, gameLayer, createMonsterByType);
+                        });
+                    gameLayer->runAction(Sequence::create(delay, next, nullptr));
+                }
+                });
+
+            gameLayer->addChild(monster, DEFAULT_CHARACTER_Z_ORDER);
+            arena->activeMonstersCount++;
+        }
+    }
+}
+
+void LevelMap::parseWaves(ArenaConfig* config, const std::string& jsonStr) {
+    rapidjson::Document doc;
+    doc.Parse(jsonStr.c_str());
+    if (doc.HasParseError() || !doc.IsArray()) {
+        CCLOG("Error: Failed to parse Arena waves JSON: %s", jsonStr.c_str());
+        return;
+    }
+
+    for (rapidjson::SizeType i = 0; i < doc.Size(); i++) {
+        WaveData wave;
+        const auto& waveObj = doc[i];
+        for (auto it = waveObj.MemberBegin(); it != waveObj.MemberEnd(); ++it) {
+            wave.enemies[it->name.GetString()] = it->value.GetInt();
+        }
+        config->waves.push_back(wave);
     }
 }

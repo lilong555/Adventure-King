@@ -8,6 +8,8 @@
 #include "2d/CCTMXObjectGroup.h"
 #include "2d/CCTMXTiledMap.h"
 #include "cocos2d.h"
+#include "Configs/ArenaConfig.h" // 确保你之前定义的这个头文件在路径中
+#include <map>
 #include <functional>
 #include <string>
 #include <vector>
@@ -18,6 +20,14 @@ class MonsterBase;
 class LevelMap
 {
 public:
+
+    // 析构清理
+    ~LevelMap() {
+        for (auto& pair : _arenas) {
+            delete pair.second;
+        }
+        _arenas.clear();
+    }
     /// @brief 刷怪点数据结构
     struct EnemySpawnPoint
     {
@@ -64,9 +74,33 @@ public:
                            const std::function<MonsterBase *(const std::string &)> &createMonsterByType,
                            float viewDistanceX,
                            float dt);
-    //void initArenas(TMXTiledMap* map);
+
+    /**
+     * @brief 加载竞技场层数据
+     * @param layerName Tiled中的对象层名称（如 "ArenaLayer"）
+     * @param gameLayer 节点容器
+     */
+    void loadArenas(const std::string& layerName, cocos2d::Node* gameLayer);
+
+    /**
+     * @brief 每帧检测竞技场触发
+     */
+    void updateArenas(PlayerCharacter* player,
+        cocos2d::Node* gameLayer,
+        const std::function<MonsterBase* (const std::string&)>& createMonsterByType);
 
 private:
+    // 解析 JSON 波次数据
+    void parseWaves(ArenaConfig* config, const std::string& jsonStr);
+    // 触发下一波怪
+    void spawnNextWave(ArenaConfig* arena,
+        PlayerCharacter* player,
+        cocos2d::Node* gameLayer,
+        const std::function<MonsterBase* (const std::string&)>& createMonsterByType);
+
+    // 存储所有竞技场配置，Key 是 Tiled 里的 arenaID
+    std::map<std::string, ArenaConfig*> _arenas;
+
     /// @brief 解析 TMX 多边形/折线顶点
     bool parseTMXObjectVertices(const cocos2d::ValueMap &dict,
                                 double objectX,

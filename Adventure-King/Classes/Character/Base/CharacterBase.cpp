@@ -2,7 +2,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/SkillComponent.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
@@ -446,6 +446,11 @@ void CharacterBase::die()
         setCascadeOpacityEnabled(true);
         // 变灰而不是变红，通常更能代表死亡
         setColor(Color3B::GRAY);
+    }
+    if (_onDeathCallback) {
+        _onDeathCallback(this);
+        // 执行一次后置空，防止在某些极端情况下被重复调用
+        _onDeathCallback = nullptr;
     }
 }
 

@@ -2,7 +2,7 @@
 
 #include "SaveData.h"
 #include "Character/Base/CharacterData.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Configs/GameSceneConfig.h"
 #include "cocos2d.h"
 #include <chrono>

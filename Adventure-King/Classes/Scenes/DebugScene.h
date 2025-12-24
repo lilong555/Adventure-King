@@ -19,7 +19,7 @@
 
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Scenes/GameInputController.h"
 #include "Scenes/GameUIController.h"
 #include "Character/Base/CharacterData.h"

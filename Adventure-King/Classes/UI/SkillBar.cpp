@@ -7,7 +7,7 @@
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/Base/CharacterData.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 
 USING_NS_CC;
 

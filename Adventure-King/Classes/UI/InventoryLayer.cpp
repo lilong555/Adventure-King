@@ -7,7 +7,7 @@
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/components/AttributeComponent.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 #include "Configs/GameSceneConfig.h"
 #include "Configs/PlayerRoleConfig.h"
 #include "ui/CocosGUI.h"
