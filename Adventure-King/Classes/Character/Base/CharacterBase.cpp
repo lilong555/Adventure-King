@@ -179,6 +179,13 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     const bool wouldDieBeforeCallback = (_currentHP <= 0.0f);
     setCurrentHP(_currentHP); // 夹取到 [0, maxHP]，避免出现负值或溢出
 
+    // 装备/被动等“触发型机制”（受击后）：由 AttributeComponent 统一分发
+    // 注意：必须在死亡判定前触发，以便类似“急救面罩”这类机制有机会抬血避免死亡
+    if (attr)
+    {
+        attr->executeAfterReceiveDamageHooks(info.attacker, finalDamage, info, wouldDieBeforeCallback);
+    }
+
     // 先触发“受击后回调”（可用于濒死救援等机制）
     onReceiveDamage(info.attacker, finalDamage, info, wouldDieBeforeCallback);
 
@@ -187,6 +194,10 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     // 再通知攻击者“造成伤害回调”（用于吸血/击杀触发等）
     if (info.attacker && info.attacker != this)
     {
+        if (auto attackerAttr = info.attacker->getAttributeComponent())
+        {
+            attackerAttr->executeAfterDealDamageHooks(this, finalDamage, info, died);
+        }
         info.attacker->onDealDamage(this, finalDamage, info, died);
     }
 

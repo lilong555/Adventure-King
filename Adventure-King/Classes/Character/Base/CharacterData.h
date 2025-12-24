@@ -73,7 +73,16 @@ enum class StatusEffectType : uint8_t
     EXCITED,  // 亢奋
     STUNNED,  // 眩晕
     FULL_HP_CRIT, // 满血暴击
-    THORNS    // 反伤
+    THORNS,    // 反伤
+
+    // -----------------------------
+    // 装备特效（装备穿戴期间常驻，用于触发型机制）
+    // 注意：这些类型应尽量保持“只由装备系统控制”，避免与技能/地图/道具来源混用导致误删。
+    // -----------------------------
+    EQUIP_BLOOD_PACT_SWORD, // 血契短剑：吸血
+    EQUIP_EMBER_STAFF,      // 焰纹法杖：命中概率施加燃烧
+    EQUIP_EMERGENCY_MASK,   // 急救面罩：低血量救援（带冷却）
+    EQUIP_HUNTER_BOOTS      // 追猎之靴：击杀触发亢奋加速
 };
 
 //================== 属性结构 ==================

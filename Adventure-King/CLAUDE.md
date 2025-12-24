@@ -109,7 +109,7 @@ Resources/Particle/
 
 ### 关键约定
 - **贴图加载**: 用 `SpriteFrameCacheHelper::getOrCreateSpriteFrame` 复用帧
-- **可调参数**: 统一放 `Classes/Configs/GameConfigs.h`；粒子参数放对应组件头文件
+- **可调参数**: 统一放 `Classes/Configs/GameConfig.h`；粒子参数放对应组件头文件
 - **物理分类**: 只用 `GamePhysicsCategory.h` 中的枚举
 - **玩家动画**: 场景调用 `setMoving`/`attackAnimated`/`castSkillAnimated`，不直接操作动作
 - **引擎代码**: `Adventure-King/cocos2d/` 不要修改

@@ -7,7 +7,11 @@ class CharacterBase;
 class ThornsEffect : public StatusEffect {
 public:
     ThornsEffect(float reflectRate, float cooldown);
-    virtual void onModifyReceiveDamage(CharacterBase* owner, CharacterBase* attacker, DamageInfo& info) override;
+    virtual void onAfterReceiveDamage(CharacterBase* owner,
+                                      CharacterBase* attacker,
+                                      float finalDamage,
+                                      const DamageInfo& info,
+                                      bool wouldDieBeforeCallback) override;
     virtual void onTick(CharacterBase* owner, float dt) override;
 
 private:

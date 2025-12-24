@@ -166,6 +166,42 @@ void AttributeComponent::executeDealDamageHooks(CharacterBase* target, DamageInf
     }
 }
 
+void AttributeComponent::executeAfterReceiveDamageHooks(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback)
+{
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    if (!owner)
+    {
+        return;
+    }
+
+    // 优先执行“濒死救援类”机制，避免装备顺序导致逻辑不一致（例如急救面罩应先于反伤/其他触发）
+    for (auto& effect : _effects)
+    {
+        if (effect && effect->type == StatusEffectType::EQUIP_EMERGENCY_MASK)
+        {
+            effect->onAfterReceiveDamage(owner, attacker, finalDamage, info, wouldDieBeforeCallback);
+        }
+    }
+
+    for (auto& effect : _effects)
+    {
+        if (!effect || effect->type == StatusEffectType::EQUIP_EMERGENCY_MASK)
+        {
+            continue;
+        }
+        effect->onAfterReceiveDamage(owner, attacker, finalDamage, info, wouldDieBeforeCallback);
+    }
+}
+
+void AttributeComponent::executeAfterDealDamageHooks(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied)
+{
+    auto owner = static_cast<CharacterBase*>(getOwner());
+    for (auto& effect : _effects)
+    {
+        effect->onAfterDealDamage(owner, target, finalDamage, info, targetDied);
+    }
+}
+
 // =================================================================
 // 属性计算逻辑 (核心)
 // =================================================================

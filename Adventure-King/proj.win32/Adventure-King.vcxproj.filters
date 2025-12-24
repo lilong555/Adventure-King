@@ -237,6 +237,18 @@
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.cpp">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\BloodPactLifestealEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\EmberStaffEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\EmergencyMaskEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\HunterBootsEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
       <Filter>src\Objects\Projectiles</Filter>
     </ClCompile>
@@ -435,6 +447,18 @@
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\BloodPactLifestealEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\EmberStaffEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\EmergencyMaskEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\HunterBootsEffect.h">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">

@@ -46,6 +46,8 @@ public:
     // --- 战斗钩子分发 (Combat Hooks) ---
     void executeReceiveDamageHooks(CharacterBase* attacker, DamageInfo& info);
     void executeDealDamageHooks(CharacterBase* target, DamageInfo& info);
+    void executeAfterReceiveDamageHooks(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback);
+    void executeAfterDealDamageHooks(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied);
 
     // --- 最终数值查询 ---
     
