@@ -32,6 +32,10 @@ void BloodPactLifestealEffect::onAfterDealDamage(CharacterBase* owner,
     {
         return;
     }
+    if (owner->isDead())
+    {
+        return;
+    }
     if (finalDamage <= 0.0f)
     {
         return;
@@ -48,4 +52,3 @@ void BloodPactLifestealEffect::onAfterDealDamage(CharacterBase* owner,
     // 但“吸血”只会发生在造成伤害后，正常情况下 owner 不会是 0HP。
     owner->setCurrentHP(owner->getCurrentHP() + finalDamage * rate);
 }
-

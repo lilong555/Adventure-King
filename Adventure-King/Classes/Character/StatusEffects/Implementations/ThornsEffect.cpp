@@ -13,6 +13,11 @@ void ThornsEffect::onAfterReceiveDamage(CharacterBase* owner,
                                        float finalDamage,
                                        const DamageInfo& /*info*/,
                                        bool /*wouldDieBeforeCallback*/) {
+    // 如果拥有者已死亡或无效，则不再触发反伤
+    if (!owner || owner->isDead())
+    {
+        return;
+    }
     if (_currentCooldown > 0.0f) return;
 
     // 此时 CharacterBase 是完整类型，可以进行比较和调用方法

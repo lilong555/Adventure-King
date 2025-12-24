@@ -40,9 +40,13 @@ void EmberStaffEffect::onAfterDealDamage(CharacterBase* owner,
                                         CharacterBase* target,
                                         float finalDamage,
                                         const DamageInfo& /*info*/,
-                                        bool /*targetDied*/)
+                                        bool targetDied)
 {
     if (!owner || !target || target == owner)
+    {
+        return;
+    }
+    if (targetDied || target->isDead())
     {
         return;
     }
@@ -89,4 +93,3 @@ void EmberStaffEffect::onAfterDealDamage(CharacterBase* owner,
     targetAttr->addStatusEffect(burning);
     _cooldownRemaining = _procCooldownSeconds;
 }
-

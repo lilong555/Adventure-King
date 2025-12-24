@@ -61,7 +61,8 @@ void EmergencyMaskEffect::onAfterReceiveDamage(CharacterBase* owner,
         return;
     }
 
-    const float targetHp = std::min(maxHp, maxHp * _healTargetHpRatio);
+    // setCurrentHP 内部会对 MAX_HP 做夹取，因此这里无需再 std::min(maxHp, ...)
+    const float targetHp = maxHp * _healTargetHpRatio;
     if (targetHp <= currentHp)
     {
         return;
@@ -71,4 +72,3 @@ void EmergencyMaskEffect::onAfterReceiveDamage(CharacterBase* owner,
     owner->setCurrentHP(targetHp);
     _cooldownRemaining = _cooldownSeconds;
 }
-
