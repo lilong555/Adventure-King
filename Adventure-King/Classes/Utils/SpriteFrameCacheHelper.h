@@ -6,6 +6,11 @@
 
 namespace SpriteFrameCacheHelper
 {
+    // 记录“曾经缓存过的 key”，用于避免首次查询 SpriteFrameCache 时触发 “Frame isn't found” 噪音日志。
+    // 说明：工程使用 C++20（见 proj.win32/Adventure-King.vcxproj），因此可用 inline 变量确保全程序仅一份实例。
+    inline std::unordered_set<std::string> s_cachedFileSpriteFrameKeys;
+    inline std::unordered_set<std::string> s_cachedFileSpriteFrameKeysWithOriginalSize;
+
     // 判断是否为文件路径（而非 plist 帧名）
     inline bool isFilePath(const std::string &nameOrPath)
     {
@@ -24,8 +29,7 @@ namespace SpriteFrameCacheHelper
 
         // 对于文件路径（Sprites/...），避免先 getSpriteFrameByName 触发 “Frame isn't found” 的噪音日志：
         // 首次使用时直接按文件加载并加入缓存，后续再从 SpriteFrameCache 获取。
-        static std::unordered_set<std::string> s_cachedFrameKeys;
-        if (s_cachedFrameKeys.find(frameNameOrFile) != s_cachedFrameKeys.end())
+        if (s_cachedFileSpriteFrameKeys.find(frameNameOrFile) != s_cachedFileSpriteFrameKeys.end())
         {
             auto cached = cache->getSpriteFrameByName(frameNameOrFile);
             if (cached)
@@ -33,7 +37,7 @@ namespace SpriteFrameCacheHelper
                 return cached;
             }
             // 缓存可能被清理（例如 removeUnusedSpriteFrames），允许重建
-            s_cachedFrameKeys.erase(frameNameOrFile);
+            s_cachedFileSpriteFrameKeys.erase(frameNameOrFile);
         }
 
         auto textureCache = cocos2d::Director::getInstance()->getTextureCache();
@@ -51,7 +55,7 @@ namespace SpriteFrameCacheHelper
         }
 
         cache->addSpriteFrame(frame, frameNameOrFile);
-        s_cachedFrameKeys.insert(frameNameOrFile);
+        s_cachedFileSpriteFrameKeys.insert(frameNameOrFile);
         return frame;
     }
 
@@ -60,6 +64,7 @@ namespace SpriteFrameCacheHelper
     {
         if (!isFilePath(filePath))
         {
+            // 非文件路径（通常是 plist 帧名）：这里不做磁盘 IO 检查，视为“可尝试加载”
             return true;
         }
 
@@ -113,15 +118,14 @@ namespace SpriteFrameCacheHelper
 
         auto cache = cocos2d::SpriteFrameCache::getInstance();
         // 避免首次查询就触发 “Frame isn't found” 日志：仅在我们确实曾经缓存过时再查 SpriteFrameCache。
-        static std::unordered_set<std::string> s_cachedFrameKeysWithOriginalSize;
-        if (s_cachedFrameKeysWithOriginalSize.find(cacheKey) != s_cachedFrameKeysWithOriginalSize.end())
+        if (s_cachedFileSpriteFrameKeysWithOriginalSize.find(cacheKey) != s_cachedFileSpriteFrameKeysWithOriginalSize.end())
         {
             if (auto cached = cache->getSpriteFrameByName(cacheKey))
             {
                 return cached;
             }
             // 缓存可能被清理（例如 removeUnusedSpriteFrames），允许重建
-            s_cachedFrameKeysWithOriginalSize.erase(cacheKey);
+            s_cachedFileSpriteFrameKeysWithOriginalSize.erase(cacheKey);
         }
 
         auto textureCache = cocos2d::Director::getInstance()->getTextureCache();
@@ -158,7 +162,7 @@ namespace SpriteFrameCacheHelper
         }
 
         cache->addSpriteFrame(frame, cacheKey);
-        s_cachedFrameKeysWithOriginalSize.insert(cacheKey);
+        s_cachedFileSpriteFrameKeysWithOriginalSize.insert(cacheKey);
         return frame;
     }
 } // namespace SpriteFrameCacheHelper
