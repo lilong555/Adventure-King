@@ -29,9 +29,6 @@ void StateMachineComponent::onAdd()
     if (getOwner())
     {
         _cachedOwner = dynamic_cast<CharacterBase*>(getOwner());
-
-        // 开启 update 调度 (让 update 函数每帧被调用)
-        getOwner()->scheduleUpdate();
     }
 }
 
