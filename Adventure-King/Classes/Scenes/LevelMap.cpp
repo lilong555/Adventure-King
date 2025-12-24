@@ -539,9 +539,5 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
                                  }),
                 nullptr));
         }
-
-        CCLOG("Enemy spawn triggered: type='%s', count=%d, pos=(%.0f, %.0f)",
-              spawnPoint.monsterType.c_str(), count,
-              spawnPoint.position.x, spawnPoint.position.y);
     }
 }

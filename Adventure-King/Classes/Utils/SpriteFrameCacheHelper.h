@@ -55,6 +55,41 @@ namespace SpriteFrameCacheHelper
         return frame;
     }
 
+    // 无日志地判断文件是否存在（避免 FileUtils::fullPathForFilename 在缺失时打印噪音日志）
+    inline bool isFileExistNoLog(const std::string& filePath)
+    {
+        if (!isFilePath(filePath))
+        {
+            return true;
+        }
+
+        auto fileUtils = cocos2d::FileUtils::getInstance();
+        if (!fileUtils)
+        {
+            return false;
+        }
+
+        // 绝对路径直接判断，不会触发 fullPathForFilename 的日志
+        if (fileUtils->isAbsolutePath(filePath))
+        {
+            return fileUtils->isFileExist(filePath);
+        }
+
+        // 相对路径：用搜索路径拼接为绝对路径后再判断
+        const auto& searchPaths = fileUtils->getSearchPaths();
+        for (const auto& searchPath : searchPaths)
+        {
+            // 关键：getFullPathForDirectoryAndFilename 内部走 isFileExistInternal，不会触发 fullPathForFilename 的缺失日志
+            const std::string full = fileUtils->getFullPathForDirectoryAndFilename(searchPath, filePath);
+            if (!full.empty())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // 从文件创建帧，并强制使用固定原始尺寸（避免动画帧尺寸变化导致内容尺寸抖动）
     inline cocos2d::SpriteFrame *getOrCreateSpriteFrameWithOriginalSize(const std::string &filePath,
                                                                         const cocos2d::Size &originalSize,
@@ -77,9 +112,16 @@ namespace SpriteFrameCacheHelper
                                      (alignLeft ? "#left" : "");
 
         auto cache = cocos2d::SpriteFrameCache::getInstance();
-        if (auto cached = cache->getSpriteFrameByName(cacheKey))
+        // 避免首次查询就触发 “Frame isn't found” 日志：仅在我们确实曾经缓存过时再查 SpriteFrameCache。
+        static std::unordered_set<std::string> s_cachedFrameKeysWithOriginalSize;
+        if (s_cachedFrameKeysWithOriginalSize.find(cacheKey) != s_cachedFrameKeysWithOriginalSize.end())
         {
-            return cached;
+            if (auto cached = cache->getSpriteFrameByName(cacheKey))
+            {
+                return cached;
+            }
+            // 缓存可能被清理（例如 removeUnusedSpriteFrames），允许重建
+            s_cachedFrameKeysWithOriginalSize.erase(cacheKey);
         }
 
         auto textureCache = cocos2d::Director::getInstance()->getTextureCache();
@@ -116,6 +158,7 @@ namespace SpriteFrameCacheHelper
         }
 
         cache->addSpriteFrame(frame, cacheKey);
+        s_cachedFrameKeysWithOriginalSize.insert(cacheKey);
         return frame;
     }
 } // namespace SpriteFrameCacheHelper

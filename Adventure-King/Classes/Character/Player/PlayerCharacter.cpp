@@ -931,15 +931,23 @@ void PlayerCharacter::setMoving(bool moving, bool running)
             sm->changeState(CharacterState::IDLE);
 
             // 兜底：设回默认帧
-            auto defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png", true, false);
+            auto tryGetFrame = [this](const std::string& path) -> cocos2d::SpriteFrame* {
+                if (SpriteFrameCacheHelper::isFilePath(path) && !SpriteFrameCacheHelper::isFileExistNoLog(path))
+                {
+                    return nullptr;
+                }
+                return getStableSpriteFrame(path, true, false);
+            };
+
+            auto defaultFrame = tryGetFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
             if (!defaultFrame)
             {
                 // 多数角色（法师/战士/Klee）使用 run.png 作为静态待机帧
-                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+                defaultFrame = tryGetFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
             }
             if (!defaultFrame)
             {
-                defaultFrame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
+                defaultFrame = tryGetFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
             }
             if (defaultFrame)
             {
@@ -1576,14 +1584,13 @@ void PlayerCharacter::ensureMoveAnimations()
     // 因此：优先使用 run_1..run_n；只有当 run_1 不存在时，才回退到 run.png。
     const std::string run1Path = StringUtils::format("%s/spr_%s_run_1.png",
         _defaultSpriteDir.c_str(), _characterKey.c_str());
-    const bool hasNumberedRun = FileUtils::getInstance()->isFileExist(run1Path);
+    const bool hasNumberedRun = SpriteFrameCacheHelper::isFileExistNoLog(run1Path);
 
-    auto fileUtils = FileUtils::getInstance();
     for (int i = 1; i <= 8; ++i)
     {
         const std::string path = StringUtils::format("%s/spr_%s_run_%d.png",
             _defaultSpriteDir.c_str(), _characterKey.c_str(), i);
-        if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+        if (SpriteFrameCacheHelper::isFileExistNoLog(path))
         {
             movePaths.push_back(path);
         }
@@ -1592,7 +1599,7 @@ void PlayerCharacter::ensureMoveAnimations()
     {
         const std::string path = StringUtils::format("%s/spr_%s_run.png",
             _defaultSpriteDir.c_str(), _characterKey.c_str());
-        if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+        if (SpriteFrameCacheHelper::isFileExistNoLog(path))
         {
             movePaths.push_back(path);
         }
@@ -1637,12 +1644,11 @@ void PlayerCharacter::ensureStateAnimations()
         idlePaths.reserve(8);
 
         // 优先拼出 idle_1..idle_8（存在就加入，不存在就跳过，避免日志噪音）
-        auto fileUtils = FileUtils::getInstance();
         for (int i = 1; i <= 8; ++i)
         {
             const std::string path = StringUtils::format("%s/spr_%s_idle_%d.png",
                 _defaultSpriteDir.c_str(), _characterKey.c_str(), i);
-            if (!SpriteFrameCacheHelper::isFilePath(path) || (fileUtils && fileUtils->isFileExist(path)))
+            if (SpriteFrameCacheHelper::isFileExistNoLog(path))
             {
                 idlePaths.push_back(path);
             }
@@ -1663,14 +1669,22 @@ void PlayerCharacter::ensureStateAnimations()
         if (!cache->getAnimation(idleKey))
         {
             // 静态待机：优先 run.png（法师/战士/Klee），再兜底 run_1.png / idle_1.png
-            auto frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png", true, false);
+            auto tryGetFrame = [this](const std::string& path) -> cocos2d::SpriteFrame* {
+                if (SpriteFrameCacheHelper::isFilePath(path) && !SpriteFrameCacheHelper::isFileExistNoLog(path))
+                {
+                    return nullptr;
+                }
+                return getStableSpriteFrame(path, true, false);
+            };
+
+            auto frame = tryGetFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run.png");
             if (!frame)
             {
-                frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png", true, false);
+                frame = tryGetFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_run_1.png");
             }
             if (!frame)
             {
-                frame = getStableSpriteFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png", true, false);
+                frame = tryGetFrame(_defaultSpriteDir + "/spr_" + _characterKey + "_idle_1.png");
             }
             if (frame)
             {
@@ -1684,6 +1698,12 @@ void PlayerCharacter::ensureStateAnimations()
 
     auto ensureSingleFrame = [this, cache](const std::string& key, const std::string& framePath) {
         if (cache->getAnimation(key))
+        {
+            return;
+        }
+
+        // 避免探测不存在的文件导致引擎打印 “fullPathForFilename: No file found ...” 的噪音日志
+        if (SpriteFrameCacheHelper::isFilePath(framePath) && !SpriteFrameCacheHelper::isFileExistNoLog(framePath))
         {
             return;
         }
