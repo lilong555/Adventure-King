@@ -99,17 +99,24 @@ bool CombatContactHelper::handleContactBegin(PhysicsContact& contact,
             std::string key = StringUtils::format("defer_monster_dmg_%p_%p",
                                                   static_cast<void*>(attackBody),
                                                   static_cast<void*>(victim));
-            victim->scheduleOnce(
-                [victim, dmg](float)
-                {
-                    if (!victim || victim->isDead())
+            // 物理系统可能在极短时间内多次触发同一对（同一 hitbox / 同一受击者）的 begin 回调，
+            // 如果重复 scheduleOnce 同一个 key，会导致引擎打印：
+            // CCScheduler#schedule. Reiniting timer ...
+            // 这里做去重：同 key 已排队则不再重复排队。
+            if (!victim->isScheduled(key))
+            {
+                victim->scheduleOnce(
+                    [victim, dmg](float)
                     {
-                        return;
-                    }
-                    victim->takeDamage(dmg);
-                },
-                0.0f,
-                key);
+                        if (!victim || victim->isDead())
+                        {
+                            return;
+                        }
+                        victim->takeDamage(dmg);
+                    },
+                    0.0f,
+                    key);
+            }
         }
     }
 
@@ -148,17 +155,20 @@ bool CombatContactHelper::handleContactBegin(PhysicsContact& contact,
                 std::string key = StringUtils::format("defer_player_dmg_%p_%p",
                                                       static_cast<void*>(attackBody),
                                                       static_cast<void*>(monster));
-                monster->scheduleOnce(
-                    [monster, dmg](float)
-                    {
-                        if (!monster || monster->isDead())
+                if (!monster->isScheduled(key))
+                {
+                    monster->scheduleOnce(
+                        [monster, dmg](float)
                         {
-                            return;
-                        }
-                        monster->takeDamage(dmg);
-                    },
-                    0.0f,
-                    key);
+                            if (!monster || monster->isDead())
+                            {
+                                return;
+                            }
+                            monster->takeDamage(dmg);
+                        },
+                        0.0f,
+                        key);
+                }
             }
         }
     }

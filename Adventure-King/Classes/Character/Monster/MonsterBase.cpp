@@ -83,6 +83,8 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     if (!getAttributeComponent()) {
         auto attr = AttributeComponent::create();
         attr->setName("AttributeComponent"); // 必须设置名字，基类通过名字查找
+        // 避免 Node::addComponent 内部重复 scheduleUpdate 触发 “don't update it again”
+        this->unscheduleUpdate();
         this->addComponent(attr);
     }
 
@@ -90,6 +92,7 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     if (!getStateMachineComponent()) {
         auto sm = StateMachineComponent::create();
         sm->setName("StateMachineComponent");
+        this->unscheduleUpdate();
         this->addComponent(sm);
     }
 
@@ -97,6 +100,7 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     if (!getSkillComponent()) {
         auto skill = SkillComponent::create();
         skill->setName("SkillComponent");
+        this->unscheduleUpdate();
         this->addComponent(skill);
     }
 
@@ -104,10 +108,13 @@ bool MonsterBase::init(const std::string& spriteFrameName)
     if (!getComponent("StatusEffectVfxComponent")) {
         auto vfx = StatusEffectVfxComponent::create();
         vfx->setName("StatusEffectVfxComponent");
+        this->unscheduleUpdate();
         this->addComponent(vfx);
     }
 
     // ---------------------------------------------------------
+    // 组件挂载完毕后，统一使用 CharacterBase 约定的 update 优先级
+    scheduleUpdateWithPriority(1);
 
     // 默认缩放
     setScale(GameConfig::Monster::Base::SCALE);

@@ -51,8 +51,8 @@ bool MapScene::init() {
 
     // 3. UI 层（关闭按钮）
     auto closeItem = MenuItemImage::create(
-        "Scene/UI/CloseNormal.png",
-        "Scene/UI/CloseSelected.png",
+        "Scene/UI/CloseSaveMenu.png",
+        "Scene/UI/CloseSaveMenuSelected.png",
         CC_CALLBACK_1(MapScene::mapCloseCallback, this));
 
     if (closeItem) {

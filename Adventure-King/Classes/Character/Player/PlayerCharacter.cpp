@@ -157,11 +157,22 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     // 记录角色动画的“稳定原始尺寸”，用于后续创建统一尺寸的 SpriteFrame，避免不同 PNG 尺寸导致物理体漂移/跳动
     _stableFrameOriginalSize = getContentSize();
 
+    // 说明：
+    // - Node::addComponent 内部会无条件调用 scheduleUpdate()；
+    // - 当连续 add 多个组件时，会触发引擎日志：warning: don't update it again
+    //   （Scheduler::schedulePerFrame 检测到重复 scheduleUpdate）。
+    // 这里通过在每次 addComponent 前先 unscheduleUpdate()，确保不会重复调度同一个 update。
+    auto addComponentNoUpdateWarning = [this](cocos2d::Component* component) {
+        if (!component) return false;
+        this->unscheduleUpdate();
+        return this->addComponent(component);
+    };
+
     // 2. 组件挂载
-    if (!getAttributeComponent())    this->addComponent(AttributeComponent::create());
-    if (!getSkillComponent())        this->addComponent(SkillComponent::create());
-    if (!getStateMachineComponent()) this->addComponent(StateMachineComponent::create());
-    if (!getComponent("StatusEffectVfxComponent")) this->addComponent(StatusEffectVfxComponent::create());
+    if (!getAttributeComponent())    addComponentNoUpdateWarning(AttributeComponent::create());
+    if (!getSkillComponent())        addComponentNoUpdateWarning(SkillComponent::create());
+    if (!getStateMachineComponent()) addComponentNoUpdateWarning(StateMachineComponent::create());
+    if (!getComponent("StatusEffectVfxComponent")) addComponentNoUpdateWarning(StatusEffectVfxComponent::create());
 
     // 3. 数据层初始化
     initAttributesByRole(role);
@@ -195,6 +206,8 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     // 8. 默认背包物品（占位）：用于背包系统初期调试
     ensureDefaultInventory();
 
+    // 恢复 CharacterBase 约定的 update 优先级（并确保组件 update 正常运行）
+    scheduleUpdateWithPriority(1);
     return true;
 }
 

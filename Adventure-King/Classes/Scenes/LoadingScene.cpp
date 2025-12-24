@@ -201,8 +201,8 @@ void LoadingScene::updateProgressUI() {
 std::vector<std::string> LoadingScene::buildPreloadList(SceneID id) const {
     std::vector<std::string> paths;
 
-    // 通用资源 (如所有关卡都用的 UI 框)
-    paths.push_back("Scene/Backgrounds/CommonLoading.png");
+    // 通用资源：
+    // 注意：这里不要引用不存在的占位图，否则会在启动/切场景时刷 “fullPathForFilename: No file found ...”。
 
     // 从注册表获取特定场景资源
     auto info = SceneRegistry::getInstance()->getSceneInfo(id);
