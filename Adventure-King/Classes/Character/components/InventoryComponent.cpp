@@ -3,7 +3,7 @@
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/StatusEffects/StatusEffectFactory.h"
-#include "Configs/GameConfigs.h"
+#include "Configs/GameConfig.h"
 
 #include <algorithm>
 
