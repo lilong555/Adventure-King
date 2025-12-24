@@ -29,6 +29,18 @@ StatusEffect* StatusEffectFactory::createEffectByItemId(int itemId, int level) {
     return nullptr;
 }
 
+bool StatusEffectFactory::tryGetEffectTypeByItemId(int itemId, StatusEffectType& outType)
+{
+    // 说明：该函数应保持“仅映射、不分配内存”，供装备系统移除特效时查询使用。
+    if (itemId == GameConfig::Equipment::Armor::THORNS_ARMOR)
+    {
+        outType = StatusEffectType::THORNS;
+        return true;
+    }
+
+    return false;
+}
+
 // =================================================================
 // 按类型创建（建议新增此接口，专门用于 DebugScene 或技能系统）
 // =================================================================

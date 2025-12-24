@@ -7,13 +7,13 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 // 前向声明，减少头文件依赖
 class PlayerSkillSet;
 struct Equipment;
 struct Weapon;
+class InventoryComponent;
 
 class PlayerCharacter : public CharacterBase
 {
@@ -72,6 +72,9 @@ public:
     // =============================================================
     // 装备系统 (Equipment)
     // =============================================================
+    /// @brief 获取背包组件
+    InventoryComponent* getInventoryComponent() const;
+
     /// @brief 装备物品
     void equip(const std::shared_ptr<Equipment>& item);
     /// @brief 卸下指定槽位装备
@@ -79,7 +82,7 @@ public:
 
     // 背包（当前仅管理装备/武器；图标资源可后续补齐）
     /// @brief 获取背包物品列表
-    const std::vector<std::shared_ptr<Equipment>>& getInventoryItems() const { return _inventoryItems; }
+    const std::vector<std::shared_ptr<Equipment>>& getInventoryItems() const;
     /// @brief 添加物品到背包（按 id 去重）
     void addToInventory(const std::shared_ptr<Equipment>& item);
     /// @brief 清空背包（读档/重置用）
@@ -98,9 +101,9 @@ public:
 
     // 获取当前装备列表（用于存档）
     /// @brief 获取当前装备列表
-    const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& getEquippedItems() const { return _equippedItems; }
+    const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& getEquippedItems() const;
     /// @brief 设置装备列表（读档用）
-    void setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& items) { _equippedItems = items; }
+    void setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& items);
 
     using EquipmentChangeCallback = std::function<void(EquipmentSlot, const std::shared_ptr<Equipment>&)>;
     /// @brief 设置装备变更回调
@@ -283,10 +286,9 @@ private:
     cocos2d::Size _stableFrameOriginalSize = cocos2d::Size::ZERO; // 动画帧统一原始尺寸（避免漂移/抖动）
 
     // 组件与对象
-    std::map<EquipmentSlot, std::shared_ptr<Equipment>> _equippedItems;
-    std::vector<std::shared_ptr<Equipment>> _inventoryItems;
-    std::unordered_set<int> _inventoryItemIds; // 用于背包按 id 去重加速
     std::unique_ptr<PlayerSkillSet> _skillSet;
+    // 背包组件缓存：避免频繁 getComponent/dynamic_cast（并规避 const_cast）
+    InventoryComponent* _inventoryComponent = nullptr;
 
     EquipmentChangeCallback _equipmentChangeCallback = nullptr;
 
