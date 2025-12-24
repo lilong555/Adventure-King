@@ -443,6 +443,9 @@
     <ClInclude Include="..\Classes\Objects\Projectiles\ProjectilesBase.h">
       <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Configs\ArenaConfig.h">
+      <Filter>src\Configs</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="game.rc">

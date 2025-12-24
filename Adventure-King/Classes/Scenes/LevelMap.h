@@ -64,6 +64,7 @@ public:
                            const std::function<MonsterBase *(const std::string &)> &createMonsterByType,
                            float viewDistanceX,
                            float dt);
+    //void initArenas(TMXTiledMap* map);
 
 private:
     /// @brief 解析 TMX 多边形/折线顶点
