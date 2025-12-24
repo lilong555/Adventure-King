@@ -629,7 +629,10 @@ void PlayerCharacter::refreshHpMpFromAttributes()
 
 InventoryComponent* PlayerCharacter::getInventoryComponent() const
 {
-    return dynamic_cast<InventoryComponent*>(getComponent("InventoryComponent"));
+    // 注意：Cocos2d-x 的 Node::getComponent 不是 const 接口，这里只做只读查询，不会修改状态；
+    // 因此使用 const_cast 解除 const 限定，避免 Win32 编译报错。
+    auto self = const_cast<PlayerCharacter*>(this);
+    return dynamic_cast<InventoryComponent*>(self->getComponent("InventoryComponent"));
 }
 
 const std::vector<std::shared_ptr<Equipment>>& PlayerCharacter::getInventoryItems() const
