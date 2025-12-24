@@ -4,6 +4,7 @@
 #include "Character/components/SkillComponent.h"
 #include "Configs/GameConfigs.h"
 #include "Utils/PhysicsBodyLocalInfoHelper.h"
+#include "Utils/ParticleVfxHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -477,16 +478,7 @@ void CharacterBase::setCurrentHP(float hp)
         if (nowMs - _lastRestoreHealthVfxMs >= kRestoreVfxCooldownMs)
         {
             _lastRestoreHealthVfxMs = nowMs;
-
-            auto particle = ParticleSystemQuad::create(RESTORE_HEALTH_PARTICLE_PATH);
-            if (particle)
-            {
-                particle->setAutoRemoveOnFinish(true);
-                particle->setPositionType(ParticleSystem::PositionType::GROUPED);
-                const auto bodyInfo = PhysicsBodyLocalInfoHelper::getBodyLocalInfo(this);
-                particle->setPosition(bodyInfo.center);
-                addChild(particle, 999);
-            }
+            ParticleVfxHelper::playOnce(this, RESTORE_HEALTH_PARTICLE_PATH);
         }
     }
 }
