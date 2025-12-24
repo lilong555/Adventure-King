@@ -135,7 +135,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     }
 
     //-------------------------------------------------------------------------
-    // 步骤3：初始化玩家角色（从 born 图层获取出生点）
+    // 步骤3：初始化玩家角色（从特定图层获取出生点）
     //-------------------------------------------------------------------------
     Vec2 playerStartPos = _levelMap ? _levelMap->getPlayerSpawnPoint(config.bornLayerName) : Vec2::ZERO;
     initPlayer(playerStartPos, config.playerSpritePath);
@@ -247,7 +247,8 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
     const float scale = std::fabs(playerSprite->getScaleY());
     const float scaledHeight = originalSize.height * scale;
 
-    Vec2 playerPos = startPos + Vec2(0, scaledHeight / 2);
+
+    Vec2 playerPos = startPos;//+ Vec2(0, scaledHeight / 2);
     playerSprite->setPosition(playerPos);
 
     // 玩家碰撞盒尺寸：

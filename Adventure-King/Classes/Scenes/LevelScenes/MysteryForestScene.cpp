@@ -27,7 +27,7 @@ LevelConfig MysteryForestScene::getLevelConfig() const
     config.bornLayerName = "born";
     config.gateLayerName = "gate";
     config.gravity = -1000.0f;
-    config.enablePhysicsDebug = false;
+    config.enablePhysicsDebug = true;
     return config;
 }
 

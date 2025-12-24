@@ -187,7 +187,7 @@ namespace GameConfig
         inline constexpr float JUMP_FORCE = 400.0f;
         inline constexpr int MAX_JUMP_COUNT = 2;
         inline constexpr float JUMP_IMPULSE = 650.0f; ///< 跳跃冲量
-        inline constexpr float SCALE = 0.25f;
+        inline constexpr float SCALE = 0.4f;
         // 角色素材缩放补偿：
         // 不同职业的原始 PNG 像素尺寸/留白不一致（例如战士素材更“宽大”，刺客素材更“扁平”），
         // 如果统一使用同一个 SCALE，会导致游戏内可视体/物理体/攻击判定范围的“实际大小”不合理。
