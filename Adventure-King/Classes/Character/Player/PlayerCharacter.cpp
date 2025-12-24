@@ -4,10 +4,10 @@
 #include "Character/Player/SkillSets/AssassinSkillSet.h"
 
 #include "Character/components/AttributeComponent.h"
+#include "Character/components/InventoryComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/StatusEffectVfxComponent.h"
-#include "Character/StatusEffects/StatusEffectFactory.h"
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfigs.h"
 #include "Configs/GamePhysicsCategory.h"
@@ -171,9 +171,17 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
 
     // 2. 组件挂载
     if (!getAttributeComponent())    addComponentNoUpdateWarning(AttributeComponent::create());
+    if (!getComponent("InventoryComponent")) addComponentNoUpdateWarning(InventoryComponent::create());
     if (!getSkillComponent())        addComponentNoUpdateWarning(SkillComponent::create());
     if (!getStateMachineComponent()) addComponentNoUpdateWarning(StateMachineComponent::create());
     if (!getComponent("StatusEffectVfxComponent")) addComponentNoUpdateWarning(StatusEffectVfxComponent::create());
+
+    // 缓存背包组件指针，避免后续频繁 getComponent/dynamic_cast（并规避 const_cast）
+    _inventoryComponent = dynamic_cast<InventoryComponent*>(getComponent("InventoryComponent"));
+    if (!_inventoryComponent)
+    {
+        CCLOG("错误：PlayerCharacter 未能正确挂载 InventoryComponent");
+    }
 
     // 3. 数据层初始化
     initAttributesByRole(role);
@@ -380,7 +388,7 @@ bool PlayerCharacter::hasPassiveEquipped(int skillId)
 
 std::shared_ptr<Equipment> PlayerCharacter::findEquippedItemById(int itemId) const
 {
-    for (const auto &kv : _equippedItems)
+    for (const auto &kv : getEquippedItems())
     {
         const auto &item = kv.second;
         if (item && item->id == itemId)
@@ -626,92 +634,115 @@ void PlayerCharacter::refreshHpMpFromAttributes()
 // 装备系统
 // =================================================================
 
+namespace
+{
+const std::vector<std::shared_ptr<Equipment>> kEmptyInventoryItems;
+const std::map<EquipmentSlot, std::shared_ptr<Equipment>> kEmptyEquippedItems;
+
+void logMissingInventoryComponentOnce(const char* callsite)
+{
+    static bool logged = false;
+    if (logged)
+    {
+        return;
+    }
+    logged = true;
+    CCLOG("警告：%s 获取 InventoryComponent 失败，返回空容器；请检查 PlayerCharacter::init 是否挂载组件", callsite);
+}
+}
+
+InventoryComponent* PlayerCharacter::getInventoryComponent() const
+{
+    return _inventoryComponent;
+}
+
+const std::vector<std::shared_ptr<Equipment>>& PlayerCharacter::getInventoryItems() const
+{
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        logMissingInventoryComponentOnce(__FUNCTION__);
+        return kEmptyInventoryItems;
+    }
+    return inv->getInventoryItems();
+}
+
+const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& PlayerCharacter::getEquippedItems() const
+{
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        logMissingInventoryComponentOnce(__FUNCTION__);
+        return kEmptyEquippedItems;
+    }
+    return inv->getEquippedItems();
+}
+
+void PlayerCharacter::setEquippedItems(const std::map<EquipmentSlot, std::shared_ptr<Equipment>>& items)
+{
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        return;
+    }
+    inv->setEquippedItems(items);
+}
+
 void PlayerCharacter::addToInventory(const std::shared_ptr<Equipment>& item)
+{
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        return;
+    }
+    inv->addToInventory(item);
+}
+
+void PlayerCharacter::clearInventory()
+{
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        return;
+    }
+    inv->clearInventory();
+}
+
+void PlayerCharacter::setInventoryItems(const std::vector<std::shared_ptr<Equipment>>& items)
+{
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        return;
+    }
+    inv->setInventoryItems(items);
+}
+
+void PlayerCharacter::equip(const std::shared_ptr<Equipment>& item)
 {
     if (!item)
     {
         return;
     }
 
-    // 按 id 去重：使用 set 加速（背包变大时避免线性扫描）
-    const int itemId = item->id;
-    if (_inventoryItemIds.find(itemId) != _inventoryItemIds.end())
+    auto inv = getInventoryComponent();
+    if (!inv)
     {
         return;
     }
 
-    _inventoryItems.push_back(item);
-    _inventoryItemIds.insert(itemId);
-}
-
-void PlayerCharacter::clearInventory()
-{
-    _inventoryItems.clear();
-    _inventoryItemIds.clear();
-}
-
-void PlayerCharacter::setInventoryItems(const std::vector<std::shared_ptr<Equipment>>& items)
-{
-    _inventoryItems.clear();
-    _inventoryItemIds.clear();
-    for (const auto& item : items)
-    {
-        addToInventory(item);
-    }
-}
-
-void PlayerCharacter::equip(const std::shared_ptr<Equipment>& item)
-{
-    if (!item) return;
-    auto attr = getAttributeComponent();
-    if (!attr) return;
-
     const auto slot = item->slot;
-
-    // ==========================================
-    // 1. 处理旧装备的卸载
-    // ==========================================
-    auto it = _equippedItems.find(slot);
-    if (it != _equippedItems.end())
+    if (!inv->equip(item))
     {
-        auto oldItem = it->second;
-        // 移除属性加成
-        attr->removeEquipmentBonus(oldItem->attributeBonus);
-
-        // 核心：移除旧装备关联的逻辑效果（如旧装备提供的反伤或吸血）
-        // 这里建议根据类型移除，或者在 StatusEffect 中标记来源
-        attr->removeStatusEffect(StatusEffectType::THORNS); // 举例：通用移除
-        // 如果有更复杂的逻辑，可以在 Factory 中定义移除逻辑
+        return;
     }
 
-    // ==========================================
-    // 2. 挂载新装备
-    // ==========================================
-    _equippedItems[slot] = item;
-    attr->addEquipmentBonus(item->attributeBonus);
-
-    // ==========================================
-    // 3. 核心解耦：通过工厂注入逻辑效果
-    // ==========================================
-    // 不再判断 item->id == THORNS_ARMOR，全部交给工厂
-    auto effect = StatusEffectFactory::createEffectByItemId(item->id, item->level);
-    if (effect)
-    {
-        attr->addStatusEffect(effect);
-    }
-
-    // ==========================================
-    // 4. 处理武器特有表现
-    // ==========================================
+    // 武器：同步动画前缀与帧数等表现信息
     if (slot == EquipmentSlot::WEAPON)
     {
-        auto weapon = std::dynamic_pointer_cast<Weapon>(item);
-        onWeaponChanged(weapon);
+        onWeaponChanged(std::dynamic_pointer_cast<Weapon>(item));
     }
 
-    // ==========================================
-    // 5. 状态更新与回调
-    // ==========================================
     refreshHpMpFromAttributes();
 
     if (_equipmentChangeCallback)
@@ -722,14 +753,16 @@ void PlayerCharacter::equip(const std::shared_ptr<Equipment>& item)
 
 void PlayerCharacter::unequip(EquipmentSlot slot)
 {
-    auto attr = getAttributeComponent();
-    if (!attr) return;
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        return;
+    }
 
-    auto it = _equippedItems.find(slot);
-    if (it == _equippedItems.end()) return;
-
-    attr->removeEquipmentBonus(it->second->attributeBonus);
-    _equippedItems.erase(it);
+    if (!inv->unequip(slot))
+    {
+        return;
+    }
 
     if (slot == EquipmentSlot::WEAPON)
     {
@@ -743,14 +776,22 @@ void PlayerCharacter::unequip(EquipmentSlot slot)
 
 std::shared_ptr<Equipment> PlayerCharacter::getEquipment(EquipmentSlot slot) const
 {
-    auto it = _equippedItems.find(slot);
-    return (it != _equippedItems.end()) ? it->second : nullptr;
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        return nullptr;
+    }
+    return inv->getEquipment(slot);
 }
 
 std::shared_ptr<Weapon> PlayerCharacter::getEquippedWeapon() const
 {
-    auto eq = getEquipment(EquipmentSlot::WEAPON);
-    return std::dynamic_pointer_cast<Weapon>(eq);
+    auto inv = getInventoryComponent();
+    if (!inv)
+    {
+        return nullptr;
+    }
+    return inv->getEquippedWeapon();
 }
 
 WeaponType PlayerCharacter::getCurrentWeaponType() const
@@ -777,144 +818,12 @@ void PlayerCharacter::onWeaponChanged(const std::shared_ptr<Weapon>& weapon)
 
 void PlayerCharacter::ensureDefaultInventory()
 {
-    // 说明：这里放少量“测试/占位物品”，用于背包/装备/被动机制的基本交互验证。
-    // 该函数应保持幂等：通过 addToInventory 的去重逻辑，避免重复加入。
-    //
-    // 注意：目前尚未接入掉落/商店等产出系统，因此通过“默认物品”保证功能可测试。
-
-    // 新手剑（武器）
+    auto inv = getInventoryComponent();
+    if (!inv)
     {
-        auto weapon = std::make_shared<Weapon>();
-        weapon->id = GameConfig::Equipment::Weapon::STARTER_SWORD;
-        weapon->name = "新手剑";
-        weapon->description = "一把趁手的练习用短剑";
-        weapon->slot = EquipmentSlot::WEAPON;
-        weapon->type = WeaponType::SWORD;
-        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE;
-        weapon->attackRange = 60.0f;
-        weapon->attackSpeed = 1.0f;
-        weapon->attackAnimationPrefix = ""; // 为空则沿用角色默认攻击动画
-        weapon->attackFrameCount = 3;
-        weapon->attributeBonus.add(AttributeType::STRENGTH, 2.0f);
-        addToInventory(weapon);
+        return;
     }
-
-    // 训练法杖（武器）
-    {
-        auto weapon = std::make_shared<Weapon>();
-        weapon->id = GameConfig::Equipment::Weapon::TRAINING_STAFF;
-        weapon->name = "训练法杖";
-        weapon->description = "木制法杖，适合练习施法";
-        weapon->slot = EquipmentSlot::WEAPON;
-        weapon->type = WeaponType::STAFF;
-        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE;
-        weapon->attackRange = 80.0f;
-        weapon->attackSpeed = 0.9f;
-        weapon->attackAnimationPrefix = "";
-        weapon->attackFrameCount = 3;
-        weapon->attributeBonus.add(AttributeType::MAX_MP, 20.0f);
-        addToInventory(weapon);
-    }
-
-    // 焰纹法杖（武器：命中有概率施加燃烧，可叠层）
-    {
-        auto weapon = std::make_shared<Weapon>();
-        weapon->id = GameConfig::Equipment::Weapon::EMBER_STAFF;
-        weapon->name = "焰纹法杖";
-        weapon->description = "杖身刻着古老火纹。命中时有概率施加燃烧（可叠层），适合持续压制。";
-        weapon->slot = EquipmentSlot::WEAPON;
-        weapon->type = WeaponType::STAFF;
-        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE + 2.0f;
-        weapon->attackRange = 90.0f;
-        weapon->attackSpeed = 0.95f;
-        weapon->attackAnimationPrefix = "";
-        weapon->attackFrameCount = 3;
-        weapon->attributeBonus.add(AttributeType::MAX_MP, 30.0f);
-        addToInventory(weapon);
-    }
-
-    // 血契短剑（武器：吸血，随装备等级成长）
-    {
-        auto weapon = std::make_shared<Weapon>();
-        weapon->id = GameConfig::Equipment::Weapon::BLOOD_PACT_SWORD;
-        weapon->name = "血契短剑";
-        weapon->description = "刀刃渴望鲜血。造成伤害会按比例转化为生命回复（随装备等级成长）。";
-        weapon->slot = EquipmentSlot::WEAPON;
-        weapon->type = WeaponType::SWORD;
-        weapon->attackDamage = GameConfig::Player::DEFAULT_WEAPON_DAMAGE + 3.0f;
-        weapon->attackRange = 70.0f;
-        weapon->attackSpeed = 1.05f;
-        weapon->attackAnimationPrefix = "";
-        weapon->attackFrameCount = 3;
-        weapon->attributeBonus.add(AttributeType::STRENGTH, 3.0f);
-        addToInventory(weapon);
-    }
-
-    // 皮帽（头盔）
-    {
-        auto equip = std::make_shared<Equipment>();
-        equip->id = GameConfig::Equipment::Helmet::LEATHER_CAP;
-        equip->name = "皮帽";
-        equip->description = "简单的皮制头盔";
-        equip->slot = EquipmentSlot::HELMET;
-        equip->attributeBonus.add(AttributeType::MAX_HP, 20.0f);
-        addToInventory(equip);
-    }
-
-    // 急救面罩（头盔：低血量触发救援，带冷却）
-    {
-        auto equip = std::make_shared<Equipment>();
-        equip->id = GameConfig::Equipment::Helmet::EMERGENCY_MASK;
-        equip->name = "急救面罩";
-        equip->description = "内置应急药剂：生命低于 20% 时将生命抬升到 35%，45 秒冷却。";
-        equip->slot = EquipmentSlot::HELMET;
-        equip->attributeBonus.add(AttributeType::MAX_HP, 10.0f);
-        addToInventory(equip);
-    }
-
-    // 皮甲（护甲）
-    {
-        auto equip = std::make_shared<Equipment>();
-        equip->id = GameConfig::Equipment::Armor::LEATHER_ARMOR;
-        equip->name = "皮甲";
-        equip->description = "轻便护甲，提供基础防护";
-        equip->slot = EquipmentSlot::ARMOR;
-        equip->attributeBonus.add(AttributeType::DEFENSE, 1.0f);
-        addToInventory(equip);
-    }
-
-    // 荆棘甲（护甲：反弹部分伤害，随装备等级成长）
-    {
-        auto equip = std::make_shared<Equipment>();
-        equip->id = GameConfig::Equipment::Armor::THORNS_ARMOR;
-        equip->name = "荆棘甲";
-        equip->description = "带刺甲片会反弹部分伤害（带冷却，反伤随装备等级成长）。";
-        equip->slot = EquipmentSlot::ARMOR;
-        equip->attributeBonus.add(AttributeType::DEFENSE, 2.0f);
-        addToInventory(equip);
-    }
-
-    // 轻便靴（靴子）
-    {
-        auto equip = std::make_shared<Equipment>();
-        equip->id = GameConfig::Equipment::Boots::LIGHT_BOOTS;
-        equip->name = "轻便靴";
-        equip->description = "更轻的鞋子，跑得更快";
-        equip->slot = EquipmentSlot::BOOTS;
-        equip->attributeBonus.add(AttributeType::MOVE_SPEED, 20.0f);
-        addToInventory(equip);
-    }
-
-    // 追猎之靴（靴子：击杀后短暂加速）
-    {
-        auto equip = std::make_shared<Equipment>();
-        equip->id = GameConfig::Equipment::Boots::HUNTER_BOOTS;
-        equip->name = "追猎之靴";
-        equip->description = "击杀目标后进入亢奋：短时间内移动速度提升。";
-        equip->slot = EquipmentSlot::BOOTS;
-        equip->attributeBonus.add(AttributeType::MOVE_SPEED, 10.0f);
-        addToInventory(equip);
-    }
+    inv->ensureDefaultInventory();
 }
 
 // =================================================================
