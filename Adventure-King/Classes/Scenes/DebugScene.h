@@ -266,19 +266,8 @@ private:
     cocos2d::Label *_stateLabel = nullptr;        ///< 角色状态显示
     cocos2d::Label *_statusEffectLabel = nullptr; ///< 状态效果列表
     cocos2d::Label *_damageLogLabel = nullptr;    ///< 伤害日志面板
-    cocos2d::Label *_hpLabel = nullptr;           ///< HP数值标签
-    cocos2d::Label *_mpLabel = nullptr;           ///< MP数值标签
     cocos2d::Label *_equipmentLabel = nullptr;    ///< 当前装备显示
     cocos2d::Label *_passiveSkillLabel = nullptr; ///< 被动技能列表
-
-    //=========================================================================
-    // 成员变量 - HP/MP进度条
-    //=========================================================================
-
-    cocos2d::DrawNode *_hpBarBg = nullptr;   ///< HP进度条背景
-    cocos2d::DrawNode *_hpBarFill = nullptr; ///< HP进度条填充
-    cocos2d::DrawNode *_mpBarBg = nullptr;   ///< MP进度条背景
-    cocos2d::DrawNode *_mpBarFill = nullptr; ///< MP进度条填充
 
     //=========================================================================
     // 成员变量 - 装备系统
