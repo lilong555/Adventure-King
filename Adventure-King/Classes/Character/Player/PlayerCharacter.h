@@ -110,6 +110,14 @@ public:
     void setEquipmentChangeCallback(const EquipmentChangeCallback& callback) { _equipmentChangeCallback = callback; }
 
     // =============================================================
+    // 调试辅助 (Debug)
+    // =============================================================
+    /// @brief 伤害日志回调（仅 DebugScene 使用，不会在正式关卡输出）
+    using DamageLogCallback = std::function<void(const std::string&)>;
+    /// @brief 设置伤害日志回调
+    void setDamageLogCallback(const DamageLogCallback& callback) { _damageLogCallback = callback; }
+
+    // =============================================================
     // 动作控制 (Movement & Animation)
     // =============================================================
     // 场景输入层调用：切换跑动/待机状态
@@ -309,4 +317,7 @@ private:
     float _poisonProcCooldownRemaining = 0.0f;    // 命中中毒触发冷却
     float _critEchoCooldownRemaining = 0.0f;      // 暴击缩冷却触发冷却
     bool _fullHpCritActive = false;               // 满血暴击状态是否已激活
+
+    // 调试：伤害日志输出（仅 DebugScene 注入）
+    DamageLogCallback _damageLogCallback = nullptr;
 };

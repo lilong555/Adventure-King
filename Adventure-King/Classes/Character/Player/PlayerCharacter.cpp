@@ -1130,10 +1130,17 @@ void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage
 {
     // 说明：装备特效已在 CharacterBase::takeDamage 内统一通过
     // AttributeComponent::executeAfterReceiveDamageHooks 分发触发。
-    (void)attacker;
-    (void)finalDamage;
-    (void)info;
-    (void)wouldDieBeforeCallback;
+    if (_damageLogCallback && finalDamage > 0.0f)
+    {
+        const char* critText = info.isCritical ? " [暴击]" : "";
+        const char* dieText = wouldDieBeforeCallback ? " [濒死]" : "";
+        const char* fromText = attacker ? "" : " [未知来源]";
+        _damageLogCallback(StringUtils::format("受到伤害: %.0f%s%s%s",
+                                              finalDamage,
+                                              critText,
+                                              dieText,
+                                              fromText));
+    }
 }
 
 void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied)
@@ -1145,6 +1152,16 @@ void PlayerCharacter::onDealDamage(CharacterBase* target, float finalDamage, con
     if (finalDamage <= 0.0f)
     {
         return;
+    }
+
+    if (_damageLogCallback)
+    {
+        const char* critText = info.isCritical ? " [暴击]" : "";
+        const char* killText = targetDied ? " [击杀]" : "";
+        _damageLogCallback(StringUtils::format("造成伤害: %.0f%s%s",
+                                              finalDamage,
+                                              critText,
+                                              killText));
     }
 
     // -----------------------------
