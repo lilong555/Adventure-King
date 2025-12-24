@@ -152,6 +152,11 @@ void DebugScene::onEnter()
 void DebugScene::onExit()
 {
     ImeHelper::popDisableIme();
+    if (_player)
+    {
+        // 清理回调：避免场景退出过程中仍有延迟伤害回调写入已销毁的 UI
+        _player->setDamageLogCallback(nullptr);
+    }
     Scene::onExit();
 }
 
@@ -368,6 +373,12 @@ void DebugScene::initPlayer()
     // 设置死亡时不自动移除（由DebugScene控制重置）
     _player->setAutoRemoveOnDeath(false);
 
+    // DebugScene：注入伤害日志回调，用于记录真实战斗中的命中/受击结果
+    _player->setDamageLogCallback([this](const std::string& log)
+    {
+        this->addDamageLog(log);
+    });
+
     CCLOG("Player created with physics at position (%.0f, %.0f)", startPos.x, startPos.y);
 }
 
@@ -464,6 +475,9 @@ void DebugScene::initDebugUI()
     _damageLogLabel->setAnchorPoint(Vec2(0, 1));
     _damageLogLabel->setPosition(Vec2(rightPanelX, panelY - 155));
     _damageLogLabel->setColor(Color3B(200, 200, 200));
+    _damageLogLabel->setHorizontalAlignment(TextHAlignment::LEFT);
+    _damageLogLabel->setVerticalAlignment(TextVAlignment::TOP);
+    _damageLogLabel->setDimensions(230.0f, 0.0f);
     this->addChild(_damageLogLabel, DEBUG_UI_Z_ORDER);
 }
 
@@ -1001,7 +1015,7 @@ void DebugScene::onTakeDamageClicked(Ref *sender)
     _player->takeDamage(info);
     float hpAfter = _player->getCurrentHP();
 
-    addDamageLog(StringUtils::format("普通伤害: %.0f -> %.0f (-%0.f)",
+    addDamageLog(StringUtils::format("普通伤害: %.0f -> %.0f (-%.0f)",
                                      hpBefore, hpAfter, hpBefore - hpAfter));
 
     CCLOG("Player took 10 damage, HP: %.0f", _player->getCurrentHP());
