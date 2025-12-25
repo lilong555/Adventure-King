@@ -1,5 +1,5 @@
 #include "StatusEffectFactory.h"
-// 1. 必须包含所有具体的实现头文件
+// 必须包含所有具体的实现头文件
 #include "Character/StatusEffects/Implementations/ThornsEffect.h"
 #include "Character/StatusEffects/Implementations/BurningEffect.h"
 #include "Character/StatusEffects/Implementations/RegenEffect.h"
