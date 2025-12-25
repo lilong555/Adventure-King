@@ -62,11 +62,7 @@ void BossHealthBar::createBackground()
     float bgWidth = _barWidth + 40;
     float bgHeight = _barHeight + 50;
 
-    // 绘制边框
-    _background->drawRect(
-        Vec2(-bgWidth / 2, -bgHeight / 2),
-        Vec2(bgWidth / 2, bgHeight / 2),
-        Color4F(0.6f, 0.2f, 0.2f, 1.0f));
+    // 取消红色描边（仅保留血条自身的边框/结构）
 
     _content->addChild(_background, 0);
 }
