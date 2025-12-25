@@ -225,7 +225,7 @@ std::string SkillBar::getIconPathForSkillId(int skillId) const
     }
     if (skillId == GameConfig::Assassin::AllInSkill::ALL_IN_ID)
     {
-        // 占位图标：先用现有资源，后续可替换为专用技能图标
+        // 占位图标：临时使用刺客角色默认姿态图标，后续可替换为专用技能图标
         return "Sprites/Characters/Player/maaer/default/15704_S.png";
     }
     if (skillId == GameConfig::Warrior::FireSkill::FIRE_ID)

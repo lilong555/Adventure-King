@@ -1166,6 +1166,16 @@ void PlayerCharacter::takeDamage(const DamageInfo& info)
     _actionLocked = false;
 }
 
+void PlayerCharacter::die()
+{
+    // 清理临时增益：高手状态（出伤倍率）
+    setOutgoingDamageMultiplier(1.0f);
+    _outgoingDamageMultiplierRemainingSeconds = 0.0f;
+    removeExpertKeepVfx(this);
+
+    CharacterBase::die();
+}
+
 //逻辑下放
 
 //void PlayerCharacter::onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool /*wouldDieBeforeCallback*/)

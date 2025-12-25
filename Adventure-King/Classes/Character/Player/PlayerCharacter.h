@@ -166,6 +166,8 @@ public:
     virtual void attack() override; // 普攻
     /// @brief 受击处理（打断动作/播放受击）
     virtual void takeDamage(const DamageInfo& info) override; // 受击（打断动作/播放受击）
+    /// @brief 死亡处理：重置高手增伤等临时状态，避免跨生命周期残留
+    virtual void die() override;
     /// @brief 造成伤害回调（用于吸血/命中特效/击杀触发等）
     virtual void onDealDamage(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied) override;
     /// @brief 受到伤害回调（用于反伤/濒死救援等）
