@@ -416,7 +416,8 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
                         options.name = "warrior_fire_vfx";
                         // 特效不要随 hitbox 销毁而提前结束：挂到 combatLayer（世界层）上播放
                         options.useBodyCenter = false;
-                        options.position = center;
+                        // 特效从命中框底部生成（底边中点）
+                        options.position = Vec2(center.x, center.y - hitboxSize.height * 0.5f);
                         ParticleVfxHelper::playOnce(combatLayer, "Particle/par_fire.plist", options);
                     }
                 },
