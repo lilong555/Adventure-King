@@ -7,6 +7,8 @@
 #include "Character/Base/CharacterBase.h"
 #include "Character/components/AttributeComponent.h"
 
+#include <algorithm>
+
 USING_NS_CC;
 
 BossHealthBar *BossHealthBar::create()
@@ -34,6 +36,7 @@ bool BossHealthBar::init()
 
     createBackground();
     createHealthBar();
+    createBreakBar();
     createNameLabel();
 
     // 初始隐藏
@@ -106,6 +109,39 @@ void BossHealthBar::createHealthBar()
     _hpLabel->setPosition(Vec2(0, barY));
     _hpLabel->setColor(Color3B::WHITE);
     _container->addChild(_hpLabel, 5);
+}
+
+void BossHealthBar::createBreakBar()
+{
+    // 放在 Boss 血条下方：偏小的“击破条”
+    const float barY = -5.0f;
+    const float gapY = 6.0f;
+    const float breakY = barY - (_barHeight * 0.5f) - gapY - (_breakBarHeight * 0.5f);
+
+    _breakBarBg = DrawNode::create();
+    _breakBarBg->drawSolidRect(
+        Vec2(-_barWidth / 2, -_breakBarHeight / 2),
+        Vec2(_barWidth / 2, _breakBarHeight / 2),
+        Color4F(0.08f, 0.08f, 0.10f, 1.0f));
+    _breakBarBg->setPosition(Vec2(0, breakY));
+    _container->addChild(_breakBarBg, 1);
+
+    _breakBarFill = DrawNode::create();
+    _breakBarFill->setPosition(Vec2(0, breakY));
+    _container->addChild(_breakBarFill, 2);
+
+    _breakBarBorder = DrawNode::create();
+    _breakBarBorder->drawRect(
+        Vec2(-_barWidth / 2, -_breakBarHeight / 2),
+        Vec2(_barWidth / 2, _breakBarHeight / 2),
+        Color4F(0.55f, 0.65f, 0.95f, 1.0f));
+    _breakBarBorder->setPosition(Vec2(0, breakY));
+    _container->addChild(_breakBarBorder, 3);
+
+    // 默认隐藏：只有 boss 支持击破条时才显示
+    if (_breakBarBg) _breakBarBg->setVisible(false);
+    if (_breakBarFill) _breakBarFill->setVisible(false);
+    if (_breakBarBorder) _breakBarBorder->setVisible(false);
 }
 
 void BossHealthBar::createNameLabel()
@@ -225,6 +261,11 @@ void BossHealthBar::updateDisplay()
     }
 
     updateHealthBar(currentHP, maxHP);
+
+    // 更新击破条（Boss 机制）：默认不显示，只有 max>0 时才渲染
+    const int breakMax = _boss->getBreakMax();
+    const int breakCurrent = _boss->getBreakMeter();
+    updateBreakBar(breakCurrent, breakMax);
 }
 
 void BossHealthBar::updateHealthBar(float current, float max)
@@ -275,6 +316,37 @@ void BossHealthBar::updateHealthBar(float current, float max)
     {
         _hpLabel->setString(StringUtils::format("%.0f / %.0f", current, max));
     }
+}
+
+void BossHealthBar::updateBreakBar(int current, int max)
+{
+    const bool shouldShow = (max > 0);
+    if (_breakBarBg) _breakBarBg->setVisible(shouldShow);
+    if (_breakBarFill) _breakBarFill->setVisible(shouldShow);
+    if (_breakBarBorder) _breakBarBorder->setVisible(shouldShow);
+
+    if (!_breakBarFill || !shouldShow)
+    {
+        return;
+    }
+
+    const int clampedMax = std::max(1, max);
+    const int clampedCur = std::max(0, std::min(current, clampedMax));
+    const float percent = static_cast<float>(clampedCur) / static_cast<float>(clampedMax);
+
+    _breakBarFill->clear();
+    if (percent <= 0.0f)
+    {
+        return;
+    }
+
+    // 击破条颜色：偏蓝紫（与血条红色区分）
+    const Color4F fillColor(0.30f, 0.55f, 1.00f, 1.0f);
+    const float fillWidth = _barWidth * percent;
+    _breakBarFill->drawSolidRect(
+        Vec2(-_barWidth / 2, -_breakBarHeight / 2),
+        Vec2(-_barWidth / 2 + fillWidth, _breakBarHeight / 2),
+        fillColor);
 }
 
 void BossHealthBar::setCurrentPhase(int phase)

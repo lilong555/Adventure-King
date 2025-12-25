@@ -79,6 +79,15 @@ public:
     /// @brief 是否已死亡
     bool isDead() const { return _currentHP <= 0.0f; }
 
+    // =============================================================
+    // 击破条（Boss 机制）
+    // 默认返回 0 表示“不支持击破条”；具体 Boss（如 Goblu）可重写
+    // =============================================================
+    /// @brief 当前击破值
+    virtual int getBreakMeter() const { return 0; }
+    /// @brief 击破上限
+    virtual int getBreakMax() const { return 0; }
+
     /**
      * @brief 设置死亡后是否自动从场景移除
      * @param autoRemove true=自动移除(默认), false=保留在场景中

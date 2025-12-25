@@ -22,6 +22,8 @@ public:
     virtual void attack() override;
     virtual void takeDamage(const DamageInfo& info) override;
     virtual void die() override;
+    virtual int getBreakMeter() const override { return _breakMeter; }
+    virtual int getBreakMax() const override { return GameConfig::Monster::Goblu::BREAK_MAX; }
 
 protected:
     // 经验奖励：按玩家等级缩放

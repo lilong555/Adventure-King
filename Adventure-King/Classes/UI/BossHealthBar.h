@@ -73,17 +73,21 @@ public:
      */
     void playPhaseTransitionAnimation();
 
-protected:
+	protected:
     /// @brief 创建背景容器
     void createBackground();
     /// @brief 创建血条（含底/填充/伤害条）
     void createHealthBar();
+    /// @brief 创建击破条（Boss 机制）
+    void createBreakBar();
     /// @brief 创建 Boss 名称文本
     void createNameLabel();
     /// @brief 创建阶段指示器
     void createPhaseIndicators(int phaseCount);
     /// @brief 更新血条填充显示
     void updateHealthBar(float current, float max);
+    /// @brief 更新击破条填充显示
+    void updateBreakBar(int current, int max);
 
 protected:
     CharacterBase *_boss = nullptr;
@@ -95,6 +99,9 @@ protected:
     cocos2d::DrawNode *_healthBarBg = nullptr;
     cocos2d::DrawNode *_healthBarFill = nullptr;
     cocos2d::DrawNode *_healthBarDamage = nullptr;
+    cocos2d::DrawNode *_breakBarBg = nullptr;
+    cocos2d::DrawNode *_breakBarFill = nullptr;
+    cocos2d::DrawNode *_breakBarBorder = nullptr;
     cocos2d::Label *_nameLabel = nullptr;
     cocos2d::Label *_hpLabel = nullptr;
     std::vector<cocos2d::DrawNode *> _phaseIndicators;
@@ -102,6 +109,7 @@ protected:
     // 配置参数
     float _barWidth = 500.0f;
     float _barHeight = 25.0f;
+    float _breakBarHeight = 10.0f;
     int _phaseCount = 1;
     int _currentPhase = 1;
 
