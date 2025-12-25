@@ -181,15 +181,17 @@ public:
     /// @brief 尝试释放技能
     bool tryUseSkill(size_t slotIndex, const std::function<void()>& onFinished = nullptr);
 
-    // SkillComponent 回调
-    /// @brief 技能组件使用技能回调
-    virtual void onUseActiveSkill(const ActiveSkill& skill) override;
+	    // SkillComponent 回调
+	    /// @brief 技能组件使用技能回调
+	    virtual void onUseActiveSkill(const ActiveSkill& skill) override;
 
-    // 战斗辅助：设置投掷物挂载的父节点
-    /// @brief 设置战斗层（投掷物挂载层）
-    void setCombatLayer(cocos2d::Node* gameLayer) { _combatLayer = gameLayer; }
-    /// @brief 添加节点到战斗层
-    void addToCombatLayer(cocos2d::Node* node, int zOrder = 4);
+	    // 战斗辅助：设置投掷物挂载的父节点
+	    /// @brief 获取战斗层（投掷物/粒子挂载层）
+	    cocos2d::Node* getCombatLayer() const;
+	    /// @brief 设置战斗层（投掷物挂载层）
+	    void setCombatLayer(cocos2d::Node* gameLayer) { _combatLayer = gameLayer; }
+	    /// @brief 添加节点到战斗层
+	    void addToCombatLayer(cocos2d::Node* node, int zOrder = 4);
 
     // 计算投掷物生成位置
     /// @brief 计算投掷物生成坐标
@@ -258,15 +260,13 @@ private:
     void ensureStateAnimations();
     // ensureMoveAnimationCached 已移至 .cpp 内部实现，不再暴露
 
-    // 战斗逻辑
-    /// @brief 获取战斗层节点
-    cocos2d::Node* getCombatLayer();
-    /// @brief 武器变更回调
-    void onWeaponChanged(const std::shared_ptr<Weapon>& weapon);
-    /// @brief 升级处理
-    void levelUp();
-    void applyAttributeGrowth();
-    void playLevelUpVFX();
+	    // 战斗逻辑
+	    /// @brief 武器变更回调
+	    void onWeaponChanged(const std::shared_ptr<Weapon>& weapon);
+	    /// @brief 升级处理
+	    void levelUp();
+	    void applyAttributeGrowth();
+	    void playLevelUpVFX();
 
     // 物理回调
     /// @brief 投掷物碰撞回调

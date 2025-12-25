@@ -1253,7 +1253,7 @@ void PlayerCharacter::onUseActiveSkill(const ActiveSkill& skill)
         sm->changeState(CharacterState::ATTACKING);
 }
 
-Node* PlayerCharacter::getCombatLayer()
+Node* PlayerCharacter::getCombatLayer() const
 {
     if (_combatLayer) return _combatLayer;
     return getParent();
