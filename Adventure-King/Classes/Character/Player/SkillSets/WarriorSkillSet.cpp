@@ -96,10 +96,11 @@ namespace
     }
 
     // Fire 技能：计算“覆盖敌人最多”的命中框中心点（在玩家 combatLayer 坐标系中）
-    // 算法思路（高效且足够稳定）：
-    // 1) 先用 PhysicsWorld::queryRect 在玩家附近做一次空间查询，只拿到“附近怪物”的包围盒（避免遍历整张地图所有节点）
-    // 2) 对固定大小的 AABB（命中框），最优解一定可以通过“让命中框的边缘对齐某个怪物包围盒边缘”得到
-    //    因此只需要枚举有限的候选位置（O(n^2) 个），逐个统计覆盖数量即可
+    // 算法说明（按当前玩法做了简化与提速）：
+    // - 敌人通常可视为处在同一高度（主要差异在 X 轴），因此这里将命中框的 Y 固定在玩家中心，只在 X 轴上做最优选点
+    // - 先用 PhysicsWorld::queryRect 在玩家附近做一次空间查询，只拿到“附近怪物”的包围盒（避免遍历整张地图所有节点）
+    // - 生成一组候选 leftX（命中框左边界），逐个统计覆盖数量（仅做一维枚举，避免二维枚举 O(n^3)）
+    // - 覆盖数量相同时：优先“中心 X 落在某个怪物中心”，仍相同则选离玩家更近的点（防止命中框跳太远）
     static Vec2 computeBestFireHitboxCenter(PlayerCharacter& player, Node* combatLayer, const Size& hitboxSize)
     {
         if (!combatLayer)
@@ -163,35 +164,37 @@ namespace
         }
 
         std::vector<float> candidateLeftX;
-        std::vector<float> candidateLeftY;
-        candidateLeftX.reserve(enemyBoxes.size() * 2 + 1);
-        candidateLeftY.reserve(enemyBoxes.size() * 2 + 1);
+        candidateLeftX.reserve(enemyBoxes.size() * 5 + 1);
+
+        const float fixedCenterY = playerCenter.y;
+        const float fixedLeftY = fixedCenterY - hitboxSize.height * 0.5f;
 
         // 兜底候选：以玩家为中心
         candidateLeftX.push_back(playerCenter.x - hitboxSize.width * 0.5f);
-        candidateLeftY.push_back(playerCenter.y - hitboxSize.height * 0.5f);
 
-        // 候选生成：命中框左/下边缘对齐怪物包围盒边缘（或右/上边缘对齐）
+        // 一维候选生成：
+        // 对某个怪物的 X 区间 [minX, maxX]，命中框 [leftX, leftX+w] 与其相交的充分必要条件：
+        // leftX <= maxX 且 leftX+w >= minX  =>  leftX ∈ [minX - w, maxX]
+        // 覆盖数量随 leftX 变化只会在这些边界附近发生改变，因此把边界点加入候选集合即可
         for (const auto& box : enemyBoxes)
         {
+            candidateLeftX.push_back(box.getMinX() - hitboxSize.width);
+            candidateLeftX.push_back(box.getMaxX());
+
+            // 保留“边缘对齐”的直觉候选，便于调参时行为更可预期
             candidateLeftX.push_back(box.getMinX());
             candidateLeftX.push_back(box.getMaxX() - hitboxSize.width);
-            candidateLeftY.push_back(box.getMinY());
-            candidateLeftY.push_back(box.getMaxY() - hitboxSize.height);
         }
 
-        // 同覆盖数量时，优先让中心点落在“某个怪物的位置”（怪物包围盒中心）
-        // 将怪物中心作为候选中心：left = center - hitbox/2，这样 center 会精确等于怪物中心点
+        // 同覆盖数量时，优先让中心点落在“某个怪物的位置”（怪物包围盒中心 X）
+        // 将怪物中心 X 作为候选中心：leftX = centerX - hitboxW/2，这样 hitboxCenterX 会精确对齐怪物
         for (const auto& c : enemyCenters)
         {
             candidateLeftX.push_back(c.x - hitboxSize.width * 0.5f);
-            candidateLeftY.push_back(c.y - hitboxSize.height * 0.5f);
         }
 
         std::sort(candidateLeftX.begin(), candidateLeftX.end());
         candidateLeftX.erase(std::unique(candidateLeftX.begin(), candidateLeftX.end()), candidateLeftX.end());
-        std::sort(candidateLeftY.begin(), candidateLeftY.end());
-        candidateLeftY.erase(std::unique(candidateLeftY.begin(), candidateLeftY.end()), candidateLeftY.end());
 
         int bestCount = -1;
         bool bestAtMonsterCenter = false;
@@ -200,46 +203,46 @@ namespace
 
         for (float leftX : candidateLeftX)
         {
-            for (float leftY : candidateLeftY)
+            const Rect candidate(leftX, fixedLeftY, hitboxSize.width, hitboxSize.height);
+
+            int count = 0;
+            for (const auto& enemy : enemyBoxes)
             {
-                const Rect candidate(leftX, leftY, hitboxSize.width, hitboxSize.height);
-
-                int count = 0;
-                for (const auto& enemy : enemyBoxes)
+                if (candidate.intersectsRect(enemy))
                 {
-                    if (candidate.intersectsRect(enemy))
-                    {
-                        ++count;
-                    }
+                    ++count;
                 }
+            }
 
-                const Vec2 center(leftX + hitboxSize.width * 0.5f, leftY + hitboxSize.height * 0.5f);
-                const float dist2 = center.distanceSquared(playerCenter);
+            const float centerX = leftX + hitboxSize.width * 0.5f;
+            const Vec2 center(centerX, fixedCenterY);
+            const float dx = centerX - playerCenter.x;
+            const float dist2 = dx * dx;
 
-                bool atMonsterCenter = false;
-                constexpr float EPS = 0.01f;
-                for (const auto& monsterCenter : enemyCenters)
+            bool atMonsterCenter = false;
+            constexpr float EPS = 0.01f;
+            for (const auto& monsterCenter : enemyCenters)
+            {
+                // 只比较 X：同覆盖数量时优先“在某个怪物位置生成”（按当前玩法理解为怪物所在 X）
+                if (std::fabs(monsterCenter.x - centerX) <= EPS)
                 {
-                    if (std::fabs(monsterCenter.x - center.x) <= EPS && std::fabs(monsterCenter.y - center.y) <= EPS)
-                    {
-                        atMonsterCenter = true;
-                        break;
-                    }
+                    atMonsterCenter = true;
+                    break;
                 }
+            }
 
-                // 选择规则：
-                // 1) 覆盖数量最多
-                // 2) 覆盖数量相同：优先“落在某个怪物位置”（怪物中心点）
-                // 3) 仍相同：离玩家更近（避免命中框“跳太远”）
-                if (count > bestCount ||
-                    (count == bestCount && atMonsterCenter && !bestAtMonsterCenter) ||
-                    (count == bestCount && atMonsterCenter == bestAtMonsterCenter && dist2 < bestDist2))
-                {
-                    bestCount = count;
-                    bestAtMonsterCenter = atMonsterCenter;
-                    bestDist2 = dist2;
-                    bestCenter = center;
-                }
+            // 选择规则：
+            // 1) 覆盖数量最多
+            // 2) 覆盖数量相同：优先“落在某个怪物位置”（怪物中心 X）
+            // 3) 仍相同：离玩家更近（避免命中框“跳太远”）
+            if (count > bestCount ||
+                (count == bestCount && atMonsterCenter && !bestAtMonsterCenter) ||
+                (count == bestCount && atMonsterCenter == bestAtMonsterCenter && dist2 < bestDist2))
+            {
+                bestCount = count;
+                bestAtMonsterCenter = atMonsterCenter;
+                bestDist2 = dist2;
+                bestCenter = center;
             }
         }
 
