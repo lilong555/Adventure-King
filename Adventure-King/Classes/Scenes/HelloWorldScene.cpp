@@ -524,19 +524,19 @@ std::vector<std::string> HelloWorld::getPreloadResourcePaths() {
         "Scene/UI/SetingNormal.png",
         "Scene/UI/SetingSelect.png",
         "Scene/UI/MapNormal.png",
-	        "Scene/UI/MapSelect.png",
-	        "Scene/UI/SaveNormal.png",
+        "Scene/UI/MapSelect.png",
+        "Scene/UI/SaveNormal.png",
         "Scene/UI/SaveSelect.png",
         // 关闭按钮（MapScene 复用）
         "Scene/UI/CloseSaveMenu.png",
-        "Scene/UI/CloseSaveMenuSelected.png"
-        ,
+        "Scene/UI/CloseSaveMenuSelected.png",
+
         // 职业选择预览（点击开始后会用到，避免首次弹窗卡一下）
         "Sprites/Characters/Player/man/default/spr_man_run.png",
         "Sprites/Characters/Player/maaer/default/spr_maaer_run_1.png",
-        "Sprites/Characters/Player/Klee/default/spr_klee_run.png"
-        };
-    }
+        "Sprites/Characters/Player/Klee/default/spr_klee_run.png",
+    };
+}
 
 //此函数可以作为模板，注册主菜单场景到全局场景注册中心
 void HelloWorld::setupRegistry()
@@ -585,7 +585,29 @@ void HelloWorld::showRoleSelectLayer(MenuItem* startMenuItem)
     const auto origin = Director::getInstance()->getVisibleOrigin();
     const Vec2 center(origin.x + visibleSize.width * 0.5f, origin.y + visibleSize.height * 0.5f);
 
-    _roleSelectLayer = LayerColor::create(Color4B(0, 0, 0, 160));
+    // ==========================================================
+    // 布局常量（集中管理，避免散落“魔法数字”）
+    // ==========================================================
+    constexpr int kOverlayAlpha = 160;
+    constexpr float kPanelWidthRatio = 0.80f;
+    constexpr float kPanelHeightRatio = 0.65f;
+    constexpr float kMaxPanelWidth = 900.0f;
+    constexpr float kMaxPanelHeight = 520.0f;
+    constexpr float kTitleTopPadding = 18.0f;
+
+    constexpr float kPreviewXRatio = 0.72f;
+    constexpr float kPreviewBottomRatio = 0.18f;
+    constexpr float kPreviewHeightRatio = 0.62f;
+
+    constexpr float kRoleListXRatio = 0.10f;
+    constexpr float kRoleListTopRatio = 0.70f;
+    constexpr float kRoleListGap = 58.0f;
+
+    constexpr float kActionYRatio = 0.12f;
+    constexpr float kConfirmXRatio = 0.35f;
+    constexpr float kCancelXRatio = 0.55f;
+
+    _roleSelectLayer = LayerColor::create(Color4B(0, 0, 0, kOverlayAlpha));
     _roleSelectLayer->setContentSize(visibleSize);
     _roleSelectLayer->setIgnoreAnchorPointForPosition(false);
     _roleSelectLayer->setAnchorPoint(Vec2::ZERO);
@@ -599,8 +621,8 @@ void HelloWorld::showRoleSelectLayer(MenuItem* startMenuItem)
     _eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, _roleSelectLayer);
 
     // 弹窗面板（纯色，避免依赖额外资源）
-    const float panelW = std::min(visibleSize.width * 0.8f, 900.0f);
-    const float panelH = std::min(visibleSize.height * 0.65f, 520.0f);
+    const float panelW = std::min(visibleSize.width * kPanelWidthRatio, kMaxPanelWidth);
+    const float panelH = std::min(visibleSize.height * kPanelHeightRatio, kMaxPanelHeight);
     auto panel = LayerColor::create(Color4B(30, 30, 40, 235), panelW, panelH);
     panel->setIgnoreAnchorPointForPosition(false);
     panel->setAnchorPoint(Vec2(0.5f, 0.5f));
@@ -612,12 +634,13 @@ void HelloWorld::showRoleSelectLayer(MenuItem* startMenuItem)
     if (title)
     {
         title->setAnchorPoint(Vec2(0.5f, 1.0f));
-        title->setPosition(Vec2(panelW * 0.5f, panelH - 18.0f));
+        title->setPosition(Vec2(panelW * 0.5f, panelH - kTitleTopPadding));
         title->setColor(Color3B(240, 240, 240));
         panel->addChild(title, 2);
     }
 
     // 预览区域（右侧）
+    _rolePreviewTargetHeight = panelH * kPreviewHeightRatio;
     refreshRolePreview();
     if (_rolePreviewSprite)
     {
@@ -626,16 +649,12 @@ void HelloWorld::showRoleSelectLayer(MenuItem* startMenuItem)
         panel->addChild(_rolePreviewSprite, 2);
 
         _rolePreviewSprite->setAnchorPoint(Vec2(0.5f, 0.0f));
-        _rolePreviewSprite->setPosition(Vec2(panelW * 0.72f, panelH * 0.18f));
-
-        // 统一把预览高度限制在面板内，避免不同职业素材尺寸差异太大
-        const float targetH = panelH * 0.62f;
-        const float srcH = std::max(1.0f, _rolePreviewSprite->getContentSize().height);
-        _rolePreviewSprite->setScale(targetH / srcH);
+        _rolePreviewSprite->setPosition(Vec2(panelW * kPreviewXRatio, panelH * kPreviewBottomRatio));
     }
 
     // 左侧：职业按钮
-    auto makeRoleItem = [this, panel, panelW, panelH](CharacterRole role, float y, const Color3B& color)
+    const float roleListX = panelW * kRoleListXRatio;
+    auto makeRoleItem = [this, roleListX](CharacterRole role, float y, const Color3B& color)
     {
         auto label = Label::createWithTTF(PlayerRoleConfig::getDisplayName(role),
                                           GameSceneConfig::Scene::DEFAULT_FONT_PATH,
@@ -655,13 +674,13 @@ void HelloWorld::showRoleSelectLayer(MenuItem* startMenuItem)
         if (item)
         {
             item->setAnchorPoint(Vec2(0.0f, 0.5f));
-            item->setPosition(Vec2(panelW * 0.10f, y));
+            item->setPosition(Vec2(roleListX, y));
         }
         return item;
     };
 
-    const float listTop = panelH * 0.70f;
-    const float listGap = 58.0f;
+    const float listTop = panelH * kRoleListTopRatio;
+    const float listGap = kRoleListGap;
     auto warriorItem = makeRoleItem(CharacterRole::WARRIOR, listTop, Color3B(255, 235, 190));
     auto assassinItem = makeRoleItem(CharacterRole::ASSASSIN, listTop - listGap, Color3B(190, 235, 255));
     auto mageItem = makeRoleItem(CharacterRole::MAGE, listTop - listGap * 2.0f, Color3B(210, 200, 255));
@@ -669,12 +688,12 @@ void HelloWorld::showRoleSelectLayer(MenuItem* startMenuItem)
     // 底部按钮：开始/返回
     auto startLabel = Label::createWithTTF("开始", GameSceneConfig::Scene::DEFAULT_FONT_PATH, 30);
     auto backLabel = Label::createWithTTF("返回", GameSceneConfig::Scene::DEFAULT_FONT_PATH, 30);
-    auto startItem2 = MenuItemLabel::create(startLabel, [this](Ref*) { startGameWithSelectedRole(); });
-    auto backItem2 = MenuItemLabel::create(backLabel, [this](Ref*) { hideRoleSelectLayer(true); });
-    if (startItem2) startItem2->setPosition(Vec2(panelW * 0.35f, panelH * 0.12f));
-    if (backItem2) backItem2->setPosition(Vec2(panelW * 0.55f, panelH * 0.12f));
+    auto confirmStartItem = MenuItemLabel::create(startLabel, [this](Ref*) { startGameWithSelectedRole(); });
+    auto cancelBackItem = MenuItemLabel::create(backLabel, [this](Ref*) { hideRoleSelectLayer(true); });
+    if (confirmStartItem) confirmStartItem->setPosition(Vec2(panelW * kConfirmXRatio, panelH * kActionYRatio));
+    if (cancelBackItem) cancelBackItem->setPosition(Vec2(panelW * kCancelXRatio, panelH * kActionYRatio));
 
-    auto menu = Menu::create(warriorItem, assassinItem, mageItem, startItem2, backItem2, nullptr);
+    auto menu = Menu::create(warriorItem, assassinItem, mageItem, confirmStartItem, cancelBackItem, nullptr);
     if (menu)
     {
         menu->setPosition(Vec2::ZERO);
@@ -697,11 +716,14 @@ void HelloWorld::hideRoleSelectLayer(bool restoreStartButton)
 {
     if (_roleSelectLayer)
     {
+        // 显式清理事件监听，避免潜在的悬挂监听/重复注册问题
+        _eventDispatcher->removeEventListenersForTarget(_roleSelectLayer);
         _roleSelectLayer->removeFromParent();
         _roleSelectLayer = nullptr;
     }
     // 弹窗销毁后，预览节点也会随之销毁，这里清空指针避免悬挂引用
     _rolePreviewSprite = nullptr;
+    _rolePreviewTargetHeight = 0.0f;
 
     if (restoreStartButton && _pendingStartMenuItem)
     {
@@ -726,19 +748,17 @@ void HelloWorld::refreshRolePreview()
         return;
     }
 
-    // 如果已有预览：保留父节点位置/缩放/层级，只替换贴图
-    Node* parent = nullptr;
-    int zOrder = 0;
+    // 如果已有预览：保留父节点/位置/锚点/层级，只替换贴图
     Vec2 pos = Vec2::ZERO;
     Vec2 anchor = Vec2(0.5f, 0.0f);
-    float displayHeight = 0.0f;
+    Node* parent = nullptr;
+    int zOrder = 0;
     if (_rolePreviewSprite)
     {
         parent = _rolePreviewSprite->getParent();
         zOrder = _rolePreviewSprite->getLocalZOrder();
         pos = _rolePreviewSprite->getPosition();
         anchor = _rolePreviewSprite->getAnchorPoint();
-        displayHeight = _rolePreviewSprite->getContentSize().height * std::fabs(_rolePreviewSprite->getScaleY());
         _rolePreviewSprite->removeFromParent();
         _rolePreviewSprite = nullptr;
     }
@@ -746,10 +766,11 @@ void HelloWorld::refreshRolePreview()
     _rolePreviewSprite = sprite;
     _rolePreviewSprite->setAnchorPoint(anchor);
     _rolePreviewSprite->setPosition(pos);
-    if (displayHeight > 0.0f)
+    // 缩放统一以目标展示高度为准（由 showRoleSelectLayer 设置），避免“第一次/后续刷新”行为不一致
+    if (_rolePreviewTargetHeight > 0.0f)
     {
         const float srcH = std::max(1.0f, _rolePreviewSprite->getContentSize().height);
-        const float newScale = displayHeight / srcH;
+        const float newScale = _rolePreviewTargetHeight / srcH;
         _rolePreviewSprite->setScale(newScale);
     }
 
