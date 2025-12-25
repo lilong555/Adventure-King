@@ -1431,7 +1431,7 @@ void PlayerCharacter::initAssetPaths(const std::string& spriteFrameName)
             // 技能目录：按职业约定（素材缺失时由加载失败兜底，不在这里做 IO 判断）
             // - 法师（Klee）：rocket
             // - 刺客：slash
-            // - 战士：暂无技能（留空）
+            // - 战士：fire
             if (_role == CharacterRole::MAGE)
             {
                 _skillSpriteDir = characterRootDir + "/rocket";
@@ -1439,6 +1439,10 @@ void PlayerCharacter::initAssetPaths(const std::string& spriteFrameName)
             else if (_role == CharacterRole::ASSASSIN)
             {
                 _skillSpriteDir = characterRootDir + "/slash";
+            }
+            else if (_role == CharacterRole::WARRIOR)
+            {
+                _skillSpriteDir = characterRootDir + "/fire";
             }
             else
             {

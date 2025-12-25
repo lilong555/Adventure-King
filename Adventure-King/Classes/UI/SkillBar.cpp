@@ -223,6 +223,10 @@ std::string SkillBar::getIconPathForSkillId(int skillId) const
     {
         return "Sprites/Characters/Player/maaer/slash/spr_maaer_slash_1.png";
     }
+    if (skillId == GameConfig::Warrior::FireSkill::FIRE_ID)
+    {
+        return "Sprites/Characters/Player/man/fire/fire_1.png";
+    }
     return "";
 }
 
