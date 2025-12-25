@@ -172,6 +172,13 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     // ---------------------------------------------------------
     finalDamage = std::max(1.0f, std::floor(finalDamage));
 
+    // UI 辅助：只记录“非 DOT 伤害”（DOT 统一要求 causesHitStun=false）
+    // 用于 Boss 血条的“连击伤害统计（1秒窗口）”与“受击反馈动画”。
+    if (info.causesHitStun && finalDamage > 0.0f)
+    {
+        _pendingUiNonDotDamage += finalDamage;
+    }
+
     showDamageNumber(finalDamage, info.isCritical);
     spawnHurtVfx(info);
 
@@ -224,6 +231,13 @@ void CharacterBase::takeDamage(const DamageInfo& info)
             }
         }
     }
+}
+
+float CharacterBase::consumePendingUiNonDotDamage()
+{
+    const float damage = _pendingUiNonDotDamage;
+    _pendingUiNonDotDamage = 0.0f;
+    return damage;
 }
 
 void CharacterBase::heal(float amount) {

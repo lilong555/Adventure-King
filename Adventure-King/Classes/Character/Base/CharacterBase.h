@@ -126,7 +126,15 @@ public:
     /// @brief 设置死亡回调
     void setOnDeathCallback(const DeathCallback& callback) { _onDeathCallback = callback; }
 
-protected:
+    // =============================================================
+    // UI 辅助：Boss 血条连击/受击反馈
+    // - 由 takeDamage 内部累积“非 DOT 伤害”
+    // - UI 每帧调用 consumePendingUiNonDotDamage() 消费一次
+    // =============================================================
+    /// @brief 消费并清空“待处理的非 DOT 伤害”（用于 Boss 血条连击统计/受击反馈）
+    float consumePendingUiNonDotDamage();
+
+	protected:
     CharacterBase();
 
     DeathCallback _onDeathCallback = nullptr;
@@ -175,6 +183,7 @@ protected:
     float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断，通常应该从属性组件读）
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
     long long _lastRestoreHealthVfxMs = 0; ///< 回血特效节流：0.5s 内多次回血只播一次
+    float _pendingUiNonDotDamage = 0.0f; ///< 待 UI 消费的“非 DOT 伤害”（用于 Boss 血条连击/受击反馈）
 
     bool _damageNumbersEnabled = true; ///< 是否启用受击飘字
     cocos2d::Sprite* _visualSprite = nullptr; ///< 实际播放动画的精灵

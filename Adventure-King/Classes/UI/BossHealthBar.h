@@ -95,6 +95,7 @@ protected:
 
     // UI元素
     cocos2d::Node *_container = nullptr;
+    cocos2d::Node *_content = nullptr; // show/hide 动画不影响受击反馈，便于分层控制
     cocos2d::DrawNode *_background = nullptr;
     cocos2d::DrawNode *_healthBarBg = nullptr;
     cocos2d::DrawNode *_healthBarFill = nullptr;
@@ -104,6 +105,7 @@ protected:
     cocos2d::DrawNode *_breakBarBorder = nullptr;
     cocos2d::Label *_nameLabel = nullptr;
     cocos2d::Label *_hpLabel = nullptr;
+    cocos2d::Label *_comboDamageLabel = nullptr; // 连击伤害（1秒窗口）
     std::vector<cocos2d::DrawNode *> _phaseIndicators;
 
     // 配置参数
@@ -117,4 +119,9 @@ protected:
     float _lastHP = 0.0f;
     float _damageBarHP = 0.0f;
     bool _isVisible = false;
+
+    // 连击伤害统计（容差 1 秒）：窗口内累计“非 DOT 伤害”
+    static constexpr float COMBO_WINDOW_SECONDS = 1.0f;
+    float _comboWindowRemaining = 0.0f;
+    double _comboDamageSum = 0.0;
 };
