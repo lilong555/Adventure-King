@@ -162,13 +162,6 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
                     return false;
                 }
 
-                // 风险收益：必须在 HP > 1 时才能触发，避免“1 血白嫖增伤”
-                if (player.getCurrentHP() <= GameConfig::Assassin::AllInSkill::MIN_HP_AFTER_CAST + 0.01f)
-                {
-                    CCLOG("AssassinSkillSet: all-in requires HP > 1");
-                    return false;
-                }
-
                 auto sc = player.getSkillComponent();
                 if (!sc)
                 {
