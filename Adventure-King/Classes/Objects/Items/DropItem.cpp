@@ -35,7 +35,10 @@ namespace
         }
 
         body->setCategoryBitmask(ToMask(GamePhysicsCategory::ITEM));
-        body->setCollisionBitmask(0);
+        // 注意：Cocos2d-x 的接触回调依赖“碰撞过滤”通过（collisionBitmask），
+        // 如果这里设为 0，即使 contactTestBitmask 配了 PLAYER 也不会触发 beginContact。
+        // 因为本体是 sensor，不会产生物理阻挡，所以允许与 PLAYER“碰撞”仅用于触发拾取检测。
+        body->setCollisionBitmask(ToMask(GamePhysicsCategory::PLAYER));
         body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLAYER));
         item->setPhysicsBody(body);
     }
