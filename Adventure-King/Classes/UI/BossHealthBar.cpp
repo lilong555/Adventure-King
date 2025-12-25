@@ -58,14 +58,9 @@ void BossHealthBar::createBackground()
 {
     _background = DrawNode::create();
 
-    // 绘制半透明黑色背景
+    // 取消半透明黑色遮罩背景（避免遮挡游戏画面）
     float bgWidth = _barWidth + 40;
     float bgHeight = _barHeight + 50;
-
-    _background->drawSolidRect(
-        Vec2(-bgWidth / 2, -bgHeight / 2),
-        Vec2(bgWidth / 2, bgHeight / 2),
-        Color4F(0.0f, 0.0f, 0.0f, 0.7f));
 
     // 绘制边框
     _background->drawRect(
