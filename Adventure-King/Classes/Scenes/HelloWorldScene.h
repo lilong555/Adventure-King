@@ -53,6 +53,17 @@ private:
     cocos2d::Label* _roleHintLabel = nullptr;
 
     void updateRoleHintLabel();
+
+    // 点击“开始游戏”后弹出的职业选择层
+    cocos2d::LayerColor* _roleSelectLayer = nullptr;
+    cocos2d::Sprite* _rolePreviewSprite = nullptr;
+    float _rolePreviewTargetHeight = 0.0f; // 预览图统一展示高度（避免各职业素材尺寸差异导致缩放逻辑混乱）
+    cocos2d::MenuItem* _pendingStartMenuItem = nullptr; // 用于取消时恢复按钮可点
+
+    void showRoleSelectLayer(cocos2d::MenuItem* startMenuItem);
+    void hideRoleSelectLayer(bool restoreStartButton);
+    void refreshRolePreview();
+    void startGameWithSelectedRole();
 };
 
 #endif // __HELLOWORLD_SCENE_H__
