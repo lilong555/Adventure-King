@@ -143,10 +143,12 @@ void DropItem::pickUp(PlayerCharacter* player)
         player->setCurrentMP(player->getCurrentMP() + restoreAmount);
     }
 
-    // 轻量表现：快速缩放消失（不影响游戏逻辑）
+    // 轻量表现：向上漂浮 + 淡出（不影响游戏逻辑）
     setCascadeOpacityEnabled(true);
     runAction(Sequence::create(
-        Spawn::create(ScaleTo::create(0.08f, 0.0f), FadeOut::create(0.08f), nullptr),
+        Spawn::create(EaseSineOut::create(MoveBy::create(0.25f, Vec2(0.0f, 40.0f))),
+                      FadeOut::create(0.25f),
+                      nullptr),
         RemoveSelf::create(),
         nullptr));
 }
