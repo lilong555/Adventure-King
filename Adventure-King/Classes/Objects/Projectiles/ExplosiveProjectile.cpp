@@ -275,8 +275,8 @@ void ExplosiveProjectile::applyAoEDamage()
     dmg.isCritical = isCrit;
     dmg.hitWorldPos = explosionWorld;
     dmg.hasHitWorldPos = true;
-    // 投掷物/爆炸属于“技能类伤害”：用于 Boss 击破条等机制
-    dmg.breakDamage = GameConfig::Combat::BREAK_DAMAGE_SKILL;
+    // 投掷物/爆炸的击破值由外部配置（不同技能/武器可能不同）
+    dmg.breakDamage = (_breakDamage < 0) ? 0 : _breakDamage;
 
     std::vector<CharacterBase*> targets;
     targets.reserve(8);

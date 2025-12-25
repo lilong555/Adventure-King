@@ -1394,7 +1394,7 @@ Node* PlayerCharacter::spawnPlayerAttackHitbox(const Vec2& centerPosInParentSpac
     attackNode->setAnchorPoint(Vec2(0.5f, 0.5f));
     // 记录攻击来源，便于后续扩展（例如受击方向判定）
     attackNode->setUserObject(this);
-    // 记录“击破值”：用于 Boss 击破条等机制（普通攻击=1，技能=3）；不需要击破则保持 0
+    // 记录“击破值”：用于 Boss 击破条等机制；由攻击/技能配置决定；不需要击破则保持 0
     attackNode->setTag(std::max(0, breakDamage));
     parent->addChild(attackNode, localZOrder);
 

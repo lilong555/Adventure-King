@@ -4,6 +4,7 @@
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfig.h"
 #include "cocos2d.h"
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,6 +31,7 @@ void KleeSkillSet::initSkills(PlayerCharacter &player)
         fireballSkill->description = "发射火球，命中后爆炸造成范围伤害";
         fireballSkill->manaCost = GameConfig::Fireball::FIREBALL_MP;
         fireballSkill->cooldown = GameConfig::Fireball::FIREBALL_CD;
+        fireballSkill->breakDamage = GameConfig::Fireball::BREAK_DAMAGE;
         fireballSkill->currentCooldown = 0.0f;
         skillComp->learnSkill(fireballSkill);
     }
@@ -73,6 +75,8 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
             bomb->setBaseDamage(0.0f);
             bomb->setAttackPowerDamageScale(GameConfig::Bomb::DAMAGE_SCALE);
             bomb->setExplosionRadius(GameConfig::Bomb::EXPLOSION_RADIUS);
+            // 普通攻击（TNT）也参与 Boss 击破条：按普通攻击的击破值累计
+            bomb->setBreakDamage(GameConfig::Klee::NormalAttack::BREAK_DAMAGE);
             bomb->setExplosionSpriteVfx(
                 defaultDir + "/BOOM_1.png",
                 GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE,
@@ -133,6 +137,7 @@ bool KleeSkillSet::tryCastBomb(PlayerCharacter &player,
                                const ActiveSkill &skill,
                                const std::function<void()> &onFinished)
 {
+    const int breakDamage = std::max(0, skill.breakDamage);
     const std::string &defaultDir = player.getDefaultSpriteDir();
     const std::string &characterKey = player.getCharacterKey();
 
@@ -167,7 +172,7 @@ bool KleeSkillSet::tryCastBomb(PlayerCharacter &player,
                                         PlayerCharacter::ACTION_TAG_SKILL_ANIM,
                                         done);
         },
-        [&player, defaultDir]()
+        [&player, defaultDir, breakDamage]()
         {
             auto bomb = Bomb::create(defaultDir + "/TNT.png");
             if (!bomb)
@@ -187,6 +192,7 @@ bool KleeSkillSet::tryCastBomb(PlayerCharacter &player,
             bomb->setBaseDamage(0.0f);
             bomb->setAttackPowerDamageScale(GameConfig::Bomb::DAMAGE_SCALE);
             bomb->setExplosionRadius(GameConfig::Bomb::EXPLOSION_RADIUS);
+            bomb->setBreakDamage(breakDamage);
             bomb->setExplosionSpriteVfx(
                 defaultDir + "/BOOM_1.png",
                 GameConfig::Klee::NormalAttack::EXPLOSION_VFX_SCALE,
@@ -221,6 +227,7 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
                                    const ActiveSkill &skill,
                                    const std::function<void()> &onFinished)
 {
+    const int breakDamage = std::max(0, skill.breakDamage);
     const std::string &skillDir = player.getSkillSpriteDir();
     const std::string &characterKey = player.getCharacterKey();
 
@@ -263,7 +270,7 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
         [&player, castPaths](const std::function<void()> &done)
         { player.playOneShotAnimation(castPaths, GameConfig::Klee::FireballSkill::CAST_ANIM_FRAME_DELAY,
                                       PlayerCharacter::ACTION_TAG_SKILL_ANIM, done); },
-        [&player, skillDir]()
+        [&player, skillDir, breakDamage]()
         {
             Bomb::PhysicsConfig physics;
             physics.mass = 0.4f;
@@ -288,6 +295,7 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
             rocket->setAttackPowerDamageScale(GameConfig::Fireball::DAMAGE_SCALE);
             rocket->setExplosionRadius(GameConfig::Fireball::EXPLOSION_RADIUS);
             rocket->setExplodeOnContact(true);
+            rocket->setBreakDamage(breakDamage);
 
             rocket->setLoopAnimation(
                 {

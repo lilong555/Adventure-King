@@ -171,6 +171,8 @@ namespace GameConfig
         const int FIREBALL_ID = 1002;    // 火球技能ID
         const float FIREBALL_CD = 1.2f;  // 火球冷却时间
         const float FIREBALL_MP = 15.0f; // 火球蓝耗
+        // 击破值：命中/爆炸每次结算对 Boss 击破条的累计值（可按技能单独调参）
+        inline constexpr int BREAK_DAMAGE = 3;
 
         const float SPRITE_SCALE = 0.5f;      // 缩放比例
         const float SPEED_X = 650.0f;         // 水平飞行速度
@@ -191,6 +193,8 @@ namespace GameConfig
 
             inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
             inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
+            // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
+            inline constexpr int BREAK_DAMAGE = 3;
 
             // 命中判定框：按战士自身尺寸倍数计算
             inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
@@ -476,6 +480,8 @@ namespace GameConfig
     {
         namespace NormalAttack
         {
+            // 击破值：普通攻击（TNT）每次命中对 Boss 击破条的累计值
+            inline constexpr int BREAK_DAMAGE = 1;
             inline constexpr float ANIM_FRAME_DELAY = 0.13f;
             inline constexpr float PROJECTILE_SCALE = 0.5f;
             inline constexpr float SPAWN_OFFSET_X_RATIO = 0.35f;
@@ -513,6 +519,8 @@ namespace GameConfig
             const float SLASH_CD = 0.8f; // 冷却时间
             const float SLASH_MP = 0.0f; // 蓝耗（暂不消耗）
             inline constexpr size_t SKILL_SLOT = 0;
+            // 击破值：斩击是 4 段伤害（每帧一次），这里按“每段命中”累计（可按技能单独调参）
+            inline constexpr int BREAK_DAMAGE_PER_HIT = 1;
 
             inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f;
             inline constexpr float DAMAGE_SCALE = 1.2f; // 基于攻击力的倍率
@@ -535,6 +543,8 @@ namespace GameConfig
             const float ALL_IN_CD = 15.0f;       // 冷却时间（秒）
             const float ALL_IN_MP = 0.0f;   // 蓝耗（暂不消耗）
             inline constexpr size_t SKILL_SLOT = 1; // 默认放在 Q 槽位
+            // 击破值：该技能不造成伤害，因此永远为 0
+            inline constexpr int BREAK_DAMAGE = 0;
 
             // 1000% 增伤：伤害提升 1000%，即最终伤害为原始伤害的 1100%（11 倍）
             inline constexpr float DAMAGE_MULTIPLIER = 11.0f;

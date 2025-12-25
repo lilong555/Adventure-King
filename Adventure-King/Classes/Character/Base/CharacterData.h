@@ -153,6 +153,7 @@ struct ActiveSkill : public Skill
 {
     float cooldown = 0.0f;        // 冷却时间（秒）
     float manaCost = 0.0f;        // 消耗 MP
+    int breakDamage = 0;          // 击破值：每次命中对 Boss 击破条的累计值（无击破机制则保持 0）
     float currentCooldown = 0.0f; // 当前冷却剩余时间
 
     // 初始化为主动技能

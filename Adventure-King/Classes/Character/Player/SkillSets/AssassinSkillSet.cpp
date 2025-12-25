@@ -58,6 +58,7 @@ void AssassinSkillSet::initSkills(PlayerCharacter& player)
         slashSkill->description = "向前挥出一道斩击，对前方敌人造成伤害。";
         slashSkill->manaCost = GameConfig::Assassin::SlashSkill::SLASH_MP;
         slashSkill->cooldown = GameConfig::Assassin::SlashSkill::SLASH_CD;
+        slashSkill->breakDamage = GameConfig::Assassin::SlashSkill::BREAK_DAMAGE_PER_HIT;
         slashSkill->currentCooldown = 0.0f;
         skillComp->learnSkill(slashSkill);
     }
@@ -76,6 +77,7 @@ void AssassinSkillSet::initSkills(PlayerCharacter& player)
         allInSkill->description = "将生命降至 1 点，进入高手状态，大幅提升伤害（1000%增伤，持续15秒）。";
         allInSkill->manaCost = GameConfig::Assassin::AllInSkill::ALL_IN_MP;
         allInSkill->cooldown = GameConfig::Assassin::AllInSkill::ALL_IN_CD;
+        allInSkill->breakDamage = GameConfig::Assassin::AllInSkill::BREAK_DAMAGE;
         allInSkill->currentCooldown = 0.0f;
         skillComp->learnSkill(allInSkill);
     }
@@ -234,6 +236,8 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
         castPaths.push_back(StringUtils::format("%s/spr_%s_slash_%d.png", skillDir.c_str(), characterKey.c_str(), i));
     }
 
+    const int breakDamage = std::max(0, skill.breakDamage);
+
     bool ok = player.runActionLocked(
         [&player, slotIndex]()
         {
@@ -244,7 +248,7 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
             }
             return sc->useActiveSkill(slotIndex);
         },
-        [&player, castPaths](const std::function<void()>& done)
+        [&player, castPaths, breakDamage](const std::function<void()>& done)
         {
             // 斩击：每一帧生成一次 hitbox（一次技能=4次伤害）
             // 说明：用 scheduleOnce 绑定“实时包围盒”，动作期间移动/转身时判定仍贴合角色位置。
@@ -255,7 +259,7 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
                                     GameConfig::Assassin::SlashSkill::CAST_ANIM_FRAME_DELAY * static_cast<float>(i);
 
                 player.scheduleOnce(
-                    [&player](float)
+                    [&player, breakDamage](float)
                     {
                         if (player.isDead())
                         {
@@ -278,7 +282,7 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
                                                        damage,
                                                        isCrit,
                                                        GameConfig::Assassin::SlashSkill::HITBOX_LIFE_SECONDS,
-                                                       GameConfig::Combat::BREAK_DAMAGE_SKILL);
+                                                       breakDamage);
                     },
                     delay,
                     StringUtils::format("assassin_slash_hitbox_%d", i + 1));
