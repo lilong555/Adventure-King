@@ -11,6 +11,7 @@
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfig.h"
 #include "Configs/GamePhysicsCategory.h"
+#include"Configs/CharacterAssetConfig.h"
 #include "Utils/PhysicsBodyLocalInfoHelper.h"
 #include "Utils/ParticleVfxHelper.h"
 #include "Utils/WeaponHitboxVfxHelper.h"
