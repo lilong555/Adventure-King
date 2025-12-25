@@ -519,6 +519,22 @@ namespace GameConfig
             inline constexpr float HITBOX_OFFSET_X_RATIO = 0.35f;
             inline constexpr float HITBOX_OFFSET_Y = 6.0f;
         }
+
+        // 主动技能：孤注一掷
+        // 效果：将生命降到 1 点，并进入“高手状态”（增伤）
+        namespace AllInSkill
+        {
+            const int ALL_IN_ID = 1005;     // 孤注一掷技能ID
+            const float ALL_IN_CD = 12.0f;  // 冷却时间（秒）
+            const float ALL_IN_MP = 0.0f;   // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 1; // 默认放在 Q 槽位
+
+            // 1000% 增伤：按“伤害提升 1000%”理解，即最终伤害 = 原始伤害 * (1 + 10) = 11 倍
+            inline constexpr float DAMAGE_MULTIPLIER = 11.0f;
+            inline constexpr float MIN_HP_AFTER_CAST = 1.0f;
+
+            inline constexpr const char* VFX_PLIST = "Particle/par_nap.plist";
+        }
     }
 
     namespace StatusEffect

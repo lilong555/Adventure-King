@@ -4,6 +4,7 @@
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
 #include "Configs/GameConfig.h"
+#include "Utils/ParticleVfxHelper.h"
 #include "cocos2d.h"
 #include <cmath>
 #include <memory>
@@ -62,6 +63,23 @@ void AssassinSkillSet::initSkills(PlayerCharacter& player)
     }
 
     skillComp->equipActiveSkill(slashSkill, GameConfig::Assassin::SlashSkill::SKILL_SLOT);
+
+    // 孤注一掷：默认解锁并装备到 1 号槽位（Q）
+    auto existingAllIn = std::dynamic_pointer_cast<ActiveSkill>(
+        skillComp->findLearnedSkillById(GameConfig::Assassin::AllInSkill::ALL_IN_ID));
+    std::shared_ptr<ActiveSkill> allInSkill = existingAllIn;
+    if (!allInSkill)
+    {
+        allInSkill = std::make_shared<ActiveSkill>();
+        allInSkill->id = GameConfig::Assassin::AllInSkill::ALL_IN_ID;
+        allInSkill->name = "孤注一掷";
+        allInSkill->description = "将生命降至 1 点，进入高手状态，大幅提升伤害（1000%增伤）。";
+        allInSkill->manaCost = GameConfig::Assassin::AllInSkill::ALL_IN_MP;
+        allInSkill->cooldown = GameConfig::Assassin::AllInSkill::ALL_IN_CD;
+        allInSkill->currentCooldown = 0.0f;
+        skillComp->learnSkill(allInSkill);
+    }
+    skillComp->equipActiveSkill(allInSkill, GameConfig::Assassin::AllInSkill::SKILL_SLOT);
 }
 
 bool AssassinSkillSet::tryNormalAttack(PlayerCharacter& player, const std::function<void()>& onFinished)
@@ -128,6 +146,69 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
     }
 
     const ActiveSkill& skill = *slots[slotIndex];
+
+    // ------------------------------------------------------------
+    // 孤注一掷：无动作，仅生效逻辑 + 粒子表现
+    // ------------------------------------------------------------
+    if (skill.id == GameConfig::Assassin::AllInSkill::ALL_IN_ID)
+    {
+        bool ok = player.runActionLocked(
+            [&player, slotIndex]()
+            {
+                // 已处于高手状态时不允许重复触发，避免反复改写数值/刷特效
+                if (player.getOutgoingDamageMultiplier() > 1.0f)
+                {
+                    CCLOG("AssassinSkillSet: all-in already active");
+                    return false;
+                }
+
+                auto sc = player.getSkillComponent();
+                if (!sc)
+                {
+                    return false;
+                }
+                return sc->useActiveSkill(slotIndex);
+            },
+            [](const std::function<void()>& done)
+            {
+                // 无动作：立即结束
+                if (done)
+                {
+                    done();
+                }
+            },
+            [&player]()
+            {
+                // 1) 生命降到 1 点
+                player.setCurrentHP(GameConfig::Assassin::AllInSkill::MIN_HP_AFTER_CAST);
+                // 2) 进入高手状态（出伤倍率）
+                player.setOutgoingDamageMultiplier(GameConfig::Assassin::AllInSkill::DAMAGE_MULTIPLIER);
+                // 3) 粒子表现（附在人物身上）
+                ParticleVfxHelper::PlayOptions options;
+                options.positionType = ParticleSystem::PositionType::GROUPED;
+                options.useBodyCenter = true;
+                options.autoRemoveOnFinish = true;
+                options.name = "assassin_all_in_vfx";
+                ParticleVfxHelper::playOnce(&player, GameConfig::Assassin::AllInSkill::VFX_PLIST, options);
+            },
+            [onFinished]()
+            {
+                if (onFinished)
+                {
+                    onFinished();
+                }
+            });
+
+        if (ok)
+        {
+            CCLOG("AssassinSkillSet: all-in skill started");
+        }
+        return ok;
+    }
+
+    // ------------------------------------------------------------
+    // 斩击：每一帧生成一次 hitbox（一次技能=4次伤害）
+    // ------------------------------------------------------------
     if (skill.id != GameConfig::Assassin::SlashSkill::SLASH_ID)
     {
         return false;

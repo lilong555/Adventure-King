@@ -172,6 +172,13 @@ public:
     virtual void onReceiveDamage(CharacterBase* attacker, float finalDamage, const DamageInfo& info, bool wouldDieBeforeCallback) override;
     /// @brief 计算攻击力（用于 DOT 等）
     virtual float getAttackPower() override; // 攻击力（用于 DOT 等计算）
+
+    // 出伤倍率（用于“孤注一掷”等增伤技能/机制）
+    /// @brief 获取出伤倍率（默认 1.0）
+    float getOutgoingDamageMultiplier() const { return _outgoingDamageMultiplier; }
+    /// @brief 设置出伤倍率（会夹取到 >=0，避免出现负伤害）
+    void setOutgoingDamageMultiplier(float multiplier);
+
     /// @brief 使用技能槽位
     void useSkill(size_t slotIndex); // 技能
 
@@ -317,6 +324,9 @@ private:
     float _poisonProcCooldownRemaining = 0.0f;    // 命中中毒触发冷却
     float _critEchoCooldownRemaining = 0.0f;      // 暴击缩冷却触发冷却
     bool _fullHpCritActive = false;               // 满血暴击状态是否已激活
+
+    // 出伤倍率：用于技能/装备等“增伤”机制（默认 1.0）
+    float _outgoingDamageMultiplier = 1.0f;
 
     // 调试：伤害日志输出（仅 DebugScene 注入）
     DamageLogCallback _damageLogCallback = nullptr;

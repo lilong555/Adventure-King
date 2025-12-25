@@ -154,6 +154,7 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     _role = role;
     _isGrounded = true;
     _jumpCount = 0;
+    _outgoingDamageMultiplier = 1.0f; // 重置出伤倍率（避免复用对象时残留）
 
     // 解析资源路径
     initAssetPaths(spriteFrameName);
@@ -1005,7 +1006,18 @@ float PlayerCharacter::getAttackPower()
         strength = attr->getAttributeValue(AttributeType::STRENGTH);
     }
 
-    return weaponDamage + strength * STRENGTH_DAMAGE_MULTIPLIER;
+    const float baseAttack = weaponDamage + strength * STRENGTH_DAMAGE_MULTIPLIER;
+    return baseAttack * std::max(0.0f, _outgoingDamageMultiplier);
+}
+
+void PlayerCharacter::setOutgoingDamageMultiplier(float multiplier)
+{
+    // 兜底：避免 NaN/Inf 进入数值计算，导致伤害异常
+    if (std::isnan(multiplier) || std::isinf(multiplier))
+    {
+        multiplier = 1.0f;
+    }
+    _outgoingDamageMultiplier = std::max(0.0f, multiplier);
 }
 
 void PlayerCharacter::takeDamage(const DamageInfo& info)
