@@ -24,6 +24,7 @@ struct DamageInfo
     bool hasHitWorldPos = false;       // 是否提供命中点（世界坐标）
     cocos2d::Vec2 hitWorldPos = cocos2d::Vec2::ZERO; // 命中点（世界坐标）
     bool causesHitStun = true;         // 是否触发受击硬直/打断（DOT 等持续伤害应为 false）
+    int breakDamage = 0;               // 击破值：用于 Boss 击破条等机制（由攻击/技能配置决定；DOT 建议为 0）
 };
 
 // 角色基础类
@@ -78,6 +79,15 @@ public:
     /// @brief 是否已死亡
     bool isDead() const { return _currentHP <= 0.0f; }
 
+    // =============================================================
+    // 击破条（Boss 机制）
+    // 默认返回 0 表示“不支持击破条”；具体 Boss（如 Goblu）可重写
+    // =============================================================
+    /// @brief 当前击破值
+    virtual int getBreakMeter() const { return 0; }
+    /// @brief 击破上限
+    virtual int getBreakMax() const { return 0; }
+
     /**
      * @brief 设置死亡后是否自动从场景移除
      * @param autoRemove true=自动移除(默认), false=保留在场景中
@@ -116,10 +126,21 @@ public:
     /// @brief 设置死亡回调
     void setOnDeathCallback(const DeathCallback& callback) { _onDeathCallback = callback; }
 
-protected:
+    // =============================================================
+    // UI 辅助：Boss 血条连击/受击反馈
+    // - 由 takeDamage 内部累积“非 DOT 伤害”
+    // - UI 每帧调用 consumePendingUiNonDotDamage() 消费一次
+    // =============================================================
+    /// @brief 消费并清空“待处理的非 DOT 伤害”（用于 Boss 血条连击统计/受击反馈）
+    float consumePendingUiNonDotDamage();
+
+	protected:
     CharacterBase();
 
     DeathCallback _onDeathCallback = nullptr;
+
+    /// @brief 记录“非 DOT 伤害”用于 UI（Boss 血条连击/受击反馈）
+    void recordUiNonDotDamage(float finalDamage, const DamageInfo& info);
     // 受击特效调参（在头文件修改即可生效）
     struct HurtVfxParams
     {
@@ -165,6 +186,7 @@ protected:
     float _maxHP = 0.0f;            // 最大生命值（用于受击阈值判断，通常应该从属性组件读）
     bool _autoRemoveOnDeath = true; ///< 死亡后是否自动移除
     long long _lastRestoreHealthVfxMs = 0; ///< 回血特效节流：0.5s 内多次回血只播一次
+    float _pendingUiNonDotDamage = 0.0f; ///< 待 UI 消费的“非 DOT 伤害”（用于 Boss 血条连击/受击反馈）
 
     bool _damageNumbersEnabled = true; ///< 是否启用受击飘字
     cocos2d::Sprite* _visualSprite = nullptr; ///< 实际播放动画的精灵

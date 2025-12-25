@@ -286,6 +286,7 @@ void WarriorSkillSet::initSkills(PlayerCharacter& player)
         fireSkill->description = "释放火焰冲击，在第3帧对覆盖区域内的敌人造成伤害。";
         fireSkill->manaCost = GameConfig::Warrior::FireSkill::FIRE_MP;
         fireSkill->cooldown = GameConfig::Warrior::FireSkill::FIRE_CD;
+        fireSkill->breakDamage = GameConfig::Warrior::FireSkill::BREAK_DAMAGE;
         fireSkill->currentCooldown = 0.0f;
         skillComp->learnSkill(fireSkill);
     }
@@ -329,7 +330,12 @@ bool WarriorSkillSet::tryNormalAttack(PlayerCharacter& player, const std::functi
                     const float cx = box.getMidX() + dirX * (box.size.width * HITBOX_OFFSET_X_RATIO);
                     const float cy = box.getMidY() + HITBOX_OFFSET_Y;
 
-                    player.spawnPlayerAttackHitbox(Vec2(cx, cy), Size(w, h), damage, isCrit, HITBOX_LIFE_SECONDS);
+                    player.spawnPlayerAttackHitbox(Vec2(cx, cy),
+                                                   Size(w, h),
+                                                   damage,
+                                                   isCrit,
+                                                   HITBOX_LIFE_SECONDS,
+                                                   GameConfig::Combat::BREAK_DAMAGE_NORMAL);
                 },
                 HITBOX_DELAY_SECONDS,
                 "warrior_melee_hitbox");
@@ -372,6 +378,8 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
         return false;
     }
 
+    const int breakDamage = std::max(0, skill.breakDamage);
+
     const std::string& skillDir = player.getSkillSpriteDir();
     if (skillDir.empty())
     {
@@ -394,15 +402,15 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
             }
             return sc->useActiveSkill(slotIndex);
         },
-	        [&player, castPaths](const std::function<void()>& done)
+        [&player, castPaths, breakDamage](const std::function<void()>& done)
 	        {
             // 第 3 帧开始触发伤害与特效
             const float triggerDelay = GameConfig::Warrior::FireSkill::CAST_ANIM_FRAME_DELAY *
                                        static_cast<float>(GameConfig::Warrior::FireSkill::HIT_TRIGGER_FRAME_INDEX - 1);
 
-	            player.scheduleOnce(
-	                [&player](float)
-	                {
+		            player.scheduleOnce(
+		                [&player, breakDamage](float)
+		                {
                     if (player.isDead())
                     {
                         return;
@@ -436,14 +444,15 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
 
 	                    const float damage = player.getAttackPower() * GameConfig::Warrior::FireSkill::DAMAGE_SCALE;
 	                    const bool isCrit = rollCritical(player);
-	                    player.spawnPlayerAttackHitbox(center,
-	                                                  hitboxSize,
-	                                                  damage,
-	                                                  isCrit,
-	                                                  GameConfig::Warrior::FireSkill::HITBOX_LIFE_SECONDS);
-	                },
-	                triggerDelay,
-	                "warrior_fire_hitbox");
+		                    player.spawnPlayerAttackHitbox(center,
+			                                                  hitboxSize,
+			                                                  damage,
+			                                                  isCrit,
+			                                                  GameConfig::Warrior::FireSkill::HITBOX_LIFE_SECONDS,
+			                                                  breakDamage);
+			                },
+			                triggerDelay,
+			                "warrior_fire_hitbox");
 
             player.playOneShotAnimation(castPaths,
                                         GameConfig::Warrior::FireSkill::CAST_ANIM_FRAME_DELAY,

@@ -172,6 +172,9 @@ void CharacterBase::takeDamage(const DamageInfo& info)
     // ---------------------------------------------------------
     finalDamage = std::max(1.0f, std::floor(finalDamage));
 
+    // UI 辅助：只记录“非 DOT 伤害”（DOT 统一要求 causesHitStun=false）
+    recordUiNonDotDamage(finalDamage, info);
+
     showDamageNumber(finalDamage, info.isCritical);
     spawnHurtVfx(info);
 
@@ -224,6 +227,29 @@ void CharacterBase::takeDamage(const DamageInfo& info)
             }
         }
     }
+}
+
+float CharacterBase::consumePendingUiNonDotDamage()
+{
+    const float damage = _pendingUiNonDotDamage;
+    _pendingUiNonDotDamage = 0.0f;
+    return damage;
+}
+
+void CharacterBase::recordUiNonDotDamage(float finalDamage, const DamageInfo& info)
+{
+    // 约定：DOT 必须设置 causesHitStun=false，避免影响玩家操作
+    // 因此这里以 causesHitStun 作为“是否为非 DOT 伤害”的判定来源
+    if (!info.causesHitStun)
+    {
+        return;
+    }
+    if (finalDamage <= 0.0f)
+    {
+        return;
+    }
+
+    _pendingUiNonDotDamage += finalDamage;
 }
 
 void CharacterBase::heal(float amount) {

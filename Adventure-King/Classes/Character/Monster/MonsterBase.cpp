@@ -666,6 +666,9 @@ void MonsterBase::takeDamage(const DamageInfo& info)
     float hp = getCurrentHP();
     hp -= dmg;
 
+    // UI 辅助：记录“非 DOT 伤害”用于 Boss 血条连击/受击反馈
+    recordUiNonDotDamage(dmg, info);
+
     showDamageNumber(dmg, info.isCritical);
     spawnHurtVfx(info);
 

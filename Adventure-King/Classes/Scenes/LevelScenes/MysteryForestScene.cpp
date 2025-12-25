@@ -95,6 +95,13 @@ void MysteryForestScene::setupRegistry()
         paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
     }
 
+    // Goblu 击破：倒地/起身 (1-3)
+    for (int i = 1; i <= 3; ++i)
+    {
+        paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_fall_%d.png", i));
+        paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_rise_%d.png", i));
+    }
+
     // 4. 通过静态接口合并角色/怪物资源路径
 
 // 获取当前选择的职业

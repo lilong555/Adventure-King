@@ -50,6 +50,11 @@ public:
     // 获取爆炸半径
     float getExplosionRadius() const { return _explosionRadius; }
 
+    // 设置击破值：用于 Boss 的“击破条/韧性条”等机制（每次命中/爆炸结算都会累计）
+    void setBreakDamage(int breakDamage) { _breakDamage = (breakDamage < 0) ? 0 : breakDamage; }
+    // 获取击破值
+    int getBreakDamage() const { return _breakDamage; }
+
     // 设置是否触碰即爆炸
     void setExplodeOnContact(bool explodeOnContact) { _explodeOnContact = explodeOnContact; }
     // 获取触碰爆炸开关
@@ -97,6 +102,7 @@ private:
     float _baseDamage = 0.0f;
     float _attackPowerDamageScale = 0.0f;
     float _explosionRadius = 0.0f;
+    int _breakDamage = 0;
     CharacterBase *_attacker = nullptr;
 
     std::vector<StatusEffectTemplate> _onHitStatusEffects;

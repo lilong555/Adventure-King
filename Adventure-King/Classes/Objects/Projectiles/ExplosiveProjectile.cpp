@@ -2,6 +2,7 @@
 
 #include "Character/components/AttributeComponent.h"
 #include"Character/StatusEffects/StatusEffectFactory.h"
+#include "Configs/GameConfig.h"
 #include "Utils/SpriteFrameCacheHelper.h"
 #include <algorithm>
 #include <cmath>
@@ -274,6 +275,8 @@ void ExplosiveProjectile::applyAoEDamage()
     dmg.isCritical = isCrit;
     dmg.hitWorldPos = explosionWorld;
     dmg.hasHitWorldPos = true;
+    // 投掷物/爆炸的击破值由外部配置（不同技能/武器可能不同）
+    dmg.breakDamage = (_breakDamage < 0) ? 0 : _breakDamage;
 
     std::vector<CharacterBase*> targets;
     targets.reserve(8);

@@ -20,7 +20,10 @@ public:
     virtual void update(float dt) override;
 
     virtual void attack() override;
+    virtual void takeDamage(const DamageInfo& info) override;
     virtual void die() override;
+    virtual int getBreakMeter() const override { return _breakMeter; }
+    virtual int getBreakMax() const override { return GameConfig::Monster::Goblu::BREAK_MAX; }
 
 protected:
     // 经验奖励：按玩家等级缩放
@@ -40,4 +43,21 @@ protected:
     cocos2d::Animate* _attackAnimateFar = nullptr;
     float _baseAttackRange = 0.0f;
     bool _deathSequenceStarted = false;
+
+    // ==========================================================
+    // Goblu Boss：击破机制（替代传统受击硬直）
+    // ==========================================================
+    enum class BreakState
+    {
+        NONE = 0,
+        FALLING,
+        DOWN,
+        RISING,
+    };
+
+    BreakState _breakState = BreakState::NONE;
+    int _breakMeter = 0;
+
+    void addBreakDamage(const DamageInfo& info);
+    void startBreakSequence();
 };

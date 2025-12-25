@@ -117,6 +117,13 @@ void OriginMushroomScene::setupRegistry()
         paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_death_%d.png", i));
     }
 
+    // Goblu 击破：倒地/起身 (1-3)
+    for (int i = 1; i <= 3; ++i)
+    {
+        paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_fall_%d.png", i));
+        paths.push_back(StringUtils::format("Sprites/Enemies/Goblu/Goblu_rise_%d.png", i));
+    }
+
     // 获取当前选择的职业
     CharacterRole currentRole = CharacterRole::MAGE; // 给个默认值
     auto saveManager = SaveManager::getInstance();
