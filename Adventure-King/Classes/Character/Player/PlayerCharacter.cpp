@@ -150,7 +150,7 @@ namespace
         body->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
         body->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
         // 增加 MONSTER_ATTACK 以便检测炸弹/投掷物
-        body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER | GamePhysicsCategory::MONSTER_ATTACK));
+        body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER | GamePhysicsCategory::MONSTER_ATTACK | GamePhysicsCategory::ITEM));
 
         player->setPhysicsBody(body);
     }

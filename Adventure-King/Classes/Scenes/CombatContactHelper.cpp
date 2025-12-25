@@ -3,6 +3,7 @@
 #include "Character/Base/CharacterBase.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Configs/GamePhysicsCategory.h"
+#include "Objects/Items/DropItem.h"
 #include "Scenes/GameInputController.h"
 
 #include <cmath>
@@ -113,6 +114,40 @@ bool CombatContactHelper::handleContactBegin(PhysicsContact& contact,
                             return;
                         }
                         victim->takeDamage(dmg);
+                    },
+                    0.0f,
+                    key);
+            }
+        }
+    }
+
+    // ============================================================
+    // 掉落物：玩家拾取（路过自动捡起）
+    // ============================================================
+    const bool itemVsPlayer =
+        ((categoryA & ToMask(GamePhysicsCategory::ITEM)) != 0 && (categoryB & ToMask(GamePhysicsCategory::PLAYER)) != 0) ||
+        ((categoryB & ToMask(GamePhysicsCategory::ITEM)) != 0 && (categoryA & ToMask(GamePhysicsCategory::PLAYER)) != 0);
+
+    if (itemVsPlayer && player)
+    {
+        auto itemNode = ((categoryA & ToMask(GamePhysicsCategory::ITEM)) != 0) ? nodeA : nodeB;
+        auto dropItem = dynamic_cast<DropItem*>(itemNode);
+        if (dropItem)
+        {
+            // 延迟到下一帧执行，避免物理回调内直接 removeFromParent 导致崩溃
+            std::string key = StringUtils::format("defer_pickup_%p_%p",
+                                                  static_cast<void*>(dropItem),
+                                                  static_cast<void*>(player));
+            if (!dropItem->isScheduled(key))
+            {
+                dropItem->scheduleOnce(
+                    [dropItem, player](float)
+                    {
+                        if (!dropItem || !player || player->isDead())
+                        {
+                            return;
+                        }
+                        dropItem->pickUp(player);
                     },
                     0.0f,
                     key);
