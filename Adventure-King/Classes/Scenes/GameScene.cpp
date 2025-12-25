@@ -273,10 +273,12 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
     physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
     physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM |
                                             GamePhysicsCategory::COLLISION |
-                                            GamePhysicsCategory::MONSTER_ATTACK));
+                                            GamePhysicsCategory::MONSTER_ATTACK |
+                                            GamePhysicsCategory::ITEM));
     physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM |
                                               GamePhysicsCategory::COLLISION |
-                                              GamePhysicsCategory::MONSTER_ATTACK));
+                                              GamePhysicsCategory::MONSTER_ATTACK |
+                                              GamePhysicsCategory::ITEM));
 
     playerSprite->setPhysicsBody(physicsBody);
 

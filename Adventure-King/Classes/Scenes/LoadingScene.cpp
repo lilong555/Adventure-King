@@ -6,6 +6,7 @@
 #include"Managers/MusicManager.h"
 #include "Utils/ParticlePreloadHelper.h"
 #include "Utils/ImeHelper.h"
+#include "Configs/GameConfig.h"
 #include "Configs/GameSceneConfig.h"
 
 USING_NS_CC;
@@ -203,6 +204,9 @@ std::vector<std::string> LoadingScene::buildPreloadList(SceneID id) const {
 
     // 通用资源：
     // 注意：这里不要引用不存在的占位图，否则会在启动/切场景时刷 “fullPathForFilename: No file found ...”。
+    // 掉落物（血瓶/蓝瓶）：避免怪物首次掉落时才 IO 读取导致卡顿
+    paths.emplace_back(GameConfig::DropItem::HP_SPRITE_PATH);
+    paths.emplace_back(GameConfig::DropItem::MP_SPRITE_PATH);
 
     // 从注册表获取特定场景资源
     auto info = SceneRegistry::getInstance()->getSceneInfo(id);

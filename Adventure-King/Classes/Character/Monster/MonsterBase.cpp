@@ -2,6 +2,7 @@
 #include "Character/components/StatusEffectVfxComponent.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Configs/GameConfig.h"
+#include "Objects/Items/DropItem.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <cmath>
@@ -749,6 +750,30 @@ void MonsterBase::takeDamage(const DamageInfo& info)
 
 void MonsterBase::die()
 {
+    // 掉落：怪物死亡时有概率生成血瓶/蓝瓶
+    if (!_lootDropped)
+    {
+        _lootDropped = true;
+
+        if (RandomHelper::random_real(0.0f, 1.0f) < GameConfig::DropItem::DROP_CHANCE)
+        {
+            const bool dropHp = RandomHelper::random_real(0.0f, 1.0f) < GameConfig::DropItem::HP_DROP_RATIO;
+            auto item = DropItem::create(dropHp ? DropItemType::HEALTH : DropItemType::MANA);
+            if (item)
+            {
+                if (auto parent = getParent())
+                {
+                    Vec2 pos = getPosition();
+                    pos.y += GameConfig::DropItem::SPAWN_OFFSET_Y;
+                    pos.x += RandomHelper::random_real(-GameConfig::DropItem::SPAWN_OFFSET_X_RANGE,
+                                                       GameConfig::DropItem::SPAWN_OFFSET_X_RANGE);
+                    item->setPosition(pos);
+                    parent->addChild(item, GameConfig::LevelMap::DEFAULT_CHARACTER_Z_ORDER);
+                }
+            }
+        }
+    }
+
     // 禁用物理与移动
     if (_physicsBody)
     {

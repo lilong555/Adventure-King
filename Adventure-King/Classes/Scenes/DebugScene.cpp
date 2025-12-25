@@ -357,10 +357,12 @@ void DebugScene::initPlayer()
     physicsBody->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
     physicsBody->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM |
                                             GamePhysicsCategory::COLLISION |
-                                            GamePhysicsCategory::MONSTER_ATTACK));
+                                            GamePhysicsCategory::MONSTER_ATTACK |
+                                            GamePhysicsCategory::ITEM));
     physicsBody->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM |
                                               GamePhysicsCategory::COLLISION |
-                                              GamePhysicsCategory::MONSTER_ATTACK));
+                                              GamePhysicsCategory::MONSTER_ATTACK |
+                                              GamePhysicsCategory::ITEM));
 
     // 说明：
     // - PlayerCharacter 初始化时会挂载一套「通用 / 默认」PhysicsBody，供普通关卡直接使用。

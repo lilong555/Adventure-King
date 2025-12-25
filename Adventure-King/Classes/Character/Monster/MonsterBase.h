@@ -171,5 +171,6 @@ protected:
     float _hpBarScale = 1.0f;
 
     bool _expGranted = false; // 防止同一只怪多次发放经验（例如 DOT 多 tick 结算）
+    bool _lootDropped = false; // 防止同一只怪重复掉落
 
 };

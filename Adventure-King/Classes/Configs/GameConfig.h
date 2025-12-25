@@ -566,6 +566,34 @@ namespace GameConfig
         }
     }
 
+    // =============================================================
+    // 掉落物（血瓶/蓝瓶）
+    // =============================================================
+    namespace DropItem
+    {
+        // 掉落概率：怪物死亡时 30% 掉落
+        inline constexpr float DROP_CHANCE = 0.30f;
+        // 掉落类型：掉落时一半血瓶、一半蓝瓶
+        inline constexpr float HP_DROP_RATIO = 0.50f;
+
+        // 恢复比例：按最大值百分比恢复（避免数值随版本变动时失衡）
+        inline constexpr float HP_RESTORE_RATIO = 0.25f;
+        inline constexpr float MP_RESTORE_RATIO = 0.25f;
+
+        // 资源路径（注意：当前素材文件名为 Red.png / Bule.png）
+        inline constexpr const char* HP_SPRITE_PATH = "Sprites/Item/Red.png";
+        inline constexpr const char* MP_SPRITE_PATH = "Sprites/Item/Bule.png";
+
+        // 视觉尺寸：原 PNG 尺寸很大，统一缩放到固定高度
+        inline constexpr float VISUAL_HEIGHT = 60.0f;
+        // 拾取判定：固定 box 大小，避免受图片尺寸/缩放影响
+        inline constexpr float PICKUP_BOX_SIZE = 70.0f;
+
+        // 掉落位置微调（相对怪物锚点/脚底）
+        inline constexpr float SPAWN_OFFSET_Y = 10.0f;
+        inline constexpr float SPAWN_OFFSET_X_RANGE = 30.0f;
+    }
+
     namespace LevelMap
     {
         const cocos2d::Vec2 DEFAULT_SPAWN_POINT(100.0f, 200.0f);

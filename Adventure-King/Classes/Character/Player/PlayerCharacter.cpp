@@ -148,9 +148,10 @@ namespace
 
         // 设置掩码
         body->setCategoryBitmask(ToMask(GamePhysicsCategory::PLAYER));
-        body->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER));
+        // 掉落物（ITEM）使用 sensor，不会阻挡玩家；但为了触发拾取 contact 回调，需要让碰撞过滤通过。
+        body->setCollisionBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER | GamePhysicsCategory::ITEM));
         // 增加 MONSTER_ATTACK 以便检测炸弹/投掷物
-        body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER | GamePhysicsCategory::MONSTER_ATTACK));
+        body->setContactTestBitmask(ToMask(GamePhysicsCategory::PLATFORM | GamePhysicsCategory::COLLISION | GamePhysicsCategory::MONSTER | GamePhysicsCategory::MONSTER_ATTACK | GamePhysicsCategory::ITEM));
 
         player->setPhysicsBody(body);
     }

@@ -190,6 +190,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp" />
     <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp" />
     <ClCompile Include="..\Classes\Objects\Projectiles\ProjectilesBase.cpp" />
+    <ClCompile Include="..\Classes\Objects\Items\DropItem.cpp" />
     <ClCompile Include="..\Classes\Save\SaveData.cpp" />
     <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
     <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
@@ -254,6 +255,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h" />
     <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h" />
     <ClInclude Include="..\Classes\Objects\Projectiles\ProjectilesBase.h" />
+    <ClInclude Include="..\Classes\Objects\Items\DropItem.h" />
     <ClInclude Include="..\Classes\Scenes\CombatContactHelper.h" />
     <ClInclude Include="..\Classes\Scenes\Layers\BagLayer.h" />
     <ClInclude Include="..\Classes\Scenes\LevelScenes\MysteryForestScene.h" />

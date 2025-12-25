@@ -43,6 +43,9 @@
     <Filter Include="src\Objects\Projectiles">
       <UniqueIdentifier>{a306a2b2-a106-4f29-94f5-5f966d0bb182}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Objects\Items">
+      <UniqueIdentifier>{e9414164-634f-4902-9e4a-3a14d9ffd954}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\UI">
       <UniqueIdentifier>{6686c30f-b901-4ace-98e0-ebfe3c586b6d}</UniqueIdentifier>
     </Filter>
@@ -164,6 +167,9 @@
     </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\Bomb.cpp">
       <Filter>src\Objects\Projectiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Objects\Items\DropItem.cpp">
+      <Filter>src\Objects\Items</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp">
       <Filter>src\Character\Player\SkillSets</Filter>
@@ -343,6 +349,9 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Objects\Projectiles\Bomb.h">
       <Filter>src\Objects\Projectiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Objects\Items\DropItem.h">
+      <Filter>src\Objects\Items</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\UI\BossHealthBar.h">
       <Filter>src\UI</Filter>
