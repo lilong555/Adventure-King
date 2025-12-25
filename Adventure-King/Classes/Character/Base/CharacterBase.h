@@ -138,6 +138,9 @@ public:
     CharacterBase();
 
     DeathCallback _onDeathCallback = nullptr;
+
+    /// @brief 记录“非 DOT 伤害”用于 UI（Boss 血条连击/受击反馈）
+    void recordUiNonDotDamage(float finalDamage, const DamageInfo& info);
     // 受击特效调参（在头文件修改即可生效）
     struct HurtVfxParams
     {

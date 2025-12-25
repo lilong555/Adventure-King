@@ -124,4 +124,5 @@ protected:
     static constexpr float COMBO_WINDOW_SECONDS = 1.0f;
     float _comboWindowRemaining = 0.0f;
     double _comboDamageSum = 0.0;
+    long long _comboLastUpdateMs = 0; // 用真实时间计算窗口衰减（UI 有节流，不保证每帧更新）
 };

@@ -234,6 +234,7 @@ void BossHealthBar::bindBoss(CharacterBase *boss, const std::string &bossName, i
     // 重置连击统计
     _comboDamageSum = 0.0;
     _comboWindowRemaining = 0.0f;
+    _comboLastUpdateMs = 0;
     if (_comboDamageLabel)
     {
         _comboDamageLabel->setString("");
@@ -249,6 +250,7 @@ void BossHealthBar::unbindBoss()
     _boss = nullptr;
     _comboDamageSum = 0.0;
     _comboWindowRemaining = 0.0f;
+    _comboLastUpdateMs = 0;
     if (_comboDamageLabel)
     {
         _comboDamageLabel->setString("");
@@ -270,7 +272,18 @@ void BossHealthBar::updateDisplay()
     float currentHP = std::max(0.0f, _boss->getCurrentHP());
 
     // 连击窗口倒计时（容差 1 秒）
-    const float dt = Director::getInstance()->getDeltaTime();
+    const long long nowMs = utils::getTimeInMilliseconds();
+    float dt = 0.0f;
+    if (_comboLastUpdateMs > 0)
+    {
+        dt = static_cast<float>(nowMs - _comboLastUpdateMs) / 1000.0f;
+        if (dt < 0.0f)
+        {
+            dt = 0.0f;
+        }
+    }
+    _comboLastUpdateMs = nowMs;
+
     if (_comboWindowRemaining > 0.0f)
     {
         _comboWindowRemaining = std::max(0.0f, _comboWindowRemaining - std::max(0.0f, dt));
