@@ -535,6 +535,8 @@ namespace GameConfig
             inline constexpr float MIN_HP_AFTER_CAST = 1.0f;
 
             inline constexpr const char* VFX_PLIST = "Particle/par_nap.plist";
+            // 高手状态持续特效：只要出伤倍率仍在生效，就挂在角色身上循环播放
+            inline constexpr const char* KEEP_VFX_PLIST = "Particle/par_nap_keep.plist";
         }
     }
 

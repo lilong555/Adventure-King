@@ -45,7 +45,55 @@ namespace
     // 满血判断的容差：避免浮点误差导致“看似满血却判定不满”
     constexpr float HP_COMPARISON_EPSILON = 0.01f;
 
+    // 高手状态（出伤倍率生效期间）的持续特效
+    constexpr const char* EXPERT_KEEP_VFX_NODE_NAME = "expert_keep_vfx";
+
     using FrameLoader = std::function<cocos2d::SpriteFrame*(const std::string&)>;
+
+    void ensureExpertKeepVfx(cocos2d::Node* owner)
+    {
+        if (!owner)
+        {
+            return;
+        }
+
+        if (owner->getChildByName(EXPERT_KEEP_VFX_NODE_NAME))
+        {
+            return; // 已经在播放
+        }
+
+        ParticleVfxHelper::PlayOptions options;
+        options.positionType = ParticleSystem::PositionType::GROUPED;
+        options.useBodyCenter = true;
+        options.autoRemoveOnFinish = false; // 持续特效：结束由逻辑控制
+        options.name = EXPERT_KEEP_VFX_NODE_NAME;
+
+        ParticleVfxHelper::playOnce(owner, GameConfig::Assassin::AllInSkill::KEEP_VFX_PLIST, options,
+                                    [](ParticleSystemQuad* particle)
+                                    {
+                                        if (!particle)
+                                        {
+                                            return;
+                                        }
+
+                                        // 兜底：避免 plist 被误改后“播放完自动消失”
+                                        particle->setDuration(ParticleSystem::DURATION_INFINITY);
+                                        particle->setAutoRemoveOnFinish(false);
+                                    });
+    }
+
+    void removeExpertKeepVfx(cocos2d::Node* owner)
+    {
+        if (!owner)
+        {
+            return;
+        }
+
+        if (auto vfx = owner->getChildByName(EXPERT_KEEP_VFX_NODE_NAME))
+        {
+            vfx->removeFromParent();
+        }
+    }
 
     // 辅助：创建动画对象
     Animation* createAnimationFromPaths(const std::vector<std::string>& paths,
@@ -156,6 +204,7 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     _jumpCount = 0;
     _outgoingDamageMultiplier = 1.0f; // 重置出伤倍率（避免复用对象时残留）
     _outgoingDamageMultiplierRemainingSeconds = 0.0f;
+    removeExpertKeepVfx(this);
 
     // 解析资源路径
     initAssetPaths(spriteFrameName);
@@ -332,12 +381,19 @@ void PlayerCharacter::updateTriggerEffects(float dt)
     // 出伤倍率倒计时（例如刺客“孤注一掷”的高手状态）
     if (_outgoingDamageMultiplierRemainingSeconds > 0.0f)
     {
+        ensureExpertKeepVfx(this);
         _outgoingDamageMultiplierRemainingSeconds = std::max(0.0f, _outgoingDamageMultiplierRemainingSeconds - dt);
         if (_outgoingDamageMultiplierRemainingSeconds <= 0.0f)
         {
             setOutgoingDamageMultiplier(1.0f);
+            removeExpertKeepVfx(this);
             CCLOG("PlayerCharacter: 高手状态结束（出伤倍率已恢复）");
         }
+    }
+    else
+    {
+        // 兜底：防止场景切换/读档等情况下残留持续特效
+        removeExpertKeepVfx(this);
     }
 
     updateFullHpCritEffect();
@@ -1036,6 +1092,15 @@ void PlayerCharacter::activateOutgoingDamageMultiplier(float multiplier, float d
 {
     setOutgoingDamageMultiplier(multiplier);
     _outgoingDamageMultiplierRemainingSeconds = std::max(0.0f, durationSeconds);
+
+    if (_outgoingDamageMultiplierRemainingSeconds > 0.0f)
+    {
+        ensureExpertKeepVfx(this);
+    }
+    else
+    {
+        removeExpertKeepVfx(this);
+    }
 }
 
 void PlayerCharacter::takeDamage(const DamageInfo& info)
