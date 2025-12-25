@@ -748,13 +748,13 @@ void HelloWorld::refreshRolePreview()
         return;
     }
 
-    // 如果已有预览：保留父节点/位置/锚点/层级，只替换贴图
-    Vec2 pos = Vec2::ZERO;
-    Vec2 anchor = Vec2(0.5f, 0.0f);
     Node* parent = nullptr;
     int zOrder = 0;
+    Vec2 pos = Vec2::ZERO;
+    Vec2 anchor = Vec2(0.5f, 0.0f);
     if (_rolePreviewSprite)
     {
+        // 如果已有预览：保留父节点/位置/锚点/层级，只替换贴图
         parent = _rolePreviewSprite->getParent();
         zOrder = _rolePreviewSprite->getLocalZOrder();
         pos = _rolePreviewSprite->getPosition();
