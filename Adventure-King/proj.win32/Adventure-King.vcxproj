@@ -170,7 +170,6 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\Monster\Monsters\ObscurMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.cpp" />
     <ClCompile Include="..\Classes\Character\Player\PlayerCharacter.cpp" />
-    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp" />
     <ClCompile Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.cpp" />
     <ClCompile Include="..\Classes\Character\Player\SkillSets\WarriorSkillSet.cpp" />
     <ClCompile Include="..\Classes\Character\Player\SkillSets\AssassinSkillSet.cpp" />
@@ -234,7 +233,6 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\Monster\Monsters\ObscurMonster.h" />
     <ClInclude Include="..\Classes\Character\Monster\Monsters\TrainingDummyMonster.h" />
     <ClInclude Include="..\Classes\Character\Player\PlayerCharacter.h" />
-    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\KleeSkillSet.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\WarriorSkillSet.h" />
     <ClInclude Include="..\Classes\Character\Player\SkillSets\AssassinSkillSet.h" />
@@ -245,6 +243,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.h" />
     <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h" />
     <ClInclude Include="..\Classes\Configs\ArenaConfig.h" />
+    <ClInclude Include="..\Classes\Configs\CharacterAssetConfig.h" />
     <ClInclude Include="..\Classes\Configs\GameConfig.h" />
     <ClInclude Include="..\Classes\Configs\GamePhysicsCategory.h" />
     <ClInclude Include="..\Classes\Configs\GameSceneConfig.h" />
