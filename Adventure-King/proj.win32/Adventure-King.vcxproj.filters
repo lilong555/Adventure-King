@@ -37,9 +37,6 @@
     <Filter Include="src\Character\Monster\Monsters">
       <UniqueIdentifier>{847e8903-7169-4413-8bc2-e8babac76bf4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Character\Player\Players">
-      <UniqueIdentifier>{ea02012d-c2e9-4424-acb2-f40c937a7161}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\Objects">
       <UniqueIdentifier>{461233b5-d9fb-4264-b116-6045804d4cf9}</UniqueIdentifier>
     </Filter>
@@ -161,9 +158,6 @@
     </ClCompile>
     <ClCompile Include="..\Classes\UI\InventoryLayer.cpp">
       <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Character\Player\Players\PlayerKlee.cpp">
-      <Filter>src\Character\Player\Players</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.cpp">
       <Filter>src\Objects\Projectiles</Filter>
@@ -344,9 +338,6 @@
     <ClInclude Include="..\Classes\GameUI.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\Player\Players\PlayerKlee.h">
-      <Filter>src\Character\Player\Players</Filter>
-    </ClInclude>
     <ClInclude Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.h">
       <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
@@ -449,18 +440,6 @@
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.h">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClInclude>
-    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\BloodPactLifestealEffect.h">
-      <Filter>src\Character\StatusEffects\Implementations</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\EmberStaffEffect.h">
-      <Filter>src\Character\StatusEffects\Implementations</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\EmergencyMaskEffect.h">
-      <Filter>src\Character\StatusEffects\Implementations</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\HunterBootsEffect.h">
-      <Filter>src\Character\StatusEffects\Implementations</Filter>
-    </ClInclude>
     <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">
       <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
@@ -468,6 +447,9 @@
       <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Configs\ArenaConfig.h">
+      <Filter>src\Configs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Configs\CharacterAssetConfig.h">
       <Filter>src\Configs</Filter>
     </ClInclude>
   </ItemGroup>

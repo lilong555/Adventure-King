@@ -63,8 +63,16 @@ D:.
 |       |   StatusEffectFactory.h
 |       |   
 |       \---Implementations
+|               BloodPactLifestealEffect.cpp
+|               BloodPactLifestealEffect.h
 |               BurningEffect.cpp
 |               BurningEffect.h
+|               EmberStaffEffect.cpp
+|               EmberStaffEffect.h
+|               EmergencyMaskEffect.cpp
+|               EmergencyMaskEffect.h
+|               HunterBootsEffect.cpp
+|               HunterBootsEffect.h
 |               PoisonEffect.cpp
 |               PoisonEffect.h
 |               RegenEffect.cpp
@@ -73,7 +81,9 @@ D:.
 |               ThornsEffect.h
 |               
 +---Configs
-|       GameConfigs.h
+|       ArenaConfig.h
+|       CharacterAssetConfig.h
+|       GameConfig.h
 |       GamePhysicsCategory.h
 |       GameSceneConfig.h
 |       PlayerRoleConfig.h
@@ -159,6 +169,8 @@ D:.
         ImeHelper.cpp
         ImeHelper.h
         ParticlePreloadHelper.h
+        ParticleVfxHelper.h
         PhysicsBodyLocalInfoHelper.h
         SpriteFrameCacheHelper.h
+        WeaponHitboxVfxHelper.h
         

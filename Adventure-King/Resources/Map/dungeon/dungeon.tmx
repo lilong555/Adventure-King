@@ -217,14 +217,14 @@
   </object>
  </objectgroup>
  <objectgroup id="9" name="ArenaLayer">
-  <object id="32" name="ArenaTrigger" x="2300" y="4" width="2444" height="1144">
+  <object id="32" name="ArenaTrigger" x="2884" y="4" width="1272" height="1144">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaTrigger"/>
     <property name="waves" value="[ {&quot;goblin&quot;: 3},    {&quot;obscur&quot;: 2},  {&quot;goblin&quot;: 2, &quot;obscur&quot;: 2}]"/>
    </properties>
   </object>
-  <object id="29" name="1" type="goblin" x="4660" y="508">
+  <object id="29" name="1" type="goblin" x="4348" y="536">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaSpawn"/>
@@ -238,20 +238,20 @@
    </properties>
    <point/>
   </object>
-  <object id="25" name="1" type="goblin" x="2408" y="500">
+  <object id="25" name="1" type="goblin" x="2692" y="548">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaSpawn"/>
    </properties>
    <point/>
   </object>
-  <object id="34" x="2012" y="0" width="272" height="1148">
+  <object id="34" x="2284" y="4" width="272" height="1148">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaGate"/>
    </properties>
   </object>
-  <object id="35" x="4760" y="-4" width="260" height="1144">
+  <object id="35" x="4480" y="4" width="260" height="1144">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaGate"/>
