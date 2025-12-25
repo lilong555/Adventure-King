@@ -29,8 +29,8 @@ namespace
     constexpr float HITBOX_OFFSET_X_RATIO = 0.55f;
     constexpr float HITBOX_OFFSET_Y = 8.0f;
 
-    bool rollCritical(PlayerCharacter& player)
-    {
+	    bool rollCritical(PlayerCharacter& player)
+	    {
         auto attr = player.getAttributeComponent();
         if (!attr)
         {
@@ -42,17 +42,20 @@ namespace
         return (rand() % 100) < static_cast<int>(critPercent);
     }
 
-    Rect toWorldAabb(Node* owner, const Rect& localRect)
-    {
-        if (!owner)
-        {
-            return localRect;
-        }
+	    Rect toWorldAabb(Node* owner, const Rect& localRect)
+	    {
+	        if (!owner)
+	        {
+	            // 兜底：没有 owner 时无法做坐标换算，这里按原样返回（调用方需确保坐标系一致）
+	            return localRect;
+	        }
 
-        const Vec2 bl = owner->convertToWorldSpace(localRect.origin);
-        const Vec2 br = owner->convertToWorldSpace(localRect.origin + Vec2(localRect.size.width, 0.0f));
-        const Vec2 tl = owner->convertToWorldSpace(localRect.origin + Vec2(0.0f, localRect.size.height));
-        const Vec2 tr = owner->convertToWorldSpace(localRect.origin + Vec2(localRect.size.width, localRect.size.height));
+	        // 注意：这里返回的是“转换后四个角点”的 AABB。
+	        // 如果 owner 有旋转，AABB 会比原矩形更大；当前项目的战斗层/角色节点通常不旋转，可按 AABB 使用。
+	        const Vec2 bl = owner->convertToWorldSpace(localRect.origin);
+	        const Vec2 br = owner->convertToWorldSpace(localRect.origin + Vec2(localRect.size.width, 0.0f));
+	        const Vec2 tl = owner->convertToWorldSpace(localRect.origin + Vec2(0.0f, localRect.size.height));
+	        const Vec2 tr = owner->convertToWorldSpace(localRect.origin + Vec2(localRect.size.width, localRect.size.height));
 
         const float minX = std::min(std::min(bl.x, br.x), std::min(tl.x, tr.x));
         const float minY = std::min(std::min(bl.y, br.y), std::min(tl.y, tr.y));
@@ -95,14 +98,14 @@ namespace
         return Rect(minX, minY, std::max(0.0f, maxX - minX), std::max(0.0f, maxY - minY));
     }
 
-    // Fire 技能：计算“覆盖敌人最多”的命中框中心点（在玩家 combatLayer 坐标系中）
-    // 算法说明（按当前玩法做了简化与提速）：
-    // - 敌人通常可视为处在同一高度（主要差异在 X 轴），因此这里将命中框的 Y 固定在玩家中心，只在 X 轴上做最优选点
-    // - 先用 PhysicsWorld::queryRect 在玩家附近做一次空间查询，只拿到“附近怪物”的包围盒（避免遍历整张地图所有节点）
-    // - 生成一组候选 leftX（命中框左边界），逐个统计覆盖数量（仅做一维枚举，避免二维枚举 O(n^3)）
-    // - 覆盖数量相同时：优先“中心 X 落在某个怪物中心”，仍相同则选离玩家更近的点（防止命中框跳太远）
-    static Vec2 computeBestFireHitboxCenter(PlayerCharacter& player, Node* combatLayer, const Size& hitboxSize)
-    {
+	    // Fire 技能：计算“覆盖敌人最多”的命中框中心点（在玩家 combatLayer 坐标系中）
+	    // 算法说明（按当前玩法做了简化与提速）：
+	    // - 敌人通常可视为处在同一高度（主要差异在 X 轴），因此这里将命中框的 Y 固定在玩家中心，只在 X 轴上做最优选点
+	    // - 先用 PhysicsWorld::queryRect 在玩家附近做一次空间查询，只拿到“附近怪物”的包围盒（避免遍历整张地图所有节点）
+	    // - 生成一组候选 leftX（命中框左边界），逐个统计覆盖数量（仅做一维枚举，避免二维枚举 O(n^3)）
+	    // - 覆盖数量相同时：优先“中心 X 落在某个怪物中心”，仍相同则选离玩家更近的点（防止命中框跳太远）
+	    static Vec2 computeBestFireHitboxCenter(PlayerCharacter& player, Node* combatLayer, const Size& hitboxSize)
+	    {
         if (!combatLayer)
         {
             const Rect box = player.getBoundingBox();
@@ -124,14 +127,16 @@ namespace
         const float searchW = std::max(200.0f, hitboxSize.width * 3.0f);
         const float searchH = std::max(200.0f, hitboxSize.height * 3.0f);
         const Rect localSearch(playerCenter.x - searchW * 0.5f, playerCenter.y - searchH * 0.5f, searchW, searchH);
-        const Rect worldSearch = toWorldAabb(combatLayer, localSearch);
+	        const Rect worldSearch = toWorldAabb(combatLayer, localSearch);
 
-        std::vector<Rect> enemyBoxes;
-        enemyBoxes.reserve(16);
-        std::vector<Vec2> enemyCenters;
-        enemyCenters.reserve(16);
-        std::unordered_set<Node*> visited;
-        visited.reserve(32);
+	        constexpr size_t ENEMY_QUERY_RESERVE = 32;
+
+	        std::vector<Rect> enemyBoxes;
+	        enemyBoxes.reserve(ENEMY_QUERY_RESERVE);
+	        std::vector<Vec2> enemyCenters;
+	        enemyCenters.reserve(ENEMY_QUERY_RESERVE);
+	        std::unordered_set<Node*> visited;
+	        visited.reserve(ENEMY_QUERY_RESERVE * 2);
 
         world->queryRect([&](PhysicsWorld&, PhysicsShape& shape, void*) {
             auto body = shape.getBody();
@@ -163,11 +168,16 @@ namespace
             return playerCenter;
         }
 
-        std::vector<float> candidateLeftX;
-        candidateLeftX.reserve(enemyBoxes.size() * 5 + 1);
+	        std::vector<float> candidateLeftX;
+	        candidateLeftX.reserve(enemyBoxes.size() * 5 + 1);
 
-        const float fixedCenterY = playerCenter.y;
-        const float fixedLeftY = fixedCenterY - hitboxSize.height * 0.5f;
+	        // 注意：当前算法仅在 X 轴上做一维搜索，Y 固定在玩家中心。
+	        // 设计假设是“敌人基本与玩家处于同一高度”，适用于多数近战地面怪物场景。
+	        // 如果后续关卡或怪物设计引入明显的高度差（高台怪物 / 飞行怪物等），
+	        // 需要重新审视这里的逻辑（例如增加 Y 方向的候选或更智能的兜底策略），
+	        // 否则命中框可能无法覆盖到垂直方向上相距较远但水平方向在范围内的敌人。
+	        const float fixedCenterY = playerCenter.y;
+	        const float fixedLeftY = fixedCenterY - hitboxSize.height * 0.5f;
 
         // 兜底候选：以玩家为中心
         candidateLeftX.push_back(playerCenter.x - hitboxSize.width * 0.5f);
@@ -196,10 +206,10 @@ namespace
         std::sort(candidateLeftX.begin(), candidateLeftX.end());
         candidateLeftX.erase(std::unique(candidateLeftX.begin(), candidateLeftX.end()), candidateLeftX.end());
 
-        int bestCount = -1;
-        bool bestAtMonsterCenter = false;
-        float bestDist2 = std::numeric_limits<float>::max();
-        Vec2 bestCenter = playerCenter;
+	        int bestCount = -1;
+	        bool bestAtMonsterCenter = false;
+	        float bestDist2 = std::numeric_limits<float>::max();
+	        Vec2 bestCenter = playerCenter;
 
         for (float leftX : candidateLeftX)
         {
@@ -219,12 +229,13 @@ namespace
             const float dx = centerX - playerCenter.x;
             const float dist2 = dx * dx;
 
-            bool atMonsterCenter = false;
-            constexpr float EPS = 0.01f;
-            for (const auto& monsterCenter : enemyCenters)
-            {
-                // 只比较 X：同覆盖数量时优先“在某个怪物位置生成”（按当前玩法理解为怪物所在 X）
-                if (std::fabs(monsterCenter.x - centerX) <= EPS)
+	            bool atMonsterCenter = false;
+	            // 像素级容差：中心点对齐属于“体验优化”类的 tie-break，不需要过于苛刻
+	            constexpr float EPS = 1.0f;
+	            for (const auto& monsterCenter : enemyCenters)
+	            {
+	                // 只比较 X：同覆盖数量时优先“在某个怪物位置生成”（按当前玩法理解为怪物所在 X）
+	                if (std::fabs(monsterCenter.x - centerX) <= EPS)
                 {
                     atMonsterCenter = true;
                     break;
@@ -242,12 +253,17 @@ namespace
                 bestCount = count;
                 bestAtMonsterCenter = atMonsterCenter;
                 bestDist2 = dist2;
-                bestCenter = center;
-            }
-        }
+	                bestCenter = center;
+	            }
+	        }
 
-        return bestCenter;
-    }
+	        // 兜底：如果固定 Y 导致一个都覆盖不到，返回玩家中心，避免命中框“跳到怪物 X 但仍然打不到”
+	        if (bestCount <= 0)
+	        {
+	            return playerCenter;
+	        }
+	        return bestCenter;
+	    }
 }
 
 void WarriorSkillSet::initSkills(PlayerCharacter& player)
@@ -378,54 +394,56 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
             }
             return sc->useActiveSkill(slotIndex);
         },
-        [&player, castPaths](const std::function<void()>& done)
-        {
+	        [&player, castPaths](const std::function<void()>& done)
+	        {
             // 第 3 帧开始触发伤害与特效
             const float triggerDelay = GameConfig::Warrior::FireSkill::CAST_ANIM_FRAME_DELAY *
                                        static_cast<float>(GameConfig::Warrior::FireSkill::HIT_TRIGGER_FRAME_INDEX - 1);
 
-            player.scheduleOnce(
-                [&player](float)
-                {
+	            player.scheduleOnce(
+	                [&player](float)
+	                {
                     if (player.isDead())
                     {
                         return;
                     }
 
-                    auto combatLayer = player.getParent();
-                    const Rect box = player.getBoundingBox();
+	                    auto combatLayer = player.getCombatLayer();
+	                    if (!combatLayer)
+	                    {
+	                        return;
+	                    }
+	                    const Rect box = player.getBoundingBox();
 
                     const float hitW = std::max(10.0f, box.size.width * GameConfig::Warrior::FireSkill::HITBOX_WIDTH_MULTIPLIER);
                     const float hitH = std::max(10.0f, box.size.height * GameConfig::Warrior::FireSkill::HITBOX_HEIGHT_MULTIPLIER);
                     const Size hitboxSize(hitW, hitH);
 
-                    // “覆盖敌人最多”的中心点：在 combatLayer 坐标系中计算
-                    const Vec2 center = computeBestFireHitboxCenter(player, combatLayer, hitboxSize);
+	                    // 火焰技能为全向 AoE，不限制朝向，按覆盖敌人最多的方式选点（并在同覆盖时优先贴近怪物位置）
+	                    // “覆盖敌人最多”的中心点：在 combatLayer 坐标系中计算
+	                    const Vec2 center = computeBestFireHitboxCenter(player, combatLayer, hitboxSize);
 
-                    const float damage = player.getAttackPower() * GameConfig::Warrior::FireSkill::DAMAGE_SCALE;
-                    const bool isCrit = rollCritical(player);
+	                    // 特效即使在极端情况下 hitbox 生成失败，也优先保证可见反馈（避免“扣蓝/进 CD 但没有任何效果”的体验）
+	                    ParticleVfxHelper::PlayOptions options;
+	                    options.zOrder = 2;
+	                    options.positionType = ParticleSystem::PositionType::GROUPED;
+	                    options.name = "warrior_fire_vfx";
+	                    // 特效不要随 hitbox 销毁而提前结束：挂到 combatLayer（世界层）上播放
+	                    options.useBodyCenter = false;
+	                    // 特效从命中框底部生成（底边中点）
+	                    options.position = Vec2(center.x, center.y - hitboxSize.height * 0.5f);
+	                    ParticleVfxHelper::playOnce(combatLayer, "Particle/par_fire.plist", options);
 
-                    auto hitboxNode = player.spawnPlayerAttackHitbox(center,
-                                                                     hitboxSize,
-                                                                     damage,
-                                                                     isCrit,
-                                                                     GameConfig::Warrior::FireSkill::HITBOX_LIFE_SECONDS);
-
-                    if (hitboxNode)
-                    {
-                        ParticleVfxHelper::PlayOptions options;
-                        options.zOrder = 2;
-                        options.positionType = ParticleSystem::PositionType::GROUPED;
-                        options.name = "warrior_fire_vfx";
-                        // 特效不要随 hitbox 销毁而提前结束：挂到 combatLayer（世界层）上播放
-                        options.useBodyCenter = false;
-                        // 特效从命中框底部生成（底边中点）
-                        options.position = Vec2(center.x, center.y - hitboxSize.height * 0.5f);
-                        ParticleVfxHelper::playOnce(combatLayer, "Particle/par_fire.plist", options);
-                    }
-                },
-                triggerDelay,
-                "warrior_fire_hitbox");
+	                    const float damage = player.getAttackPower() * GameConfig::Warrior::FireSkill::DAMAGE_SCALE;
+	                    const bool isCrit = rollCritical(player);
+	                    player.spawnPlayerAttackHitbox(center,
+	                                                  hitboxSize,
+	                                                  damage,
+	                                                  isCrit,
+	                                                  GameConfig::Warrior::FireSkill::HITBOX_LIFE_SECONDS);
+	                },
+	                triggerDelay,
+	                "warrior_fire_hitbox");
 
             player.playOneShotAnimation(castPaths,
                                         GameConfig::Warrior::FireSkill::CAST_ANIM_FRAME_DELAY,
