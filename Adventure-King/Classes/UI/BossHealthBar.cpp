@@ -43,6 +43,10 @@ bool BossHealthBar::init()
     createBreakBar();
     createNameLabel();
 
+    // 记录受击反馈的基准位置/缩放：后续无论连击触发多快，都必须回弹到这个“初始状态”
+    _contentBasePos = _content->getPosition();
+    _contentBaseScale = _content->getScale();
+
     // 初始隐藏
     _container->setVisible(false);
     _isVisible = false;
@@ -510,8 +514,8 @@ void BossHealthBar::playHitAnimation()
 
     _content->stopActionByTag(HIT_ANIM_TAG);
 
-    const Vec2 basePos = _content->getPosition();
-    const float baseScale = _content->getScale();
+    const Vec2 basePos = _contentBasePos;
+    const float baseScale = _contentBaseScale;
 
     auto moveUp = EaseSineOut::create(MoveTo::create(UP_SECONDS, basePos + Vec2(0.0f, MOVE_Y)));
     auto scaleUp = EaseSineOut::create(ScaleTo::create(UP_SECONDS, baseScale * SCALE_UP));

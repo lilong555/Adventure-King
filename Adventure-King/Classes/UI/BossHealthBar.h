@@ -96,6 +96,8 @@ protected:
     // UI元素
     cocos2d::Node *_container = nullptr;
     cocos2d::Node *_content = nullptr; // show/hide 动画不影响受击反馈，便于分层控制
+    cocos2d::Vec2 _contentBasePos = cocos2d::Vec2::ZERO; // 受击反馈回弹的固定基准位置（避免连击导致漂移）
+    float _contentBaseScale = 1.0f;                      // 受击反馈回弹的固定基准缩放（避免连击导致累计变大）
     cocos2d::DrawNode *_background = nullptr;
     cocos2d::DrawNode *_healthBarBg = nullptr;
     cocos2d::DrawNode *_healthBarFill = nullptr;
