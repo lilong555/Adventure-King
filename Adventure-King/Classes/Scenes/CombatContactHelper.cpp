@@ -6,6 +6,7 @@
 #include "Objects/Items/DropItem.h"
 #include "Scenes/GameInputController.h"
 
+#include <algorithm>
 #include <cmath>
 
 USING_NS_CC;
@@ -185,6 +186,8 @@ bool CombatContactHelper::handleContactBegin(PhysicsContact& contact,
                 {
                     dmg.hitWorldPos = getWorldPos(attackNode);
                     dmg.hasHitWorldPos = true;
+                    // 玩家近战判定框会在 Node::tag 上记录“击破值”，供 Boss 击破条等机制使用
+                    dmg.breakDamage = std::max(0, attackNode->getTag());
                 }
 
                 std::string key = StringUtils::format("defer_player_dmg_%p_%p",

@@ -406,6 +406,12 @@ namespace GameConfig
             inline constexpr float HITBOX_LIFE_SECONDS = 0.12f;
             inline constexpr float REMOTE_HITBOX_VFX_HOLD_SECONDS = 0.35f; // 远程攻击特效展示时间（碰撞禁用后仍保留节点）
             inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
+
+            // 击破机制：满条后倒地 -> 起身（替代传统“受击硬直”）
+            inline constexpr int BREAK_MAX = 16;
+            inline constexpr float BREAK_FALL_ANIM_FRAME_DELAY = 0.12f;
+            inline constexpr float BREAK_DOWN_HOLD_SECONDS = 3.0f; // 倒地后在 fall_3 停留时间（可调）
+            inline constexpr float BREAK_RISE_ANIM_FRAME_DELAY = 0.12f;
         }
 
         // --- 黑暗法师 (Obscur) 普通怪物配置 ---
@@ -608,6 +614,9 @@ namespace GameConfig
     namespace Combat
     {
         inline constexpr float ARMOR_CONST = 100.0f;
+        // 击破系统（Boss 的“韧性/击破条”等）：普通攻击与技能对击破条的贡献
+        inline constexpr int BREAK_DAMAGE_NORMAL = 1;
+        inline constexpr int BREAK_DAMAGE_SKILL = 3;
     }
 
     // --- 物理材质 (密度, 弹性, 摩擦) ---

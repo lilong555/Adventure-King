@@ -329,7 +329,12 @@ bool WarriorSkillSet::tryNormalAttack(PlayerCharacter& player, const std::functi
                     const float cx = box.getMidX() + dirX * (box.size.width * HITBOX_OFFSET_X_RATIO);
                     const float cy = box.getMidY() + HITBOX_OFFSET_Y;
 
-                    player.spawnPlayerAttackHitbox(Vec2(cx, cy), Size(w, h), damage, isCrit, HITBOX_LIFE_SECONDS);
+                    player.spawnPlayerAttackHitbox(Vec2(cx, cy),
+                                                   Size(w, h),
+                                                   damage,
+                                                   isCrit,
+                                                   HITBOX_LIFE_SECONDS,
+                                                   GameConfig::Combat::BREAK_DAMAGE_NORMAL);
                 },
                 HITBOX_DELAY_SECONDS,
                 "warrior_melee_hitbox");
@@ -437,13 +442,14 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
 	                    const float damage = player.getAttackPower() * GameConfig::Warrior::FireSkill::DAMAGE_SCALE;
 	                    const bool isCrit = rollCritical(player);
 	                    player.spawnPlayerAttackHitbox(center,
-	                                                  hitboxSize,
-	                                                  damage,
-	                                                  isCrit,
-	                                                  GameConfig::Warrior::FireSkill::HITBOX_LIFE_SECONDS);
-	                },
-	                triggerDelay,
-	                "warrior_fire_hitbox");
+		                                                  hitboxSize,
+		                                                  damage,
+		                                                  isCrit,
+		                                                  GameConfig::Warrior::FireSkill::HITBOX_LIFE_SECONDS,
+		                                                  GameConfig::Combat::BREAK_DAMAGE_SKILL);
+		                },
+		                triggerDelay,
+		                "warrior_fire_hitbox");
 
             player.playOneShotAnimation(castPaths,
                                         GameConfig::Warrior::FireSkill::CAST_ANIM_FRAME_DELAY,

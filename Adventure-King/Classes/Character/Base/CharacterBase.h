@@ -24,6 +24,7 @@ struct DamageInfo
     bool hasHitWorldPos = false;       // 是否提供命中点（世界坐标）
     cocos2d::Vec2 hitWorldPos = cocos2d::Vec2::ZERO; // 命中点（世界坐标）
     bool causesHitStun = true;         // 是否触发受击硬直/打断（DOT 等持续伤害应为 false）
+    int breakDamage = 0;               // 击破值：用于 Boss 击破条等机制（普通攻击=1，技能=3；DOT 建议为 0）
 };
 
 // 角色基础类

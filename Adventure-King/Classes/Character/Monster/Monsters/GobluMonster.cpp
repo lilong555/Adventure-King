@@ -10,17 +10,20 @@
 USING_NS_CC;
 
 namespace
-{
-    const char* const GOBLU_ATTACK_NEAR_ANIMATION_KEY = "goblu_attack_near";
-    const char* const GOBLU_ATTACK_FAR_ANIMATION_KEY = "goblu_attack_far";
-    const char* const GOBLU_DEATH_ANIMATION_KEY = "goblu_death";
+    {
+        const char* const GOBLU_ATTACK_NEAR_ANIMATION_KEY = "goblu_attack_near";
+        const char* const GOBLU_ATTACK_FAR_ANIMATION_KEY = "goblu_attack_far";
+        const char* const GOBLU_DEATH_ANIMATION_KEY = "goblu_death";
+        const char* const GOBLU_BREAK_FALL_ANIMATION_KEY = "goblu_break_fall";
+        const char* const GOBLU_BREAK_RISE_ANIMATION_KEY = "goblu_break_rise";
 
-    // 远程攻击命中框偏大：宽度缩小为当前的 0.8（即 3.5 * 0.8 = 2.8）
-    constexpr float kGobluNearHitboxWidthRatio = 0.8f;
-    constexpr float kGobluFarHitboxWidthRatio = 2.8f;
-    constexpr float kGobluFarHitboxHeightRatio = 1.0f;
-    constexpr float kGobluFarHitboxOffsetRatioX = 2.0f;
-    constexpr float kGobluDeathAnimFrameDelay = 0.12f;
+        // 远程攻击命中框偏大：宽度缩小为当前的 0.8（即 3.5 * 0.8 = 2.8）
+        constexpr float kGobluNearHitboxWidthRatio = 0.8f;
+        constexpr float kGobluFarHitboxWidthRatio = 2.8f;
+        constexpr float kGobluFarHitboxHeightRatio = 1.0f;
+        constexpr float kGobluFarHitboxOffsetRatioX = 2.0f;
+        constexpr float kGobluDeathAnimFrameDelay = 0.12f;
+        constexpr int kGobluBreakAnimActionTag = 0x4B10;
 
     void ensureSingleFrameAnimationCached(const std::string &animationKey,
                                           const std::string &framePath,
@@ -44,11 +47,11 @@ namespace
         cache->addAnimation(anim, animationKey);
     }
 
-    void ensureLoopAnimationCached(const std::string &key,
-                                   const std::string &formatStr,
-                                   int frameCount,
-                                   float delay)
-    {
+        void ensureLoopAnimationCached(const std::string &key,
+                                       const std::string &formatStr,
+                                       int frameCount,
+                                       float delay)
+        {
         auto cache = AnimationCache::getInstance();
         if (cache->getAnimation(key))
         {
@@ -68,10 +71,43 @@ namespace
 
         if (!frames.empty())
         {
+                auto anim = Animation::createWithSpriteFrames(frames, delay);
+                cache->addAnimation(anim, key);
+            }
+        }
+
+        void ensureOneShotAnimationCached(const std::string& key,
+                                          const std::string& formatStr,
+                                          int frameCount,
+                                          float delay)
+        {
+            auto cache = AnimationCache::getInstance();
+            if (cache->getAnimation(key))
+            {
+                return;
+            }
+
+            Vector<SpriteFrame*> frames;
+            for (int i = 1; i <= frameCount; ++i)
+            {
+                std::string path = StringUtils::format(formatStr.c_str(), i);
+                auto frame = SpriteFrameCacheHelper::getOrCreateSpriteFrame(path);
+                if (frame)
+                {
+                    frames.pushBack(frame);
+                }
+            }
+
+            if (frames.empty())
+            {
+                return;
+            }
+
             auto anim = Animation::createWithSpriteFrames(frames, delay);
+            // 关键：倒地需要停留在最后一帧（fall_3），不要自动还原到原帧
+            anim->setRestoreOriginalFrame(false);
             cache->addAnimation(anim, key);
         }
-    }
 
     void ensureGobluAttackAnimationCached(const char* animationKey, int startIndex, int endIndex)
     {
@@ -237,6 +273,18 @@ void GobluMonster::initStateAnimations()
         6,
         kGobluDeathAnimFrameDelay);
 
+    // 击破：倒地/起身（一次性动画）
+    ensureOneShotAnimationCached(
+        GOBLU_BREAK_FALL_ANIMATION_KEY,
+        "Sprites/Enemies/Goblu/Goblu_fall_%d.png",
+        3,
+        GameConfig::Monster::Goblu::BREAK_FALL_ANIM_FRAME_DELAY);
+    ensureOneShotAnimationCached(
+        GOBLU_BREAK_RISE_ANIMATION_KEY,
+        "Sprites/Enemies/Goblu/Goblu_rise_%d.png",
+        3,
+        GameConfig::Monster::Goblu::BREAK_RISE_ANIM_FRAME_DELAY);
+
     if (auto sm = getStateMachineComponent())
     {
         sm->registerStateAnimation(CharacterState::IDLE, "goblu_idle");
@@ -270,6 +318,20 @@ void GobluMonster::initAnimations()
 
 void GobluMonster::update(float dt)
 {
+    // 击破倒地/起身期间：冻结 AI/移动/攻击（但仍允许受击结算）
+    if (_breakState != BreakState::NONE)
+    {
+        CharacterBase::update(dt);
+
+        if (_physicsBody)
+        {
+            cocos2d::Vec2 v = _physicsBody->getVelocity();
+            v.x = 0.0f;
+            _physicsBody->setVelocity(v);
+        }
+        return;
+    }
+
     if (_target)
     {
         const float myHalfWidth = getNodeHalfWidth(this);
@@ -283,6 +345,160 @@ void GobluMonster::update(float dt)
     }
 
     MonsterBase::update(dt);
+}
+
+void GobluMonster::takeDamage(const DamageInfo& info)
+{
+    // 防止死亡后被重复结算（例如 DOT 同帧多 tick、或多次接触回调）
+    if (isDead())
+    {
+        return;
+    }
+
+    float dmg = info.amount;
+    if (info.isCritical)
+    {
+        dmg *= info.critMultiplier;
+    }
+
+    float hp = getCurrentHP();
+    hp -= dmg;
+
+    showDamageNumber(dmg, info.isCritical);
+    // Goblu 取消“受击硬直”，但仍保留受击粒子反馈（是否播放由 info.causesHitStun 控制）
+    spawnHurtVfx(info);
+
+    setCurrentHP(hp);
+
+    const bool wouldDieBeforeCallback = (hp <= 0.0f);
+    if (auto attr = getAttributeComponent())
+    {
+        attr->executeAfterReceiveDamageHooks(info.attacker, dmg, info, wouldDieBeforeCallback);
+    }
+    onReceiveDamage(info.attacker, dmg, info, wouldDieBeforeCallback);
+
+    const bool died = isDead();
+    if (info.attacker && info.attacker != this)
+    {
+        if (auto attackerAttr = info.attacker->getAttributeComponent())
+        {
+            attackerAttr->executeAfterDealDamageHooks(this, dmg, info, died);
+        }
+        info.attacker->onDealDamage(this, dmg, info, died);
+    }
+
+    updateHpBar();
+
+    if (died)
+    {
+        grantKillExperience(info);
+        die();
+        return;
+    }
+
+    // 取消传统“受击硬直/受击动画”，改为累计击破条
+    addBreakDamage(info);
+}
+
+void GobluMonster::addBreakDamage(const DamageInfo& info)
+{
+    if (_breakState != BreakState::NONE)
+    {
+        return;
+    }
+
+    const int gain = std::max(0, info.breakDamage);
+    if (gain <= 0)
+    {
+        return;
+    }
+
+    _breakMeter = std::min(GameConfig::Monster::Goblu::BREAK_MAX, _breakMeter + gain);
+    if (_breakMeter >= GameConfig::Monster::Goblu::BREAK_MAX)
+    {
+        startBreakSequence();
+    }
+}
+
+void GobluMonster::startBreakSequence()
+{
+    if (_breakState != BreakState::NONE || isDead())
+    {
+        return;
+    }
+
+    _breakState = BreakState::FALLING;
+    _breakMeter = GameConfig::Monster::Goblu::BREAK_MAX;
+
+    // 打断当前攻击/移动动作，避免“倒地了还在出手”
+    stopAllActions();
+    if (auto visual = getVisualSprite())
+    {
+        visual->stopAllActions();
+    }
+    _hasMoveGoal = false;
+    _returningHome = false;
+
+    if (_physicsBody)
+    {
+        cocos2d::Vec2 v = _physicsBody->getVelocity();
+        v.x = 0.0f;
+        _physicsBody->setVelocity(v);
+    }
+
+    // 让状态机停止循环动画（ATTACKING 未注册动画，会触发 stopActionByTag(ACTION_TAG_STATE_ANIM)）
+    if (auto sm = getStateMachineComponent())
+    {
+        sm->changeState(CharacterState::ATTACKING);
+    }
+
+    FiniteTimeAction* fallAction = nullptr;
+    if (auto anim = AnimationCache::getInstance()->getAnimation(GOBLU_BREAK_FALL_ANIMATION_KEY))
+    {
+        auto a = Animate::create(anim);
+        a->setTag(kGobluBreakAnimActionTag);
+        fallAction = a;
+    }
+    else
+    {
+        fallAction = DelayTime::create(GameConfig::Monster::Goblu::BREAK_FALL_ANIM_FRAME_DELAY * 3.0f);
+        fallAction->setTag(kGobluBreakAnimActionTag);
+    }
+
+    FiniteTimeAction* riseAction = nullptr;
+    if (auto anim = AnimationCache::getInstance()->getAnimation(GOBLU_BREAK_RISE_ANIMATION_KEY))
+    {
+        auto a = Animate::create(anim);
+        a->setTag(kGobluBreakAnimActionTag);
+        riseAction = a;
+    }
+    else
+    {
+        riseAction = DelayTime::create(GameConfig::Monster::Goblu::BREAK_RISE_ANIM_FRAME_DELAY * 3.0f);
+        riseAction->setTag(kGobluBreakAnimActionTag);
+    }
+
+    runAction(Sequence::create(
+        fallAction,
+        CallFunc::create([this]()
+                         { _breakState = BreakState::DOWN; }),
+        // 倒地后停留在 fall_3（由 Animation::setRestoreOriginalFrame(false) 保证）
+        DelayTime::create(std::max(0.0f, GameConfig::Monster::Goblu::BREAK_DOWN_HOLD_SECONDS)),
+        CallFunc::create([this]()
+                         {
+                             _breakMeter = 0;
+                             _breakState = BreakState::RISING;
+                         }),
+        riseAction,
+        CallFunc::create([this]()
+                         {
+                             _breakState = BreakState::NONE;
+                             if (auto sm = getStateMachineComponent())
+                             {
+                                 sm->changeState(CharacterState::IDLE);
+                             }
+                         }),
+        nullptr));
 }
 
 float GobluMonster::getNodeHalfWidth(cocos2d::Node *node)

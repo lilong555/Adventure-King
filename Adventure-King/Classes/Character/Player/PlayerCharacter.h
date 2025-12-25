@@ -142,6 +142,7 @@ public:
                                           float damage,
                                           bool isCritical,
                                           float lifeSeconds,
+                                          int breakDamage = 0,
                                           int localZOrder = 10);
 
     // 辅助：统一播放一次性动画

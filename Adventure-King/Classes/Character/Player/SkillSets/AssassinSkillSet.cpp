@@ -108,7 +108,12 @@ bool AssassinSkillSet::tryNormalAttack(PlayerCharacter& player, const std::funct
                     const float cx = box.getMidX() + dirX * (box.size.width * HITBOX_OFFSET_X_RATIO);
                     const float cy = box.getMidY() + HITBOX_OFFSET_Y;
 
-                    player.spawnPlayerAttackHitbox(Vec2(cx, cy), Size(w, h), damage, isCrit, HITBOX_LIFE_SECONDS);
+                    player.spawnPlayerAttackHitbox(Vec2(cx, cy),
+                                                   Size(w, h),
+                                                   damage,
+                                                   isCrit,
+                                                   HITBOX_LIFE_SECONDS,
+                                                   GameConfig::Combat::BREAK_DAMAGE_NORMAL);
                 },
                 HITBOX_DELAY_SECONDS,
                 "assassin_melee_hitbox");
@@ -272,7 +277,8 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
                                                        Size(w, h),
                                                        damage,
                                                        isCrit,
-                                                       GameConfig::Assassin::SlashSkill::HITBOX_LIFE_SECONDS);
+                                                       GameConfig::Assassin::SlashSkill::HITBOX_LIFE_SECONDS,
+                                                       GameConfig::Combat::BREAK_DAMAGE_SKILL);
                     },
                     delay,
                     StringUtils::format("assassin_slash_hitbox_%d", i + 1));
