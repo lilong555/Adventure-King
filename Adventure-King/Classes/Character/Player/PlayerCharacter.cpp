@@ -155,6 +155,7 @@ bool PlayerCharacter::init(CharacterRole role, const std::string& spriteFrameNam
     _isGrounded = true;
     _jumpCount = 0;
     _outgoingDamageMultiplier = 1.0f; // 重置出伤倍率（避免复用对象时残留）
+    _outgoingDamageMultiplierRemainingSeconds = 0.0f;
 
     // 解析资源路径
     initAssetPaths(spriteFrameName);
@@ -327,6 +328,17 @@ void PlayerCharacter::updateTriggerEffects(float dt)
     dec(_burnProcCooldownRemaining);
     dec(_poisonProcCooldownRemaining);
     dec(_critEchoCooldownRemaining);
+
+    // 出伤倍率倒计时（例如刺客“孤注一掷”的高手状态）
+    if (_outgoingDamageMultiplierRemainingSeconds > 0.0f)
+    {
+        _outgoingDamageMultiplierRemainingSeconds = std::max(0.0f, _outgoingDamageMultiplierRemainingSeconds - dt);
+        if (_outgoingDamageMultiplierRemainingSeconds <= 0.0f)
+        {
+            setOutgoingDamageMultiplier(1.0f);
+            CCLOG("PlayerCharacter: 高手状态结束（出伤倍率已恢复）");
+        }
+    }
 
     updateFullHpCritEffect();
 }
@@ -1018,6 +1030,12 @@ void PlayerCharacter::setOutgoingDamageMultiplier(float multiplier)
         multiplier = 1.0f;
     }
     _outgoingDamageMultiplier = std::max(0.0f, multiplier);
+}
+
+void PlayerCharacter::activateOutgoingDamageMultiplier(float multiplier, float durationSeconds)
+{
+    setOutgoingDamageMultiplier(multiplier);
+    _outgoingDamageMultiplierRemainingSeconds = std::max(0.0f, durationSeconds);
 }
 
 void PlayerCharacter::takeDamage(const DamageInfo& info)

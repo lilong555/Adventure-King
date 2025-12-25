@@ -525,7 +525,8 @@ namespace GameConfig
         namespace AllInSkill
         {
             const int ALL_IN_ID = 1005;     // 孤注一掷技能ID
-            const float ALL_IN_CD = 12.0f;  // 冷却时间（秒）
+            const float ALL_IN_DURATION = 15.0f; // 持续时间（秒）
+            const float ALL_IN_CD = 15.0f;       // 冷却时间（秒）
             const float ALL_IN_MP = 0.0f;   // 蓝耗（暂不消耗）
             inline constexpr size_t SKILL_SLOT = 1; // 默认放在 Q 槽位
 

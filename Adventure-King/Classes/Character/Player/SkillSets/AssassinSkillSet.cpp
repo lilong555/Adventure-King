@@ -73,7 +73,7 @@ void AssassinSkillSet::initSkills(PlayerCharacter& player)
         allInSkill = std::make_shared<ActiveSkill>();
         allInSkill->id = GameConfig::Assassin::AllInSkill::ALL_IN_ID;
         allInSkill->name = "孤注一掷";
-        allInSkill->description = "将生命降至 1 点，进入高手状态，大幅提升伤害（1000%增伤）。";
+        allInSkill->description = "将生命降至 1 点，进入高手状态，大幅提升伤害（1000%增伤，持续15秒）。";
         allInSkill->manaCost = GameConfig::Assassin::AllInSkill::ALL_IN_MP;
         allInSkill->cooldown = GameConfig::Assassin::AllInSkill::ALL_IN_CD;
         allInSkill->currentCooldown = 0.0f;
@@ -156,7 +156,7 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
             [&player, slotIndex]()
             {
                 // 已处于高手状态时不允许重复触发，避免反复改写数值/刷特效
-                if (player.getOutgoingDamageMultiplier() > 1.0f)
+                if (player.getOutgoingDamageMultiplierRemainingSeconds() > 0.0f)
                 {
                     CCLOG("AssassinSkillSet: all-in already active");
                     return false;
@@ -182,7 +182,8 @@ bool AssassinSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, co
                 // 1) 生命降到 1 点
                 player.setCurrentHP(GameConfig::Assassin::AllInSkill::MIN_HP_AFTER_CAST);
                 // 2) 进入高手状态（出伤倍率）
-                player.setOutgoingDamageMultiplier(GameConfig::Assassin::AllInSkill::DAMAGE_MULTIPLIER);
+                player.activateOutgoingDamageMultiplier(GameConfig::Assassin::AllInSkill::DAMAGE_MULTIPLIER,
+                                                        GameConfig::Assassin::AllInSkill::ALL_IN_DURATION);
                 // 3) 粒子表现（附在人物身上）
                 ParticleVfxHelper::PlayOptions options;
                 options.positionType = ParticleSystem::PositionType::GROUPED;

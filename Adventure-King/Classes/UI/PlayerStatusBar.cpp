@@ -8,6 +8,11 @@
 #include "Character/components/AttributeComponent.h"
 #include "Configs/GameConfig.h"
 
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <vector>
+
 USING_NS_CC;
 
 PlayerStatusBar *PlayerStatusBar::create()
@@ -33,6 +38,7 @@ bool PlayerStatusBar::init()
     createMPBar();
     createExpBar();
     createLevelLabel();
+    createStatusEffectBar();
 
     return true;
 }
@@ -172,6 +178,36 @@ void PlayerStatusBar::createLevelLabel()
     this->addChild(_levelLabel, 5);
 }
 
+void PlayerStatusBar::createStatusEffectBar()
+{
+    // 状态栏放在经验条下方
+    const float expBottomY = -2 * (_barHeight + _barSpacing);
+    const float yOffset = expBottomY - _barSpacing - _statusBarHeight;
+
+    _statusBarBg = DrawNode::create();
+    _statusBarBg->drawSolidRect(
+        Vec2(0, 0),
+        Vec2(_barWidth, _statusBarHeight),
+        Color4F(0.1f, 0.1f, 0.1f, 0.75f));
+    _statusBarBg->setPosition(Vec2(0, yOffset));
+    this->addChild(_statusBarBg, 0);
+
+    auto border = DrawNode::create();
+    border->drawRect(
+        Vec2(0, 0),
+        Vec2(_barWidth, _statusBarHeight),
+        Color4F(0.4f, 0.4f, 0.4f, 1.0f));
+    border->setPosition(Vec2(0, yOffset));
+    this->addChild(border, 1);
+
+    _statusLabel = Label::createWithTTF("状态：无", "fonts/ZCOOLKuaiLe-Regular.ttf", 12);
+    _statusLabel->setAnchorPoint(Vec2(0, 0.5f));
+    _statusLabel->setPosition(Vec2(4, yOffset + _statusBarHeight / 2));
+    _statusLabel->setColor(Color3B::WHITE);
+    _statusLabel->enableOutline(Color4B::BLACK, 1);
+    this->addChild(_statusLabel, 2);
+}
+
 void PlayerStatusBar::bindPlayer(PlayerCharacter *player)
 {
     _player = player;
@@ -222,6 +258,84 @@ void PlayerStatusBar::updateDisplay()
 
     // 更新等级
     updateLevelLabel(level);
+
+    // 更新状态显示
+    updateStatusEffectBar();
+}
+
+void PlayerStatusBar::updateStatusEffectBar()
+{
+    if (!_player || !_statusLabel)
+    {
+        return;
+    }
+
+    std::vector<std::string> states;
+
+    // 1) 高手状态（刺客：孤注一掷）
+    const float masterRemain = _player->getOutgoingDamageMultiplierRemainingSeconds();
+    if (masterRemain > 0.0f)
+    {
+        const int sec = std::max(1, static_cast<int>(std::ceil(masterRemain)));
+        states.push_back(StringUtils::format("高手(%ds)", sec));
+    }
+
+    // 2) 通用状态（燃烧/中毒等）
+    auto attr = _player->getAttributeComponent();
+    if (attr)
+    {
+        auto findEffect = [&attr](StatusEffectType type) -> StatusEffect* {
+            for (auto e : attr->getStatusEffects())
+            {
+                if (e && e->type == type && !e->isExpired())
+                {
+                    return e;
+                }
+            }
+            return nullptr;
+        };
+
+        if (auto burning = findEffect(StatusEffectType::BURNING))
+        {
+            if (burning->stacks > 1)
+            {
+                states.push_back(StringUtils::format("着火x%d", burning->stacks));
+            }
+            else
+            {
+                states.push_back("着火");
+            }
+        }
+
+        if (auto poisoned = findEffect(StatusEffectType::POISONED))
+        {
+            if (poisoned->stacks > 1)
+            {
+                states.push_back(StringUtils::format("中毒x%d", poisoned->stacks));
+            }
+            else
+            {
+                states.push_back("中毒");
+            }
+        }
+    }
+
+    if (states.empty())
+    {
+        _statusLabel->setString("状态：无");
+        return;
+    }
+
+    std::string text = "状态：";
+    for (size_t i = 0; i < states.size(); ++i)
+    {
+        if (i != 0)
+        {
+            text += "  ";
+        }
+        text += states[i];
+    }
+    _statusLabel->setString(text);
 }
 
 void PlayerStatusBar::updateHPBar(float current, float max)

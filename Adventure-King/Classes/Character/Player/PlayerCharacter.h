@@ -176,8 +176,12 @@ public:
     // 出伤倍率（用于“孤注一掷”等增伤技能/机制）
     /// @brief 获取出伤倍率（默认 1.0）
     float getOutgoingDamageMultiplier() const { return _outgoingDamageMultiplier; }
+    /// @brief 获取出伤倍率剩余时间（秒，<=0 表示未生效/已结束）
+    float getOutgoingDamageMultiplierRemainingSeconds() const { return _outgoingDamageMultiplierRemainingSeconds; }
     /// @brief 设置出伤倍率（会夹取到 >=0，避免出现负伤害）
     void setOutgoingDamageMultiplier(float multiplier);
+    /// @brief 激活出伤倍率（带持续时间）
+    void activateOutgoingDamageMultiplier(float multiplier, float durationSeconds);
 
     /// @brief 使用技能槽位
     void useSkill(size_t slotIndex); // 技能
@@ -327,6 +331,7 @@ private:
 
     // 出伤倍率：用于技能/装备等“增伤”机制（默认 1.0）
     float _outgoingDamageMultiplier = 1.0f;
+    float _outgoingDamageMultiplierRemainingSeconds = 0.0f;
 
     // 调试：伤害日志输出（仅 DebugScene 注入）
     DamageLogCallback _damageLogCallback = nullptr;
