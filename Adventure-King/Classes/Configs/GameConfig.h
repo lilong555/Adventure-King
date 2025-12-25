@@ -215,7 +215,7 @@ namespace GameConfig
         // 因此这里以 SCALE 为基准，按职业追加倍率做统一补偿。
         //
         // 注意：这是“素材尺寸补偿”，不是数值设计上的体型差异；后续若替换为统一尺寸素材，可将倍率调回 1.0。
-        inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 1.6f;
+        inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 0.8f;
         inline constexpr float ASSASSIN_SPRITE_SCALE_MULTIPLIER = 2.2f;
         // 刺客碰撞盒基础尺寸（未缩放）：
         // 由于刺客素材（700x370）横向留白较大，若按贴图尺寸比例生成碰撞盒会导致碰撞范围过宽。

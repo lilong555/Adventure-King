@@ -385,7 +385,10 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
                         ParticleVfxHelper::PlayOptions options;
                         options.zOrder = 2;
                         options.positionType = ParticleSystem::PositionType::GROUPED;
-                        options.useBodyCenter = true;
+                        // 这里不使用“物理体中心”计算（不同平台/节点类型下可能出现偏移），
+                        // 直接对齐到命中框中心点：命中框的锚点是 (0.5,0.5)，因此 (w/2,h/2) 对应世界中心。
+                        options.useBodyCenter = false;
+                        options.position = Vec2(hitboxSize.width * 0.5f, hitboxSize.height * 0.5f);
                         options.name = "warrior_fire_vfx";
                         ParticleVfxHelper::playOnce(hitboxNode, "Particle/par_fire.plist", options);
                     }
