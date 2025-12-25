@@ -23,6 +23,8 @@ namespace ParticlePreloadHelper
             "Particle/par_GobluRemoteHit.plist",
             "Particle/par_dragon_fire.plist",
             "Particle/par_fire.plist",
+            "Particle/par_nap.plist",
+            "Particle/par_nap_keep.plist",
             "Particle/par_warfire.plist",
             "Particle/par_warfire1.plist",
             "Particle/par_warfire_2.plist",

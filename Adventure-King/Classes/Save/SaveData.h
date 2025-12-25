@@ -76,6 +76,10 @@ struct PlayerSaveData
     float currentHP = 100.0f;
     float currentMP = 100.0f;
 
+    // 临时战斗状态（例如“孤注一掷”的高手增伤）
+    float outgoingDamageMultiplier = 1.0f;
+    float outgoingDamageMultiplierRemainingSeconds = 0.0f;
+
     // 属性
     AttributesSaveData baseAttributes;
 

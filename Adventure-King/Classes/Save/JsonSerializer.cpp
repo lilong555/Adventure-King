@@ -207,6 +207,8 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     playerObj.AddMember("attributePoints", data.playerData.attributePoints, allocator);
     playerObj.AddMember("currentHP", data.playerData.currentHP, allocator);
     playerObj.AddMember("currentMP", data.playerData.currentMP, allocator);
+    playerObj.AddMember("outgoingDamageMultiplier", data.playerData.outgoingDamageMultiplier, allocator);
+    playerObj.AddMember("outgoingDamageMultiplierRemainingSeconds", data.playerData.outgoingDamageMultiplierRemainingSeconds, allocator);
 
     // 基础属性
     rapidjson::Value baseAttrObj(rapidjson::kObjectType);
@@ -350,6 +352,8 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
             outData.playerData.attributePoints = getInt(player, "attributePoints", outData.playerData.attributePoints);
             outData.playerData.currentHP = getFloat(player, "currentHP", outData.playerData.currentHP);
             outData.playerData.currentMP = getFloat(player, "currentMP", outData.playerData.currentMP);
+            outData.playerData.outgoingDamageMultiplier = getFloat(player, "outgoingDamageMultiplier", outData.playerData.outgoingDamageMultiplier);
+            outData.playerData.outgoingDamageMultiplierRemainingSeconds = getFloat(player, "outgoingDamageMultiplierRemainingSeconds", outData.playerData.outgoingDamageMultiplierRemainingSeconds);
 
             // 技能点：优先读取新字段；兼容旧存档 skillPoints（按 1:1 平分到主动/被动）
             const bool hasActivePoints = player.HasMember("activeSkillPoints") && player["activeSkillPoints"].IsInt();

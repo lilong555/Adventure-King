@@ -4,17 +4,22 @@
 - Root contains the Cocos2d-x game under `Adventure-King/`.
 - `Adventure-King/Classes/` holds all gameplay C++ code:
   - `Character/` - 角色系统（组件化架构）
-    - `Base/` - 角色基类 `CharacterBase`
+    - `Base/` - 角色基类 `CharacterBase`、`CharacterData`（属性/状态效果类型定义）、`StatusEffect`（状态效果基类）
     - `Player/` - 玩家角色 `PlayerCharacter`
-    - `Monster/` - 怪物系统 `MonsterBase` 及具体怪物 (GoblinMonster, GobluMonster)
-    - `components/` - 核心组件（AttributeComponent, StateMachineComponent, SkillComponent, StatusEffectVfxComponent）
-  - `Scenes/` - 场景系统（HelloWorldScene, GameScene, MapScene, OriginMushroomScene, MysteryForestScene）
-  - `Configs/` - 配置文件（GameConfigs, GamePhysicsCategory, GameSceneConfig）
-  - `Objects/` - 游戏对象（投掷物 ExplosiveProjectile 等）
-  - `UI/` - 界面组件（PlayerStatusBar, SkillBar, BossHealthBar, PauseMenu, SaveMenuLayer）
+      - `Players/` - 具体玩家实现（PlayerKlee）
+      - `SkillSets/` - 职业技能集（PlayerSkillSet 基类、KleeSkillSet、WarriorSkillSet、AssassinSkillSet）
+    - `Monster/` - 怪物系统 `MonsterBase` 及具体怪物 (GoblinMonster, GobluMonster, ObscurMonster)
+    - `components/` - 核心组件（AttributeComponent, StateMachineComponent, SkillComponent, StatusEffectVfxComponent, InventoryComponent）
+    - `StatusEffects/` - 状态效果实现（StatusEffectFactory、装备特效如 ThornsArmorEffect、EmergencyMaskEffect 等）
+  - `Scenes/` - 场景系统（HelloWorldScene, GameScene, MapScene, LevelMap）
+    - `LevelScenes/` - 具体关卡（OriginMushroomScene, MysteryForestScene）
+  - `Configs/` - 配置文件（GameConfig, GamePhysicsCategory, GameSceneConfig, ArenaConfig）
+  - `Objects/` - 游戏对象
+    - `Projectiles/` - 投掷物（ExplosiveProjectile, Fireball 等）
+  - `UI/` - 界面组件（PlayerStatusBar, SkillBar, BossHealthBar, PauseMenu, SaveMenuLayer, InventoryLayer）
   - `Managers/` - 全局管理器（SceneTransitionManager, MusicManager）
   - `Save/` - 存档系统（SaveManager, SaveData, JsonSerializer）
-  - `Utils/` - 工具类（SpriteFrameCacheHelper）
+  - `Utils/` - 工具类（SpriteFrameCacheHelper, ParticlePreloadHelper, ParticleVfxHelper, WeaponHitboxVfxHelper）
 - `Adventure-King/Resources/` stores runtime assets (sprites, TMX maps, audio, fonts, particles).
 - `Adventure-King/proj.*` are platform projects (`proj.win32`, `proj.android`, `proj.linux`, `proj.ios_mac`).
 - `Adventure-King/cocos2d/` is the vendored engine; do not edit unless upgrading engine.
@@ -44,12 +49,29 @@
 - 状态效果（燃烧等）通过 `AttributeComponent` 的叠层/结算逻辑管理，表现走 `StatusEffectVfxComponent`。
 - 投掷物/爆炸附加状态效果请使用 `ExplosiveProjectile::addOnHitStatusEffect`，避免在 Scene 内硬编码。
 - 受击粒子（`CharacterBase::spawnHurtVfx`）仅在 `causesHitStun=true` 时触发。
+- 装备特效通过 `StatusEffect` 子类实现，在 `StatusEffectFactory` 中注册，由 `InventoryComponent` 管理装卸。
+- 装备特效回调：`onAfterDealDamage`（造成伤害后）、`onAfterReceiveDamage`（受到伤害后）用于触发型机制。
+
+## Skill System
+- 职业技能通过 `PlayerSkillSet` 抽象，具体实现在 `SkillSets/` 目录下（KleeSkillSet、WarriorSkillSet、AssassinSkillSet）。
+- 新增职业技能：继承 `PlayerSkillSet`，实现 `initSkills`、`tryNormalAttack`、`tryUseSkill`。
+- 技能参数统一放在 `GameConfig.h` 对应的 namespace 中（如 `GameConfig::Warrior::FireSkill`）。
+- 技能动画使用 `PlayerCharacter::playOneShotAnimation` 或 `attackAnimated`/`castSkillAnimated`。
+- 技能命中框使用 `PlayerCharacter::spawnPlayerAttackHitbox`，支持暴击判定。
+
+## Arena (连战模式)
+- 连战配置在 `ArenaConfig.h`，包含波次数据（`WaveData`）、触发区域、刷怪点。
+- 连战逻辑在 `LevelMap` 中实现，通过 `ArenaConfig` 管理波次状态。
+- 击败当前波次所有怪物后自动触发下一波。
 
 ## Particle Effects
 - 粒子资源位于 `Resources/Particle/`，使用 plist 格式配置。
 - 燃烧特效由 `StatusEffectVfxComponent` 代码生成，参数在头文件 `BurningVfxParams` 中调整。
 - 受击粒子使用 `par_chararcter_hurt_L/R.plist`，根据攻击方向选择。
 - 主菜单战火背景使用 `par_warfire.plist`。
+- 技能粒子：`par_fire.plist`（战士 Fire 技能）、`par_dragon_fire.plist`（龙焰）。
+- 一次性粒子播放使用 `ParticleVfxHelper::playOnce`，支持自定义位置、zOrder、挂载节点。
+- 新增粒子后需加入 `ParticlePreloadHelper::getCommonParticlePlists()` 确保预热。
 
 ## Map (TMX) Conventions
 - `collisions` 图层：多边形/折线/矩形对象用于生成物理碰撞体

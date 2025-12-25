@@ -69,6 +69,8 @@ protected:
     void createExpBar();
     /// @brief 创建等级标签
     void createLevelLabel();
+    /// @brief 创建状态显示栏（高手/中毒/着火等）
+    void createStatusEffectBar();
 
     // 更新各个进度条
     /// @brief 更新 HP 条显示
@@ -79,6 +81,8 @@ protected:
     void updateExpBar(int current, int required);
     /// @brief 更新等级文本
     void updateLevelLabel(int level);
+    /// @brief 更新状态显示栏
+    void updateStatusEffectBar();
 
     // 播放血量变化动画
     /// @brief 播放伤害延迟条动画
@@ -106,6 +110,11 @@ protected:
 
     // 等级显示
     cocos2d::Label *_levelLabel = nullptr;
+
+    // 状态显示栏
+    cocos2d::DrawNode *_statusBarBg = nullptr;
+    cocos2d::Label *_statusLabel = nullptr;
+    float _statusBarHeight = 16.0f;
 
     // 配置参数
     float _barWidth = 200.0f;

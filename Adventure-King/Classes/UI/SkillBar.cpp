@@ -223,6 +223,11 @@ std::string SkillBar::getIconPathForSkillId(int skillId) const
     {
         return "Sprites/Characters/Player/maaer/slash/spr_maaer_slash_1.png";
     }
+    if (skillId == GameConfig::Assassin::AllInSkill::ALL_IN_ID)
+    {
+        // 占位图标：临时使用刺客角色默认姿态图标，后续可替换为专用技能图标
+        return "Sprites/Characters/Player/maaer/default/15704_S.png";
+    }
     if (skillId == GameConfig::Warrior::FireSkill::FIRE_ID)
     {
         return "Sprites/Characters/Player/man/fire/fire_1.png";

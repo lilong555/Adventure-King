@@ -446,6 +446,8 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
     // 当前状态
     data.currentHP = player->getCurrentHP();
     data.currentMP = player->getCurrentMP();
+    data.outgoingDamageMultiplier = player->getOutgoingDamageMultiplier();
+    data.outgoingDamageMultiplierRemainingSeconds = player->getOutgoingDamageMultiplierRemainingSeconds();
 
     // 基础属性
     auto attrComp = player->getAttributeComponent();
@@ -850,6 +852,19 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
     // 根据最终上限夹取 HP/MP
     player->setCurrentHP(savedHP);
     player->setCurrentMP(savedMP);
+
+    // 恢复临时战斗状态（例如“孤注一掷”）
+    if (data.outgoingDamageMultiplierRemainingSeconds > 0.0f &&
+        data.outgoingDamageMultiplier > 0.0f)
+    {
+        player->activateOutgoingDamageMultiplier(data.outgoingDamageMultiplier,
+                                                 data.outgoingDamageMultiplierRemainingSeconds);
+    }
+    else
+    {
+        // 兜底：确保存档恢复后不会残留异常倍率/特效
+        player->activateOutgoingDamageMultiplier(1.0f, 0.0f);
+    }
 
     CCLOG("SaveManager::applyPlayerData - 成功应用玩家数据");
 }
