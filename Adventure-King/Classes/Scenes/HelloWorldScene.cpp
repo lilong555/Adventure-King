@@ -700,6 +700,8 @@ void HelloWorld::hideRoleSelectLayer(bool restoreStartButton)
         _roleSelectLayer->removeFromParent();
         _roleSelectLayer = nullptr;
     }
+    // 弹窗销毁后，预览节点也会随之销毁，这里清空指针避免悬挂引用
+    _rolePreviewSprite = nullptr;
 
     if (restoreStartButton && _pendingStartMenuItem)
     {
