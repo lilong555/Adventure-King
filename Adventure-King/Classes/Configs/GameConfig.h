@@ -179,6 +179,27 @@ namespace GameConfig
         inline constexpr float DAMAGE_SCALE = 2.5f;
     }
 
+    namespace Warrior
+    {
+        // 战士主动技能：Fire（使用 Sprites/Characters/Player/man/fire 下的序列帧）
+        namespace FireSkill
+        {
+            const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
+            const float FIRE_CD = 1.0f;  // 冷却时间（秒）
+            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
+
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
+            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
+
+            // 命中判定框：按战士自身尺寸倍数计算
+            inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_HEIGHT_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+            inline constexpr int HIT_TRIGGER_FRAME_INDEX = 3; // 第 3 帧开始触发伤害/特效
+        }
+    }
+
     // --- 玩家配置 ---
     namespace Player
     {
