@@ -187,7 +187,7 @@ public:
 
 	    // 战斗辅助：设置投掷物挂载的父节点
 	    /// @brief 获取战斗层（投掷物/粒子挂载层）
-	    cocos2d::Node* getCombatLayer() const;
+	    cocos2d::Node* getCombatLayer();
 	    /// @brief 设置战斗层（投掷物挂载层）
 	    void setCombatLayer(cocos2d::Node* gameLayer) { _combatLayer = gameLayer; }
 	    /// @brief 添加节点到战斗层
