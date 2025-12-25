@@ -127,6 +127,8 @@ namespace
 
         std::vector<Rect> enemyBoxes;
         enemyBoxes.reserve(16);
+        std::vector<Vec2> enemyCenters;
+        enemyCenters.reserve(16);
         std::unordered_set<Node*> visited;
         visited.reserve(32);
 
@@ -149,7 +151,9 @@ namespace
             {
                 return true;
             }
-            enemyBoxes.push_back(getNodeAabbInLayer(node, combatLayer));
+            const Rect enemyBox = getNodeAabbInLayer(node, combatLayer);
+            enemyBoxes.push_back(enemyBox);
+            enemyCenters.emplace_back(enemyBox.getMidX(), enemyBox.getMidY());
             return true;
         }, worldSearch, nullptr);
 
@@ -176,12 +180,21 @@ namespace
             candidateLeftY.push_back(box.getMaxY() - hitboxSize.height);
         }
 
+        // 同覆盖数量时，优先让中心点落在“某个怪物的位置”（怪物包围盒中心）
+        // 将怪物中心作为候选中心：left = center - hitbox/2，这样 center 会精确等于怪物中心点
+        for (const auto& c : enemyCenters)
+        {
+            candidateLeftX.push_back(c.x - hitboxSize.width * 0.5f);
+            candidateLeftY.push_back(c.y - hitboxSize.height * 0.5f);
+        }
+
         std::sort(candidateLeftX.begin(), candidateLeftX.end());
         candidateLeftX.erase(std::unique(candidateLeftX.begin(), candidateLeftX.end()), candidateLeftX.end());
         std::sort(candidateLeftY.begin(), candidateLeftY.end());
         candidateLeftY.erase(std::unique(candidateLeftY.begin(), candidateLeftY.end()), candidateLeftY.end());
 
         int bestCount = -1;
+        bool bestAtMonsterCenter = false;
         float bestDist2 = std::numeric_limits<float>::max();
         Vec2 bestCenter = playerCenter;
 
@@ -203,12 +216,27 @@ namespace
                 const Vec2 center(leftX + hitboxSize.width * 0.5f, leftY + hitboxSize.height * 0.5f);
                 const float dist2 = center.distanceSquared(playerCenter);
 
+                bool atMonsterCenter = false;
+                constexpr float EPS = 0.01f;
+                for (const auto& monsterCenter : enemyCenters)
+                {
+                    if (std::fabs(monsterCenter.x - center.x) <= EPS && std::fabs(monsterCenter.y - center.y) <= EPS)
+                    {
+                        atMonsterCenter = true;
+                        break;
+                    }
+                }
+
                 // 选择规则：
                 // 1) 覆盖数量最多
-                // 2) 覆盖数量相同：离玩家更近（避免命中框“跳太远”）
-                if (count > bestCount || (count == bestCount && dist2 < bestDist2))
+                // 2) 覆盖数量相同：优先“落在某个怪物位置”（怪物中心点）
+                // 3) 仍相同：离玩家更近（避免命中框“跳太远”）
+                if (count > bestCount ||
+                    (count == bestCount && atMonsterCenter && !bestAtMonsterCenter) ||
+                    (count == bestCount && atMonsterCenter == bestAtMonsterCenter && dist2 < bestDist2))
                 {
                     bestCount = count;
+                    bestAtMonsterCenter = atMonsterCenter;
                     bestDist2 = dist2;
                     bestCenter = center;
                 }
@@ -385,12 +413,11 @@ bool WarriorSkillSet::tryUseSkill(PlayerCharacter& player, size_t slotIndex, con
                         ParticleVfxHelper::PlayOptions options;
                         options.zOrder = 2;
                         options.positionType = ParticleSystem::PositionType::GROUPED;
-                        // 这里不使用“物理体中心”计算（不同平台/节点类型下可能出现偏移），
-                        // 直接对齐到命中框中心点：命中框的锚点是 (0.5,0.5)，因此 (w/2,h/2) 对应世界中心。
-                        options.useBodyCenter = false;
-                        options.position = Vec2(hitboxSize.width * 0.5f, hitboxSize.height * 0.5f);
                         options.name = "warrior_fire_vfx";
-                        ParticleVfxHelper::playOnce(hitboxNode, "Particle/par_fire.plist", options);
+                        // 特效不要随 hitbox 销毁而提前结束：挂到 combatLayer（世界层）上播放
+                        options.useBodyCenter = false;
+                        options.position = center;
+                        ParticleVfxHelper::playOnce(combatLayer, "Particle/par_fire.plist", options);
                     }
                 },
                 triggerDelay,
