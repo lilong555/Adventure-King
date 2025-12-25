@@ -382,7 +382,7 @@ void HelloWorld::updateRoleHintLabel()
         return;
     }
 
-    _roleHintLabel->setString(StringUtils::format("当前职业：%s（按 1 战士 / 2 刺客 / 3 法师）",
+    _roleHintLabel->setString(StringUtils::format("当前职业：%s（点击开始后选择；或按 1/2/3 快捷切换）",
         PlayerRoleConfig::getDisplayName(_selectedRole)));
 }
 
@@ -399,34 +399,15 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
 
 void HelloWorld::menuStartCallback(Ref* pSender)
 {
-    // 1. [最佳实践] 禁用按钮防止“连点”
-    // 在异步加载场景前，防止用户多次点击导致创建多个 LoadingScene
-    if (pSender) {
-        static_cast<MenuItem*>(pSender)->setEnabled(false);
-    }
-
-    // 新开局：清空运行时数据，避免“上一局的等级/装备”带入
-    if (auto saveManager = SaveManager::getInstance())
+    // 点击“开始游戏”先弹出职业选择，再进入游戏
+    auto startMenuItem = dynamic_cast<MenuItem*>(pSender);
+    if (!startMenuItem)
     {
-        saveManager->clearRuntimePlayerData();
-        saveManager->clearRuntimePlayerPosition();
-        saveManager->setSessionSelectedRole(_selectedRole);
+        CCLOG("HelloWorld::menuStartCallback - pSender 不是 MenuItem，忽略");
+        return;
     }
 
-    // 2. 使用强类型 SceneID 替换 HomeScene::MAP_ID (int)
-    // 确保 LoadingScene::createScene 的参数也已经改成了 SceneID 类型
-    auto newScene = LoadingScene::createScene(SceneID::HOME);
-
-    // 3. 执行切换
-    if (newScene) {
-        // 使用 replaceScene 释放主菜单资源
-        Director::getInstance()->replaceScene(newScene);
-    }
-    else {
-        CCLOG("Error: Failed to create LoadingScene for SceneID::HOME");
-        // 如果创建失败，记得恢复按钮点击
-        if (pSender) static_cast<MenuItem*>(pSender)->setEnabled(true);
-    }
+    showRoleSelectLayer(startMenuItem);
 }
 
 void HelloWorld::menuSaveCallback(Ref *pSender)
@@ -545,12 +526,17 @@ std::vector<std::string> HelloWorld::getPreloadResourcePaths() {
         "Scene/UI/MapNormal.png",
 	        "Scene/UI/MapSelect.png",
 	        "Scene/UI/SaveNormal.png",
-	        "Scene/UI/SaveSelect.png",
-	        // 关闭按钮（MapScene 复用）
-	        "Scene/UI/CloseSaveMenu.png",
-	        "Scene/UI/CloseSaveMenuSelected.png"
-	    };
-	}
+        "Scene/UI/SaveSelect.png",
+        // 关闭按钮（MapScene 复用）
+        "Scene/UI/CloseSaveMenu.png",
+        "Scene/UI/CloseSaveMenuSelected.png"
+        ,
+        // 职业选择预览（点击开始后会用到，避免首次弹窗卡一下）
+        "Sprites/Characters/Player/man/default/spr_man_run.png",
+        "Sprites/Characters/Player/maaer/default/spr_maaer_run_1.png",
+        "Sprites/Characters/Player/Klee/default/spr_klee_run.png"
+        };
+    }
 
 //此函数可以作为模板，注册主菜单场景到全局场景注册中心
 void HelloWorld::setupRegistry()
@@ -576,4 +562,223 @@ void HelloWorld::setupRegistry()
         };
 
     SceneRegistry::getInstance()->registerScene(SceneID::HELLO_WORLD, info);
+}
+
+// ==========================================================
+// 职业选择弹窗
+// ==========================================================
+
+void HelloWorld::showRoleSelectLayer(MenuItem* startMenuItem)
+{
+    if (_roleSelectLayer)
+    {
+        return;
+    }
+
+    _pendingStartMenuItem = startMenuItem;
+    if (_pendingStartMenuItem)
+    {
+        _pendingStartMenuItem->setEnabled(false); // 避免连点弹出多个弹窗
+    }
+
+    const auto visibleSize = Director::getInstance()->getVisibleSize();
+    const auto origin = Director::getInstance()->getVisibleOrigin();
+    const Vec2 center(origin.x + visibleSize.width * 0.5f, origin.y + visibleSize.height * 0.5f);
+
+    _roleSelectLayer = LayerColor::create(Color4B(0, 0, 0, 160));
+    _roleSelectLayer->setContentSize(visibleSize);
+    _roleSelectLayer->setIgnoreAnchorPointForPosition(false);
+    _roleSelectLayer->setAnchorPoint(Vec2::ZERO);
+    _roleSelectLayer->setPosition(origin);
+    this->addChild(_roleSelectLayer, GameSceneConfig::UI::Z_ORDER + 10);
+
+    // 吞掉触摸，避免点到背后的主菜单按钮
+    auto touchListener = EventListenerTouchOneByOne::create();
+    touchListener->setSwallowTouches(true);
+    touchListener->onTouchBegan = [](Touch*, Event*) { return true; };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, _roleSelectLayer);
+
+    // 弹窗面板（纯色，避免依赖额外资源）
+    const float panelW = std::min(visibleSize.width * 0.8f, 900.0f);
+    const float panelH = std::min(visibleSize.height * 0.65f, 520.0f);
+    auto panel = LayerColor::create(Color4B(30, 30, 40, 235), panelW, panelH);
+    panel->setIgnoreAnchorPointForPosition(false);
+    panel->setAnchorPoint(Vec2(0.5f, 0.5f));
+    panel->setPosition(center);
+    _roleSelectLayer->addChild(panel, 1);
+
+    // 标题
+    auto title = Label::createWithTTF("选择角色", GameSceneConfig::Scene::DEFAULT_FONT_PATH, 34);
+    if (title)
+    {
+        title->setAnchorPoint(Vec2(0.5f, 1.0f));
+        title->setPosition(Vec2(panelW * 0.5f, panelH - 18.0f));
+        title->setColor(Color3B(240, 240, 240));
+        panel->addChild(title, 2);
+    }
+
+    // 预览区域（右侧）
+    refreshRolePreview();
+    if (_rolePreviewSprite)
+    {
+        // 预览 sprite 作为 panel 子节点，方便用 panel 尺寸做布局
+        _rolePreviewSprite->removeFromParent();
+        panel->addChild(_rolePreviewSprite, 2);
+
+        _rolePreviewSprite->setAnchorPoint(Vec2(0.5f, 0.0f));
+        _rolePreviewSprite->setPosition(Vec2(panelW * 0.72f, panelH * 0.18f));
+
+        // 统一把预览高度限制在面板内，避免不同职业素材尺寸差异太大
+        const float targetH = panelH * 0.62f;
+        const float srcH = std::max(1.0f, _rolePreviewSprite->getContentSize().height);
+        _rolePreviewSprite->setScale(targetH / srcH);
+    }
+
+    // 左侧：职业按钮
+    auto makeRoleItem = [this, panel, panelW, panelH](CharacterRole role, float y, const Color3B& color)
+    {
+        auto label = Label::createWithTTF(PlayerRoleConfig::getDisplayName(role),
+                                          GameSceneConfig::Scene::DEFAULT_FONT_PATH,
+                                          28);
+        if (label)
+        {
+            label->setColor(color);
+        }
+
+        auto item = MenuItemLabel::create(label, [this, role](Ref*)
+        {
+            _selectedRole = role;
+            updateRoleHintLabel();
+            refreshRolePreview();
+        });
+
+        if (item)
+        {
+            item->setAnchorPoint(Vec2(0.0f, 0.5f));
+            item->setPosition(Vec2(panelW * 0.10f, y));
+        }
+        return item;
+    };
+
+    const float listTop = panelH * 0.70f;
+    const float listGap = 58.0f;
+    auto warriorItem = makeRoleItem(CharacterRole::WARRIOR, listTop, Color3B(255, 235, 190));
+    auto assassinItem = makeRoleItem(CharacterRole::ASSASSIN, listTop - listGap, Color3B(190, 235, 255));
+    auto mageItem = makeRoleItem(CharacterRole::MAGE, listTop - listGap * 2.0f, Color3B(210, 200, 255));
+
+    // 底部按钮：开始/返回
+    auto startLabel = Label::createWithTTF("开始", GameSceneConfig::Scene::DEFAULT_FONT_PATH, 30);
+    auto backLabel = Label::createWithTTF("返回", GameSceneConfig::Scene::DEFAULT_FONT_PATH, 30);
+    auto startItem2 = MenuItemLabel::create(startLabel, [this](Ref*) { startGameWithSelectedRole(); });
+    auto backItem2 = MenuItemLabel::create(backLabel, [this](Ref*) { hideRoleSelectLayer(true); });
+    if (startItem2) startItem2->setPosition(Vec2(panelW * 0.35f, panelH * 0.12f));
+    if (backItem2) backItem2->setPosition(Vec2(panelW * 0.55f, panelH * 0.12f));
+
+    auto menu = Menu::create(warriorItem, assassinItem, mageItem, startItem2, backItem2, nullptr);
+    if (menu)
+    {
+        menu->setPosition(Vec2::ZERO);
+        panel->addChild(menu, 3);
+    }
+
+    // Esc 快捷关闭
+    auto keyListener = EventListenerKeyboard::create();
+    keyListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event*)
+    {
+        if (keyCode == EventKeyboard::KeyCode::KEY_ESCAPE)
+        {
+            hideRoleSelectLayer(true);
+        }
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyListener, _roleSelectLayer);
+}
+
+void HelloWorld::hideRoleSelectLayer(bool restoreStartButton)
+{
+    if (_roleSelectLayer)
+    {
+        _roleSelectLayer->removeFromParent();
+        _roleSelectLayer = nullptr;
+    }
+
+    if (restoreStartButton && _pendingStartMenuItem)
+    {
+        _pendingStartMenuItem->setEnabled(true);
+    }
+    _pendingStartMenuItem = nullptr;
+}
+
+void HelloWorld::refreshRolePreview()
+{
+    const char* path = PlayerRoleConfig::getDefaultSpritePath(_selectedRole);
+    if (!path)
+    {
+        return;
+    }
+
+    // 预览 sprite 只用于 UI 展示，直接按文件路径加载即可
+    auto sprite = Sprite::create(path);
+    if (!sprite)
+    {
+        CCLOG("HelloWorld: 预览角色贴图加载失败：%s", path);
+        return;
+    }
+
+    // 如果已有预览：保留父节点位置/缩放/层级，只替换贴图
+    Node* parent = nullptr;
+    int zOrder = 0;
+    Vec2 pos = Vec2::ZERO;
+    Vec2 anchor = Vec2(0.5f, 0.0f);
+    float displayHeight = 0.0f;
+    if (_rolePreviewSprite)
+    {
+        parent = _rolePreviewSprite->getParent();
+        zOrder = _rolePreviewSprite->getLocalZOrder();
+        pos = _rolePreviewSprite->getPosition();
+        anchor = _rolePreviewSprite->getAnchorPoint();
+        displayHeight = _rolePreviewSprite->getContentSize().height * std::fabs(_rolePreviewSprite->getScaleY());
+        _rolePreviewSprite->removeFromParent();
+        _rolePreviewSprite = nullptr;
+    }
+
+    _rolePreviewSprite = sprite;
+    _rolePreviewSprite->setAnchorPoint(anchor);
+    _rolePreviewSprite->setPosition(pos);
+    if (displayHeight > 0.0f)
+    {
+        const float srcH = std::max(1.0f, _rolePreviewSprite->getContentSize().height);
+        const float newScale = displayHeight / srcH;
+        _rolePreviewSprite->setScale(newScale);
+    }
+
+    if (parent)
+    {
+        parent->addChild(_rolePreviewSprite, zOrder);
+    }
+}
+
+void HelloWorld::startGameWithSelectedRole()
+{
+    // 防止重复触发
+    if (_pendingStartMenuItem)
+    {
+        _pendingStartMenuItem->setEnabled(false);
+    }
+
+    // 新开局：设置会话职业（内部会清空运行时数据/位置）
+    if (auto saveManager = SaveManager::getInstance())
+    {
+        saveManager->setSessionSelectedRole(_selectedRole);
+    }
+
+    // 进入 HOME（通过 LoadingScene 走统一的预加载机制）
+    auto newScene = LoadingScene::createScene(SceneID::HOME);
+    if (newScene)
+    {
+        Director::getInstance()->replaceScene(newScene);
+        return;
+    }
+
+    CCLOG("Error: Failed to create LoadingScene for SceneID::HOME");
+    hideRoleSelectLayer(true);
 }
