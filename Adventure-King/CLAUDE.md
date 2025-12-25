@@ -31,17 +31,22 @@ Adventure-King/proj.win32/Debug.win32/Adventure-King.exe
 ```
 Adventure-King/Classes/
 ├── Character/           # 角色系统（组件化架构）
-│   ├── Base/           # CharacterBase 基类
+│   ├── Base/           # CharacterBase 基类、CharacterData、StatusEffect
 │   ├── Player/         # PlayerCharacter
-│   ├── Monster/        # MonsterBase + 具体怪物 (GoblinMonster, GobluMonster)
-│   └── components/     # AttributeComponent, StateMachineComponent, SkillComponent, StatusEffectVfxComponent
-├── Scenes/             # 场景系统 (GameScene, HelloWorldScene, MapScene, OriginMushroomScene, MysteryForestScene)
-├── Objects/            # 投掷物 (ExplosiveProjectile)
-├── Configs/            # GameConfigs, GamePhysicsCategory
+│   │   ├── Players/    # 具体玩家实现（PlayerKlee）
+│   │   └── SkillSets/  # 职业技能集（KleeSkillSet, WarriorSkillSet, AssassinSkillSet）
+│   ├── Monster/        # MonsterBase + 具体怪物 (GoblinMonster, GobluMonster, ObscurMonster)
+│   ├── components/     # AttributeComponent, StateMachineComponent, SkillComponent, StatusEffectVfxComponent, InventoryComponent
+│   └── StatusEffects/  # StatusEffectFactory、装备特效实现
+├── Scenes/             # 场景系统 (GameScene, HelloWorldScene, MapScene, LevelMap)
+│   └── LevelScenes/    # 具体关卡 (OriginMushroomScene, MysteryForestScene)
+├── Objects/            # 游戏对象
+│   └── Projectiles/    # 投掷物 (ExplosiveProjectile, Fireball)
+├── Configs/            # GameConfig, GamePhysicsCategory, ArenaConfig
 ├── Save/               # SaveManager, SaveData, JsonSerializer
-├── UI/                 # PlayerStatusBar, SkillBar, PauseMenu, SaveMenuLayer
+├── UI/                 # PlayerStatusBar, SkillBar, PauseMenu, SaveMenuLayer, InventoryLayer
 ├── Managers/           # SceneTransitionManager, MusicManager
-└── Utils/              # SpriteFrameCacheHelper
+└── Utils/              # SpriteFrameCacheHelper, ParticlePreloadHelper, ParticleVfxHelper, WeaponHitboxVfxHelper
 ```
 
 ### 组件化角色系统
@@ -52,6 +57,30 @@ Adventure-King/Classes/
 - **StateMachineComponent** - 状态切换与动画播放
 - **SkillComponent** - 技能学习、装备、冷却
 - **StatusEffectVfxComponent** - 状态效果视觉（燃烧粒子等）
+- **InventoryComponent** - 背包与装备管理，装备特效的装卸
+
+### 职业技能系统
+
+职业技能通过 `PlayerSkillSet` 抽象，具体实现：
+- **KleeSkillSet** - 法师：炸弹普攻 + 火球技能（附加燃烧 DOT）
+- **WarriorSkillSet** - 战士：近战普攻 + Fire 火焰冲击（智能选点 AoE）
+- **AssassinSkillSet** - 刺客：近战普攻 + Slash 斩击
+
+新增职业技能步骤：
+1. 在 `GameConfig.h` 添加技能参数 namespace
+2. 继承 `PlayerSkillSet` 实现 `initSkills`、`tryNormalAttack`、`tryUseSkill`
+3. 在 `PlayerCharacter` 中注册新的 SkillSet
+
+### 装备特效系统
+
+装备特效通过 `StatusEffect` 子类实现：
+- **ThornsArmorEffect** - 荆棘甲：受击反伤
+- **EmergencyMaskEffect** - 急救面罩：低血量自动回复
+- **HunterBootsEffect** - 追猎之靴：击杀后移速加成
+- **BloodPactSwordEffect** - 血契短剑：吸血
+- **EmberStaffEffect** - 焰纹法杖：命中附加燃烧
+
+装备特效参数在 `GameConfig::EquipmentEffect` 中配置。
 
 ### 场景流程
 
@@ -94,11 +123,19 @@ Resources/Particle/
 ├── par_chararcter_hurt_L.plist  # 受击粒子（左）
 ├── par_chararcter_hurt_R.plist  # 受击粒子（右）
 ├── par_warfire.plist            # 主菜单战火背景
-├── par_GobluRemoteHit.plist     # Goblu远程命中（预留）
-├── par_Poison.plist             # 中毒效果（预留）
-├── par_Restore_health.plist     # 恢复生命（预留）
+├── par_fire.plist               # 战士 Fire 技能
+├── par_dragon_fire.plist        # 龙焰特效
+├── par_levelup.plist            # 升级特效
+├── par_Restore_health.plist     # 恢复生命
+├── par_GobluRemoteHit.plist     # Goblu远程命中
+├── par_Poison.plist             # 中毒效果
+├── par_nap.plist                # 睡眠/眩晕效果
 └── particle_texture.png         # 通用粒子纹理
 ```
+
+粒子播放工具：
+- `ParticleVfxHelper::playOnce` - 一次性粒子播放
+- `ParticlePreloadHelper` - 粒子预热（避免首次播放卡顿）
 
 ## 开发约定
 
@@ -109,9 +146,11 @@ Resources/Particle/
 
 ### 关键约定
 - **贴图加载**: 用 `SpriteFrameCacheHelper::getOrCreateSpriteFrame` 复用帧
-- **可调参数**: 统一放 `Classes/Configs/GameConfig.h`；粒子参数放对应组件头文件
+- **可调参数**: 统一放 `Classes/Configs/GameConfig.h`；粒子参数放对应组件头文件；装备特效参数放 `GameConfig::EquipmentEffect`
 - **物理分类**: 只用 `GamePhysicsCategory.h` 中的枚举
 - **玩家动画**: 场景调用 `setMoving`/`attackAnimated`/`castSkillAnimated`，不直接操作动作
+- **职业技能**: 通过 `PlayerSkillSet` 子类实现，不在 `PlayerCharacter` 中硬编码
+- **装备特效**: 通过 `StatusEffect` 子类实现，在 `StatusEffectFactory` 注册
 - **引擎代码**: `Adventure-King/cocos2d/` 不要修改
 
 ### TMX 地图约定
