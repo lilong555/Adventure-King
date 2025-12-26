@@ -51,6 +51,10 @@ struct SkillSaveData
     // 主动技能属性
     float cooldown = 0.0f;
     float manaCost = 0.0f;
+    // 击破值：每次命中对 Boss 击破条的累计值
+    // 说明：该字段属于“技能静态配置”，但为保证读档后行为一致，这里一并持久化；
+    //       若旧存档缺失该字段，会以 -1 作为“未知”哨兵并在读档时按当前配置补齐。
+    int breakDamage = -1;
     float currentCooldown = 0.0f;
 
     // 被动技能属性

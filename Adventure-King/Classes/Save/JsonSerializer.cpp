@@ -136,6 +136,7 @@ static rapidjson::Value serializeSkill(const SkillSaveData &skill,
     obj.AddMember("isPassive", skill.isPassive, allocator);
     obj.AddMember("cooldown", skill.cooldown, allocator);
     obj.AddMember("manaCost", skill.manaCost, allocator);
+    obj.AddMember("breakDamage", skill.breakDamage, allocator);
     obj.AddMember("currentCooldown", skill.currentCooldown, allocator);
 
     rapidjson::Value attrObj(rapidjson::kObjectType);
@@ -175,6 +176,8 @@ static void deserializeSkill(const rapidjson::Value &jsonObj, SkillSaveData &ski
     skill.isPassive = getBool("isPassive", false);
     skill.cooldown = getFloat("cooldown", 0.0f);
     skill.manaCost = getFloat("manaCost", 0.0f);
+    // 兼容旧存档：缺失 breakDamage 时用 -1 作为哨兵，读档时按当前配置补齐
+    skill.breakDamage = getInt("breakDamage", -1);
     skill.currentCooldown = getFloat("currentCooldown", 0.0f);
 
     if (jsonObj.HasMember("attributeBonus"))

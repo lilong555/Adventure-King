@@ -835,6 +835,8 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
             skillData.name = skill->name;
             skillData.description = skill->description;
             skillData.isPassive = skill->isPassive;
+            // 默认：被动技能不需要击破值（写 0，避免存档里出现 -1）
+            skillData.breakDamage = 0;
 
             // 主动技能
             std::shared_ptr<ActiveSkill> activeSkill = std::dynamic_pointer_cast<ActiveSkill>(skill);
@@ -842,6 +844,7 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
             {
                 skillData.cooldown = activeSkill->cooldown;
                 skillData.manaCost = activeSkill->manaCost;
+                skillData.breakDamage = activeSkill->breakDamage;
                 skillData.currentCooldown = activeSkill->currentCooldown;
             }
 
@@ -1047,6 +1050,32 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
     SkillComponent *skillComp = player->getSkillComponent();
     if (skillComp)
     {
+        auto resolveActiveSkillBreakDamage = [](int skillId, int savedBreakDamage) -> int
+        {
+            // 优先使用存档值；若旧存档缺失该字段（-1），则按当前配置补齐。
+            if (savedBreakDamage >= 0)
+            {
+                return savedBreakDamage;
+            }
+
+            switch (skillId)
+            {
+            case GameConfig::Bomb::BOMB_ID:
+                // 炸弹属于技能：默认按“技能击破值”累计（如需细分，可为 Bomb 增加独立配置字段）
+                return GameConfig::Combat::BREAK_DAMAGE_SKILL;
+            case GameConfig::Fireball::FIREBALL_ID:
+                return GameConfig::Fireball::BREAK_DAMAGE;
+            case GameConfig::Assassin::SlashSkill::SLASH_ID:
+                return GameConfig::Assassin::SlashSkill::BREAK_DAMAGE_PER_HIT;
+            case GameConfig::Warrior::FireSkill::FIRE_ID:
+                return GameConfig::Warrior::FireSkill::BREAK_DAMAGE;
+            case GameConfig::Assassin::AllInSkill::ALL_IN_ID:
+                return GameConfig::Assassin::AllInSkill::BREAK_DAMAGE;
+            default:
+                return 0;
+            }
+        };
+
         // 清空已有技能/槽位，防止重复和冷却污染
         skillComp->resetSkills();
 
@@ -1082,6 +1111,7 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
                 skill->isPassive = false;
                 skill->cooldown = skillData.cooldown;
                 skill->manaCost = skillData.manaCost;
+                skill->breakDamage = std::max(0, resolveActiveSkillBreakDamage(skill->id, skillData.breakDamage));
                 skill->currentCooldown = skillData.currentCooldown;
 
                 skillComp->learnSkill(skill);
