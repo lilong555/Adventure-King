@@ -123,8 +123,19 @@ bool GameUIController::init(Scene *scene,
                                                                          {
                                                                              return;
                                                                          }
+                                                                         if (!_scene)
+                                                                         {
+                                                                             return;
+                                                                         }
                                                                          // 若已切到其他场景（例如读档转场），不做 UI 恢复，避免访问无效对象
-                                                                         if (Director::getInstance()->getRunningScene() != _scene)
+                                                                         auto runningScene = Director::getInstance()->getRunningScene();
+                                                                         if (runningScene != _scene)
+                                                                         {
+                                                                             return;
+                                                                         }
+
+                                                                         // 进一步校验：确保 GameUI 仍挂在当前场景上，避免极端情况下访问已被移除的节点
+                                                                         if (_gameUI->getParent() != _scene)
                                                                          {
                                                                              return;
                                                                          }
@@ -154,7 +165,7 @@ bool GameUIController::init(Scene *scene,
                                       }
 
                                       auto saveMenu = SaveMenuLayer::create(SaveMenuLayer::Mode::LOAD);
-                                      if (saveMenu)
+                                          if (saveMenu)
                                       {
                                           saveMenu->setLoadSuccessCallback([this](const SaveSlotData &saveData)
                                                                            {
@@ -168,7 +179,16 @@ bool GameUIController::init(Scene *scene,
                                                                          {
                                                                              return;
                                                                          }
-                                                                         if (Director::getInstance()->getRunningScene() != _scene)
+                                                                         if (!_scene)
+                                                                         {
+                                                                             return;
+                                                                         }
+                                                                         auto runningScene = Director::getInstance()->getRunningScene();
+                                                                         if (runningScene != _scene)
+                                                                         {
+                                                                             return;
+                                                                         }
+                                                                         if (_gameUI->getParent() != _scene)
                                                                          {
                                                                              return;
                                                                          }

@@ -214,6 +214,9 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
                         continue;
                     }
 
+                    // 注意：必须通过 createMonsterByType 创建怪物，保证与正常刷怪一致的初始化逻辑：
+                    // - HP 随玩家等级缩放（如 Goblin）
+                    // - Boss 绑定 UI（如 Goblu）
                     auto monster = createMonsterByType(m.monsterType);
                     if (!monster)
                     {

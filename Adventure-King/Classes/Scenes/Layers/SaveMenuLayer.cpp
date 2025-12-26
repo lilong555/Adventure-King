@@ -304,20 +304,11 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
         if (saveManager->hasSave(slotIndex))
         {
             // 槽位已有存档，显示确认对话框
-            showConfirmDialog("确定要覆盖此存档吗？", [this, saveManager, slotIndex]() {
-                GameProgressSaveData pd;
-                if (auto gameScene = dynamic_cast<GameScene *>(this->getScene()))
-                {
-                    gameScene->fillProgressDataForSave(pd);
-                }
-                else
-                {
-                    pd.currentSceneName = _sceneName;
-                    pd.playerPosX = _playerPos.x;
-                    pd.playerPosY = _playerPos.y;
-                }
-
-                if (saveManager->saveGame(slotIndex, _player, pd))
+            // 注意：存档菜单打开期间世界应处于暂停状态，此处直接使用点击时采集的快照即可，
+            // 避免重复采集逻辑导致维护困难。
+            const GameProgressSaveData snapshot = progressData;
+            showConfirmDialog("确定要覆盖此存档吗？", [this, saveManager, slotIndex, snapshot]() {
+                if (saveManager->saveGame(slotIndex, _player, snapshot))
                 {
                     CCLOG("SaveMenuLayer - 保存成功到槽位 %d", slotIndex);
                     // 刷新界面
