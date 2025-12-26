@@ -65,7 +65,7 @@ bool KleeSkillSet::tryNormalAttack(PlayerCharacter &player, const std::function<
                 return;
             }
 
-            bomb->setScale(GameConfig::Klee::NormalAttack::PROJECTILE_SCALE);
+            bomb->setScale(GameConfig::Klee::NormalAttack::BOMB_SCALE);
             bomb->setPosition(player.getProjectileSpawnPosition(
                 GameConfig::Klee::NormalAttack::SPAWN_OFFSET_X_RATIO,
                 GameConfig::Klee::NormalAttack::SPAWN_OFFSET_X,
@@ -283,7 +283,7 @@ bool KleeSkillSet::tryCastFireball(PlayerCharacter &player,
                 return;
             }
 
-            rocket->setScale(GameConfig::Klee::FireballSkill::PROJECTILE_SCALE);
+            rocket->setScale(GameConfig::Klee::FireballSkill::FIREBALL_SCALE);
             rocket->setPosition(player.getProjectileSpawnPosition(
                 GameConfig::Klee::FireballSkill::SPAWN_OFFSET_X_RATIO,
                 GameConfig::Klee::FireballSkill::SPAWN_OFFSET_X,

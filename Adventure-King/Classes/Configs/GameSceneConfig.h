@@ -98,7 +98,7 @@ struct LevelConfig
          inline constexpr float MAP_BUTTON_OFFSET = 40.0f;
          inline constexpr float INTERACTION_HINT_OFFSET_Y = 80.0f;
          inline constexpr float LEVEL_NAME_OFFSET_X = 100.0f;
-         inline constexpr float LEVEL_NAME_OFFSET_Y = 100.0f;
+         inline constexpr float LEVEL_NAME_OFFSET_Y = 50.0f;
 
          namespace MainMenu
          {

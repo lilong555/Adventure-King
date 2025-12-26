@@ -158,7 +158,7 @@ namespace GameConfig
         const int BOMB_ID = 1001;             // 炸弹技能ID
         const float BOMB_CD = 1.0f;           // 炸弹冷却时间
         const float BOMB_MP = 10.0f;          // 炸弹蓝耗
-        const float SPRITE_SCALE = 0.6f;      // 缩放比例
+        const float SPRITE_SCALE = 0.1f;      // 缩放比例
         const float THROW_SPEED_X = 300.0f;   // 水平投掷速度
         const float THROW_SPEED_Y = 350.0f;   // 垂直投掷速度
         const float EXPLOSION_RADIUS = 80.0f; // 爆炸半径
@@ -483,7 +483,7 @@ namespace GameConfig
             // 击破值：普通攻击（TNT）每次命中对 Boss 击破条的累计值
             inline constexpr int BREAK_DAMAGE = 1;
             inline constexpr float ANIM_FRAME_DELAY = 0.13f;
-            inline constexpr float PROJECTILE_SCALE = 0.5f;
+            inline constexpr float BOMB_SCALE = 0.3f;
             inline constexpr float SPAWN_OFFSET_X_RATIO = 0.35f;
             inline constexpr float SPAWN_OFFSET_X = 20.0f;
             inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.15f;
@@ -498,7 +498,7 @@ namespace GameConfig
         {
             inline constexpr size_t SKILL_SLOT = 0;
             inline constexpr float CAST_ANIM_FRAME_DELAY = 0.04f;
-            inline constexpr float PROJECTILE_SCALE = 1.10f;
+            inline constexpr float FIREBALL_SCALE = 1.10f;
             inline constexpr float SPAWN_OFFSET_X_RATIO = 0.40f;
             inline constexpr float SPAWN_OFFSET_X = 25.0f;
             inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.20f;
@@ -555,7 +555,17 @@ namespace GameConfig
             inline constexpr const char* KEEP_VFX_PLIST = "Particle/par_nap_keep.plist";
         }
     }
+    namespace Warrior {
+        // 近战判定：持续时间越短越不容易误伤/重复命中
+        inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+        inline constexpr float HITBOX_DELAY_SECONDS = 0.05f; // 略微延迟，贴近挥砍动作
 
+        // 命中框尺寸（先用相对值占位，后续可按手感调参）
+        inline constexpr float HITBOX_WIDTH_RATIO = 0.55f;
+        inline constexpr float HITBOX_HEIGHT_RATIO = 0.75f;
+        inline constexpr float HITBOX_OFFSET_X_RATIO = 0.55f;
+        inline constexpr float HITBOX_OFFSET_Y = 8.0f;
+    }
     namespace StatusEffect
     {
         namespace Burning

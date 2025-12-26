@@ -375,22 +375,55 @@ void LevelMap::loadGateAreas(const std::string& gateGroupName)
 
 bool LevelMap::isPointAtGate(const Vec2 &worldPos) const
 {
-    if (_gateAreas.empty())
-    {
-        return false;
-    }
+    // 如果关卡未清空，传送门不产生任何交互
+    if (!_isLevelCleared) return false;
+
+    if (_gateAreas.empty()) return false;
 
     for (const auto &gateRect : _gateAreas)
     {
-        if (gateRect.containsPoint(worldPos))
-        {
-            return true;
-        }
+        if (gateRect.containsPoint(worldPos)) return true;
     }
 
     return false;
 }
 
+//触发胜利逻辑
+void LevelMap::triggerLevelClear() {
+    _isLevelCleared = true;
+    // 为所有门区域播放激活特效
+    for (auto& rect : _gateAreas) {
+        auto portalVfx = ParticleSystemQuad::create("Particle/portal_active.plist");
+        portalVfx->setPosition(rect.getMidX(), rect.getMidY());
+        _tileMap->addChild(portalVfx, 10);
+    }
+    // 调用 UI 提示
+    showVictoryBanner();
+}
+void LevelMap::showVictoryBanner() {
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+
+    auto banner = Sprite::create("Scene/UI/ClearBanner.png");
+    banner->setPosition(visibleSize.width / 2, visibleSize.height / 2);
+    banner->setScale(1.0f);
+    banner->setOpacity(0);
+
+    // 获取当前场景的 UI 层并添加
+    Director::getInstance()->getRunningScene()->addChild(banner, 1000);
+
+    // 播放“丝之歌”风格的弹出效果
+    banner->runAction(Sequence::create(
+        Spawn::create(
+            EaseBackOut::create(ScaleTo::create(0.5f, 1.2f)), // 回弹缩放
+            FadeIn::create(0.3f),
+            nullptr
+        ),
+        DelayTime::create(2.0f), // 停留两秒
+        FadeOut::create(0.5f),
+        RemoveSelf::create(),
+        nullptr
+    ));
+}
 void LevelMap::loadEnemySpawnPoints(const std::string &groupName)
 {
     _enemySpawnPoints.clear();
