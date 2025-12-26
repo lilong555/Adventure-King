@@ -136,6 +136,7 @@ static rapidjson::Value serializeSkill(const SkillSaveData &skill,
     obj.AddMember("isPassive", skill.isPassive, allocator);
     obj.AddMember("cooldown", skill.cooldown, allocator);
     obj.AddMember("manaCost", skill.manaCost, allocator);
+    obj.AddMember("breakDamage", skill.breakDamage, allocator);
     obj.AddMember("currentCooldown", skill.currentCooldown, allocator);
 
     rapidjson::Value attrObj(rapidjson::kObjectType);
@@ -175,6 +176,8 @@ static void deserializeSkill(const rapidjson::Value &jsonObj, SkillSaveData &ski
     skill.isPassive = getBool("isPassive", false);
     skill.cooldown = getFloat("cooldown", 0.0f);
     skill.manaCost = getFloat("manaCost", 0.0f);
+    // 兼容旧存档：缺失 breakDamage 时用 -1 作为哨兵，读档时按当前配置补齐
+    skill.breakDamage = getInt("breakDamage", -1);
     skill.currentCooldown = getFloat("currentCooldown", 0.0f);
 
     if (jsonObj.HasMember("attributeBonus"))
@@ -272,6 +275,49 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
         unlockedLevelsArr.PushBack(rapidjson::Value(level.c_str(), allocator).Move(), allocator);
     }
     progressObj.AddMember("unlockedLevels", unlockedLevelsArr, allocator);
+
+    // 刷怪点状态（enemy_g）
+    rapidjson::Value enemySpawnPointsArr(rapidjson::kArrayType);
+    for (const auto &sp : data.progressData.enemySpawnPoints)
+    {
+        rapidjson::Value spObj(rapidjson::kObjectType);
+        spObj.AddMember("monsterType", rapidjson::Value(sp.monsterType.c_str(), allocator).Move(), allocator);
+        spObj.AddMember("posX", sp.posX, allocator);
+        spObj.AddMember("posY", sp.posY, allocator);
+        spObj.AddMember("count", sp.count, allocator);
+        spObj.AddMember("hasSpawned", sp.hasSpawned, allocator);
+        enemySpawnPointsArr.PushBack(spObj, allocator);
+    }
+    progressObj.AddMember("enemySpawnPoints", enemySpawnPointsArr, allocator);
+
+    // 竞技场状态（Arena）
+    rapidjson::Value arenasArr(rapidjson::kArrayType);
+    for (const auto &arena : data.progressData.arenas)
+    {
+        rapidjson::Value arenaObj(rapidjson::kObjectType);
+        arenaObj.AddMember("arenaID", rapidjson::Value(arena.arenaID.c_str(), allocator).Move(), allocator);
+        arenaObj.AddMember("currentWaveIndex", arena.currentWaveIndex, allocator);
+        arenaObj.AddMember("isActivated", arena.isActivated, allocator);
+        arenaObj.AddMember("isFinished", arena.isFinished, allocator);
+        arenasArr.PushBack(arenaObj, allocator);
+    }
+    progressObj.AddMember("arenas", arenasArr, allocator);
+
+    // 场上存活怪物快照（包含竞技场怪物：通过 arenaID 标记归属）
+    rapidjson::Value aliveMonstersArr(rapidjson::kArrayType);
+    for (const auto &m : data.progressData.aliveMonsters)
+    {
+        rapidjson::Value mObj(rapidjson::kObjectType);
+        mObj.AddMember("monsterType", rapidjson::Value(m.monsterType.c_str(), allocator).Move(), allocator);
+        mObj.AddMember("arenaID", rapidjson::Value(m.arenaID.c_str(), allocator).Move(), allocator);
+        mObj.AddMember("posX", m.posX, allocator);
+        mObj.AddMember("posY", m.posY, allocator);
+        mObj.AddMember("currentHP", m.currentHP, allocator);
+        mObj.AddMember("currentMP", m.currentMP, allocator);
+        mObj.AddMember("breakMeter", m.breakMeter, allocator);
+        aliveMonstersArr.PushBack(mObj, allocator);
+    }
+    progressObj.AddMember("aliveMonsters", aliveMonstersArr, allocator);
 
     doc.AddMember("progress", progressObj, allocator);
 
@@ -475,6 +521,76 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
                     if (unlockedLevels[i].IsString())
                     {
                         outData.progressData.unlockedLevels.push_back(unlockedLevels[i].GetString());
+                    }
+                }
+            }
+
+            // 刷怪点状态（enemy_g）
+            if (progress.HasMember("enemySpawnPoints") && progress["enemySpawnPoints"].IsArray())
+            {
+                const auto &arr = progress["enemySpawnPoints"];
+                for (rapidjson::SizeType i = 0; i < arr.Size(); ++i)
+                {
+                    if (!arr[i].IsObject())
+                    {
+                        continue;
+                    }
+                    const auto &obj = arr[i];
+                    GameProgressSaveData::EnemySpawnPointState sp;
+                    sp.monsterType = getString(obj, "monsterType", sp.monsterType);
+                    sp.posX = getFloat(obj, "posX", sp.posX);
+                    sp.posY = getFloat(obj, "posY", sp.posY);
+                    sp.count = getInt(obj, "count", sp.count);
+                    sp.hasSpawned = (obj.HasMember("hasSpawned") && obj["hasSpawned"].IsBool()) ? obj["hasSpawned"].GetBool() : sp.hasSpawned;
+                    outData.progressData.enemySpawnPoints.push_back(sp);
+                }
+            }
+
+            // 竞技场状态（Arena）
+            if (progress.HasMember("arenas") && progress["arenas"].IsArray())
+            {
+                const auto &arr = progress["arenas"];
+                for (rapidjson::SizeType i = 0; i < arr.Size(); ++i)
+                {
+                    if (!arr[i].IsObject())
+                    {
+                        continue;
+                    }
+                    const auto &obj = arr[i];
+                    GameProgressSaveData::ArenaState arena;
+                    arena.arenaID = getString(obj, "arenaID", arena.arenaID);
+                    arena.currentWaveIndex = getInt(obj, "currentWaveIndex", arena.currentWaveIndex);
+                    arena.isActivated = (obj.HasMember("isActivated") && obj["isActivated"].IsBool()) ? obj["isActivated"].GetBool() : arena.isActivated;
+                    arena.isFinished = (obj.HasMember("isFinished") && obj["isFinished"].IsBool()) ? obj["isFinished"].GetBool() : arena.isFinished;
+                    if (!arena.arenaID.empty())
+                    {
+                        outData.progressData.arenas.push_back(arena);
+                    }
+                }
+            }
+
+            // 场上存活怪物快照（包含竞技场怪物：通过 arenaID 标记归属）
+            if (progress.HasMember("aliveMonsters") && progress["aliveMonsters"].IsArray())
+            {
+                const auto &arr = progress["aliveMonsters"];
+                for (rapidjson::SizeType i = 0; i < arr.Size(); ++i)
+                {
+                    if (!arr[i].IsObject())
+                    {
+                        continue;
+                    }
+                    const auto &obj = arr[i];
+                    GameProgressSaveData::MonsterState m;
+                    m.monsterType = getString(obj, "monsterType", m.monsterType);
+                    m.arenaID = getString(obj, "arenaID", m.arenaID);
+                    m.posX = getFloat(obj, "posX", m.posX);
+                    m.posY = getFloat(obj, "posY", m.posY);
+                    m.currentHP = getFloat(obj, "currentHP", m.currentHP);
+                    m.currentMP = getFloat(obj, "currentMP", m.currentMP);
+                    m.breakMeter = getInt(obj, "breakMeter", m.breakMeter);
+                    if (!m.monsterType.empty())
+                    {
+                        outData.progressData.aliveMonsters.push_back(m);
                     }
                 }
             }

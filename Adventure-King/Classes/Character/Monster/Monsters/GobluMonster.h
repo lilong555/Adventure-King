@@ -25,6 +25,11 @@ public:
     virtual int getBreakMeter() const override { return _breakMeter; }
     virtual int getBreakMax() const override { return GameConfig::Monster::Goblu::BREAK_MAX; }
 
+    /**
+     * @brief 存档恢复：设置击破条当前值（只恢复数值，不恢复倒地/起身序列状态）
+     */
+    void setBreakMeterForSave(int value);
+
 protected:
     // 经验奖励：按玩家等级缩放
     virtual int getExpReward(int playerLevel) const override;

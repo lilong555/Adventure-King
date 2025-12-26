@@ -1,7 +1,10 @@
 #include "SaveMenuLayer.h"
 #include "Configs/GameConfig.h"
+#include "Configs/PlayerRoleConfig.h"
 #include "Save/SaveManager.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Scenes/GameScene.h"
+#include <cmath>
 #include <ctime>
 #include <sstream>
 #include <iomanip>
@@ -57,6 +60,18 @@ bool SaveMenuLayer::init(Mode mode,
     _eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, this);
 
     return true;
+}
+
+void SaveMenuLayer::onExit()
+{
+    // 说明：关闭存档菜单后，可能需要恢复“暂停菜单显示”或保持暂停状态。
+    // 由外部（GameUIController）决定具体行为，避免此处与场景逻辑耦合。
+    if (_closeCallback)
+    {
+        _closeCallback();
+    }
+
+    Layer::onExit();
 }
 
 bool SaveMenuLayer::onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event)
@@ -201,8 +216,19 @@ cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &
     if (hasSave)
     {
         // 显示存档信息
-        std::string infoText = "等级 " + std::to_string(slotData.playerData.level) +
-                               " | " + formatTimestamp(slotData.saveTimestamp);
+        const CharacterRole role = static_cast<CharacterRole>(slotData.playerData.role);
+        const std::string sceneName = slotData.progressData.currentSceneName.empty()
+                                          ? "未知地图"
+                                          : slotData.progressData.currentSceneName;
+        const int posX = static_cast<int>(std::lround(slotData.progressData.playerPosX));
+        const int posY = static_cast<int>(std::lround(slotData.progressData.playerPosY));
+        std::string infoText = StringUtils::format("%s | %s | Lv.%d | (%d,%d) | %s",
+                                                   PlayerRoleConfig::getDisplayName(role),
+                                                   sceneName.c_str(),
+                                                   slotData.playerData.level,
+                                                   posX,
+                                                   posY,
+                                                   formatTimestamp(slotData.saveTimestamp).c_str());
         auto infoLabel = Label::createWithTTF(infoText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
         infoLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 80, -20));
         infoLabel->setAnchorPoint(Vec2(0, 0.5f));
@@ -260,12 +286,29 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
 
     if (_mode == Mode::SAVE)
     {
+        // 构建完整进度数据：包含刷怪点/竞技场/怪物快照（用于读档恢复）
+        GameProgressSaveData progressData;
+        if (auto gameScene = dynamic_cast<GameScene *>(this->getScene()))
+        {
+            gameScene->fillProgressDataForSave(progressData);
+        }
+        else
+        {
+            // 兜底：至少写入场景名与位置
+            progressData.currentSceneName = _sceneName;
+            progressData.playerPosX = _playerPos.x;
+            progressData.playerPosY = _playerPos.y;
+        }
+
         // 保存模式
         if (saveManager->hasSave(slotIndex))
         {
             // 槽位已有存档，显示确认对话框
-            showConfirmDialog("确定要覆盖此存档吗？", [this, saveManager, slotIndex]() {
-                if (saveManager->saveGame(slotIndex, _player, _sceneName, _playerPos))
+            // 注意：存档菜单打开期间世界应处于暂停状态，此处直接使用点击时采集的快照即可，
+            // 避免重复采集逻辑导致维护困难。
+            const GameProgressSaveData snapshot = progressData;
+            showConfirmDialog("确定要覆盖此存档吗？", [this, saveManager, slotIndex, snapshot]() {
+                if (saveManager->saveGame(slotIndex, _player, snapshot))
                 {
                     CCLOG("SaveMenuLayer - 保存成功到槽位 %d", slotIndex);
                     // 刷新界面
@@ -280,7 +323,7 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
         else
         {
             // 空槽位，直接保存
-            if (saveManager->saveGame(slotIndex, _player, _sceneName, _playerPos))
+            if (saveManager->saveGame(slotIndex, _player, progressData))
             {
                 CCLOG("SaveMenuLayer - 保存成功到槽位 %d", slotIndex);
                 this->removeFromParent();
