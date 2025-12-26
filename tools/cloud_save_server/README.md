@@ -120,6 +120,24 @@ cloud_data/
 - `POST /api/sync/push`（需 `Authorization: Bearer <token>`）body=存档包 JSON
 - `GET /api/sync/pull`（需 `Authorization: Bearer <token>`）→ 存档包 JSON
 
+## 可视化管理页面（删除/回滚）
+
+服务启动后会打印管理员 token（用于开发/演示）：
+
+```
+Admin token (X-AK-Admin-Token): <token>
+```
+
+打开管理页面：
+
+- `http://localhost:5173/admin`（或 `http://<wsl-ip>:5173/admin`）
+
+将 token 填入页面顶部输入框后即可：
+- 查看用户列表与当前存档包预览
+- 查看历史版本列表
+- **回滚**到某个历史版本（会覆盖当前 package.json，并自动备份当前版本到 history）
+- **删除**用户（账号 + 云端数据，不可恢复）
+
 ## API 快速验证（可选）
 
 服务运行后，在 WSL 中可用 `curl` 进行快速验证：
