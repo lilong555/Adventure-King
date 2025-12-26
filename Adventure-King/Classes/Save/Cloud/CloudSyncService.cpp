@@ -427,6 +427,9 @@ void CloudSyncService::sendJsonRequest(const std::string &method,
             respBody.assign(data->begin(), data->end());
         }
 
+        // 注意：cocos2d::network::HttpResponse::isSucceed() 仅表示“网络请求是否成功完成”
+        //（例如 libcurl 返回值），并不代表 HTTP 状态码是 2xx。
+        // 因此这里必须显式判断状态码，否则 401/404 会被当作成功，导致“登录失效”无法触发重登。
         if (!response->isSucceed())
         {
             std::string err = response->getErrorBuffer();
@@ -435,6 +438,13 @@ void CloudSyncService::sendJsonRequest(const std::string &method,
                 err = "HTTP 请求失败";
             }
             cb(false, code, respBody, err);
+            return;
+        }
+
+        // 将非 2xx 视为失败，交由上层统一解析 respBody（例如提取 message）并做重试/提示
+        if (code < 200 || code >= 300)
+        {
+            cb(false, code, respBody, "HTTP " + std::to_string(code));
             return;
         }
 
