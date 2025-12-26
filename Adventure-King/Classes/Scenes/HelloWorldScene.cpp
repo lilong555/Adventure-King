@@ -8,6 +8,7 @@
 #include "Scenes/LevelScenes/MysteryForestScene.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
 #include "Scenes/Layers/SetMenuLayer.h"
+#include "Scenes/Layers/CloudAuthLayer.h"
 #include"Utils/ParticlePreloadHelper.h"
 #include"Utils/ImeHelper.h"
 #include "Managers/MusicManager.h"
@@ -16,6 +17,7 @@
 #include"Managers/SceneRegistry.h"
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
+#include "Save/Cloud/CloudSyncService.h"
 #include "Configs/PlayerRoleConfig.h"
 
 USING_NS_CC;
@@ -334,6 +336,45 @@ bool HelloWorld::init()
         updateRoleHintLabel();
     }
 
+    // ==========================================================
+    // 7.1 云端账号入口：游客登录 / 登录注册
+    // ==========================================================
+    // 注意：这组 UI 直接挂到场景上，避免受 contentContainer 缩放影响
+    {
+        _cloudAccountLabel = Label::createWithTTF("", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
+        if (_cloudAccountLabel)
+        {
+            _cloudAccountLabel->setAnchorPoint(Vec2(0.0f, 1.0f));
+            _cloudAccountLabel->setPosition(Vec2(origin.x + 18.0f, origin.y + visibleSize.height - 18.0f));
+            this->addChild(_cloudAccountLabel, GameSceneConfig::UI::Z_ORDER);
+            updateCloudAccountLabel();
+        }
+
+        auto cloudMenu = Menu::create();
+        cloudMenu->setPosition(Vec2::ZERO);
+        this->addChild(cloudMenu, GameSceneConfig::UI::Z_ORDER);
+
+        auto guestItem = MenuItemLabel::create(
+            Label::createWithTTF("游客登录（禁用云存）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22),
+            [this](Ref *) {
+                auto cloud = CloudSyncService::getInstance();
+                cloud->setGuestMode(true);
+                updateCloudAccountLabel();
+            });
+        guestItem->setAnchorPoint(Vec2(0.0f, 1.0f));
+        guestItem->setPosition(Vec2(origin.x + 18.0f, origin.y + visibleSize.height - 48.0f));
+        cloudMenu->addChild(guestItem);
+
+        auto loginItem = MenuItemLabel::create(
+            Label::createWithTTF("登录/注册", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22),
+            [this](Ref *) {
+                showCloudAuthLayer();
+            });
+        loginItem->setAnchorPoint(Vec2(0.0f, 1.0f));
+        loginItem->setPosition(Vec2(origin.x + 18.0f, origin.y + visibleSize.height - 78.0f));
+        cloudMenu->addChild(loginItem);
+    }
+
     // 1/2/3 快捷切换职业（战士/刺客/法师）
     auto keyListener = EventListenerKeyboard::create();
     keyListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event*)
@@ -385,6 +426,69 @@ void HelloWorld::updateRoleHintLabel()
 
     _roleHintLabel->setString(StringUtils::format("当前职业：%s（点击开始后选择；或按 1/2/3 快捷切换）",
         PlayerRoleConfig::getDisplayName(_selectedRole)));
+}
+
+void HelloWorld::updateCloudAccountLabel()
+{
+    if (!_cloudAccountLabel)
+    {
+        return;
+    }
+
+    auto cloud = CloudSyncService::getInstance();
+    std::string text;
+    Color4B color(220, 120, 120, 255);
+
+    if (cloud->isGuestMode())
+    {
+        text = "账号：游客（云存禁用）";
+        color = Color4B(210, 200, 120, 255);
+    }
+    else if (cloud->isConfigured())
+    {
+        const std::string user = cloud->getActiveUsername();
+        text = user.empty() ? "账号：已登录" : ("账号：" + user);
+        color = Color4B(120, 220, 120, 255);
+    }
+    else
+    {
+        text = "账号：未登录（云存不可用）";
+    }
+
+    _cloudAccountLabel->setString(text);
+    _cloudAccountLabel->setTextColor(color);
+}
+
+void HelloWorld::showCloudAuthLayer()
+{
+    if (_cloudAuthLayer)
+    {
+        return;
+    }
+
+    _cloudAuthLayer = CloudAuthLayer::create([this](bool ok, const std::string & /*message*/) {
+        // 无论成功/取消，都刷新一次账号状态（成功后 CloudSyncService 已写入运行时账号）
+        updateCloudAccountLabel();
+        hideCloudAuthLayer();
+    });
+    if (!_cloudAuthLayer)
+    {
+        CCLOG("HelloWorld - 创建 CloudAuthLayer 失败");
+        return;
+    }
+
+    this->addChild(_cloudAuthLayer, GameSceneConfig::UI::Z_ORDER + 50);
+}
+
+void HelloWorld::hideCloudAuthLayer()
+{
+    if (!_cloudAuthLayer)
+    {
+        return;
+    }
+
+    _cloudAuthLayer->removeFromParent();
+    _cloudAuthLayer = nullptr;
 }
 
 void HelloWorld::menuCloseCallback(Ref *pSender)

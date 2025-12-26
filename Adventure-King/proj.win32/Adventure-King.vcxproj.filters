@@ -52,6 +52,9 @@
     <Filter Include="src\Save">
       <UniqueIdentifier>{5879635e-04e4-4c14-a72a-c4cdc828da6f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Save\Cloud">
+      <UniqueIdentifier>{b1f86de1-2a44-4a2e-9f0c-2a3d0b3f2a7e}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Character\Player\SkillSets">
       <UniqueIdentifier>{e505816f-ca50-4b8b-a68d-a924446f71ec}</UniqueIdentifier>
     </Filter>
@@ -192,6 +195,9 @@
     <ClCompile Include="..\Classes\Save\SaveManager.cpp">
       <Filter>src\Save</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Save\Cloud\CloudSyncService.cpp">
+      <Filter>src\Save\Cloud</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Save\SaveData.cpp">
       <Filter>src\Save</Filter>
     </ClCompile>
@@ -220,6 +226,9 @@
       <Filter>src\Character\components</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\Layers\BagLayer.cpp">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\Layers\CloudAuthLayer.cpp">
       <Filter>src\Scenes\Layers</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Character\Base\StatusEffect.cpp">
@@ -380,6 +389,9 @@
     <ClInclude Include="..\Classes\Save\SaveManager.h">
       <Filter>src\Save</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Save\Cloud\CloudSyncService.h">
+      <Filter>src\Save\Cloud</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Save\JsonSerializer.h">
       <Filter>src\Save</Filter>
     </ClInclude>
@@ -426,6 +438,9 @@
       <Filter>src\Character\components</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\Layers\BagLayer.h">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\Layers\CloudAuthLayer.h">
       <Filter>src\Scenes\Layers</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Utils\ParticlePreloadHelper.h">

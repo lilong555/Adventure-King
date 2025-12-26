@@ -60,6 +60,7 @@ private:
 
     cocos2d::Sprite *_background = nullptr;
     cocos2d::Label *_titleLabel = nullptr;
+    cocos2d::Label *_cloudStatusLabel = nullptr;
     std::vector<cocos2d::Node *> _slotNodes; // 存档槽位节点
 
     LoadSuccessCallback _loadSuccessCallback = nullptr;
@@ -74,12 +75,20 @@ private:
     bool initSlots();
     /// @brief 初始化关闭按钮
     bool initCloseButton();
+    /// @brief 初始化云同步按钮/状态
+    bool initCloudControls();
+    /// @brief 刷新云端状态文本（不重建节点）
+    void refreshCloudStatusLabel();
     /// @brief 布局 UI 元素
     void layoutUI();
 
     // 槽位操作
     /// @brief 点击存档槽位
     void onSlotClicked(int slotIndex);
+    /// @brief 点击云端按钮（云存/云读）
+    void onCloudClicked(int slotIndex);
+    /// @brief 点击云同步（不自动加载）
+    void onCloudSyncClicked();
     /// @brief 点击删除存档
     void onDeleteClicked(int slotIndex);
 
@@ -100,4 +109,6 @@ private:
     cocos2d::Node *createSlotNode(int slotIndex, const SaveSlotData &slotData);
     /// @brief 格式化时间戳
     std::string formatTimestamp(int64_t timestamp) const;
+    /// @brief 重新刷新槽位列表
+    void reloadSlots();
 };

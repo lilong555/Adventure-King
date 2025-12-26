@@ -194,6 +194,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Save\SaveData.cpp" />
     <ClCompile Include="..\Classes\Save\JsonSerializer.cpp" />
     <ClCompile Include="..\Classes\Save\SaveManager.cpp" />
+    <ClCompile Include="..\Classes\Save\Cloud\CloudSyncService.cpp" />
     <ClCompile Include="..\Classes\Scenes\DebugScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\CombatContactHelper.cpp" />
     <ClCompile Include="..\Classes\Scenes\GamePauseHelper.cpp" />
@@ -203,6 +204,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Scenes\HelloWorldScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\HomeScene.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\BagLayer.cpp" />
+    <ClCompile Include="..\Classes\Scenes\Layers\CloudAuthLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\SaveMenuLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\Layers\SetMenuLayer.cpp" />
     <ClCompile Include="..\Classes\Scenes\LevelMap.cpp" />
@@ -272,6 +274,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Save\SaveData.h" />
     <ClInclude Include="..\Classes\Save\JsonSerializer.h" />
     <ClInclude Include="..\Classes\Save\SaveManager.h" />
+    <ClInclude Include="..\Classes\Save\Cloud\CloudSyncService.h" />
     <ClInclude Include="..\Classes\Scenes\DebugScene.h" />
     <ClInclude Include="..\Classes\Scenes\GameInputController.h" />
     <ClInclude Include="..\Classes\Scenes\GameScene.h" />
@@ -279,6 +282,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Scenes\GamePauseHelper.h" />
     <ClInclude Include="..\Classes\Scenes\HelloWorldScene.h" />
     <ClInclude Include="..\Classes\Scenes\HomeScene.h" />
+    <ClInclude Include="..\Classes\Scenes\Layers\CloudAuthLayer.h" />
     <ClInclude Include="..\Classes\Scenes\Layers\SaveMenuLayer.h" />
     <ClInclude Include="..\Classes\Scenes\Layers\SetMenuLayer.h" />
     <ClInclude Include="..\Classes\Scenes\LevelMap.h" />
