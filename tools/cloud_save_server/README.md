@@ -14,6 +14,18 @@
 
 > 注意：本工具是后端服务，与游戏工程解耦；可在 Win/Linux 任意一端构建运行。
 
+### Windows（推荐：无需安装 CMake）
+
+在 `tools/cloud_save_server` 目录下直接运行：
+
+```powershell
+.\build_win.bat
+```
+
+会在当前目录生成 `ak_cloud_save_server.exe`，然后按脚本输出的示例命令启动即可。
+
+### CMake（可选）
+
 ```bash
 mkdir -p build
 cmake -S . -B build
@@ -53,4 +65,3 @@ cloud_data/
 
 这样“云存/云同步”按钮才会生效。  
 （出于安全考虑：仓库不提交任何公网 IP，请自行在本机环境变量里配置。）
-
