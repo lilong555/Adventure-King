@@ -272,8 +272,17 @@ void CloudSyncService::ensureLogin(const Config &cfg,
     sendJsonRequest("POST", url, body, {}, [this, cb](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
         if (!ok)
         {
+            std::string serverMsg = err;
+            rapidjson::Document errDoc;
+            std::string parseErr;
+            if (parseJsonObject(respBody, errDoc, parseErr) &&
+                errDoc.HasMember("message") && errDoc["message"].IsString())
+            {
+                serverMsg = errDoc["message"].GetString();
+            }
+
             std::ostringstream oss;
-            oss << "登录失败(" << httpCode << "): " << err;
+            oss << "登录失败(" << httpCode << "): " << serverMsg;
             cb(false, "", oss.str());
             return;
         }
@@ -588,4 +597,3 @@ void CloudSyncService::syncAll(const ResultCallback &cb)
         });
     });
 }
-
