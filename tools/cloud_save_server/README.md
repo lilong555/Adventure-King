@@ -19,10 +19,13 @@
 在 `tools/cloud_save_server` 目录下直接运行：
 
 ```powershell
-.\build_win.bat
+powershell -ExecutionPolicy Bypass -File .\build_win.ps1
 ```
 
 会在当前目录生成 `ak_cloud_save_server.exe`，然后按脚本输出的示例命令启动即可。
+
+> 如果你确定本地是 CRLF 行尾，也可以用 `.\build_win.bat`；  
+> 但在 WSL 镜像同步场景下，`.bat` 可能会被同步成 LF 行尾导致 cmd 解析异常，此时请优先使用 `.ps1`。
 
 ### CMake（可选）
 
