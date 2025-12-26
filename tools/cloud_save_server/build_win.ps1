@@ -14,7 +14,13 @@ try {
   $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
   Set-Location $scriptDir
 
-  $vswhere = Join-Path $env:ProgramFiles(x86) "Microsoft Visual Studio\Installer\vswhere.exe"
+  # PowerShell 5.1 读取带括号的环境变量，需要使用 ${} 包裹
+  $pf86 = ${env:ProgramFiles(x86)}
+  if (-not $pf86) {
+    $pf86 = $env:ProgramFiles
+  }
+
+  $vswhere = Join-Path $pf86 "Microsoft Visual Studio\Installer\vswhere.exe"
   if (-not (Test-Path $vswhere)) {
     throw "vswhere.exe not found: $vswhere"
   }
