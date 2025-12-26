@@ -422,11 +422,15 @@ namespace GameConfig
         namespace Goblin
         {
             // 基础属性
-            inline constexpr float MAX_HP = 1000.0f;
+            
+            inline constexpr float MAX_HP = 200.0f;//注意这只是缩放之前的基础数值
             inline constexpr float MAX_MP = 0.0f; // 哥布林可能没蓝条
             inline constexpr float STRENGTH = 10.0f;
             inline constexpr float DEFENSE = 2.0f;
             inline constexpr float CRITICAL_RATE = 0.05f;
+            inline constexpr int HP_SCALE_BASE = 1.0f;         // 基础缩放倍率
+            inline constexpr int HP_SCALE_PER_LEVEL = 0.1f;    // 每级倍率增量
+            inline constexpr int HP_SCALE_PER_10_LEVEL = 0; // 每10级额外增量
 
             // 经验奖励（按玩家等级简单缩放）
             inline constexpr int EXP_REWARD_BASE = 20;
@@ -442,11 +446,8 @@ namespace GameConfig
             inline constexpr float CHASE_RANGE = 0.0f;    // 追击范围 (0=不返回)
             inline constexpr bool PATROL_ENABLED = true;
 
-            // HP 缩放
-            inline constexpr int HP_SCALE_BASE = 200;
-            inline constexpr int HP_SCALE_PER_LEVEL = 100;
-            inline constexpr int HP_SCALE_PER_10_LEVEL = 1000;
-            inline constexpr float HP_BAR_SCALE = 2.0f;
+            // HP 缩放          
+            inline constexpr float HP_BAR_SCALE = 3.0f;
 
             // 攻击动画/判定
             inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.1f;
@@ -465,7 +466,7 @@ namespace GameConfig
         namespace Goblu
         {
             // 基础属性
-            inline constexpr float MAX_HP = 1500.0f;
+            inline constexpr float MAX_HP = 1.0f;  //1000
             inline constexpr float MAX_MP = 0.0f;
             inline constexpr float STRENGTH = 25.0f;
             inline constexpr float DEFENSE = 6.0f;
@@ -516,7 +517,7 @@ namespace GameConfig
         namespace Obscur
         {
             // 基础属性（可后续按数值体验再调）
-            inline constexpr float MAX_HP = 700.0f;
+            inline constexpr float MAX_HP = 1.0f;
             inline constexpr float MAX_MP = 0.0f;
             inline constexpr float STRENGTH = 18.0f;
             inline constexpr float DEFENSE = 4.0f;

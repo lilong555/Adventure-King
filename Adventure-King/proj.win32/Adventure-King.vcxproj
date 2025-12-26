@@ -286,8 +286,10 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Scenes\MapScene.h" />
     <ClInclude Include="..\Classes\Utils\ImeHelper.h" />
     <ClInclude Include="..\Classes\Utils\ParticlePreloadHelper.h" />
+    <ClInclude Include="..\Classes\Utils\ParticleVfxHelper.h" />
     <ClInclude Include="..\Classes\Utils\PhysicsBodyLocalInfoHelper.h" />
     <ClInclude Include="..\Classes\Utils\SpriteFrameCacheHelper.h" />
+    <ClInclude Include="..\Classes\Utils\WeaponHitboxVfxHelper.h" />
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>

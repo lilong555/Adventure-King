@@ -67,7 +67,9 @@ void MysteryForestScene::setupRegistry()
         // --- 共有怪物静态单图 ---
         "Sprites/Enemies/Goblin/Goblin_idle.png",
         "Sprites/Enemies/Goblin/Goblin_beattacked.png",
-        "Sprites/Enemies/Goblu/Goblu.png"
+        "Sprites/Enemies/Goblu/Goblu.png",
+        // --- 胜利横幅单图 ---
+        "Scene/UI/ClearBanner.png"
     };
 
     // 3. 追加动态生成的怪物序列帧 (同步 OriginMushroom 的逻辑)

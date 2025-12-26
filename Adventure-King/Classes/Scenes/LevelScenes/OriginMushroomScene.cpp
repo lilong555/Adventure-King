@@ -78,7 +78,10 @@ void OriginMushroomScene::setupRegistry()
         // --- 怪物静态单图 ---
         "Sprites/Enemies/Goblin/Goblin_idle.png",
         "Sprites/Enemies/Goblin/Goblin_beattacked.png",
-        "Sprites/Enemies/Goblu/Goblu.png"
+        "Sprites/Enemies/Goblu/Goblu.png",
+
+        // --- 胜利横幅单图 ---
+            "Scene/UI/ClearBanner.png"
     };
 
     // 第二步：追加动态生成的序列帧路径 (原逻辑迁移至此)

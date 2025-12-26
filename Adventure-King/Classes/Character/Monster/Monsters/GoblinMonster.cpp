@@ -126,16 +126,15 @@ int GoblinMonster::getExpReward(int playerLevel) const
 
 void GoblinMonster::applyHpScalingForPlayerLevel(int playerLevel)
 {
+    namespace Conf = GameConfig::Monster::Goblin;
     int level = std::max(0, playerLevel);
-    int maxHp = GameConfig::Monster::Goblin::HP_SCALE_BASE +
-                level * GameConfig::Monster::Goblin::HP_SCALE_PER_LEVEL +
-                (level / 10) * GameConfig::Monster::Goblin::HP_SCALE_PER_10_LEVEL;
 
     auto attr = getAttributeComponent();
-    if (attr)
-    {
-        attr->setBaseAttribute(AttributeType::MAX_HP, static_cast<float>(maxHp));
-    }
+    float baseHp = attr->getAttributeValue(AttributeType::MAX_HP); // 这里读取到的就是 initAttributes 设置的值
+    float finalHp = baseHp * (Conf::HP_SCALE_BASE + level * Conf::HP_SCALE_PER_LEVEL+(level / 10) * Conf::HP_SCALE_PER_10_LEVEL);
+    if (!attr)return;
+    // 2. 将计算结果设为基础属性，覆盖 initAttributes 中的初始值
+    attr->setBaseAttribute(AttributeType::MAX_HP, static_cast<float>(finalHp));
 
     refreshCacheAttributes();
     setHpBarScale(GameConfig::Monster::Goblin::HP_BAR_SCALE);

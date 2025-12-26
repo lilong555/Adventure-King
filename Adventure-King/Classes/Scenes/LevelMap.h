@@ -66,6 +66,9 @@ public:
     /// @brief 判断点是否处于任意门区
     bool isPointAtGate(const cocos2d::Vec2 &worldPos) const;
 
+    //通关相关交互函数
+    void onMonsterKilled();
+    bool checkAllClear();
     void triggerLevelClear();
     void showVictoryBanner();
 
