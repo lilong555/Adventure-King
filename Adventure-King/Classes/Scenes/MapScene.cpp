@@ -118,7 +118,8 @@ void MapScene::enterMap(SceneID id) {
     auto loadingScene = LoadingScene::createScene(id);
 
     if (loadingScene) {
-        Director::getInstance()->replaceScene(loadingScene);
+        auto transition = TransitionFade::create(GameSceneConfig::Scene::MENU_TRANSITION_DURATION, loadingScene, Color3B::BLACK);
+        Director::getInstance()->replaceScene(transition);
     }
     else {
         _isTransitioning = false;

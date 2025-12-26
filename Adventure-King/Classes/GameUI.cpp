@@ -54,8 +54,8 @@ bool GameUI::init()
                              origin.y + visibleSize.height - GameSceneConfig::UI::BOSS_BAR_OFFSET_Y);
 
     // 地图按钮位置：右上角
-    _mapButtonPos = Vec2(origin.x + visibleSize.width  - GameSceneConfig::UI::MAP_BUTTON_OFFSET,
-                         origin.y + visibleSize.height  - GameSceneConfig::UI::MAP_BUTTON_OFFSET);
+    /*_mapButtonPos = Vec2(origin.x + visibleSize.width  - GameSceneConfig::UI::MAP_BUTTON_OFFSET,
+                         origin.y + visibleSize.height  - GameSceneConfig::UI::MAP_BUTTON_OFFSET);*/
 
     // 交互提示位置：屏幕底部中央
     _interactionHintPos = Vec2(origin.x + visibleSize.width / 2,
