@@ -476,7 +476,7 @@ void LevelMap::showVictoryBanner() {
             FadeIn::create(0.3f),
             nullptr
         ),
-        DelayTime::create(2.0f), // 停留两秒
+        DelayTime::create(3.0f), // 停留两秒
         FadeOut::create(0.5f),
         RemoveSelf::create(),
         nullptr
