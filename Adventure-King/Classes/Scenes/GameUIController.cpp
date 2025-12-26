@@ -14,6 +14,7 @@
 #include "Save/SaveData.h"
 #include "Save/SaveManager.h"
 #include "UI/PauseMenu.h"
+#include "UI/PlayerDeathMenu.h"
 #include "UI/InventoryLayer.h"
 #include "Configs/GameSceneConfig.h"
 
