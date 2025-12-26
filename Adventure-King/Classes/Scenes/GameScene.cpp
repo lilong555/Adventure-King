@@ -138,7 +138,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     // 步骤3：初始化玩家角色（从特定图层获取出生点）
     //-------------------------------------------------------------------------
     Vec2 playerStartPos = _levelMap ? _levelMap->getPlayerSpawnPoint(config.bornLayerName) : Vec2::ZERO;
-    initPlayer(playerStartPos, config.playerSpritePath);
+    initPlayer(playerStartPos);
 
     //-------------------------------------------------------------------------
     // 步骤4：初始化物理碰撞监听和输入
@@ -207,7 +207,7 @@ bool GameScene::initLevelMap(const LevelConfig &config)
     return true;
 }
 
-void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSpritePath)
+void GameScene::initPlayer(const Vec2 &startPos)
 {
     // 创建玩家角色：默认战士（WARRIOR）
     // - 若存在运行时存档（关卡切换/读档），以存档职业为准
@@ -230,11 +230,7 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
     }
 
     // 若存在运行时存档：优先按职业选择默认贴图，避免“职业已切换但贴图仍是默认 WARRIOR”
-    std::string spritePath = playerSpritePath;
-    if (spritePath.empty() || hasRuntimeData || hasSessionRole)
-    {
-        spritePath = PlayerRoleConfig::getDefaultSpritePath(role);
-    }
+    std::string spritePath = PlayerRoleConfig::getDefaultSpritePath(role);
 
     auto playerSprite = PlayerCharacter::create(role, spritePath);
     if (!playerSprite)

@@ -138,7 +138,7 @@ protected:
      * @param startPos 玩家起始位置
      * @param playerSpritePath 玩家贴图路径（为空则使用默认）
      */
-    virtual void initPlayer(const cocos2d::Vec2 &startPos, const std::string &playerSpritePath);
+    void initPlayer(const cocos2d::Vec2& startPos);
 
     /**
      * @brief 初始化物理碰撞监听器
