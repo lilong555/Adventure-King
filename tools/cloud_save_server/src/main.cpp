@@ -769,6 +769,8 @@ private:
 static void respondJson(httplib::Response &res, int statusCode, const std::string &json)
 {
     res.status = statusCode;
+    // 用于快速识别“是否命中正确服务”，排查端口冲突/反向代理等问题
+    res.set_header("X-AK-Server", "ak_cloud_save_server");
     res.set_header("Content-Type", "application/json; charset=utf-8");
     res.set_content(json, "application/json; charset=utf-8");
 }
@@ -837,6 +839,8 @@ static int64_t extractUploadedAtFromPackageJson(const std::string &json)
 static void respondHtml(httplib::Response &res, int statusCode, const std::string &html)
 {
     res.status = statusCode;
+    // 用于快速识别“是否命中正确服务”，排查端口冲突/反向代理等问题
+    res.set_header("X-AK-Server", "ak_cloud_save_server");
     res.set_header("Content-Type", "text/html; charset=utf-8");
     res.set_content(html, "text/html; charset=utf-8");
 }
@@ -844,7 +848,10 @@ static void respondHtml(httplib::Response &res, int statusCode, const std::strin
 struct Args
 {
     fs::path root = fs::path("cloud_data");
-    std::string host = "127.0.0.1";
+    // 默认监听 0.0.0.0：
+    // - WSL 场景下便于 Windows 通过 localhost/WSL IP 访问
+    // - 避免部分环境下绑定 127.0.0.1 失败而“服务瞬间退出”，导致访问命中其它程序（表现为 404/401）
+    std::string host = "0.0.0.0";
     int port = 5173;
     std::string adminToken;
 };
@@ -889,7 +896,7 @@ int main(int argc, char **argv)
     if (!parseArgs(argc, argv, args))
     {
         std::cout << "用法：ak_cloud_save_server --root <dir> --host <ip> --port <port>\n";
-        std::cout << "示例：ak_cloud_save_server --root ./cloud_data --host 127.0.0.1 --port 5173\n";
+        std::cout << "示例：ak_cloud_save_server --root ./cloud_data --host 0.0.0.0 --port 5173\n";
         std::cout << "管理：可选 --admin-token <token>；或设置环境变量 AK_CLOUD_ADMIN_TOKEN\n";
         return 1;
     }
@@ -1441,6 +1448,14 @@ int main(int argc, char **argv)
     std::cout << "Admin UI: http://" << args.host << ":" << args.port << "/admin\n";
     std::cout << "Admin token (X-AK-Admin-Token): " << args.adminToken << (adminTokenGenerated ? "  [auto-generated]" : "") << "\n";
 
-    svr.listen(args.host, args.port);
+    if (!svr.listen(args.host, args.port))
+    {
+        std::cerr << "[ERROR] 监听失败：host=" << args.host << " port=" << args.port << "\n";
+        std::cerr << "        可能原因：端口被占用 / host 不可用 / 权限不足。\n";
+        std::cerr << "        建议：\n";
+        std::cerr << "        1) 改用 --host 0.0.0.0（WSL 推荐）\n";
+        std::cerr << "        2) 换一个端口（例如 --port 5174）\n";
+        return 2;
+    }
     return 0;
 }

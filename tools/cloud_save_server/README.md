@@ -65,7 +65,7 @@ powershell -ExecutionPolicy Bypass -File .\build_win.ps1
 mkdir -p build
 cmake -S . -B build
 cmake --build build -j
-./build/ak_cloud_save_server --root ./cloud_data --host 127.0.0.1 --port 5173
+./build/ak_cloud_save_server --root ./cloud_data --host 0.0.0.0 --port 5173
 ```
 
 ## 与游戏联动（推荐流程）
@@ -137,6 +137,15 @@ Admin token (X-AK-Admin-Token): <token>
 - 查看历史版本列表
 - **回滚**到某个历史版本（会覆盖当前 package.json，并自动备份当前版本到 history）
 - **删除**用户（账号 + 云端数据，不可恢复）
+
+### 常见问题：打开能进 /admin，但“刷新失败：HTTP 404”
+
+这通常表示你访问到的 `5173` 端口**不是本服务**（端口被其它程序占用/代理到了别处），因此 `/api/admin/users` 不存在。
+
+排查方法：
+- 浏览器打开 `http://localhost:5173/`，应返回 JSON：`{"ok":true,"message":"Adventure-King Cloud Save Server"}`
+- 查看响应头应包含：`X-AK-Server: ak_cloud_save_server`
+- 若不是以上结果，请更换端口（例如 `--port 5174`）并更新游戏端服务地址
 
 ## API 快速验证（可选）
 
