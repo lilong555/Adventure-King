@@ -933,7 +933,7 @@ void LevelMap::spawnNextWave(ArenaConfig* arena, PlayerCharacter* player, Node* 
             auto monster = createMonsterByType(type);
             if (!monster) continue;
 
-            // 标记“竞技场怪物”：用于存档时排除（竞技场由波次状态恢复，避免复杂的逐只快照恢复）
+            // 标记“竞技场怪物”：用于存档时记录 arenaID（读档时可恢复“本波剩余怪物”，避免整波重刷）
             monster->setName("arena:" + arena->arenaID);
 
             // 随机选择竞技场内的刷怪点
