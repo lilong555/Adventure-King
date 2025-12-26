@@ -13,14 +13,14 @@ namespace PlayerRoleConfig
     {
         switch (role)
         {
+            //为使角色出生看起来正常将这里都初始化为待机贴图
         case CharacterRole::WARRIOR:
-            return "Sprites/Characters/Player/man/default/spr_man_run.png";
+            return "Sprites/Characters/Player/man/default/spr_man_idle_1.png";
         case CharacterRole::ASSASSIN:
-            // 刺客素材存在 run_1..run_n：优先使用 run_1 作为默认入口，避免 run.png 作为单帧时导致跑步动画闪一下
-            return "Sprites/Characters/Player/maaer/default/spr_maaer_run_1.png";
+            return "Sprites/Characters/Player/maaer/default/spr_maaer_idle_1.png";
         case CharacterRole::MAGE:
+            return "Sprites/Characters/Player/klee/default/spr_klee_idle_1.png";
         default:
-            // 目前“法师”沿用 Klee 的素材与技能实现
             return GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
         }
     }

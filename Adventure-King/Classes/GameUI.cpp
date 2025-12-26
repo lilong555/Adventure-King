@@ -54,16 +54,16 @@ bool GameUI::init()
                              origin.y + visibleSize.height - GameSceneConfig::UI::BOSS_BAR_OFFSET_Y);
 
     // 地图按钮位置：右上角
-    _mapButtonPos = Vec2(origin.x + visibleSize.width - padding - GameSceneConfig::UI::MAP_BUTTON_OFFSET,
-                         origin.y + visibleSize.height - padding - GameSceneConfig::UI::MAP_BUTTON_OFFSET);
+    /*_mapButtonPos = Vec2(origin.x + visibleSize.width  - GameSceneConfig::UI::MAP_BUTTON_OFFSET,
+                         origin.y + visibleSize.height  - GameSceneConfig::UI::MAP_BUTTON_OFFSET);*/
 
     // 交互提示位置：屏幕底部中央
     _interactionHintPos = Vec2(origin.x + visibleSize.width / 2,
                                origin.y + GameSceneConfig::UI::INTERACTION_HINT_OFFSET_Y);
 
     // 关卡名称位置：右上角（地图按钮下方）
-    _levelNamePos = Vec2(origin.x + visibleSize.width - GameSceneConfig::UI::LEVEL_NAME_OFFSET_X,
-                         origin.y + visibleSize.height - GameSceneConfig::UI::LEVEL_NAME_OFFSET_Y);
+    _levelNamePos = Vec2((origin.x + visibleSize.width)*0.5,
+        origin.y + visibleSize.height - GameSceneConfig::UI::LEVEL_NAME_OFFSET_Y);
 
     // 创建 UI 元素
     createPlayerStatusBar();
@@ -155,7 +155,7 @@ void GameUI::createMapButton()
 
     if (_mapButton)
     {
-        _mapButton->setScale(0.5f);
+        _mapButton->setScale(0.3f);
         _mapButton->setPosition(_mapButtonPos);
 
         _mapMenu = Menu::create(_mapButton, nullptr);

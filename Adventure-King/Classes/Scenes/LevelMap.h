@@ -67,6 +67,12 @@ public:
     /// @brief 判断点是否处于任意门区
     bool isPointAtGate(const cocos2d::Vec2 &worldPos) const;
 
+    //通关相关交互函数
+    void onMonsterKilled();
+    bool checkAllClear();
+    void triggerLevelClear();
+    void showVictoryBanner();
+
     /// @brief 读取刷怪点（enemy_g 对象组）
     void loadEnemySpawnPoints(const std::string &groupName = "enemy_g");
     /// @brief 根据视野与计时触发刷怪
@@ -126,7 +132,10 @@ public:
      * @param gameLayer 节点容器
      */
     void loadArenas(const std::string& layerName, cocos2d::Node* gameLayer);
-
+    /**
+     * @brief 最终状态检查
+     */
+    void finalizeInitialState();
     /**
      * @brief 每帧检测竞技场触发
      */
@@ -170,4 +179,7 @@ private:
     // 性能：避免每帧全量扫描生成点
     size_t _pendingEnemySpawnPoints = 0;
     float _enemySpawnCheckAccumulator = 0.0f;
+
+    int _currentActiveMonsters = 0; // 当前场景存活怪物数
+    bool _isLevelCleared = false;   // 关卡是否已通关
 };

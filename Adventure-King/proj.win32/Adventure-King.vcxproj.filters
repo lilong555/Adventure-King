@@ -467,6 +467,12 @@
     <ClInclude Include="..\Classes\Configs\CharacterAssetConfig.h">
       <Filter>src\Configs</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Utils\ParticleVfxHelper.h">
+      <Filter>src\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Utils\WeaponHitboxVfxHelper.h">
+      <Filter>src\Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="game.rc">

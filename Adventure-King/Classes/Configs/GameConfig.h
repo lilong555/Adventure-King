@@ -158,7 +158,7 @@ namespace GameConfig
         const int BOMB_ID = 1001;             // 炸弹技能ID
         const float BOMB_CD = 1.0f;           // 炸弹冷却时间
         const float BOMB_MP = 10.0f;          // 炸弹蓝耗
-        const float SPRITE_SCALE = 0.6f;      // 缩放比例
+        const float SPRITE_SCALE = 0.1f;      // 缩放比例
         const float THROW_SPEED_X = 300.0f;   // 水平投掷速度
         const float THROW_SPEED_Y = 350.0f;   // 垂直投掷速度
         const float EXPLOSION_RADIUS = 80.0f; // 爆炸半径
@@ -181,28 +181,7 @@ namespace GameConfig
         inline constexpr float DAMAGE_SCALE = 2.5f;
     }
 
-    namespace Warrior
-    {
-        // 战士主动技能：Fire（使用 Sprites/Characters/Player/man/fire 下的序列帧）
-        namespace FireSkill
-        {
-            const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
-            const float FIRE_CD = 1.0f;  // 冷却时间（秒）
-            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
-            inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
-
-            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
-            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
-            // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
-            inline constexpr int BREAK_DAMAGE = 3;
-
-            // 命中判定框：按战士自身尺寸倍数计算
-            inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
-            inline constexpr float HITBOX_HEIGHT_MULTIPLIER = 2.0f;
-            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
-            inline constexpr int HIT_TRIGGER_FRAME_INDEX = 3; // 第 3 帧开始触发伤害/特效
-        }
-    }
+    
 
     // --- 玩家配置 ---
     namespace Player
@@ -219,7 +198,7 @@ namespace GameConfig
         // 因此这里以 SCALE 为基准，按职业追加倍率做统一补偿。
         //
         // 注意：这是“素材尺寸补偿”，不是数值设计上的体型差异；后续若替换为统一尺寸素材，可将倍率调回 1.0。
-        inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 1.2f;
+        inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 1.0f;
         inline constexpr float ASSASSIN_SPRITE_SCALE_MULTIPLIER = 1.8f;
         // 刺客碰撞盒基础尺寸（未缩放）：
         // 由于刺客素材（700x370）横向留白较大，若按贴图尺寸比例生成碰撞盒会导致碰撞范围过宽。
@@ -301,180 +280,6 @@ namespace GameConfig
             inline constexpr int PASSIVE_POINTS_PER_LEVEL = 1; // 每次升级获得的被动技能点
         }
     }
-    namespace Monster
-    {
-        // 可以在这里放一些所有怪物通用的默认值（如果有的话）
-        namespace Base
-        {
-            inline constexpr float SCALE = 0.36f;
-            inline constexpr float ANCHOR_X = 0.5f;
-            inline constexpr float ANCHOR_Y = 0.0f;
-            inline constexpr float PHYSICS_BOX_RATIO_W = 0.35f;
-            inline constexpr float PHYSICS_BOX_RATIO_H = 0.9f;
-            inline constexpr float ACTIVE_UPDATE_DISTANCE_MULTIPLIER = 1.5f;
-            inline constexpr float AI_UPDATE_INTERVAL = 0.1f;
-            inline constexpr float AI_INACTIVE_UPDATE_INTERVAL = 0.3f;
-            inline constexpr float MOVE_UPDATE_INTERVAL = 0.033f;
-            inline constexpr float ATTACK_UPDATE_INTERVAL = 0.05f;
-            inline constexpr float HP_BAR_WIDTH = 60.0f;
-            inline constexpr float HP_BAR_HEIGHT = 8.0f;
-            inline constexpr float HP_BAR_Y_OFFSET = 10.0f;
-            inline constexpr float PATROL_REACH_EPSILON = 8.0f;
-            inline constexpr float CHASE_DEADZONE_X = 8.0f;
-            inline constexpr float FACE_DEADZONE_X = 8.0f;
-        }
-
-        // --- 哥布林 (Goblin) 专属配置 ---
-        namespace Goblin
-        {
-            // 基础属性
-            inline constexpr float MAX_HP = 1000.0f;
-            inline constexpr float MAX_MP = 0.0f; // 哥布林可能没蓝条
-            inline constexpr float STRENGTH = 10.0f;
-            inline constexpr float DEFENSE = 2.0f;
-            inline constexpr float CRITICAL_RATE = 0.05f;
-
-            // 经验奖励（按玩家等级简单缩放）
-            inline constexpr int EXP_REWARD_BASE = 20;
-            inline constexpr int EXP_REWARD_PER_LEVEL = 3;
-
-            // 移动与战斗
-            inline constexpr float MOVE_SPEED = 200.0f;    // 基础移速
-            inline constexpr float ATTACK_INTERVAL = 2.0f; // 攻击间隔 (秒)
-            inline constexpr float ATTACK_RANGE = 150.0f;  // 攻击距离 (像素)
-
-            // 视野/AI相关 (可选，建议也放在这)
-            inline constexpr float VISION_RANGE = 700.0f; // 索敌范围
-            inline constexpr float CHASE_RANGE = 0.0f;    // 追击范围 (0=不返回)
-            inline constexpr bool PATROL_ENABLED = true;
-
-            // HP 缩放
-            inline constexpr int HP_SCALE_BASE = 200;
-            inline constexpr int HP_SCALE_PER_LEVEL = 100;
-            inline constexpr int HP_SCALE_PER_10_LEVEL = 1000;
-            inline constexpr float HP_BAR_SCALE = 2.0f;
-
-            // 攻击动画/判定
-            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.1f;
-            inline constexpr int ATTACK_HIT_FRAME_INDEX = 3;
-            inline constexpr float ATTACK_HIT_FALLBACK_TIME = 0.4f;
-            inline constexpr float HITBOX_TUNE_SCALE = 0.6f;
-            inline constexpr float HITBOX_OFFSET_X = 100.0f;
-            inline constexpr float HITBOX_OFFSET_Y = 170.0f;
-            inline constexpr float HITBOX_WIDTH = 300.0f;
-            inline constexpr float HITBOX_HEIGHT = 20.0f;
-            inline constexpr float HITBOX_LIFE_SECONDS = 0.1f;
-            inline constexpr float WALK_ANIM_FRAME_DELAY = 0.15f;
-        }
-
-        // --- 哥布鲁 (Goblu) Boss 配置 ---
-        namespace Goblu
-        {
-            // 基础属性
-            inline constexpr float MAX_HP = 1500.0f;
-            inline constexpr float MAX_MP = 0.0f;
-            inline constexpr float STRENGTH = 25.0f;
-            inline constexpr float DEFENSE = 6.0f;
-            inline constexpr float CRITICAL_RATE = 0.08f;
-
-            // 经验奖励（Boss）
-            inline constexpr int EXP_REWARD_BASE = 200;
-            inline constexpr int EXP_REWARD_PER_LEVEL = 12;
-
-            // 移动与战斗
-            inline constexpr float MOVE_SPEED = 160.0f;
-            inline constexpr float ATTACK_INTERVAL = 1.5f;
-            inline constexpr float ATTACK_RANGE = 220.0f;
-
-            // 视野/AI 相关
-            inline constexpr float VISION_RANGE = 900.0f;
-            inline constexpr float CHASE_RANGE = 0.0f;
-            inline constexpr bool PATROL_ENABLED = true;
-
-            // Boss 体型/血条
-            inline constexpr float SCALE = 0.72f;
-            inline constexpr float SCALE_MULTIPLIER = 2.0f;
-            inline constexpr float HP_BAR_SCALE = 1.5f;
-            inline constexpr float PHYSICS_BOX_RATIO_W = 0.135f;
-
-            // 攻击动画/判定
-            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.3f;
-            inline constexpr float ATTACK_NEAR_GAP_THRESHOLD = 30.0f;
-            inline constexpr int ATTACK_HIT_FRAME_INDEX = 2;
-            inline constexpr float ATTACK_HIT_FALLBACK_TIME = ATTACK_ANIM_FRAME_DELAY * ATTACK_HIT_FRAME_INDEX;
-            inline constexpr float HITBOX_TUNE_SCALE = SCALE;
-            inline constexpr float HITBOX_OFFSET_X = 160.0f;
-            inline constexpr float HITBOX_OFFSET_Y = 170.0f;
-            inline constexpr float HITBOX_WIDTH = 380.0f;
-            inline constexpr float HITBOX_HEIGHT = 30.0f;
-            inline constexpr float HITBOX_LIFE_SECONDS = 0.12f;
-            inline constexpr float REMOTE_HITBOX_VFX_HOLD_SECONDS = 0.35f; // 远程攻击特效展示时间（碰撞禁用后仍保留节点）
-            inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
-
-            // 击破机制：满条后倒地 -> 起身（替代传统“受击硬直”）
-            inline constexpr int BREAK_MAX = 16;
-            inline constexpr float BREAK_FALL_ANIM_FRAME_DELAY = 0.12f;
-            inline constexpr float BREAK_DOWN_HOLD_SECONDS = 3.0f; // 倒地后在 fall_3 停留时间（可调）
-            inline constexpr float BREAK_RISE_ANIM_FRAME_DELAY = 0.12f;
-        }
-
-        // --- 黑暗法师 (Obscur) 普通怪物配置 ---
-        namespace Obscur
-        {
-            // 基础属性（可后续按数值体验再调）
-            inline constexpr float MAX_HP = 700.0f;
-            inline constexpr float MAX_MP = 0.0f;
-            inline constexpr float STRENGTH = 18.0f;
-            inline constexpr float DEFENSE = 4.0f;
-            inline constexpr float CRITICAL_RATE = 0.06f;
-
-            // 经验奖励（按玩家等级缩放）
-            inline constexpr int EXP_REWARD_BASE = 35;
-            inline constexpr int EXP_REWARD_PER_LEVEL = 4;
-
-            // 移动与战斗
-            inline constexpr float MOVE_SPEED = 170.0f;
-            inline constexpr float ATTACK_INTERVAL = 2.2f;
-            inline constexpr float ATTACK_RANGE = 520.0f;        // 最大攻击距离（用于远程冰）
-            inline constexpr float MELEE_TRIGGER_RANGE = 180.0f; // 小于该距离优先近战
-
-            // 视野/AI 相关
-            inline constexpr float VISION_RANGE = 850.0f;
-            inline constexpr float CHASE_RANGE = 0.0f;
-            inline constexpr bool PATROL_ENABLED = true;
-
-            // 体型/碰撞盒：要求像 Goblu 一样自定义“实际碰撞箱”
-            inline constexpr float SCALE = (1.5f) * Base::SCALE;
-            inline constexpr float HP_BAR_SCALE = 2.0f;
-            inline constexpr float PHYSICS_BOX_WIDTH = 235.0f;
-            inline constexpr float PHYSICS_BOX_HEIGHT = 449.0f;
-
-            // 动画帧间隔
-            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.20f; // Obscur_attack_1..4
-            inline constexpr float USEICE_ANIM_FRAME_DELAY = 0.12f; // Obscur_useice_1..2（循环）
-            inline constexpr float ICE_ANIM_FRAME_DELAY = 0.35f;    // Obscur_ice_1..5
-
-            // 近战命中判定：第 4 帧开始到第 4 帧结束
-            inline constexpr int MELEE_HIT_START_FRAME = 4;
-            inline constexpr int MELEE_HIT_END_FRAME = 4;
-            inline constexpr float MELEE_HITBOX_OFFSET_X = 50.0f;
-            inline constexpr float MELEE_HITBOX_OFFSET_Y = 50.0f;
-            inline constexpr float MELEE_HITBOX_WIDTH = 50.0f;
-            inline constexpr float MELEE_HITBOX_HEIGHT = 135.0f;
-
-            // 远程冰命中判定：冰动画第 3 帧开始到第 4 帧结束
-            inline constexpr int REMOTE_HIT_START_FRAME = 3;
-            inline constexpr int REMOTE_HIT_END_FRAME = 4;
-            inline constexpr float REMOTE_HITBOX_WIDTH = 50.0f;
-            inline constexpr float REMOTE_HITBOX_HEIGHT = 200.0f;
-        }
-
-        // --- 以后加 Boss 或者其他怪物 ---
-        namespace Slime
-        {
-            // ...
-        }
-    }
 
     namespace Klee
     {
@@ -483,7 +288,7 @@ namespace GameConfig
             // 击破值：普通攻击（TNT）每次命中对 Boss 击破条的累计值
             inline constexpr int BREAK_DAMAGE = 1;
             inline constexpr float ANIM_FRAME_DELAY = 0.13f;
-            inline constexpr float PROJECTILE_SCALE = 0.5f;
+            inline constexpr float BOMB_SCALE = 0.3f;
             inline constexpr float SPAWN_OFFSET_X_RATIO = 0.35f;
             inline constexpr float SPAWN_OFFSET_X = 20.0f;
             inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.15f;
@@ -498,7 +303,7 @@ namespace GameConfig
         {
             inline constexpr size_t SKILL_SLOT = 0;
             inline constexpr float CAST_ANIM_FRAME_DELAY = 0.04f;
-            inline constexpr float PROJECTILE_SCALE = 1.10f;
+            inline constexpr float FIREBALL_SCALE = 1.10f;
             inline constexpr float SPAWN_OFFSET_X_RATIO = 0.40f;
             inline constexpr float SPAWN_OFFSET_X = 25.0f;
             inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.20f;
@@ -553,6 +358,216 @@ namespace GameConfig
             inline constexpr const char* VFX_PLIST = "Particle/par_nap.plist";
             // 高手状态持续特效：只要出伤倍率仍在生效，就挂在角色身上循环播放
             inline constexpr const char* KEEP_VFX_PLIST = "Particle/par_nap_keep.plist";
+        }
+    }
+
+    namespace Warrior
+    {
+        // 普通攻击：挥砍（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
+        // 近战判定：持续时间越短越不容易误伤/重复命中
+        inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+        inline constexpr float HITBOX_DELAY_SECONDS = 0.05f; // 略微延迟，贴近挥砍动作
+
+        // 命中框尺寸（先用相对值占位，后续可按手感调参）
+        inline constexpr float HITBOX_WIDTH_RATIO = 0.55f;
+        inline constexpr float HITBOX_HEIGHT_RATIO = 0.75f;
+        inline constexpr float HITBOX_OFFSET_X_RATIO = 0.55f;
+        inline constexpr float HITBOX_OFFSET_Y = 8.0f;
+
+        // 主动技能：Fire（使用 Sprites/Characters/Player/man/fire 下的序列帧）
+        namespace FireSkill
+        {
+            const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
+            const float FIRE_CD = 1.0f;  // 冷却时间（秒）
+            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
+
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
+            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
+            // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
+            inline constexpr int BREAK_DAMAGE = 3;
+
+            // 命中判定框：按战士自身尺寸倍数计算
+            inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_HEIGHT_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+            inline constexpr int HIT_TRIGGER_FRAME_INDEX = 3; // 第 3 帧开始触发伤害/特效
+        }
+    }
+
+    namespace Monster
+    {
+        // 可以在这里放一些所有怪物通用的默认值（如果有的话）
+        namespace Base
+        {
+            inline constexpr float SCALE = 0.36f;
+            inline constexpr float ANCHOR_X = 0.5f;
+            inline constexpr float ANCHOR_Y = 0.0f;
+            inline constexpr float PHYSICS_BOX_RATIO_W = 0.35f;
+            inline constexpr float PHYSICS_BOX_RATIO_H = 0.9f;
+            inline constexpr float ACTIVE_UPDATE_DISTANCE_MULTIPLIER = 1.5f;
+            inline constexpr float AI_UPDATE_INTERVAL = 0.1f;
+            inline constexpr float AI_INACTIVE_UPDATE_INTERVAL = 0.3f;
+            inline constexpr float MOVE_UPDATE_INTERVAL = 0.033f;
+            inline constexpr float ATTACK_UPDATE_INTERVAL = 0.05f;
+            inline constexpr float HP_BAR_WIDTH = 60.0f;
+            inline constexpr float HP_BAR_HEIGHT = 8.0f;
+            inline constexpr float HP_BAR_Y_OFFSET = 10.0f;
+            inline constexpr float PATROL_REACH_EPSILON = 8.0f;
+            inline constexpr float CHASE_DEADZONE_X = 8.0f;
+            inline constexpr float FACE_DEADZONE_X = 8.0f;
+        }
+
+        // --- 哥布林 (Goblin) 专属配置 ---
+        namespace Goblin
+        {
+            // 基础属性
+            
+            inline constexpr float MAX_HP = 1.0f;//700 注意这只是缩放之前的基础数值 
+            inline constexpr float MAX_MP = 0.0f; // 哥布林可能没蓝条
+            inline constexpr float STRENGTH = 10.0f;
+            inline constexpr float DEFENSE = 2.0f;
+            inline constexpr float CRITICAL_RATE = 0.05f;
+            inline constexpr int HP_SCALE_BASE = 1.0f;         // 基础缩放倍率
+            inline constexpr int HP_SCALE_PER_LEVEL = 0.1f;    // 每级倍率增量
+            inline constexpr int HP_SCALE_PER_10_LEVEL = 0; // 每10级额外增量
+
+            // 经验奖励（按玩家等级简单缩放）
+            inline constexpr int EXP_REWARD_BASE = 20;
+            inline constexpr int EXP_REWARD_PER_LEVEL = 3;
+
+            // 移动与战斗
+            inline constexpr float MOVE_SPEED = 200.0f;    // 基础移速
+            inline constexpr float ATTACK_INTERVAL = 2.0f; // 攻击间隔 (秒)
+            inline constexpr float ATTACK_RANGE = 150.0f;  // 攻击距离 (像素)
+
+            // 视野/AI相关 (可选，建议也放在这)
+            inline constexpr float VISION_RANGE = 700.0f; // 索敌范围
+            inline constexpr float CHASE_RANGE = 0.0f;    // 追击范围 (0=不返回)
+            inline constexpr bool PATROL_ENABLED = true;
+
+            // HP 缩放          
+            inline constexpr float HP_BAR_SCALE = 3.0f;
+
+            // 攻击动画/判定
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.1f;
+            inline constexpr int ATTACK_HIT_FRAME_INDEX = 3;
+            inline constexpr float ATTACK_HIT_FALLBACK_TIME = 0.4f;
+            inline constexpr float HITBOX_TUNE_SCALE = 0.6f;
+            inline constexpr float HITBOX_OFFSET_X = 100.0f;
+            inline constexpr float HITBOX_OFFSET_Y = 170.0f;
+            inline constexpr float HITBOX_WIDTH = 300.0f;
+            inline constexpr float HITBOX_HEIGHT = 20.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.1f;
+            inline constexpr float WALK_ANIM_FRAME_DELAY = 0.15f;
+        }
+
+        // --- 哥布鲁 (Goblu) Boss 配置 ---
+        namespace Goblu
+        {
+            // 基础属性
+            inline constexpr float MAX_HP = 1.0f;  //1000
+            inline constexpr float MAX_MP = 0.0f;
+            inline constexpr float STRENGTH = 25.0f;
+            inline constexpr float DEFENSE = 6.0f;
+            inline constexpr float CRITICAL_RATE = 0.08f;
+
+            // 经验奖励（Boss）
+            inline constexpr int EXP_REWARD_BASE = 200;
+            inline constexpr int EXP_REWARD_PER_LEVEL = 12;
+
+            // 移动与战斗
+            inline constexpr float MOVE_SPEED = 160.0f;
+            inline constexpr float ATTACK_INTERVAL = 1.5f;
+            inline constexpr float ATTACK_RANGE = 220.0f;
+
+            // 视野/AI 相关
+            inline constexpr float VISION_RANGE = 900.0f;
+            inline constexpr float CHASE_RANGE = 0.0f;
+            inline constexpr bool PATROL_ENABLED = true;
+
+            // Boss 体型/血条
+            inline constexpr float SCALE = 0.72f;
+            inline constexpr float SCALE_MULTIPLIER = 2.0f;
+            inline constexpr float HP_BAR_SCALE = 1.5f;
+            inline constexpr float PHYSICS_BOX_RATIO_W = 0.135f;
+
+            // 攻击动画/判定
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.3f;
+            inline constexpr float ATTACK_NEAR_GAP_THRESHOLD = 30.0f;
+            inline constexpr int ATTACK_HIT_FRAME_INDEX = 2;
+            inline constexpr float ATTACK_HIT_FALLBACK_TIME = ATTACK_ANIM_FRAME_DELAY * ATTACK_HIT_FRAME_INDEX;
+            inline constexpr float HITBOX_TUNE_SCALE = SCALE;
+            inline constexpr float HITBOX_OFFSET_X = 160.0f;
+            inline constexpr float HITBOX_OFFSET_Y = 170.0f;
+            inline constexpr float HITBOX_WIDTH = 380.0f;
+            inline constexpr float HITBOX_HEIGHT = 30.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.12f;
+            inline constexpr float REMOTE_HITBOX_VFX_HOLD_SECONDS = 0.35f; // 远程攻击特效展示时间（碰撞禁用后仍保留节点）
+            inline constexpr float WALK_ANIM_FRAME_DELAY = 0.18f;
+
+            // 击破机制：满条后倒地 -> 起身（替代传统“受击硬直”）
+            inline constexpr int BREAK_MAX = 16;
+            inline constexpr float BREAK_FALL_ANIM_FRAME_DELAY = 0.12f;
+            inline constexpr float BREAK_DOWN_HOLD_SECONDS = 3.0f; // 倒地后在 fall_3 停留时间（可调）
+            inline constexpr float BREAK_RISE_ANIM_FRAME_DELAY = 0.12f;
+        }
+
+        // --- 黑暗法师 (Obscur) 普通怪物配置 ---
+        namespace Obscur
+        {
+            // 基础属性（可后续按数值体验再调）
+            inline constexpr float MAX_HP = 1.0f;//500
+            inline constexpr float MAX_MP = 0.0f;
+            inline constexpr float STRENGTH = 18.0f;
+            inline constexpr float DEFENSE = 4.0f;
+            inline constexpr float CRITICAL_RATE = 0.06f;
+
+            // 经验奖励（按玩家等级缩放）
+            inline constexpr int EXP_REWARD_BASE = 35;
+            inline constexpr int EXP_REWARD_PER_LEVEL = 4;
+
+            // 移动与战斗
+            inline constexpr float MOVE_SPEED = 170.0f;
+            inline constexpr float ATTACK_INTERVAL = 2.2f;
+            inline constexpr float ATTACK_RANGE = 520.0f;        // 最大攻击距离（用于远程冰）
+            inline constexpr float MELEE_TRIGGER_RANGE = 180.0f; // 小于该距离优先近战
+
+            // 视野/AI 相关
+            inline constexpr float VISION_RANGE = 850.0f;
+            inline constexpr float CHASE_RANGE = 0.0f;
+            inline constexpr bool PATROL_ENABLED = true;
+
+            // 体型/碰撞盒：要求像 Goblu 一样自定义“实际碰撞箱”
+            inline constexpr float SCALE = (1.5f) * Base::SCALE;
+            inline constexpr float HP_BAR_SCALE = 2.0f;
+            inline constexpr float PHYSICS_BOX_WIDTH = 235.0f;
+            inline constexpr float PHYSICS_BOX_HEIGHT = 449.0f;
+
+            // 动画帧间隔
+            inline constexpr float ATTACK_ANIM_FRAME_DELAY = 0.20f; // Obscur_attack_1..4
+            inline constexpr float USEICE_ANIM_FRAME_DELAY = 0.12f; // Obscur_useice_1..2（循环）
+            inline constexpr float ICE_ANIM_FRAME_DELAY = 0.35f;    // Obscur_ice_1..5
+
+            // 近战命中判定：第 4 帧开始到第 4 帧结束
+            inline constexpr int MELEE_HIT_START_FRAME = 4;
+            inline constexpr int MELEE_HIT_END_FRAME = 4;
+            inline constexpr float MELEE_HITBOX_OFFSET_X = 50.0f;
+            inline constexpr float MELEE_HITBOX_OFFSET_Y = 50.0f;
+            inline constexpr float MELEE_HITBOX_WIDTH = 50.0f;
+            inline constexpr float MELEE_HITBOX_HEIGHT = 135.0f;
+
+            // 远程冰命中判定：冰动画第 3 帧开始到第 4 帧结束
+            inline constexpr int REMOTE_HIT_START_FRAME = 3;
+            inline constexpr int REMOTE_HIT_END_FRAME = 4;
+            inline constexpr float REMOTE_HITBOX_WIDTH = 50.0f;
+            inline constexpr float REMOTE_HITBOX_HEIGHT = 200.0f;
+        }
+
+        // --- 以后加 Boss 或者其他怪物 ---
+        namespace Slime
+        {
+            // ...
         }
     }
 

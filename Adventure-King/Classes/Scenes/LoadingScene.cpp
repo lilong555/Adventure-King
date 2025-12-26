@@ -229,9 +229,20 @@ void LoadingScene::tryReplacePendingScene() {
         this->scheduleOnce([this](float) { this->tryReplacePendingScene(); }, 0.0f, "RetrySceneReplace");
         return;
     }
+    auto transition = TransitionFade::create(
+        GameSceneConfig::Scene::TRANSITION_DURATION,
+        _pendingDestinationScene,
+        Color3B::BLACK
+    );
 
-    // 执行最终替换
-    director->replaceScene(_pendingDestinationScene);
+    // 2. 执行替换
+    if (transition) {
+        director->replaceScene(transition);
+    }
+    else {
+        // 后备方案：如果过渡创建失败，直接替换
+        director->replaceScene(_pendingDestinationScene);
+    }
     _pendingDestinationScene->release(); // 释放 retain
     _pendingDestinationScene = nullptr;
 }

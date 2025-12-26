@@ -28,6 +28,7 @@ namespace ParticlePreloadHelper
             "Particle/par_warfire.plist",
             "Particle/par_warfire1.plist",
             "Particle/par_warfire_2.plist",
+            "Particle/portal_active.plist" 
         };
     }
 

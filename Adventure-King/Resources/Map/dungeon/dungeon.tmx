@@ -203,7 +203,7 @@
  <objectgroup id="5" name="collisions">
   <object id="1" x="480.433" y="6.1594" width="178.623" height="1435.14"/>
   <object id="3" x="468.114" y="1127.17" width="4792.01" height="86.2316"/>
-  <object id="4" x="5235.49" y="874.635" width="874.635" height="55.4346"/>
+  <object id="4" x="5235.49" y="874.635" width="874.635" height="35.4346"/>
   <object id="5" x="5549.62" y="511.23" width="868.475" height="30.797"/>
   <object id="7" x="5500.34" y="1238.04" width="2088.23" height="104.71"/>
   <object id="10" x="8056.49" y="1114.85" width="1151.81" height="123.188"/>
@@ -217,7 +217,7 @@
   </object>
  </objectgroup>
  <objectgroup id="9" name="ArenaLayer">
-  <object id="32" name="ArenaTrigger" x="2884" y="4" width="1272" height="1144">
+  <object id="32" name="ArenaTrigger" x="3256" y="4" width="524" height="1144">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaTrigger"/>
@@ -266,8 +266,8 @@
   <object id="18" x="7076" y="-164" width="340" height="752"/>
  </objectgroup>
  <objectgroup id="6" name="gate">
-  <object id="19" x="8960" y="464" width="236" height="660"/>
+  <object id="19" x="8960" y="668" width="236" height="456"/>
   <object id="20" x="708" y="496" width="156" height="640"/>
-  <object id="21" x="7144" y="664" width="264" height="600"/>
+  <object id="21" x="7144" y="904" width="264" height="360"/>
  </objectgroup>
 </map>

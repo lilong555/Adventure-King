@@ -12,6 +12,7 @@
 #include "json/document.h"
 #include "json/writer.h"
 #include "json/stringbuffer.h"
+#include"Utils/ParticleVfxHelper.h"
 #include <algorithm>
 #include <cctype>
 #include <climits>
@@ -64,7 +65,20 @@ bool LevelMap::load(Node *gameLayer, const std::string &tmxPath)
     CCLOG("LevelMap loaded: %s, tiles=%.0fx%.0f, pixels=%.0fx%.0f",
           tmxPath.c_str(), mapTileSize.width, mapTileSize.height,
           _mapSizeInPixels.width, _mapSizeInPixels.height);
+
     return true;
+}
+void LevelMap::finalizeInitialState() {
+    // 只有当所有数据读取完毕，这里的 size() 才是准确的
+    if (_enemySpawnPoints.empty() && _arenas.empty()) {
+        _isLevelCleared = true;
+        CCLOG("LevelMap: No combat configuration found. Portal activated by default.");
+    }
+    else {
+        _isLevelCleared = false;
+        CCLOG("LevelMap: Combat configuration detected (Spawns: %zu, Arenas: %zu). Portal locked.",
+            _enemySpawnPoints.size(), _arenas.size());
+    }
 }
 
 void LevelMap::setupRepeatingBackground(Node *gameLayer,
@@ -376,24 +390,103 @@ void LevelMap::loadGateAreas(const std::string& gateGroupName)
 
 bool LevelMap::isPointAtGate(const Vec2 &worldPos) const
 {
-    if (_gateAreas.empty())
-    {
-        return false;
-    }
+    // 如果关卡未清空，传送门不产生任何交互
+    if (!_isLevelCleared) return false;
+
+    if (_gateAreas.empty()) return false;
 
     for (const auto &gateRect : _gateAreas)
     {
-        if (gateRect.containsPoint(worldPos))
-        {
-            return true;
-        }
+        if (gateRect.containsPoint(worldPos)) return true;
     }
 
     return false;
 }
 
-void LevelMap::loadEnemySpawnPoints(const std::string &groupName)
+void LevelMap::onMonsterKilled() {
+    _currentActiveMonsters--; // 递减当前活跃怪物数
+
+    // 检查是否全清
+    if (checkAllClear()) {
+        triggerLevelClear();
+    }
+}
+
+bool LevelMap::checkAllClear() {
+    // 1. 检查普通怪和当前存活数
+    if (_currentActiveMonsters > 0 || _pendingEnemySpawnPoints > 0) return false;
+
+    // 2. 检查所有竞技场是否结束
+    for (auto& pair : _arenas) {
+        if (pair.second == nullptr) continue; // 必须进行非空检查
+        if (!pair.second->isFinished) return false;
+    }
+    return true;
+}
+
+//触发胜利逻辑
+void LevelMap::triggerLevelClear() {
+    // 1. 防重复触发判断
+    if (_isLevelCleared) return;
+    _isLevelCleared = true;
+
+    using namespace ParticleVfxHelper;
+
+    // 2. 为所有门区域播放激活特效
+    for (auto& rect : _gateAreas) {
+        // 配置播放参数
+        PlayOptions options;
+        options.zOrder = 10;                // 设置层级
+        options.useBodyCenter = false;      // 门是区域(Rect)，不使用物理体中心
+        options.position = Vec2(rect.getMidX(), rect.getMidY()); // 设置为区域中心
+        options.autoRemoveOnFinish = false; // 传送门通常需要一直存在，直到玩家离开
+        options.name = "active_portal";     // 命名方便后续可能的查找
+        options.useBodyCenter = false;
+        options.position = Vec2(rect.getMidX(), rect.getMidY());
+
+        // 3. 使用 Helper 统一创建播放
+        // playOnce 内部已包含对 plist 路径的判空保护，防止断言闪退
+        playOnce(_tileMap, "Particle/portal_active.plist", options, [](cocos2d::ParticleSystemQuad* p) {
+            // --- 在这里调整特效在游戏中的表现 ---
+            p->setScale(0.3f);      // 整体放大 0.3 倍
+            p->setDuration(-1);     // 设置为永久播放 (直到关卡切换)
+            p->resetSystem();       // 强制重新开始发射粒子
+            });
+    }
+
+    // 4. 调用 UI 提示
+    showVictoryBanner();
+
+    CCLOG("Level Clear Triggered. %d Portals Activated.", (int)_gateAreas.size());
+}
+void LevelMap::showVictoryBanner() {
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+
+    auto banner = Sprite::create("Scene/UI/ClearBanner.png");
+    banner->setPosition(visibleSize.width / 2, visibleSize.height*0.7f);
+    banner->setScale(0.0f);
+    banner->setOpacity(0);
+
+    // 获取当前场景的 UI 层并添加
+    Director::getInstance()->getRunningScene()->addChild(banner, 1000);
+
+    // 播放“丝之歌”风格的弹出效果
+    banner->runAction(Sequence::create(
+        Spawn::create(
+            EaseBackOut::create(ScaleTo::create(0.5f, 0.6f)), // 回弹缩放
+            FadeIn::create(0.3f),
+            nullptr
+        ),
+        DelayTime::create(3.0f), // 停留两秒
+        FadeOut::create(0.5f),
+        RemoveSelf::create(),
+        nullptr
+    ));
+}
+void LevelMap::loadEnemySpawnPoints(const std::string& groupName)
 {
+    _currentActiveMonsters = 0; // 确保全局计数器清零
+    _isLevelCleared = false;    // 确保清空状态复位
     _enemySpawnPoints.clear();
     _pendingEnemySpawnPoints = 0;
     _enemySpawnCheckAccumulator = 0.0f;
@@ -512,10 +605,6 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
         const float centerIndex = (static_cast<float>(count) - 1.0f) * 0.5f;
 
         spawnPoint.hasSpawned = true;
-        if (_pendingEnemySpawnPoints > 0)
-        {
-            _pendingEnemySpawnPoints--;
-        }
 
         for (int i = 0; i < count; ++i)
         {
@@ -527,20 +616,36 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
             // 分批延迟生成，避免同一帧刷出过多怪物造成卡顿。
             gameLayer->runAction(Sequence::create(
                 DelayTime::create(delaySeconds),
-                CallFunc::create([createMonsterByType, player, gameLayer, monsterType, monsterPos]()
-                                 {
-                                     if (!player || !gameLayer)
-                                         return;
+                CallFunc::create([this, createMonsterByType, player, gameLayer, monsterType, monsterPos, i]() // 捕获 i
+                    {
+                        if (!player || !gameLayer)
+                            return;
 
-                                     auto monster = createMonsterByType(monsterType);
-                                     if (!monster)
-                                         return;
+                        auto monster = createMonsterByType(monsterType);
+                        if (!monster) {
+                            // 【新增】如果怪物创建失败，也要扣除等待计数，防止逻辑卡死
+                            if (i == 0) this->_pendingEnemySpawnPoints--;
+                            return;
+                        }
 
-                                     monster->setPosition(monsterPos);
-                                     monster->setTarget(player);
-                                     monster->setHome(monsterPos);
-                                     gameLayer->addChild(monster, DEFAULT_CHARACTER_Z_ORDER);
-                                 }),
+                        // 【新增逻辑】只有当该点的第一个怪物真正生成时，才扣除“待生成点”计数
+                        if (i == 0) {
+                            this->_pendingEnemySpawnPoints--;
+                        }
+
+                        monster->setPosition(monsterPos);
+                        monster->setTarget(player);
+                        monster->setHome(monsterPos);
+                        gameLayer->addChild(monster, DEFAULT_CHARACTER_Z_ORDER);
+
+                        // --- 新增逻辑：绑定死亡回调 ---
+                        this->_currentActiveMonsters++; // 增加当前活跃怪物计数
+
+                        monster->setOnDeathCallback([this](CharacterBase* deadMonster) {
+                            // 怪物死亡时，调用 LevelMap 的统一处理函数
+                            this->onMonsterKilled();
+                            });
+                    }),
                 nullptr));
         }
     }
@@ -942,21 +1047,39 @@ void LevelMap::spawnNextWave(ArenaConfig* arena, PlayerCharacter* player, Node* 
             monster->setTarget(player);
             monster->setHome(spawnPos);
 
-            // --- 核心优化：使用 CharacterBase 的新接口 ---
+            // --- 修改点：增加全局计数 ---
+            this->_currentActiveMonsters++;
+
+            // --- 修改点：在死亡回调中加入全局结算通知 ---
             monster->setOnDeathCallback([this, arena, player, gameLayer, createMonsterByType](CharacterBase* deadChar) {
+                // 1. 竞技场内部计数递减
                 arena->activeMonstersCount--;
 
-                // 当本波所有怪死亡
+                // 2. 判定当前波次是否清理干净
                 if (arena->activeMonstersCount <= 0) {
                     arena->currentWaveIndex++;
 
-                    // 延迟进入下一波，给玩家喘息和拾取掉落的时间
-                    auto delay = DelayTime::create(1.5f);
-                    auto next = CallFunc::create([this, arena, player, gameLayer, createMonsterByType]() {
+                    // 判定：是否还有下一波？
+                    if (arena->currentWaveIndex < arena->waves.size()) {
+                        // 情况 A：还有下一波，执行延迟刷新
+                        auto delay = DelayTime::create(1.5f);
+                        auto next = CallFunc::create([this, arena, player, gameLayer, createMonsterByType]() {
+                            this->spawnNextWave(arena, player, gameLayer, createMonsterByType);
+                            });
+                        gameLayer->runAction(Sequence::create(delay, next, nullptr));
+                    }
+                    else {
+                        // 情况 B：竞技场彻底结束，立即标记
+                        arena->isFinished = true;
+                        CCLOG("Arena [%s] All Waves Cleared!", arena->arenaID.c_str());
+
+                        // 可选：在这里立即调用 spawnNextWave 里的“开门逻辑”
                         this->spawnNextWave(arena, player, gameLayer, createMonsterByType);
-                        });
-                    gameLayer->runAction(Sequence::create(delay, next, nullptr));
+                    }
                 }
+
+                // 3.最后通知全局系统，此时 isFinished 状态已同步
+                this->onMonsterKilled();
                 });
 
             gameLayer->addChild(monster, DEFAULT_CHARACTER_Z_ORDER);

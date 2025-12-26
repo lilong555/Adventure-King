@@ -166,7 +166,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     // 步骤3：初始化玩家角色（从特定图层获取出生点）
     //-------------------------------------------------------------------------
     Vec2 playerStartPos = _levelMap ? _levelMap->getPlayerSpawnPoint(config.bornLayerName) : Vec2::ZERO;
-    initPlayer(playerStartPos, config.playerSpritePath);
+    initPlayer(playerStartPos);
 
     //-------------------------------------------------------------------------
     // 步骤4：初始化物理碰撞监听和输入
@@ -376,15 +376,17 @@ bool GameScene::initLevelMap(const LevelConfig &config)
     _levelMap->loadEnemySpawnPoints("enemy_g");
     // --- 新增：加载连战竞技场数据 ---
     _levelMap->loadArenas("ArenaLayer", _gameLayer);
+    //最终状态检查
+    _levelMap->finalizeInitialState();
     return true;
 }
 
-void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSpritePath)
+void GameScene::initPlayer(const Vec2 &startPos)
 {
-    // 创建玩家角色：默认法师（Klee）
+    // 创建玩家角色：默认战士（WARRIOR）
     // - 若存在运行时存档（关卡切换/读档），以存档职业为准
     // - 否则若存在会话职业选择（主菜单新开局），以会话选择为准
-    CharacterRole role = CharacterRole::MAGE;
+    CharacterRole role = CharacterRole::WARRIOR;
     bool hasRuntimeData = false;
     bool hasSessionRole = false;
     if (auto saveManager = SaveManager::getInstance())
@@ -401,12 +403,8 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
         }
     }
 
-    // 若存在运行时存档：优先按职业选择默认贴图，避免“职业已切换但贴图仍是默认 Klee”
-    std::string spritePath = playerSpritePath;
-    if (spritePath.empty() || hasRuntimeData || hasSessionRole)
-    {
-        spritePath = PlayerRoleConfig::getDefaultSpritePath(role);
-    }
+    // 若存在运行时存档：优先按职业选择默认贴图，避免“职业已切换但贴图仍是默认 WARRIOR”
+    std::string spritePath = PlayerRoleConfig::getDefaultSpritePath(role);
 
     auto playerSprite = PlayerCharacter::create(role, spritePath);
     if (!playerSprite)

@@ -19,15 +19,7 @@ USING_NS_CC;
 
 namespace
 {
-    // 近战判定：持续时间越短越不容易误伤/重复命中
-    constexpr float HITBOX_LIFE_SECONDS = 0.10f;
-    constexpr float HITBOX_DELAY_SECONDS = 0.05f; // 略微延迟，贴近挥砍动作
 
-    // 命中框尺寸（先用相对值占位，后续可按手感调参）
-    constexpr float HITBOX_WIDTH_RATIO = 0.55f;
-    constexpr float HITBOX_HEIGHT_RATIO = 0.75f;
-    constexpr float HITBOX_OFFSET_X_RATIO = 0.55f;
-    constexpr float HITBOX_OFFSET_Y = 8.0f;
 
 	    bool rollCritical(PlayerCharacter& player)
 	    {
@@ -323,21 +315,21 @@ bool WarriorSkillSet::tryNormalAttack(PlayerCharacter& player, const std::functi
 
                     const float damage = player.getAttackPower();
                     const Rect box = player.getBoundingBox();
-                    const float w = std::max(10.0f, box.size.width * HITBOX_WIDTH_RATIO);
-                    const float h = std::max(10.0f, box.size.height * HITBOX_HEIGHT_RATIO);
+                    const float w = std::max(10.0f, box.size.width * GameConfig::Warrior::HITBOX_WIDTH_RATIO);
+                    const float h = std::max(10.0f, box.size.height * GameConfig::Warrior::HITBOX_HEIGHT_RATIO);
 
                     const float dirX = player.isFlippedX() ? -1.0f : 1.0f;
-                    const float cx = box.getMidX() + dirX * (box.size.width * HITBOX_OFFSET_X_RATIO);
-                    const float cy = box.getMidY() + HITBOX_OFFSET_Y;
+                    const float cx = box.getMidX() + dirX * (box.size.width * GameConfig::Warrior::HITBOX_OFFSET_X_RATIO);
+                    const float cy = box.getMidY() + GameConfig::Warrior::HITBOX_OFFSET_Y;
 
                     player.spawnPlayerAttackHitbox(Vec2(cx, cy),
                                                    Size(w, h),
                                                    damage,
                                                    isCrit,
-                                                   HITBOX_LIFE_SECONDS,
+                        GameConfig::Warrior::HITBOX_LIFE_SECONDS,
                                                    GameConfig::Combat::BREAK_DAMAGE_NORMAL);
                 },
-                HITBOX_DELAY_SECONDS,
+                GameConfig::Warrior::HITBOX_DELAY_SECONDS,
                 "warrior_melee_hitbox");
 
             player.attackAnimated(done);

@@ -40,6 +40,6 @@
   <object id="9" x="1850" y="2" width="200" height="728"/>
  </objectgroup>
  <objectgroup id="3" name="gates">
-  <object id="10" name="Gate" x="1414" y="554" width="106" height="148"/>
+  <object id="10" name="Gate" x="1414" y="480" width="156" height="222"/>
  </objectgroup>
 </map>

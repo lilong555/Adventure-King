@@ -55,13 +55,36 @@ struct LevelConfig
              constexpr float BAR_BOTTOM_PADDING = 22.0f;
              constexpr float BAR_FILL_PADDING = 2.0f; // 统一管理
          }
+         namespace RoleSelectLayer {
+            // ==========================================================
+            // 布局常量（集中管理，避免散落“魔法数字”）
+            // ==========================================================
+             constexpr int kOverlayAlpha = 160;
+             constexpr float kPanelWidthRatio = 0.80f;
+             constexpr float kPanelHeightRatio = 0.65f;
+             constexpr float kMaxPanelWidth = 900.0f;
+             constexpr float kMaxPanelHeight = 520.0f;
+             constexpr float kTitleTopPadding = 18.0f;
+
+             constexpr float kPreviewXRatio = 0.72f;
+             constexpr float kPreviewBottomRatio = 0.18f;
+             constexpr float kPreviewHeightRatio = 0.62f;
+
+             constexpr float kRoleListXRatio = 0.10f;
+             constexpr float kRoleListTopRatio = 0.70f;
+             constexpr float kRoleListGap = 58.0f;
+
+             constexpr float kActionYRatio = 0.12f;
+             constexpr float kConfirmXRatio = 0.35f;
+             constexpr float kCancelXRatio = 0.55f;
+         }
      }
 
 
      namespace Scene
      {
          const char* const DEFAULT_FONT_PATH = "fonts/ZCOOLKuaiLe-Regular.ttf";
-         const char* const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/Klee/default/spr_klee_run.png";
+         const char* const DEFAULT_PLAYER_SPRITE = "Sprites/Characters/Player/man/default/spr_man_run.png";
          const char* const MAP_LOAD_FAILED_TEXT = " - Map Load Failed";
          // 场景切换
          inline constexpr float TRANSITION_DURATION = 0.5f;
@@ -98,7 +121,7 @@ struct LevelConfig
          inline constexpr float MAP_BUTTON_OFFSET = 40.0f;
          inline constexpr float INTERACTION_HINT_OFFSET_Y = 80.0f;
          inline constexpr float LEVEL_NAME_OFFSET_X = 100.0f;
-         inline constexpr float LEVEL_NAME_OFFSET_Y = 100.0f;
+         inline constexpr float LEVEL_NAME_OFFSET_Y = 50.0f;
 
          namespace MainMenu
          {
