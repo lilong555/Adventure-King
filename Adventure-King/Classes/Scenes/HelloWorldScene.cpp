@@ -501,7 +501,7 @@ void HelloWorld::menuMapCallback(Ref *pSender)
     }
 
     auto transition = TransitionFade::create(GameSceneConfig::Scene::MENU_TRANSITION_DURATION, mapScene, Color3B::BLACK);
-    Director::getInstance()->pushScene(transition);
+    Director::getInstance()->replaceScene(transition);
 }
 void HelloWorld::menuSetCallback(Ref *pSender)
 {

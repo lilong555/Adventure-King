@@ -181,28 +181,7 @@ namespace GameConfig
         inline constexpr float DAMAGE_SCALE = 2.5f;
     }
 
-    namespace Warrior
-    {
-        // 战士主动技能：Fire（使用 Sprites/Characters/Player/man/fire 下的序列帧）
-        namespace FireSkill
-        {
-            const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
-            const float FIRE_CD = 1.0f;  // 冷却时间（秒）
-            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
-            inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
-
-            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
-            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
-            // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
-            inline constexpr int BREAK_DAMAGE = 3;
-
-            // 命中判定框：按战士自身尺寸倍数计算
-            inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
-            inline constexpr float HITBOX_HEIGHT_MULTIPLIER = 2.0f;
-            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
-            inline constexpr int HIT_TRIGGER_FRAME_INDEX = 3; // 第 3 帧开始触发伤害/特效
-        }
-    }
+    
 
     // --- 玩家配置 ---
     namespace Player
@@ -556,6 +535,12 @@ namespace GameConfig
         }
     }
     namespace Warrior {
+        
+    }
+
+    namespace Warrior
+    {
+        // 普通攻击：挥砍（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
         // 近战判定：持续时间越短越不容易误伤/重复命中
         inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
         inline constexpr float HITBOX_DELAY_SECONDS = 0.05f; // 略微延迟，贴近挥砍动作
@@ -565,7 +550,28 @@ namespace GameConfig
         inline constexpr float HITBOX_HEIGHT_RATIO = 0.75f;
         inline constexpr float HITBOX_OFFSET_X_RATIO = 0.55f;
         inline constexpr float HITBOX_OFFSET_Y = 8.0f;
+
+        // 主动技能：Fire（使用 Sprites/Characters/Player/man/fire 下的序列帧）
+        namespace FireSkill
+        {
+            const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
+            const float FIRE_CD = 1.0f;  // 冷却时间（秒）
+            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
+
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
+            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
+            // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
+            inline constexpr int BREAK_DAMAGE = 3;
+
+            // 命中判定框：按战士自身尺寸倍数计算
+            inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_HEIGHT_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+            inline constexpr int HIT_TRIGGER_FRAME_INDEX = 3; // 第 3 帧开始触发伤害/特效
+        }
     }
+
     namespace StatusEffect
     {
         namespace Burning

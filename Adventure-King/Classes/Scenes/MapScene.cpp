@@ -1,6 +1,7 @@
 #include "MapScene.h"
 #include "Managers/SceneRegistry.h"
 #include "Scenes/LoadingScene.h"
+#include"Scenes/HelloWorldScene.h"
 #include "Managers/MusicManager.h"
 
 USING_NS_CC;
@@ -50,17 +51,17 @@ bool MapScene::init() {
     }
 
     // 3. UI 层（关闭按钮）
-    auto closeItem = MenuItemImage::create(
-        "Scene/UI/CloseSaveMenu.png",
-        "Scene/UI/CloseSaveMenuSelected.png",
-        CC_CALLBACK_1(MapScene::mapCloseCallback, this));
+    //auto closeItem = MenuItemImage::create(
+    //    "Scene/UI/CloseSaveMenu.png",
+    //    "Scene/UI/CloseSaveMenuSelected.png",
+    //    CC_CALLBACK_1(MapScene::mapCloseCallback, this));
 
-    if (closeItem) {
-        closeItem->setPosition(Vec2(origin.x + visibleSize.width, origin.y + visibleSize.height));
-        auto menu = Menu::create(closeItem, nullptr);
-        menu->setPosition(Vec2::ZERO);
-        this->addChild(menu, 100);
-    }
+    //if (closeItem) {
+    //    closeItem->setPosition(Vec2(origin.x + visibleSize.width, origin.y + visibleSize.height));
+    //    auto menu = Menu::create(closeItem, nullptr);
+    //    menu->setPosition(Vec2::ZERO);
+    //    this->addChild(menu, 100);
+    //}
 
     // 4. 交互监听
     auto mouseListener = EventListenerMouse::create();
@@ -79,6 +80,16 @@ bool MapScene::init() {
         }
         };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
+
+    // --- 新增：键盘监听 ---
+    auto keyListener = EventListenerKeyboard::create();
+    keyListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event* event) {
+        if (keyCode == EventKeyboard::KeyCode::KEY_ESCAPE) {
+            CCLOG("MapScene: Esc pressed, returning to Main Menu.");
+            this->mapCloseCallback(nullptr);
+        }
+        };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyListener, this);
 
     return true;
 }
@@ -119,5 +130,18 @@ void MapScene::onMapMarkerClicked(SceneID id) {
 }
 
 void MapScene::mapCloseCallback(Ref* pSender) {
-    Director::getInstance()->popScene();
+    if (_isTransitioning) return;
+    _isTransitioning = true;
+
+    CCLOG("MapScene: Transitioning back to HelloWorld");
+
+    // 强制 replace 回主菜单并释放 MapScene 资源防止pop堆积
+    auto helloWorld = HelloWorld::createScene();
+    if (helloWorld) {
+        auto transition = TransitionFade::create(GameSceneConfig::Scene::MENU_TRANSITION_DURATION, helloWorld, Color3B::BLACK);
+        Director::getInstance()->replaceScene(transition);
+    } else {
+        _isTransitioning = false;
+    }
+    
 }
