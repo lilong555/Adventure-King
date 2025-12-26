@@ -95,8 +95,9 @@ bool CloudAuthLayer::init(const DoneCallback &cb)
     // URL
     addRowLabel("服务地址", startY);
     // 默认用 127.0.0.1 强制走 IPv4，避免 Windows 下 localhost 解析到 IPv6/其它本机服务导致偶发 404/401
-    _urlField = ui::TextField::create("http://127.0.0.1:5173", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
-    _urlField->setString("http://127.0.0.1:5173");
+    // 默认端口使用 5174：5173 常被前端工具（例如 Vite）占用，容易产生端口冲突
+    _urlField = ui::TextField::create("http://127.0.0.1:5174", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    _urlField->setString("http://127.0.0.1:5174");
     styleTextField(_urlField, startY);
 
     // 用户名

@@ -55,7 +55,6 @@ if errorlevel 1 (
 echo [完成] 已生成：%OUT_EXE%
 echo.
 echo 运行示例：
-echo   %OUT_EXE% --root E:\ak_cloud_data --host 127.0.0.1 --port 5173
+echo   %OUT_EXE% --root E:\ak_cloud_data --host 127.0.0.1 --port 5174
 echo.
 exit /b 0
-

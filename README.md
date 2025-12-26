@@ -29,14 +29,14 @@ cd ~/code/fansqim/tools/cloud_save_server
 
 默认行为：
 - 自动用 `g++` 编译生成 `ak_cloud_save_server`
-- 监听 `0.0.0.0:5173`
+- 监听 `0.0.0.0:5174`
 - 数据落盘到 `tools/cloud_save_server/cloud_data/`
 
 可选：把云存数据目录放到你已挂载的远端盘（例如 `~/mnt/ecs/...`），用于演示“云端落盘”：
 
 ```bash
 export AK_CLOUD_SERVER_ROOT="$HOME/mnt/ecs/adventure-king-cloud"
-export AK_CLOUD_SERVER_PORT=5173
+export AK_CLOUD_SERVER_PORT=5174
 ./run_wsl.sh
 ```
 
@@ -46,13 +46,13 @@ export AK_CLOUD_SERVER_PORT=5173
 
 通常情况下，WSL2 在 Windows 上可直接通过：
 
-`http://localhost:5173`
+`http://127.0.0.1:5174`
 
-访问到 WSL 内监听 `0.0.0.0:5173` 的服务。  
+访问到 WSL 内监听 `0.0.0.0:5174` 的服务。  
 若你的系统不支持 localhost 转发，请在 Windows 端改用 WSL 的 IP（自行在本机查询，不要写进仓库）：
 
 - 在 WSL 执行：`hostname -I`
-- 然后在游戏里输入：`http://<wsl-ip>:5173`
+- 然后在游戏里输入：`http://<wsl-ip>:5174`
 
 ### 3) 游戏端使用方式（主菜单）
 
@@ -60,7 +60,7 @@ export AK_CLOUD_SERVER_PORT=5173
 
 - **游客登录（禁用云存）**：选择后云端功能会被禁用（存档菜单会显示“云端：游客模式”）
 - **登录/注册**：弹出窗口输入：
-  - 服务地址：`http://localhost:5173`（或你的 WSL IP）
+  - 服务地址：`http://127.0.0.1:5174`（或你的 WSL IP）
   - 用户名：`3~32` 位，仅支持 `字母/数字/下划线`
   - 密码：至少 `6` 位
 
@@ -78,7 +78,7 @@ export AK_CLOUD_SERVER_PORT=5173
 
 云存服务端提供一个简单的管理页面（用于开发/演示）：
 
-- 打开：`http://localhost:5173/admin`
+- 打开：`http://127.0.0.1:5174/admin`
 - 管理员 Token：服务端启动日志会打印  
   `Admin token (X-AK-Admin-Token): <token>`  
   把该 token 填到页面顶部输入框即可执行 **删除用户/回滚历史版本**。

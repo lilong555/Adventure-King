@@ -24,27 +24,27 @@
 
 默认会：
 - 自动用 `g++` 编译生成 `ak_cloud_save_server`
-- 监听 `0.0.0.0:5173`（Win 端游戏可直接用 `http://localhost:5173` 访问）
+- 监听 `0.0.0.0:5174`（Win 端游戏可直接用 `http://127.0.0.1:5174` 访问）
 - 数据落盘到 `tools/cloud_save_server/cloud_data/`
 
 你也可以用环境变量覆盖默认值：
 
 ```bash
 export AK_CLOUD_SERVER_ROOT="$HOME/mnt/ecs/adventure-king-cloud"
-export AK_CLOUD_SERVER_PORT=5173
+export AK_CLOUD_SERVER_PORT=5174
 ./run_wsl.sh
 ```
 
 #### WSL ↔ Windows 访问说明
 
-通常 Windows 可通过 `http://localhost:5173` 访问到 WSL 内监听的服务。  
+通常 Windows 可通过 `http://127.0.0.1:5174` 访问到 WSL 内监听的服务。  
 若你的系统不支持 localhost 转发，请在 Windows 端改用 WSL IP（自行查询，不要写进仓库）：
 
 ```bash
 hostname -I
 ```
 
-然后在游戏中输入 `http://<wsl-ip>:5173`。
+然后在游戏中输入 `http://<wsl-ip>:5174`。
 
 ### Windows（推荐：无需安装 CMake）
 
@@ -65,7 +65,7 @@ powershell -ExecutionPolicy Bypass -File .\build_win.ps1
 mkdir -p build
 cmake -S . -B build
 cmake --build build -j
-./build/ak_cloud_save_server --root ./cloud_data --host 0.0.0.0 --port 5173
+./build/ak_cloud_save_server --root ./cloud_data --host 0.0.0.0 --port 5174
 ```
 
 ## 与游戏联动（推荐流程）
@@ -80,7 +80,7 @@ WSL 里执行 `./run_wsl.sh` 后保持窗口运行即可。
 
 - **游客登录（禁用云存）**：启用后云端功能直接禁用（存档菜单显示“云端：游客模式”）
 - **登录/注册**：弹窗输入：
-  - 服务地址：`http://localhost:5173`（或你的 WSL IP）
+  - 服务地址：`http://127.0.0.1:5174`（或你的 WSL IP）
   - 用户名：`3~32` 位，仅支持 `字母/数字/下划线`
   - 密码：至少 `6` 位
 
@@ -130,7 +130,7 @@ Admin token (X-AK-Admin-Token): <token>
 
 打开管理页面：
 
-- `http://localhost:5173/admin`（或 `http://<wsl-ip>:5173/admin`）
+- `http://127.0.0.1:5174/admin`（或 `http://<wsl-ip>:5174/admin`）
 
 将 token 填入页面顶部输入框后即可：
 - 查看用户列表与当前存档包预览
@@ -140,10 +140,10 @@ Admin token (X-AK-Admin-Token): <token>
 
 ### 常见问题：打开能进 /admin，但“刷新失败：HTTP 404”
 
-这通常表示你访问到的 `5173` 端口**不是本服务**（端口被其它程序占用/代理到了别处），因此 `/api/admin/users` 不存在。
+这通常表示你访问到的 `5174` 端口**不是本服务**（端口被其它程序占用/代理到了别处），因此 `/api/admin/users` 不存在。
 
 排查方法：
-- 浏览器打开 `http://localhost:5173/`，应返回 JSON：`{"ok":true,"message":"Adventure-King Cloud Save Server"}`
+- 浏览器打开 `http://127.0.0.1:5174/`，应返回 JSON：`{"ok":true,"message":"Adventure-King Cloud Save Server"}`
 - 查看响应头应包含：`X-AK-Server: ak_cloud_save_server`
 - 若不是以上结果，请更换端口（例如 `--port 5174`）并更新游戏端服务地址
 
@@ -152,11 +152,11 @@ Admin token (X-AK-Admin-Token): <token>
 服务运行后，在 WSL 中可用 `curl` 进行快速验证：
 
 ```bash
-curl -sS -X POST http://127.0.0.1:5173/api/register \
+curl -sS -X POST http://127.0.0.1:5174/api/register \
   -H 'Content-Type: application/json' \
   -d '{"username":"user_01","password":"123456"}'
 
-curl -sS -X POST http://127.0.0.1:5173/api/login \
+curl -sS -X POST http://127.0.0.1:5174/api/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"user_01","password":"123456"}'
 ```
@@ -165,7 +165,7 @@ curl -sS -X POST http://127.0.0.1:5173/api/login \
 
 如果你不想每次打开游戏都在 UI 里登录，也可以在运行游戏前设置环境变量（仅建议开发机使用）：
 
-- `AK_CLOUD_SYNC_URL`：例如 `http://localhost:5173`
+- `AK_CLOUD_SYNC_URL`：例如 `http://127.0.0.1:5174`
 - `AK_CLOUD_SYNC_USER`：用户名
 - `AK_CLOUD_SYNC_PASS`：密码
 

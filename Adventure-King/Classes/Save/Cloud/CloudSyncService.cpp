@@ -252,7 +252,7 @@ bool CloudSyncService::isConfigured(std::string *outHint) const
         {
             oss << "未配置云端同步。\n\n";
             oss << "请设置环境变量：\n";
-            oss << "- AK_CLOUD_SYNC_URL（例如 http://127.0.0.1:5173）\n";
+            oss << "- AK_CLOUD_SYNC_URL（例如 http://127.0.0.1:5174）\n";
             oss << "- AK_CLOUD_SYNC_USER（用户名）\n";
             oss << "- AK_CLOUD_SYNC_PASS（密码）\n\n";
             oss << "当前缺失： " << err;

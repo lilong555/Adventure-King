@@ -852,7 +852,7 @@ struct Args
     // - WSL 场景下便于 Windows 通过 localhost/WSL IP 访问
     // - 避免部分环境下绑定 127.0.0.1 失败而“服务瞬间退出”，导致访问命中其它程序（表现为 404/401）
     std::string host = "0.0.0.0";
-    int port = 5173;
+    int port = 5174;
     std::string adminToken;
 };
 
@@ -896,7 +896,7 @@ int main(int argc, char **argv)
     if (!parseArgs(argc, argv, args))
     {
         std::cout << "用法：ak_cloud_save_server --root <dir> --host <ip> --port <port>\n";
-        std::cout << "示例：ak_cloud_save_server --root ./cloud_data --host 0.0.0.0 --port 5173\n";
+        std::cout << "示例：ak_cloud_save_server --root ./cloud_data --host 0.0.0.0 --port 5174\n";
         std::cout << "管理：可选 --admin-token <token>；或设置环境变量 AK_CLOUD_ADMIN_TOKEN\n";
         return 1;
     }
@@ -930,6 +930,19 @@ int main(int argc, char **argv)
     }
 
     httplib::Server svr;
+    // 重要：禁用 SO_REUSEPORT，避免在 Linux/WSL 下多个进程“同时绑定同一端口”。
+    // 否则会出现：同端口跑了多个云存服务实例，内存态 token 不共享，导致客户端随机命中不同实例 → 频繁“登录失效”；
+    // 也可能随机命中旧实例 → 管理页/接口 404 或表现为“断连”。
+    svr.set_socket_options([](socket_t sock) {
+#ifdef _WIN32
+        // Windows 下 cpp-httplib 默认行为已经是互斥绑定（SO_EXCLUSIVEADDRUSE）
+        httplib::default_socket_options(sock);
+#else
+        int yes = 1;
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const void *>(&yes), sizeof(yes));
+        // 不设置 SO_REUSEPORT（保持默认 false）
+#endif
+    });
 
     svr.Get("/", [](const httplib::Request &, httplib::Response &res) {
         const std::string body = R"({"ok":true,"message":"Adventure-King Cloud Save Server"})";

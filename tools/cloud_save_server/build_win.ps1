@@ -65,7 +65,7 @@ try {
   Write-Info "Built: $outExe"
   Write-Host ""
   Write-Host "Run example:" -ForegroundColor Green
-  Write-Host "  $outExe --root E:\ak_cloud_data --host 127.0.0.1 --port 5173"
+  Write-Host "  $outExe --root E:\ak_cloud_data --host 127.0.0.1 --port 5174"
   Write-Host ""
 }
 catch {
