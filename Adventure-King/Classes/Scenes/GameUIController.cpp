@@ -5,11 +5,16 @@
 
 #include "Scenes/GameUIController.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Character/components/AttributeComponent.h"
 #include "GameUI.h"
 #include "Scenes/HelloWorldScene.h"
+#include "Scenes/LoadingScene.h"
 #include "Scenes/Layers/SaveMenuLayer.h"
+#include "Managers/SceneRegistry.h"
 #include "Save/SaveData.h"
+#include "Save/SaveManager.h"
 #include "UI/PauseMenu.h"
+#include "UI/PlayerDeathMenu.h"
 #include "UI/InventoryLayer.h"
 #include "Configs/GameSceneConfig.h"
 
@@ -174,6 +179,84 @@ bool GameUIController::init(Scene *scene,
                                     });
     }
 
+    // 角色死亡菜单（强制暂停）
+    if (auto deathMenu = _gameUI->getDeathMenu())
+    {
+        // 重新挑战：复活到满血满蓝并缓存运行时数据，然后通过 LoadingScene 重进当前关卡
+        deathMenu->setRestartCallback([this, levelName, deathMenu]()
+                                      {
+                                          if (deathMenu)
+                                          {
+                                              // 先隐藏死亡菜单，避免在转场淡入淡出期间残留显示
+                                              deathMenu->hideImmediately();
+                                          }
+
+                                          if (_player)
+                                          {
+                                              // 死亡时 HP=0 会被缓存，导致重进关卡立刻死亡；这里先复活到满血满蓝
+                                              // 说明：SaveManager::cacheRuntimePlayerData 会把当前 HP/MP 一并缓存，
+                                              // 若不先复活到满血满蓝，重进关卡会沿用 0 血状态并立刻触发死亡菜单。
+                                              if (auto attr = _player->getAttributeComponent())
+                                              {
+                                                  _player->setCurrentHP(attr->getAttributeValue(AttributeType::MAX_HP));
+                                                  _player->setCurrentMP(attr->getAttributeValue(AttributeType::MAX_MP));
+                                              }
+                                          }
+
+                                          if (auto saveManager = SaveManager::getInstance())
+                                          {
+                                              saveManager->cacheRuntimePlayerData(_player);
+                                              saveManager->clearRuntimePlayerPosition();
+                                          }
+
+                                          SceneID targetID = SceneID::NONE;
+                                          if (auto registry = SceneRegistry::getInstance())
+                                          {
+                                              targetID = registry->getSceneIDByName(levelName);
+                                          }
+                                          if (targetID == SceneID::NONE)
+                                          {
+                                              CCLOG("GameUIController - 重新挑战失败：未找到关卡 [%s] 的 SceneID", levelName.c_str());
+                                              return;
+                                          }
+
+                                          auto loadingScene = LoadingScene::createScene(targetID);
+                                          if (!loadingScene)
+                                          {
+                                              CCLOG("GameUIController - 重新挑战失败：LoadingScene 创建失败");
+                                              return;
+                                          }
+
+                                          float duration = GameSceneConfig::Scene::TRANSITION_DURATION;
+                                          auto transition = TransitionFade::create(duration, loadingScene, Color3B::BLACK);
+                                          Director::getInstance()->replaceScene(transition);
+                                      });
+
+        // 返回地图：复活到满血满蓝（避免缓存 0 血），然后走外部回调
+        deathMenu->setReturnToMapCallback([this, deathMenu]()
+                                          {
+                                              if (deathMenu)
+                                              {
+                                                  // 先隐藏死亡菜单，避免在转场淡入淡出期间残留显示
+                                                  deathMenu->hideImmediately();
+                                              }
+
+                                              if (_player)
+                                              {
+                                                  if (auto attr = _player->getAttributeComponent())
+                                                  {
+                                                      _player->setCurrentHP(attr->getAttributeValue(AttributeType::MAX_HP));
+                                                      _player->setCurrentMP(attr->getAttributeValue(AttributeType::MAX_MP));
+                                                  }
+                                              }
+
+                                              if (_onReturnToMap)
+                                              {
+                                                  _onReturnToMap();
+                                              }
+                                          });
+    }
+
     _scene->addChild(_gameUI, UI_Z_ORDER);
     CCLOG("GameUI initialized for level: %s", levelName.c_str());
 
@@ -219,6 +302,12 @@ void GameUIController::togglePauseMenu()
     if (!_gameUI)
         return;
 
+    // 角色死亡菜单显示时不允许打开/关闭暂停菜单，避免误恢复游戏
+    if (_gameUI->isDeathMenuShowing())
+    {
+        return;
+    }
+
     // 若背包界面正在显示，Esc 优先关闭背包并回到暂停菜单
     if (_gameUI->isInventoryShowing())
     {
@@ -252,4 +341,34 @@ void GameUIController::togglePauseMenu()
         }
         CCLOG("Game paused");
     }
+}
+
+void GameUIController::showDeathMenu()
+{
+    if (!_gameUI)
+    {
+        return;
+    }
+
+    // 死亡菜单为强制暂停：先关闭其它 UI，避免重叠
+    if (_gameUI->isInventoryShowing())
+    {
+        _gameUI->hideInventory();
+    }
+    if (_gameUI->isPauseMenuShowing())
+    {
+        _gameUI->hidePauseMenu();
+    }
+
+    _gameUI->showDeathMenu();
+    _paused = true;
+    if (_onPauseChanged)
+    {
+        _onPauseChanged(true);
+    }
+}
+
+bool GameUIController::isDeathMenuShowing() const
+{
+    return _gameUI && _gameUI->isDeathMenuShowing();
 }

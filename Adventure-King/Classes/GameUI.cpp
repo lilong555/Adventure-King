@@ -8,6 +8,7 @@
 #include "UI/SkillBar.h"
 #include "UI/BossHealthBar.h"
 #include "UI/PauseMenu.h"
+#include "UI/PlayerDeathMenu.h"
 #include "UI/InventoryLayer.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/Base/CharacterBase.h"
@@ -72,6 +73,7 @@ bool GameUI::init()
     createInteractionHint();
     createLevelNameLabel();
     createPauseMenu();
+    createDeathMenu();
     createInventoryLayer();
 
     CCLOG("GameUI initialized with all components");
@@ -121,6 +123,16 @@ void GameUI::createPauseMenu()
     if (_pauseMenu)
     {
         this->addChild(_pauseMenu, 100); // 最高层级
+    }
+}
+
+void GameUI::createDeathMenu()
+{
+    _deathMenu = PlayerDeathMenu::create();
+    if (_deathMenu)
+    {
+        // 高于背包/暂停菜单，避免死亡时仍能操作其它 UI
+        this->addChild(_deathMenu, 200);
     }
 }
 
@@ -244,6 +256,27 @@ void GameUI::hidePauseMenu()
 bool GameUI::isPauseMenuShowing() const
 {
     return _pauseMenu && _pauseMenu->isShowing();
+}
+
+void GameUI::showDeathMenu()
+{
+    if (_deathMenu)
+    {
+        _deathMenu->show();
+    }
+}
+
+void GameUI::hideDeathMenu()
+{
+    if (_deathMenu)
+    {
+        _deathMenu->hide();
+    }
+}
+
+bool GameUI::isDeathMenuShowing() const
+{
+    return _deathMenu && _deathMenu->isShowing();
 }
 
 void GameUI::showInventory()
