@@ -204,6 +204,9 @@
     <ClCompile Include="..\Classes\UI\PauseMenu.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\UI\PlayerDeathMenu.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\UI\PlayerStatusBar.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
@@ -357,6 +360,9 @@
       <Filter>src\UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\UI\PauseMenu.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\UI\PlayerDeathMenu.h">
       <Filter>src\UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\UI\PlayerStatusBar.h">

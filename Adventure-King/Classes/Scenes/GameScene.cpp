@@ -538,6 +538,23 @@ void GameScene::onContactSeparate(PhysicsContact &contact)
 
 void GameScene::update(float dt)
 {
+    //-------------------------------------------------------------------------
+    // 角色死亡：强制暂停并弹出选择菜单
+    //-------------------------------------------------------------------------
+    if (!_isPaused && _player && _player->isDead())
+    {
+        if (_uiController && !_uiController->isDeathMenuShowing())
+        {
+            _uiController->showDeathMenu();
+        }
+        // 死亡状态下仅刷新 UI（世界已冻结）
+        if (_uiController)
+        {
+            _uiController->update(dt);
+        }
+        return;
+    }
+
     if (_isPaused)
     {
         if (_uiController)

@@ -33,6 +33,11 @@ public:
     /// @brief 当前是否暂停
     bool isPaused() const { return _paused; }
 
+    /// @brief 显示角色死亡菜单（强制暂停）
+    void showDeathMenu();
+    /// @brief 死亡菜单是否显示中
+    bool isDeathMenuShowing() const;
+
     /// @brief 获取 GameUI 对象
     GameUI *getGameUI() const { return _gameUI; }
 
