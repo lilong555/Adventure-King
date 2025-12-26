@@ -534,9 +534,6 @@ namespace GameConfig
             inline constexpr const char* KEEP_VFX_PLIST = "Particle/par_nap_keep.plist";
         }
     }
-    namespace Warrior {
-        
-    }
 
     namespace Warrior
     {

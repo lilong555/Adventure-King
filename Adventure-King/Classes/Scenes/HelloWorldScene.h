@@ -49,7 +49,7 @@ public:
 
 private:
     // 主菜单会话内的职业选择：用于“新开局”
-    CharacterRole _selectedRole = CharacterRole::MAGE;
+    CharacterRole _selectedRole = CharacterRole::WARRIOR;
     cocos2d::Label* _roleHintLabel = nullptr;
 
     void updateRoleHintLabel();
@@ -64,6 +64,9 @@ private:
     void hideRoleSelectLayer(bool restoreStartButton);
     void refreshRolePreview();
     void startGameWithSelectedRole();
+
+    virtual void onEnter() override;
+    virtual void onExit() override;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

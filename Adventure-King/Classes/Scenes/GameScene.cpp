@@ -202,6 +202,8 @@ bool GameScene::initLevelMap(const LevelConfig &config)
     _levelMap->loadEnemySpawnPoints("enemy_g");
     // --- 新增：加载连战竞技场数据 ---
     _levelMap->loadArenas("ArenaLayer", _gameLayer);
+    //最终状态检查
+    _levelMap->finalizeInitialState();
     return true;
 }
 

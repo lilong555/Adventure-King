@@ -63,7 +63,20 @@ bool LevelMap::load(Node *gameLayer, const std::string &tmxPath)
     CCLOG("LevelMap loaded: %s, tiles=%.0fx%.0f, pixels=%.0fx%.0f",
           tmxPath.c_str(), mapTileSize.width, mapTileSize.height,
           _mapSizeInPixels.width, _mapSizeInPixels.height);
+
     return true;
+}
+void LevelMap::finalizeInitialState() {
+    // 只有当所有数据读取完毕，这里的 size() 才是准确的
+    if (_enemySpawnPoints.empty() && _arenas.empty()) {
+        _isLevelCleared = true;
+        CCLOG("LevelMap: No combat configuration found. Portal activated by default.");
+    }
+    else {
+        _isLevelCleared = false;
+        CCLOG("LevelMap: Combat configuration detected (Spawns: %zu, Arenas: %zu). Portal locked.",
+            _enemySpawnPoints.size(), _arenas.size());
+    }
 }
 
 void LevelMap::setupRepeatingBackground(Node *gameLayer,

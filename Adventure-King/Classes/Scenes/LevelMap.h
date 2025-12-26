@@ -84,7 +84,10 @@ public:
      * @param gameLayer 节点容器
      */
     void loadArenas(const std::string& layerName, cocos2d::Node* gameLayer);
-
+    /**
+     * @brief 最终状态检查
+     */
+    void finalizeInitialState();
     /**
      * @brief 每帧检测竞技场触发
      */
@@ -129,7 +132,6 @@ private:
     size_t _pendingEnemySpawnPoints = 0;
     float _enemySpawnCheckAccumulator = 0.0f;
 
-    const float ENEMY_SPAWN_CHECK_INTERVAL = 0.5f; // 每0.5秒检查一次刷怪
     int _currentActiveMonsters = 0; // 当前场景存活怪物数
     bool _isLevelCleared = false;   // 关卡是否已通关
 };
