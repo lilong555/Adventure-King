@@ -198,7 +198,7 @@ namespace GameConfig
         // 因此这里以 SCALE 为基准，按职业追加倍率做统一补偿。
         //
         // 注意：这是“素材尺寸补偿”，不是数值设计上的体型差异；后续若替换为统一尺寸素材，可将倍率调回 1.0。
-        inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 1.2f;
+        inline constexpr float WARRIOR_SPRITE_SCALE_MULTIPLIER = 1.0f;
         inline constexpr float ASSASSIN_SPRITE_SCALE_MULTIPLIER = 1.8f;
         // 刺客碰撞盒基础尺寸（未缩放）：
         // 由于刺客素材（700x370）横向留白较大，若按贴图尺寸比例生成碰撞盒会导致碰撞范围过宽。
@@ -280,6 +280,121 @@ namespace GameConfig
             inline constexpr int PASSIVE_POINTS_PER_LEVEL = 1; // 每次升级获得的被动技能点
         }
     }
+
+    namespace Klee
+    {
+        namespace NormalAttack
+        {
+            // 击破值：普通攻击（TNT）每次命中对 Boss 击破条的累计值
+            inline constexpr int BREAK_DAMAGE = 1;
+            inline constexpr float ANIM_FRAME_DELAY = 0.13f;
+            inline constexpr float BOMB_SCALE = 0.3f;
+            inline constexpr float SPAWN_OFFSET_X_RATIO = 0.35f;
+            inline constexpr float SPAWN_OFFSET_X = 20.0f;
+            inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.15f;
+            inline constexpr float SPAWN_OFFSET_Y = 0.0f;
+            inline constexpr float EXPLOSION_VFX_SCALE = 0.8f;
+            inline constexpr float EXPLOSION_VFX_SCALE_UP_DURATION = 0.2f;
+            inline constexpr float EXPLOSION_VFX_SCALE_UP_FACTOR = 1.2f;
+            inline constexpr float EXPLOSION_VFX_FADE_OUT_DURATION = 0.3f;
+        }
+
+        namespace FireballSkill
+        {
+            inline constexpr size_t SKILL_SLOT = 0;
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.04f;
+            inline constexpr float FIREBALL_SCALE = 1.10f;
+            inline constexpr float SPAWN_OFFSET_X_RATIO = 0.40f;
+            inline constexpr float SPAWN_OFFSET_X = 25.0f;
+            inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.20f;
+            inline constexpr float SPAWN_OFFSET_Y = 0.0f;
+            inline constexpr float LOOP_ANIM_DELAY = 0.08f;
+            inline constexpr float EXPLOSION_FRAME_DELAY = 0.05f;
+            inline constexpr float EXPLOSION_FRAME_SCALE = 0.9f;
+        }
+    }
+
+    // --- 刺客配置 ---
+    namespace Assassin
+    {
+        // 近战技能：斩击（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
+        namespace SlashSkill
+        {
+            const int SLASH_ID = 1003;   // 斩击技能ID
+            const float SLASH_CD = 0.8f; // 冷却时间
+            const float SLASH_MP = 0.0f; // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 0;
+            // 击破值：斩击是 4 段伤害（每帧一次），这里按“每段命中”累计（可按技能单独调参）
+            inline constexpr int BREAK_DAMAGE_PER_HIT = 1;
+
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f;
+            inline constexpr float DAMAGE_SCALE = 1.2f; // 基于攻击力的倍率
+
+            // 命中判定框：相对角色包围盒比例（可调参）
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+            inline constexpr float HITBOX_DELAY_SECONDS = 0.05f;
+            inline constexpr float HITBOX_WIDTH_RATIO = 0.60f;
+            inline constexpr float HITBOX_HEIGHT_RATIO = 0.70f;
+            inline constexpr float HITBOX_OFFSET_X_RATIO = 0.35f;
+            inline constexpr float HITBOX_OFFSET_Y = 6.0f;
+        }
+
+        // 主动技能：孤注一掷
+        // 效果：将生命降到 1 点，并进入“高手状态”（增伤）
+        namespace AllInSkill
+        {
+            const int ALL_IN_ID = 1005;     // 孤注一掷技能ID
+            const float ALL_IN_DURATION = 15.0f; // 持续时间（秒）
+            const float ALL_IN_CD = 15.0f;       // 冷却时间（秒）
+            const float ALL_IN_MP = 0.0f;   // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 1; // 默认放在 Q 槽位
+            // 击破值：该技能不造成伤害，因此永远为 0
+            inline constexpr int BREAK_DAMAGE = 0;
+
+            // 1000% 增伤：伤害提升 1000%，即最终伤害为原始伤害的 1100%（11 倍）
+            inline constexpr float DAMAGE_MULTIPLIER = 11.0f;
+            inline constexpr float MIN_HP_AFTER_CAST = 1.0f;
+
+            inline constexpr const char* VFX_PLIST = "Particle/par_nap.plist";
+            // 高手状态持续特效：只要出伤倍率仍在生效，就挂在角色身上循环播放
+            inline constexpr const char* KEEP_VFX_PLIST = "Particle/par_nap_keep.plist";
+        }
+    }
+
+    namespace Warrior
+    {
+        // 普通攻击：挥砍（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
+        // 近战判定：持续时间越短越不容易误伤/重复命中
+        inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+        inline constexpr float HITBOX_DELAY_SECONDS = 0.05f; // 略微延迟，贴近挥砍动作
+
+        // 命中框尺寸（先用相对值占位，后续可按手感调参）
+        inline constexpr float HITBOX_WIDTH_RATIO = 0.55f;
+        inline constexpr float HITBOX_HEIGHT_RATIO = 0.75f;
+        inline constexpr float HITBOX_OFFSET_X_RATIO = 0.55f;
+        inline constexpr float HITBOX_OFFSET_Y = 8.0f;
+
+        // 主动技能：Fire（使用 Sprites/Characters/Player/man/fire 下的序列帧）
+        namespace FireSkill
+        {
+            const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
+            const float FIRE_CD = 1.0f;  // 冷却时间（秒）
+            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
+            inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
+
+            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
+            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
+            // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
+            inline constexpr int BREAK_DAMAGE = 3;
+
+            // 命中判定框：按战士自身尺寸倍数计算
+            inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_HEIGHT_MULTIPLIER = 2.0f;
+            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
+            inline constexpr int HIT_TRIGGER_FRAME_INDEX = 3; // 第 3 帧开始触发伤害/特效
+        }
+    }
+
     namespace Monster
     {
         // 可以在这里放一些所有怪物通用的默认值（如果有的话）
@@ -452,120 +567,6 @@ namespace GameConfig
         namespace Slime
         {
             // ...
-        }
-    }
-
-    namespace Klee
-    {
-        namespace NormalAttack
-        {
-            // 击破值：普通攻击（TNT）每次命中对 Boss 击破条的累计值
-            inline constexpr int BREAK_DAMAGE = 1;
-            inline constexpr float ANIM_FRAME_DELAY = 0.13f;
-            inline constexpr float BOMB_SCALE = 0.3f;
-            inline constexpr float SPAWN_OFFSET_X_RATIO = 0.35f;
-            inline constexpr float SPAWN_OFFSET_X = 20.0f;
-            inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.15f;
-            inline constexpr float SPAWN_OFFSET_Y = 0.0f;
-            inline constexpr float EXPLOSION_VFX_SCALE = 0.8f;
-            inline constexpr float EXPLOSION_VFX_SCALE_UP_DURATION = 0.2f;
-            inline constexpr float EXPLOSION_VFX_SCALE_UP_FACTOR = 1.2f;
-            inline constexpr float EXPLOSION_VFX_FADE_OUT_DURATION = 0.3f;
-        }
-
-        namespace FireballSkill
-        {
-            inline constexpr size_t SKILL_SLOT = 0;
-            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.04f;
-            inline constexpr float FIREBALL_SCALE = 1.10f;
-            inline constexpr float SPAWN_OFFSET_X_RATIO = 0.40f;
-            inline constexpr float SPAWN_OFFSET_X = 25.0f;
-            inline constexpr float SPAWN_OFFSET_Y_RATIO = 0.20f;
-            inline constexpr float SPAWN_OFFSET_Y = 0.0f;
-            inline constexpr float LOOP_ANIM_DELAY = 0.08f;
-            inline constexpr float EXPLOSION_FRAME_DELAY = 0.05f;
-            inline constexpr float EXPLOSION_FRAME_SCALE = 0.9f;
-        }
-    }
-
-    // --- 刺客配置 ---
-    namespace Assassin
-    {
-        // 近战技能：斩击（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
-        namespace SlashSkill
-        {
-            const int SLASH_ID = 1003;   // 斩击技能ID
-            const float SLASH_CD = 0.8f; // 冷却时间
-            const float SLASH_MP = 0.0f; // 蓝耗（暂不消耗）
-            inline constexpr size_t SKILL_SLOT = 0;
-            // 击破值：斩击是 4 段伤害（每帧一次），这里按“每段命中”累计（可按技能单独调参）
-            inline constexpr int BREAK_DAMAGE_PER_HIT = 1;
-
-            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f;
-            inline constexpr float DAMAGE_SCALE = 1.2f; // 基于攻击力的倍率
-
-            // 命中判定框：相对角色包围盒比例（可调参）
-            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
-            inline constexpr float HITBOX_DELAY_SECONDS = 0.05f;
-            inline constexpr float HITBOX_WIDTH_RATIO = 0.60f;
-            inline constexpr float HITBOX_HEIGHT_RATIO = 0.70f;
-            inline constexpr float HITBOX_OFFSET_X_RATIO = 0.35f;
-            inline constexpr float HITBOX_OFFSET_Y = 6.0f;
-        }
-
-        // 主动技能：孤注一掷
-        // 效果：将生命降到 1 点，并进入“高手状态”（增伤）
-        namespace AllInSkill
-        {
-            const int ALL_IN_ID = 1005;     // 孤注一掷技能ID
-            const float ALL_IN_DURATION = 15.0f; // 持续时间（秒）
-            const float ALL_IN_CD = 15.0f;       // 冷却时间（秒）
-            const float ALL_IN_MP = 0.0f;   // 蓝耗（暂不消耗）
-            inline constexpr size_t SKILL_SLOT = 1; // 默认放在 Q 槽位
-            // 击破值：该技能不造成伤害，因此永远为 0
-            inline constexpr int BREAK_DAMAGE = 0;
-
-            // 1000% 增伤：伤害提升 1000%，即最终伤害为原始伤害的 1100%（11 倍）
-            inline constexpr float DAMAGE_MULTIPLIER = 11.0f;
-            inline constexpr float MIN_HP_AFTER_CAST = 1.0f;
-
-            inline constexpr const char* VFX_PLIST = "Particle/par_nap.plist";
-            // 高手状态持续特效：只要出伤倍率仍在生效，就挂在角色身上循环播放
-            inline constexpr const char* KEEP_VFX_PLIST = "Particle/par_nap_keep.plist";
-        }
-    }
-
-    namespace Warrior
-    {
-        // 普通攻击：挥砍（使用 Sprites/Characters/Player/maaer/slash 下的序列帧）
-        // 近战判定：持续时间越短越不容易误伤/重复命中
-        inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
-        inline constexpr float HITBOX_DELAY_SECONDS = 0.05f; // 略微延迟，贴近挥砍动作
-
-        // 命中框尺寸（先用相对值占位，后续可按手感调参）
-        inline constexpr float HITBOX_WIDTH_RATIO = 0.55f;
-        inline constexpr float HITBOX_HEIGHT_RATIO = 0.75f;
-        inline constexpr float HITBOX_OFFSET_X_RATIO = 0.55f;
-        inline constexpr float HITBOX_OFFSET_Y = 8.0f;
-
-        // 主动技能：Fire（使用 Sprites/Characters/Player/man/fire 下的序列帧）
-        namespace FireSkill
-        {
-            const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
-            const float FIRE_CD = 1.0f;  // 冷却时间（秒）
-            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
-            inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
-
-            inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
-            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
-            // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
-            inline constexpr int BREAK_DAMAGE = 3;
-
-            // 命中判定框：按战士自身尺寸倍数计算
-            inline constexpr float HITBOX_WIDTH_MULTIPLIER = 2.0f;
-            inline constexpr float HITBOX_HEIGHT_MULTIPLIER = 2.0f;
-            inline constexpr float HITBOX_LIFE_SECONDS = 0.10f;
-            inline constexpr int HIT_TRIGGER_FRAME_INDEX = 3; // 第 3 帧开始触发伤害/特效
         }
     }
 

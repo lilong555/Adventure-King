@@ -209,10 +209,10 @@ bool GameScene::initLevelMap(const LevelConfig &config)
 
 void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSpritePath)
 {
-    // 创建玩家角色：默认法师（Klee）
+    // 创建玩家角色：默认战士（WARRIOR）
     // - 若存在运行时存档（关卡切换/读档），以存档职业为准
     // - 否则若存在会话职业选择（主菜单新开局），以会话选择为准
-    CharacterRole role = CharacterRole::MAGE;
+    CharacterRole role = CharacterRole::WARRIOR;
     bool hasRuntimeData = false;
     bool hasSessionRole = false;
     if (auto saveManager = SaveManager::getInstance())
@@ -229,7 +229,7 @@ void GameScene::initPlayer(const Vec2 &startPos, const std::string &playerSprite
         }
     }
 
-    // 若存在运行时存档：优先按职业选择默认贴图，避免“职业已切换但贴图仍是默认 Klee”
+    // 若存在运行时存档：优先按职业选择默认贴图，避免“职业已切换但贴图仍是默认 WARRIOR”
     std::string spritePath = playerSpritePath;
     if (spritePath.empty() || hasRuntimeData || hasSessionRole)
     {

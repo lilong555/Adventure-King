@@ -114,7 +114,7 @@ protected:
     // 状态显示栏
     cocos2d::DrawNode *_statusBarBg = nullptr;
     cocos2d::Label *_statusLabel = nullptr;
-    float _statusBarHeight = 16.0f;
+    float _statusBarHeight = 24.0f;
 
     // 配置参数
     float _barWidth = 200.0f;

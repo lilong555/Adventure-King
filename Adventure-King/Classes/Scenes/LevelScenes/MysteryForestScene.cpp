@@ -3,7 +3,6 @@
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include"Character/Monster/Monsters/ObscurMonster.h"
 #include"Configs/CharacterAssetConfig.h"
-#include"Save/SaveManager.h"
 #include "Configs/GameConfig.h"
 #include "Managers/SceneRegistry.h"
 USING_NS_CC;
@@ -104,17 +103,17 @@ void MysteryForestScene::setupRegistry()
 
     // 4. 通过静态接口合并角色/怪物资源路径
 
-// 获取当前选择的职业
-    CharacterRole currentRole = CharacterRole::MAGE; // 给个默认值
-    auto saveManager = SaveManager::getInstance();
-    if (saveManager && saveManager->hasSessionSelectedRole()) {
-        // 从全局单例中读取在 HelloWorld 界面选好的职业
-        currentRole = saveManager->getSessionSelectedRole();
-    }
+// 加载战士素材
+    auto warriorPaths = AssetRes::getSelectedRolePaths(CharacterRole::WARRIOR);
+    paths.insert(paths.end(), warriorPaths.begin(), warriorPaths.end());
 
-    // 3. 调用第一步定义的辅助函数
-    auto playerPaths = AssetRes::getSelectedRolePaths(currentRole);
-    paths.insert(paths.end(), playerPaths.begin(), playerPaths.end());
+    // 加载法师素材
+    auto magePaths = AssetRes::getSelectedRolePaths(CharacterRole::MAGE);
+    paths.insert(paths.end(), magePaths.begin(), magePaths.end());
+
+    // 加载刺客素材
+    auto assassinPaths = AssetRes::getSelectedRolePaths(CharacterRole::ASSASSIN);
+    paths.insert(paths.end(), assassinPaths.begin(), assassinPaths.end());
 
     // 获取 ObscurMonster (小怪) 预加载资源路径
     auto obscurPaths = ObscurMonster::getPreloadResourcePaths();

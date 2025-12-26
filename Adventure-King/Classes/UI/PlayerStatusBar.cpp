@@ -187,7 +187,7 @@ void PlayerStatusBar::createStatusEffectBar()
     _statusBarBg = DrawNode::create();
     _statusBarBg->drawSolidRect(
         Vec2(0, 0),
-        Vec2(_barWidth, _statusBarHeight),
+        Vec2(_barWidth*0.5, _statusBarHeight),
         Color4F(0.1f, 0.1f, 0.1f, 0.75f));
     _statusBarBg->setPosition(Vec2(0, yOffset));
     this->addChild(_statusBarBg, 0);
@@ -195,12 +195,12 @@ void PlayerStatusBar::createStatusEffectBar()
     auto border = DrawNode::create();
     border->drawRect(
         Vec2(0, 0),
-        Vec2(_barWidth, _statusBarHeight),
+        Vec2(_barWidth*0.5, _statusBarHeight),
         Color4F(0.4f, 0.4f, 0.4f, 1.0f));
     border->setPosition(Vec2(0, yOffset));
     this->addChild(border, 1);
 
-    _statusLabel = Label::createWithTTF("状态：无", "fonts/ZCOOLKuaiLe-Regular.ttf", 12);
+    _statusLabel = Label::createWithTTF("状态：无", "fonts/ZCOOLKuaiLe-Regular.ttf", 18);
     _statusLabel->setAnchorPoint(Vec2(0, 0.5f));
     _statusLabel->setPosition(Vec2(4, yOffset + _statusBarHeight / 2));
     _statusLabel->setColor(Color3B::WHITE);
