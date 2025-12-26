@@ -804,6 +804,10 @@ void GobluMonster::die()
     }
     _deathSequenceStarted = true;
 
+    if (_onDeathCallback) {
+        _onDeathCallback(this);
+    }
+
     // 禁用物理与移动
     if (_physicsBody)
     {

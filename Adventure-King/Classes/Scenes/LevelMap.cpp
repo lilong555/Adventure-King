@@ -441,7 +441,7 @@ void LevelMap::triggerLevelClear() {
         options.autoRemoveOnFinish = false; // 传送门通常需要一直存在，直到玩家离开
         options.name = "active_portal";     // 命名方便后续可能的查找
         options.useBodyCenter = false;
-        options.position = Vec2(rect.getMidX(), 0.5*rect.getMidY());
+        options.position = Vec2(rect.getMidX(), rect.getMidY());
 
         // 3. 使用 Helper 统一创建播放
         // playOnce 内部已包含对 plist 路径的判空保护，防止断言闪退
@@ -472,7 +472,7 @@ void LevelMap::showVictoryBanner() {
     // 播放“丝之歌”风格的弹出效果
     banner->runAction(Sequence::create(
         Spawn::create(
-            EaseBackOut::create(ScaleTo::create(0.5f, 0.8f)), // 回弹缩放
+            EaseBackOut::create(ScaleTo::create(0.5f, 0.6f)), // 回弹缩放
             FadeIn::create(0.3f),
             nullptr
         ),
@@ -482,8 +482,10 @@ void LevelMap::showVictoryBanner() {
         nullptr
     ));
 }
-void LevelMap::loadEnemySpawnPoints(const std::string &groupName)
+void LevelMap::loadEnemySpawnPoints(const std::string& groupName)
 {
+    _currentActiveMonsters = 0; // 确保全局计数器清零
+    _isLevelCleared = false;    // 确保清空状态复位
     _enemySpawnPoints.clear();
     _pendingEnemySpawnPoints = 0;
     _enemySpawnCheckAccumulator = 0.0f;
@@ -602,10 +604,6 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
         const float centerIndex = (static_cast<float>(count) - 1.0f) * 0.5f;
 
         spawnPoint.hasSpawned = true;
-        if (_pendingEnemySpawnPoints > 0)
-        {
-            _pendingEnemySpawnPoints--;
-        }
 
         for (int i = 0; i < count; ++i)
         {
@@ -617,14 +615,22 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
             // 分批延迟生成，避免同一帧刷出过多怪物造成卡顿。
             gameLayer->runAction(Sequence::create(
                 DelayTime::create(delaySeconds),
-                CallFunc::create([this, createMonsterByType, player, gameLayer, monsterType, monsterPos]()
+                CallFunc::create([this, createMonsterByType, player, gameLayer, monsterType, monsterPos, i]() // 捕获 i
                     {
                         if (!player || !gameLayer)
                             return;
 
                         auto monster = createMonsterByType(monsterType);
-                        if (!monster)
+                        if (!monster) {
+                            // 【新增】如果怪物创建失败，也要扣除等待计数，防止逻辑卡死
+                            if (i == 0) this->_pendingEnemySpawnPoints--;
                             return;
+                        }
+
+                        // 【新增逻辑】只有当该点的第一个怪物真正生成时，才扣除“待生成点”计数
+                        if (i == 0) {
+                            this->_pendingEnemySpawnPoints--;
+                        }
 
                         monster->setPosition(monsterPos);
                         monster->setTarget(player);

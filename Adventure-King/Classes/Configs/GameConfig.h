@@ -423,7 +423,7 @@ namespace GameConfig
         {
             // 基础属性
             
-            inline constexpr float MAX_HP = 200.0f;//注意这只是缩放之前的基础数值
+            inline constexpr float MAX_HP = 1.0f;//700 注意这只是缩放之前的基础数值 
             inline constexpr float MAX_MP = 0.0f; // 哥布林可能没蓝条
             inline constexpr float STRENGTH = 10.0f;
             inline constexpr float DEFENSE = 2.0f;
@@ -517,7 +517,7 @@ namespace GameConfig
         namespace Obscur
         {
             // 基础属性（可后续按数值体验再调）
-            inline constexpr float MAX_HP = 1.0f;
+            inline constexpr float MAX_HP = 1.0f;//500
             inline constexpr float MAX_MP = 0.0f;
             inline constexpr float STRENGTH = 18.0f;
             inline constexpr float DEFENSE = 4.0f;
