@@ -2,6 +2,7 @@
 #define __HELLOWORLD_SCENE_H__
 #include "cocos2d.h"
 #include "Character/Base/CharacterData.h"
+class CloudAuthLayer;
 class HelloWorld : public cocos2d::Scene
 {
 public:
@@ -53,6 +54,14 @@ private:
     cocos2d::Label* _roleHintLabel = nullptr;
 
     void updateRoleHintLabel();
+
+    // 云端账号状态（游客/已登录/未登录）
+    cocos2d::Label* _cloudAccountLabel = nullptr;
+    CloudAuthLayer* _cloudAuthLayer = nullptr;
+
+    void updateCloudAccountLabel();
+    void showCloudAuthLayer();
+    void hideCloudAuthLayer();
 
     // 点击“开始游戏”后弹出的职业选择层
     cocos2d::LayerColor* _roleSelectLayer = nullptr;

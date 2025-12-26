@@ -228,6 +228,9 @@
     <ClCompile Include="..\Classes\Scenes\Layers\BagLayer.cpp">
       <Filter>src\Scenes\Layers</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\Layers\CloudAuthLayer.cpp">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Character\Base\StatusEffect.cpp">
       <Filter>src\Character\Base</Filter>
     </ClCompile>
@@ -435,6 +438,9 @@
       <Filter>src\Character\components</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\Layers\BagLayer.h">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\Layers\CloudAuthLayer.h">
       <Filter>src\Scenes\Layers</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Utils\ParticlePreloadHelper.h">

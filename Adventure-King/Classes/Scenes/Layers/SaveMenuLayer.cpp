@@ -126,8 +126,28 @@ bool SaveMenuLayer::initTitle()
 bool SaveMenuLayer::initCloudControls()
 {
     // 云端状态提示：不阻断存档菜单显示
-    const bool configured = CloudSyncService::getInstance()->isConfigured();
-    const std::string statusText = configured ? "云端：已配置" : "云端：未配置";
+    auto cloud = CloudSyncService::getInstance();
+    const bool guest = cloud->isGuestMode();
+    const bool configured = cloud->isConfigured();
+
+    std::string statusText;
+    Color4B statusColor;
+    if (guest)
+    {
+        statusText = "云端：游客模式";
+        statusColor = Color4B(210, 200, 120, 255);
+    }
+    else if (configured)
+    {
+        const std::string user = cloud->getActiveUsername();
+        statusText = user.empty() ? "云端：已登录" : ("云端：已登录(" + user + ")");
+        statusColor = Color4B(120, 220, 120, 255);
+    }
+    else
+    {
+        statusText = "云端：未配置";
+        statusColor = Color4B(220, 120, 120, 255);
+    }
 
     _cloudStatusLabel = Label::createWithTTF(statusText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
     if (!_cloudStatusLabel)
@@ -135,7 +155,7 @@ bool SaveMenuLayer::initCloudControls()
         CCLOG("Error: Failed to create cloud status label!");
         return false;
     }
-    _cloudStatusLabel->setTextColor(configured ? Color4B(120, 220, 120, 255) : Color4B(220, 120, 120, 255));
+    _cloudStatusLabel->setTextColor(statusColor);
     _cloudStatusLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
     _cloudStatusLabel->setPosition(Vec2(_background->getContentSize().width - 40,
                                         _background->getContentSize().height / 12 * 11));

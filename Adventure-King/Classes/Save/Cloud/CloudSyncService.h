@@ -26,8 +26,36 @@ public:
     static CloudSyncService *getInstance();
     static void destroyInstance();
 
+    // ==========================================================
+    // 账号状态（会话级：不落盘）
+    // ==========================================================
+
+    /// @brief 设置游客模式：启用后禁用云端功能（不读取环境变量/不使用运行时账号）
+    void setGuestMode(bool enabled);
+    /// @brief 当前是否为游客模式
+    bool isGuestMode() const;
+    /// @brief 设置运行时账号配置（用于主菜单“登录/注册”弹窗）
+    void setRuntimeAccount(const std::string &baseUrl,
+                           const std::string &username,
+                           const std::string &password);
+    /// @brief 清空运行时账号配置（回退到环境变量配置）
+    void clearRuntimeAccount();
+    /// @brief 当前账号名（游客/未配置则为空）
+    std::string getActiveUsername() const;
+
     // 当前是否已配置云同步（URL/账号/密码）
     bool isConfigured(std::string *outHint = nullptr) const;
+
+    /// @brief 登录（成功后会写入运行时账号配置并缓存 token）
+    void login(const std::string &baseUrl,
+               const std::string &username,
+               const std::string &password,
+               const ResultCallback &cb);
+    /// @brief 注册并自动登录（成功后会写入运行时账号配置并缓存 token）
+    void registerAndLogin(const std::string &baseUrl,
+                          const std::string &username,
+                          const std::string &password,
+                          const ResultCallback &cb);
 
     // 仅上传（覆盖云端该用户的存档包）
     void uploadAllSaves(const ResultCallback &cb);
@@ -66,6 +94,11 @@ private:
     // 简单的 token 缓存（进程内）
     std::string _token;
     int64_t _tokenExpireAtMs = 0;
+
+    // 会话级账号状态：不落盘
+    bool _guestMode = false;
+    bool _hasRuntimeAccount = false;
+    Config _runtimeAccount;
 
     static CloudSyncService *_instance;
 };

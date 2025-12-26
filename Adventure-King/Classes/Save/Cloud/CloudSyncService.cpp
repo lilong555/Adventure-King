@@ -129,9 +129,27 @@ std::string CloudSyncService::trimTrailingSlash(const std::string &s)
 CloudSyncService::Config CloudSyncService::loadConfig(std::string *outErr) const
 {
     Config cfg;
-    cfg.baseUrl = trimTrailingSlash(getEnvOrEmpty(ENV_SYNC_URL));
-    cfg.user = getEnvOrEmpty(ENV_SYNC_USER);
-    cfg.pass = getEnvOrEmpty(ENV_SYNC_PASS);
+
+    // 游客模式：禁用云端功能（不读取环境变量/不使用运行时账号）
+    if (_guestMode)
+    {
+        if (outErr)
+        {
+            *outErr = "游客模式：云端功能已禁用";
+        }
+        return cfg;
+    }
+
+    if (_hasRuntimeAccount)
+    {
+        cfg = _runtimeAccount;
+    }
+    else
+    {
+        cfg.baseUrl = trimTrailingSlash(getEnvOrEmpty(ENV_SYNC_URL));
+        cfg.user = getEnvOrEmpty(ENV_SYNC_USER);
+        cfg.pass = getEnvOrEmpty(ENV_SYNC_PASS);
+    }
 
     if (outErr)
     {
@@ -153,6 +171,61 @@ CloudSyncService::Config CloudSyncService::loadConfig(std::string *outErr) const
     return cfg;
 }
 
+void CloudSyncService::setGuestMode(bool enabled)
+{
+    _guestMode = enabled;
+    if (enabled)
+    {
+        _hasRuntimeAccount = false;
+        _runtimeAccount = Config{};
+        _token.clear();
+        _tokenExpireAtMs = 0;
+    }
+}
+
+bool CloudSyncService::isGuestMode() const
+{
+    return _guestMode;
+}
+
+void CloudSyncService::setRuntimeAccount(const std::string &baseUrl,
+                                        const std::string &username,
+                                        const std::string &password)
+{
+    _guestMode = false;
+    _hasRuntimeAccount = true;
+    _runtimeAccount.baseUrl = trimTrailingSlash(baseUrl);
+    _runtimeAccount.user = username;
+    _runtimeAccount.pass = password;
+
+    // 切换账号后必须清空 token，避免复用旧 token 导致权限错误
+    _token.clear();
+    _tokenExpireAtMs = 0;
+}
+
+void CloudSyncService::clearRuntimeAccount()
+{
+    _hasRuntimeAccount = false;
+    _runtimeAccount = Config{};
+    _token.clear();
+    _tokenExpireAtMs = 0;
+}
+
+std::string CloudSyncService::getActiveUsername() const
+{
+    if (_guestMode)
+    {
+        return "";
+    }
+
+    if (_hasRuntimeAccount)
+    {
+        return _runtimeAccount.user;
+    }
+
+    return getEnvOrEmpty(ENV_SYNC_USER);
+}
+
 bool CloudSyncService::isConfigured(std::string *outHint) const
 {
     std::string err;
@@ -161,15 +234,132 @@ bool CloudSyncService::isConfigured(std::string *outHint) const
     if (!ok && outHint)
     {
         std::ostringstream oss;
-        oss << "未配置云端同步。\n\n";
-        oss << "请设置环境变量：\n";
-        oss << "- AK_CLOUD_SYNC_URL（例如 http://localhost:5173）\n";
-        oss << "- AK_CLOUD_SYNC_USER（用户名）\n";
-        oss << "- AK_CLOUD_SYNC_PASS（密码）\n\n";
-        oss << "当前缺失： " << err;
+        if (_guestMode)
+        {
+            oss << "当前为游客模式，云端功能已禁用。\n\n";
+            oss << "如需使用云存，请在主菜单选择“登录/注册”。";
+        }
+        else
+        {
+            oss << "未配置云端同步。\n\n";
+            oss << "请设置环境变量：\n";
+            oss << "- AK_CLOUD_SYNC_URL（例如 http://localhost:5173）\n";
+            oss << "- AK_CLOUD_SYNC_USER（用户名）\n";
+            oss << "- AK_CLOUD_SYNC_PASS（密码）\n\n";
+            oss << "当前缺失： " << err;
+        }
         *outHint = oss.str();
     }
     return ok;
+}
+
+void CloudSyncService::login(const std::string &baseUrl,
+                             const std::string &username,
+                             const std::string &password,
+                             const ResultCallback &cb)
+{
+    if (baseUrl.empty())
+    {
+        cb(false, "登录失败：URL 不能为空");
+        return;
+    }
+    if (username.empty())
+    {
+        cb(false, "登录失败：用户名不能为空");
+        return;
+    }
+    if (password.empty())
+    {
+        cb(false, "登录失败：密码不能为空");
+        return;
+    }
+
+    setRuntimeAccount(baseUrl, username, password);
+
+    std::string cfgErr;
+    const Config cfg = loadConfig(&cfgErr);
+    if (!cfgErr.empty())
+    {
+        cb(false, "登录失败：" + cfgErr);
+        return;
+    }
+
+    ensureLogin(cfg, [cb, username](bool ok, const std::string & /*token*/, const std::string &err) {
+        if (!ok)
+        {
+            cb(false, err);
+            return;
+        }
+        cb(true, "登录成功：" + username);
+    });
+}
+
+void CloudSyncService::registerAndLogin(const std::string &baseUrl,
+                                       const std::string &username,
+                                       const std::string &password,
+                                       const ResultCallback &cb)
+{
+    if (baseUrl.empty())
+    {
+        cb(false, "注册失败：URL 不能为空");
+        return;
+    }
+    if (username.empty())
+    {
+        cb(false, "注册失败：用户名不能为空");
+        return;
+    }
+    if (password.empty())
+    {
+        cb(false, "注册失败：密码不能为空");
+        return;
+    }
+
+    // 注册接口：POST /api/register
+    rapidjson::Document doc;
+    doc.SetObject();
+    auto &alloc = doc.GetAllocator();
+    doc.AddMember("username", rapidjson::Value(username.c_str(), alloc).Move(), alloc);
+    doc.AddMember("password", rapidjson::Value(password.c_str(), alloc).Move(), alloc);
+    const std::string body = jsonStringify(doc);
+
+    const std::string url = buildUrl(trimTrailingSlash(baseUrl), "/api/register");
+    sendJsonRequest("POST", url, body, {}, [this, baseUrl, username, password, cb](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
+        if (!ok)
+        {
+            std::string serverMsg = err;
+            rapidjson::Document errDoc;
+            std::string parseErr;
+            if (parseJsonObject(respBody, errDoc, parseErr) &&
+                errDoc.HasMember("message") && errDoc["message"].IsString())
+            {
+                serverMsg = errDoc["message"].GetString();
+            }
+
+            std::ostringstream oss;
+            oss << "注册失败(" << httpCode << "): " << serverMsg;
+            cb(false, oss.str());
+            return;
+        }
+
+        // 兜底：若服务端返回 ok=false（但 HTTP 成功），依然认为注册失败
+        rapidjson::Document resp;
+        std::string parseErr;
+        if (parseJsonObject(respBody, resp, parseErr) &&
+            resp.HasMember("ok") && resp["ok"].IsBool() && !resp["ok"].GetBool())
+        {
+            std::string msg = "注册失败";
+            if (resp.HasMember("message") && resp["message"].IsString())
+            {
+                msg = resp["message"].GetString();
+            }
+            cb(false, msg);
+            return;
+        }
+
+        // 注册成功后自动登录
+        login(baseUrl, username, password, cb);
+    });
 }
 
 void CloudSyncService::sendJsonRequest(const std::string &method,
