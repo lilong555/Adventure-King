@@ -129,11 +129,16 @@ void PlayerDeathMenu::show()
     }
 
     _isShowing = true;
+    _actionTriggered = false;
     this->setVisible(true);
 
     if (_touchListener)
     {
         _touchListener->setEnabled(true);
+    }
+    if (_menu)
+    {
+        _menu->setEnabled(true);
     }
 
     _container->setOpacity(0);
@@ -161,8 +166,38 @@ void PlayerDeathMenu::hide()
     _container->runAction(Sequence::create(fadeOut, callback, nullptr));
 }
 
+void PlayerDeathMenu::hideImmediately()
+{
+    _isShowing = false;
+    if (_touchListener)
+    {
+        _touchListener->setEnabled(false);
+    }
+    if (_menu)
+    {
+        _menu->setEnabled(false);
+    }
+    if (_container)
+    {
+        _container->stopAllActions();
+        _container->setOpacity(255);
+        _container->setPosition(Vec2::ZERO);
+    }
+    this->setVisible(false);
+}
+
 void PlayerDeathMenu::onRestartClicked(Ref *)
 {
+    if (_actionTriggered)
+    {
+        return;
+    }
+    _actionTriggered = true;
+    if (_menu)
+    {
+        _menu->setEnabled(false);
+    }
+
     if (_restartCallback)
     {
         _restartCallback();
@@ -171,9 +206,18 @@ void PlayerDeathMenu::onRestartClicked(Ref *)
 
 void PlayerDeathMenu::onReturnToMapClicked(Ref *)
 {
+    if (_actionTriggered)
+    {
+        return;
+    }
+    _actionTriggered = true;
+    if (_menu)
+    {
+        _menu->setEnabled(false);
+    }
+
     if (_returnToMapCallback)
     {
         _returnToMapCallback();
     }
 }
-

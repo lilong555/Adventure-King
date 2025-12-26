@@ -20,6 +20,8 @@ public:
 
     void show();
     void hide();
+    /// @brief 立即隐藏（不播放淡出），用于场景切换前防止 UI 残留
+    void hideImmediately();
     bool isShowing() const { return _isShowing; }
 
     void setRestartCallback(const std::function<void()> &callback) { _restartCallback = callback; }
@@ -42,7 +44,7 @@ private:
     cocos2d::EventListenerTouchOneByOne *_touchListener = nullptr;
 
     bool _isShowing = false;
+    bool _actionTriggered = false; // 防止快速连点导致重复触发场景切换
     std::function<void()> _restartCallback;
     std::function<void()> _returnToMapCallback;
 };
-

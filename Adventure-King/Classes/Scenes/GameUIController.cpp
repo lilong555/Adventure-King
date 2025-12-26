@@ -183,11 +183,19 @@ bool GameUIController::init(Scene *scene,
     if (auto deathMenu = _gameUI->getDeathMenu())
     {
         // 重新挑战：复活到满血满蓝并缓存运行时数据，然后通过 LoadingScene 重进当前关卡
-        deathMenu->setRestartCallback([this, levelName]()
+        deathMenu->setRestartCallback([this, levelName, deathMenu]()
                                       {
+                                          if (deathMenu)
+                                          {
+                                              // 先隐藏死亡菜单，避免在转场淡入淡出期间残留显示
+                                              deathMenu->hideImmediately();
+                                          }
+
                                           if (_player)
                                           {
                                               // 死亡时 HP=0 会被缓存，导致重进关卡立刻死亡；这里先复活到满血满蓝
+                                              // 说明：SaveManager::cacheRuntimePlayerData 会把当前 HP/MP 一并缓存，
+                                              // 若不先复活到满血满蓝，重进关卡会沿用 0 血状态并立刻触发死亡菜单。
                                               if (auto attr = _player->getAttributeComponent())
                                               {
                                                   _player->setCurrentHP(attr->getAttributeValue(AttributeType::MAX_HP));
@@ -225,8 +233,14 @@ bool GameUIController::init(Scene *scene,
                                       });
 
         // 返回地图：复活到满血满蓝（避免缓存 0 血），然后走外部回调
-        deathMenu->setReturnToMapCallback([this]()
+        deathMenu->setReturnToMapCallback([this, deathMenu]()
                                           {
+                                              if (deathMenu)
+                                              {
+                                                  // 先隐藏死亡菜单，避免在转场淡入淡出期间残留显示
+                                                  deathMenu->hideImmediately();
+                                              }
+
                                               if (_player)
                                               {
                                                   if (auto attr = _player->getAttributeComponent())

@@ -541,7 +541,7 @@ void GameScene::update(float dt)
     //-------------------------------------------------------------------------
     // 角色死亡：强制暂停并弹出选择菜单
     //-------------------------------------------------------------------------
-    if (!_isPaused && _player && _player->isDead())
+    if (_player && _player->isDead())
     {
         if (_uiController && !_uiController->isDeathMenuShowing())
         {
