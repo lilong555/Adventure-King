@@ -14,15 +14,19 @@ try {
   $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
   Set-Location $scriptDir
 
-  # PowerShell 5.1 读取带括号的环境变量，需要使用 ${} 包裹
-  $pf86 = ${env:ProgramFiles(x86)}
-  if (-not $pf86) {
-    $pf86 = $env:ProgramFiles
-  }
+  # 兼容性：PowerShell 5.1 对 $env:ProgramFiles(x86) 语法非常敏感，避免直接访问，改用 .NET API
+  $pf86 = [System.Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+  if (-not $pf86) { $pf86 = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::ProgramFiles) }
+  $pf64 = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::ProgramFiles)
 
-  $vswhere = Join-Path $pf86 "Microsoft Visual Studio\Installer\vswhere.exe"
-  if (-not (Test-Path $vswhere)) {
-    throw "vswhere.exe not found: $vswhere"
+  $vswhereCandidates = @(
+    (Join-Path $pf86 "Microsoft Visual Studio\Installer\vswhere.exe"),
+    (Join-Path $pf64 "Microsoft Visual Studio\Installer\vswhere.exe")
+  ) | Select-Object -Unique
+
+  $vswhere = $vswhereCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+  if (-not $vswhere) {
+    throw ("vswhere.exe not found. Tried: " + ($vswhereCandidates -join "; "))
   }
 
   $vsInstall = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath

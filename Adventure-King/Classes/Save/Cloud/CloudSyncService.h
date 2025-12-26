@@ -14,7 +14,7 @@
  * - “云同步”：从云端拉取存档包，与本地按时间戳合并（取最新），再回传合并结果
  *
  * 配置方式（不在代码里写死任何服务器地址/IP）：
- * - AK_CLOUD_SYNC_URL  ：例如 http://127.0.0.1:5173
+ * - AK_CLOUD_SYNC_URL  ：例如 http://localhost:5173
  * - AK_CLOUD_SYNC_USER ：用户名
  * - AK_CLOUD_SYNC_PASS ：密码
  */
@@ -69,4 +69,3 @@ private:
 
     static CloudSyncService *_instance;
 };
-

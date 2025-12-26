@@ -14,6 +14,27 @@
 
 > 注意：本工具是后端服务，与游戏工程解耦；可在 Win/Linux 任意一端构建运行。
 
+### WSL（推荐：服务端跑在 WSL）
+
+在 `tools/cloud_save_server` 目录下：
+
+```bash
+./run_wsl.sh
+```
+
+默认会：
+- 自动用 `g++` 编译生成 `ak_cloud_save_server`
+- 监听 `0.0.0.0:5173`（Win 端游戏可直接用 `http://localhost:5173` 访问）
+- 数据落盘到 `tools/cloud_save_server/cloud_data/`
+
+你也可以用环境变量覆盖默认值：
+
+```bash
+export AK_CLOUD_SERVER_ROOT="$HOME/mnt/ecs/adventure-king-cloud"
+export AK_CLOUD_SERVER_PORT=5173
+./run_wsl.sh
+```
+
 ### Windows（推荐：无需安装 CMake）
 
 在 `tools/cloud_save_server` 目录下直接运行：
