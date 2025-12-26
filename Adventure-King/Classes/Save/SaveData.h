@@ -106,6 +106,42 @@ struct GameProgressSaveData
     float playerPosX = 0.0f;
     float playerPosY = 0.0f;
 
+    //================== 世界状态（用于“存档/读档恢复刷怪与关卡状态”） ==================
+
+    // 刷怪点状态（enemy_g）：用于避免读档后重复刷出已触发的刷怪点
+    struct EnemySpawnPointState
+    {
+        std::string monsterType;
+        float posX = 0.0f;
+        float posY = 0.0f;
+        int count = 1;
+        bool hasSpawned = false;
+    };
+    std::vector<EnemySpawnPointState> enemySpawnPoints;
+
+    // 竞技场（Arena）状态：用于恢复“是否已触发/进行到第几波/是否已完成”
+    struct ArenaState
+    {
+        std::string arenaID;
+        int currentWaveIndex = 0;
+        bool isActivated = false;
+        bool isFinished = false;
+    };
+    std::vector<ArenaState> arenas;
+
+    // 已刷新且仍存活的怪物快照（用于读档后恢复“场上还活着的怪”）
+    // 注意：竞技场怪物不在此列表中恢复（由 ArenaState 驱动重新刷出对应波次，保持逻辑一致）
+    struct MonsterState
+    {
+        std::string monsterType; // createMonsterByType 的输入（建议小写：goblin/goblu/obscur...）
+        float posX = 0.0f;
+        float posY = 0.0f;
+        float currentHP = 0.0f;
+        float currentMP = 0.0f;
+        int breakMeter = 0; // Boss 击破条当前值（不支持则为 0）
+    };
+    std::vector<MonsterState> aliveMonsters;
+
     // 解锁关卡
     std::vector<std::string> unlockedLevels;
 

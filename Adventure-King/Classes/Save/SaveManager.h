@@ -43,6 +43,12 @@ public:
                   const std::string &sceneName, const cocos2d::Vec2 &playerPos);
 
     /**
+     * 保存游戏到指定槽位（带完整进度数据：包含刷怪点/竞技场/怪物快照等）
+     * @note sceneName/playerPos 以 progressData 为准；playTimeSeconds 仍由 SaveManager 统一计算覆盖
+     */
+    bool saveGame(int slotIndex, PlayerCharacter *player, const GameProgressSaveData &progressData);
+
+    /**
      * 从指定槽位加载游戏
      * @param slotIndex 存档槽位索引 (0-4)
      * @param outData 输出的存档数据
@@ -114,6 +120,30 @@ public:
      */
     bool loadSettings(SettingsSaveData &outSettings);
 
+    //================== 云同步预留接口（导入/导出） ==================
+
+    /**
+     * 导出指定槽位的原始 JSON（用于未来云同步/手动备份）
+     * @note 优先从本地数据库读取；若不存在则回退到 legacy JSON 文件
+     */
+    bool exportSaveSlotToJsonString(int slotIndex, std::string &outJson) const;
+
+    /**
+     * 从 JSON 导入指定槽位（用于未来云同步/手动恢复）
+     * @param overwriteExisting 是否覆盖已有槽位
+     */
+    bool importSaveSlotFromJsonString(int slotIndex, const std::string &json, bool overwriteExisting = true);
+
+    /**
+     * 导出设置 JSON（用于未来云同步/手动备份）
+     */
+    bool exportSettingsToJsonString(std::string &outJson) const;
+
+    /**
+     * 从 JSON 导入设置（用于未来云同步/手动恢复）
+     */
+    bool importSettingsFromJsonString(const std::string &json);
+
     //================== 数据转换 ==================
 
     /**
@@ -157,6 +187,18 @@ public:
      * 清空运行时玩家数据（例如返回主菜单重新开始时使用）
      */
     void clearRuntimePlayerData();
+
+    //================== 运行时关卡进度（不落盘） ==================
+
+    /**
+     * 设置运行时关卡进度（用于“读档 -> LoadingScene -> 进入关卡”期间传递刷怪点/竞技场状态）
+     * @note 不会写入磁盘，仅保存在内存中
+     */
+    void setRuntimeProgressData(const GameProgressSaveData &data);
+
+    bool hasRuntimeProgressData() const { return _hasRuntimeProgressData; }
+    const GameProgressSaveData &getRuntimeProgressData() const { return _runtimeProgressData; }
+    void clearRuntimeProgressData();
 
     //================== 会话角色选择（不落盘） ==================
 
@@ -226,6 +268,10 @@ private:
     bool _hasSessionSelectedRole = false;
     CharacterRole _sessionSelectedRole = CharacterRole::MAGE;
 
+    // 运行时关卡进度：用于读档时恢复刷怪点/竞技场/怪物快照，不落盘
+    bool _hasRuntimeProgressData = false;
+    GameProgressSaveData _runtimeProgressData;
+
     // 运行时玩家位置：用于读档后恢复落点（只对下一次进入 GameScene 生效）
     bool _hasRuntimePlayerPosition = false;
     cocos2d::Vec2 _runtimePlayerPosition = cocos2d::Vec2::ZERO;
@@ -238,6 +284,18 @@ private:
     bool writeToFile(const std::string &filePath, const std::string &content);
     // 从文件读取文本
     bool readFromFile(const std::string &filePath, std::string &outContent) const;
+
+    //================== 本地数据库（SQLite-KV，基于 cocos2d::localStorage） ==================
+
+    bool _localStorageReady = false;
+    std::string _localStorageDbPath;
+
+    std::string getSaveStorageKey(int slotIndex) const;
+    std::string getSettingsStorageKey() const;
+    bool writeToStorage(const std::string &key, const std::string &content);
+    bool readFromStorage(const std::string &key, std::string &outContent) const;
+    bool removeFromStorage(const std::string &key);
+    bool hasStorageKey(const std::string &key) const;
 
     std::chrono::steady_clock::time_point _sessionStartTime;
 };

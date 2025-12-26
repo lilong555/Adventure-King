@@ -40,6 +40,12 @@ public:
                       const std::string &sceneName,
                       const cocos2d::Vec2 &playerPos);
 
+    // 关闭回调（用于在 GameScene 中恢复暂停菜单/暂停状态）
+    using CloseCallback = std::function<void()>;
+    void setCloseCallback(const CloseCallback &callback) { _closeCallback = callback; }
+
+    virtual void onExit() override;
+
     // 设置加载成功回调（仅在 LOAD 模式下使用）
     using LoadSuccessCallback = std::function<void(const SaveSlotData &)>;
     void setLoadSuccessCallback(const LoadSuccessCallback &callback) { _loadSuccessCallback = callback; }
@@ -57,6 +63,7 @@ private:
     std::vector<cocos2d::Node *> _slotNodes; // 存档槽位节点
 
     LoadSuccessCallback _loadSuccessCallback = nullptr;
+    CloseCallback _closeCallback = nullptr;
 
     // 初始化方法
     /// @brief 初始化背景图

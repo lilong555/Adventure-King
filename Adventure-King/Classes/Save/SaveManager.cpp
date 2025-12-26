@@ -3,6 +3,7 @@
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/components/AttributeComponent.h"
 #include "Character/components/SkillComponent.h"
+#include "storage/local-storage/LocalStorage.h"
 #include "cocos2d.h"
 #include <algorithm>
 #include <chrono>
@@ -10,6 +11,19 @@
 #include <unordered_set>
 
 USING_NS_CC;
+
+namespace
+{
+// 说明：localStorage 在 Android 端只使用文件名（不包含目录），因此文件名需要保持稳定且尽量唯一
+static const char *const LOCAL_STORAGE_DB_FILENAME = "adventure_king_save.db";
+
+static const char *const STORAGE_KEY_PREFIX = "ak_";
+
+std::string buildStorageKey(const std::string &suffix)
+{
+    return std::string(STORAGE_KEY_PREFIX) + suffix;
+}
+}
 
 SaveManager *SaveManager::_instance = nullptr;
 
@@ -42,10 +56,23 @@ SaveManager::SaveManager()
         FileUtils::getInstance()->createDirectory(savesDir);
         CCLOG("SaveManager - 创建存档目录: %s", savesDir.c_str());
     }
+
+    // 初始化本地 SQLite（KV）数据库：作为主存档存储
+    // 说明：基于 cocos2d::localStorage（底层是 sqlite3），跨平台可用。
+    _localStorageDbPath = savesDir + LOCAL_STORAGE_DB_FILENAME;
+    localStorageInit(_localStorageDbPath);
+    _localStorageReady = true;
+    CCLOG("SaveManager - 初始化本地存档数据库: %s", _localStorageDbPath.c_str());
 }
 
 SaveManager::~SaveManager()
 {
+    if (_localStorageReady)
+    {
+        localStorageFree();
+        _localStorageReady = false;
+        CCLOG("SaveManager - 已释放本地存档数据库");
+    }
 }
 
 //================== 运行时进度（不落盘） ==================
@@ -81,6 +108,22 @@ void SaveManager::clearRuntimePlayerData()
     CCLOG("SaveManager::clearRuntimePlayerData - 已清空运行时玩家数据");
 }
 
+//================== 运行时关卡进度（不落盘） ==================
+
+void SaveManager::setRuntimeProgressData(const GameProgressSaveData &data)
+{
+    _runtimeProgressData = data;
+    _hasRuntimeProgressData = true;
+    CCLOG("SaveManager::setRuntimeProgressData - 已设置运行时关卡进度（scene=%s）",
+          _runtimeProgressData.currentSceneName.c_str());
+}
+
+void SaveManager::clearRuntimeProgressData()
+{
+    _hasRuntimeProgressData = false;
+    _runtimeProgressData = GameProgressSaveData();
+}
+
 //================== 会话角色选择（不落盘） ==================
 
 void SaveManager::setSessionSelectedRole(CharacterRole role)
@@ -93,6 +136,7 @@ void SaveManager::setSessionSelectedRole(CharacterRole role)
     // 造成“换了职业但进图仍然是上一局职业”的问题。
     clearRuntimePlayerData();
     clearRuntimePlayerPosition();
+    clearRuntimeProgressData();
 
     CCLOG("SaveManager::setSessionSelectedRole - 已设置会话职业：%d", static_cast<int>(role));
 }
@@ -118,6 +162,62 @@ void SaveManager::clearRuntimePlayerPosition()
 }
 
 //================== 辅助方法 ==================
+
+std::string SaveManager::getSaveStorageKey(int slotIndex) const
+{
+    return buildStorageKey("save_slot_" + std::to_string(slotIndex));
+}
+
+std::string SaveManager::getSettingsStorageKey() const
+{
+    return buildStorageKey("settings");
+}
+
+bool SaveManager::writeToStorage(const std::string &key, const std::string &content)
+{
+    if (!_localStorageReady)
+    {
+        CCLOG("SaveManager::writeToStorage - 本地数据库未初始化");
+        return false;
+    }
+
+    localStorageSetItem(key, content);
+    return true;
+}
+
+bool SaveManager::readFromStorage(const std::string &key, std::string &outContent) const
+{
+    if (!_localStorageReady)
+    {
+        CCLOG("SaveManager::readFromStorage - 本地数据库未初始化");
+        return false;
+    }
+
+    return localStorageGetItem(key, &outContent);
+}
+
+bool SaveManager::removeFromStorage(const std::string &key)
+{
+    if (!_localStorageReady)
+    {
+        CCLOG("SaveManager::removeFromStorage - 本地数据库未初始化");
+        return false;
+    }
+
+    localStorageRemoveItem(key);
+    return true;
+}
+
+bool SaveManager::hasStorageKey(const std::string &key) const
+{
+    if (!_localStorageReady)
+    {
+        return false;
+    }
+
+    std::string tmp;
+    return localStorageGetItem(key, &tmp);
+}
 
 std::string SaveManager::getSaveFilePath(int slotIndex) const
 {
@@ -188,6 +288,15 @@ bool SaveManager::readFromFile(const std::string &filePath, std::string &outCont
 bool SaveManager::saveGame(int slotIndex, PlayerCharacter *player,
                            const std::string &sceneName, const cocos2d::Vec2 &playerPos)
 {
+    GameProgressSaveData progressData;
+    progressData.currentSceneName = sceneName;
+    progressData.playerPosX = playerPos.x;
+    progressData.playerPosY = playerPos.y;
+    return saveGame(slotIndex, player, progressData);
+}
+
+bool SaveManager::saveGame(int slotIndex, PlayerCharacter *player, const GameProgressSaveData &progressData)
+{
     if (slotIndex < 0 || slotIndex >= MAX_SAVE_SLOTS)
     {
         CCLOG("SaveManager::saveGame - 无效的槽位索引: %d", slotIndex);
@@ -211,10 +320,8 @@ bool SaveManager::saveGame(int slotIndex, PlayerCharacter *player,
     // 提取玩家数据
     saveData.playerData = extractPlayerData(player);
 
-    // 设置游戏进度
-    saveData.progressData.currentSceneName = sceneName;
-    saveData.progressData.playerPosX = playerPos.x;
-    saveData.progressData.playerPosY = playerPos.y;
+    // 设置游戏进度（包含刷怪点/竞技场/怪物快照等）
+    saveData.progressData = progressData;
 
     // 游戏时长（当前会话累计）
     auto now = std::chrono::steady_clock::now();
@@ -229,12 +336,19 @@ bool SaveManager::saveGame(int slotIndex, PlayerCharacter *player,
         return false;
     }
 
-    // 写入文件
+    // 写入本地数据库（主存档）
+    std::string storageKey = getSaveStorageKey(slotIndex);
+    if (!writeToStorage(storageKey, json))
+    {
+        CCLOG("SaveManager::saveGame - 写入本地数据库失败");
+        return false;
+    }
+
+    // 兼容：仍写入 legacy JSON 文件作为备份（便于手动拷贝/回滚/调试）
     std::string filePath = getSaveFilePath(slotIndex);
     if (!writeToFile(filePath, json))
     {
-        CCLOG("SaveManager::saveGame - 写入文件失败");
-        return false;
+        CCLOG("SaveManager::saveGame - 备份 JSON 写入失败（不影响主存档）");
     }
 
     CCLOG("SaveManager::saveGame - 成功保存到槽位 %d", slotIndex);
@@ -249,12 +363,25 @@ bool SaveManager::loadGame(int slotIndex, SaveSlotData &outData)
         return false;
     }
 
-    std::string filePath = getSaveFilePath(slotIndex);
     std::string json;
-    if (!readFromFile(filePath, json))
+
+    // 优先从本地数据库读取
+    std::string storageKey = getSaveStorageKey(slotIndex);
+    if (!readFromStorage(storageKey, json))
     {
-        CCLOG("SaveManager::loadGame - 读取文件失败");
-        return false;
+        // 回退到 legacy JSON 文件（兼容旧存档/也作为备份恢复途径）
+        std::string filePath = getSaveFilePath(slotIndex);
+        if (!readFromFile(filePath, json))
+        {
+            CCLOG("SaveManager::loadGame - 读取本地数据库/备份文件均失败");
+            return false;
+        }
+
+        // 将备份文件写回数据库，完成一次“按需迁移/恢复”
+        if (writeToStorage(storageKey, json))
+        {
+            CCLOG("SaveManager::loadGame - 已从备份 JSON 恢复到本地数据库（slot %d）", slotIndex);
+        }
     }
 
     if (!JsonSerializer::deserialize(json, outData))
@@ -275,14 +402,16 @@ bool SaveManager::deleteSave(int slotIndex)
         return false;
     }
 
-    std::string filePath = getSaveFilePath(slotIndex);
-    if (!FileUtils::getInstance()->isFileExist(filePath))
+    // 删除本地数据库中的槽位
+    std::string storageKey = getSaveStorageKey(slotIndex);
+    if (_localStorageReady)
     {
-        CCLOG("SaveManager::deleteSave - 文件不存在: %s", filePath.c_str());
-        return true; // 文件不存在也算成功
+        removeFromStorage(storageKey);
     }
 
-    if (!FileUtils::getInstance()->removeFile(filePath))
+    // 同步删除备份文件，避免 UI 显示“幽灵存档”
+    std::string filePath = getSaveFilePath(slotIndex);
+    if (FileUtils::getInstance()->isFileExist(filePath) && !FileUtils::getInstance()->removeFile(filePath))
     {
         CCLOG("SaveManager::deleteSave - 删除文件失败: %s", filePath.c_str());
         return false;
@@ -299,8 +428,15 @@ bool SaveManager::hasSave(int slotIndex) const
         return false;
     }
 
-    std::string filePath = getSaveFilePath(slotIndex);
-    return FileUtils::getInstance()->isFileExist(filePath);
+    // 优先检查本地数据库
+    std::string storageKey = getSaveStorageKey(slotIndex);
+    if (hasStorageKey(storageKey))
+    {
+        return true;
+    }
+
+    // 兼容：旧存档/备份文件
+    return FileUtils::getInstance()->isFileExist(getSaveFilePath(slotIndex));
 }
 
 std::vector<SaveSlotData> SaveManager::getAllSaveSlotInfos() const
@@ -312,11 +448,31 @@ std::vector<SaveSlotData> SaveManager::getAllSaveSlotInfos() const
         if (hasSave(i))
         {
             SaveSlotData data;
-            std::string filePath = getSaveFilePath(i);
             std::string json;
-            if (readFromFile(filePath, json) && JsonSerializer::deserialize(json, data))
+
+            // 优先从本地数据库读取；若没有再回退到备份文件
+            std::string storageKey = getSaveStorageKey(i);
+            if (!readFromStorage(storageKey, json))
+            {
+                std::string filePath = getSaveFilePath(i);
+                if (readFromFile(filePath, json))
+                {
+                    // 注意：此处仅用于“读取槽位信息展示 UI”，保持 const 语义，不在此写回数据库；
+                    // 真正的按需迁移/恢复在 loadGame / loadSettings 等非 const 接口中完成。
+                }
+            }
+
+            if (!json.empty() && JsonSerializer::deserialize(json, data))
             {
                 infos.push_back(data);
+            }
+            else
+            {
+                // 槽位存在但读取/反序列化失败：仍然返回一个“空槽位”，避免 UI 列表长度异常
+                SaveSlotData emptyData;
+                emptyData.slotIndex = i;
+                emptyData.saveTimestamp = 0;
+                infos.push_back(emptyData);
             }
         }
         else
@@ -390,11 +546,19 @@ bool SaveManager::saveSettings(const SettingsSaveData &settings)
         return false;
     }
 
+    // 写入本地数据库（主存储）
+    std::string storageKey = getSettingsStorageKey();
+    if (!writeToStorage(storageKey, json))
+    {
+        CCLOG("SaveManager::saveSettings - 写入本地数据库失败");
+        return false;
+    }
+
+    // 兼容：仍写入 legacy JSON 文件作为备份（便于手动拷贝/回滚/调试）
     std::string filePath = getSettingsFilePath();
     if (!writeToFile(filePath, json))
     {
-        CCLOG("SaveManager::saveSettings - 写入文件失败");
-        return false;
+        CCLOG("SaveManager::saveSettings - 备份 JSON 写入失败（不影响主设置）");
     }
 
     CCLOG("SaveManager::saveSettings - 成功保存设置");
@@ -403,13 +567,26 @@ bool SaveManager::saveSettings(const SettingsSaveData &settings)
 
 bool SaveManager::loadSettings(SettingsSaveData &outSettings)
 {
-    std::string filePath = getSettingsFilePath();
     std::string json;
-    if (!readFromFile(filePath, json))
+
+    // 优先从本地数据库读取
+    std::string storageKey = getSettingsStorageKey();
+    if (!readFromStorage(storageKey, json))
     {
-        CCLOG("SaveManager::loadSettings - 读取文件失败，使用默认设置");
-        outSettings = SettingsSaveData(); // 使用默认值
-        return false;
+        // 回退到 legacy JSON 文件（兼容旧设置/也作为备份恢复途径）
+        std::string filePath = getSettingsFilePath();
+        if (!readFromFile(filePath, json))
+        {
+            CCLOG("SaveManager::loadSettings - 读取本地数据库/备份文件均失败，使用默认设置");
+            outSettings = SettingsSaveData(); // 使用默认值
+            return false;
+        }
+
+        // 将备份文件写回数据库，完成一次“按需迁移/恢复”
+        if (writeToStorage(storageKey, json))
+        {
+            CCLOG("SaveManager::loadSettings - 已从备份 JSON 恢复到本地数据库");
+        }
     }
 
     if (!JsonSerializer::deserialize(json, outSettings))
@@ -420,6 +597,126 @@ bool SaveManager::loadSettings(SettingsSaveData &outSettings)
     }
 
     CCLOG("SaveManager::loadSettings - 成功加载设置");
+    return true;
+}
+
+//================== 云同步预留接口（导入/导出） ==================
+
+bool SaveManager::exportSaveSlotToJsonString(int slotIndex, std::string &outJson) const
+{
+    outJson.clear();
+
+    if (slotIndex < 0 || slotIndex >= MAX_SAVE_SLOTS)
+    {
+        CCLOG("SaveManager::exportSaveSlotToJsonString - 无效的槽位索引: %d", slotIndex);
+        return false;
+    }
+
+    const std::string storageKey = getSaveStorageKey(slotIndex);
+    if (readFromStorage(storageKey, outJson))
+    {
+        return true;
+    }
+
+    // 回退：备份 JSON
+    const std::string filePath = getSaveFilePath(slotIndex);
+    return readFromFile(filePath, outJson);
+}
+
+bool SaveManager::importSaveSlotFromJsonString(int slotIndex, const std::string &json, bool overwriteExisting)
+{
+    if (slotIndex < 0 || slotIndex >= MAX_SAVE_SLOTS)
+    {
+        CCLOG("SaveManager::importSaveSlotFromJsonString - 无效的槽位索引: %d", slotIndex);
+        return false;
+    }
+
+    if (!overwriteExisting && hasSave(slotIndex))
+    {
+        CCLOG("SaveManager::importSaveSlotFromJsonString - 槽位已存在且不允许覆盖: %d", slotIndex);
+        return false;
+    }
+
+    SaveSlotData data;
+    if (!JsonSerializer::deserialize(json, data))
+    {
+        CCLOG("SaveManager::importSaveSlotFromJsonString - JSON 反序列化失败");
+        return false;
+    }
+
+    // 规范化槽位号（云端可能携带不同 slotIndex）
+    data.slotIndex = slotIndex;
+    std::string normalized = JsonSerializer::serialize(data);
+    if (normalized.empty())
+    {
+        CCLOG("SaveManager::importSaveSlotFromJsonString - JSON 规范化失败");
+        return false;
+    }
+
+    const std::string storageKey = getSaveStorageKey(slotIndex);
+    if (!writeToStorage(storageKey, normalized))
+    {
+        CCLOG("SaveManager::importSaveSlotFromJsonString - 写入本地数据库失败");
+        return false;
+    }
+
+    // 同步写入备份文件
+    const std::string filePath = getSaveFilePath(slotIndex);
+    if (!writeToFile(filePath, normalized))
+    {
+        CCLOG("SaveManager::importSaveSlotFromJsonString - 备份 JSON 写入失败（不影响主存档）");
+    }
+
+    CCLOG("SaveManager::importSaveSlotFromJsonString - 已导入槽位 %d", slotIndex);
+    return true;
+}
+
+bool SaveManager::exportSettingsToJsonString(std::string &outJson) const
+{
+    outJson.clear();
+
+    const std::string storageKey = getSettingsStorageKey();
+    if (readFromStorage(storageKey, outJson))
+    {
+        return true;
+    }
+
+    // 回退：备份 JSON
+    const std::string filePath = getSettingsFilePath();
+    return readFromFile(filePath, outJson);
+}
+
+bool SaveManager::importSettingsFromJsonString(const std::string &json)
+{
+    SettingsSaveData settings;
+    if (!JsonSerializer::deserialize(json, settings))
+    {
+        CCLOG("SaveManager::importSettingsFromJsonString - JSON 反序列化失败");
+        return false;
+    }
+
+    std::string normalized = JsonSerializer::serialize(settings);
+    if (normalized.empty())
+    {
+        CCLOG("SaveManager::importSettingsFromJsonString - JSON 规范化失败");
+        return false;
+    }
+
+    const std::string storageKey = getSettingsStorageKey();
+    if (!writeToStorage(storageKey, normalized))
+    {
+        CCLOG("SaveManager::importSettingsFromJsonString - 写入本地数据库失败");
+        return false;
+    }
+
+    // 同步写入备份文件
+    const std::string filePath = getSettingsFilePath();
+    if (!writeToFile(filePath, normalized))
+    {
+        CCLOG("SaveManager::importSettingsFromJsonString - 备份 JSON 写入失败（不影响主设置）");
+    }
+
+    CCLOG("SaveManager::importSettingsFromJsonString - 已导入设置");
     return true;
 }
 

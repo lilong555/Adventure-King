@@ -102,10 +102,11 @@ bool GameUIController::init(Scene *scene,
                                           return;
 
                                       _gameUI->hidePauseMenu();
-                                      _paused = false;
+                                      // 打开存档菜单时必须保持“世界暂停”，否则玩家在菜单中仍会被攻击/滑动等
+                                      _paused = true;
                                       if (_onPauseChanged)
                                       {
-                                          _onPauseChanged(false);
+                                          _onPauseChanged(true);
                                       }
 
                                       auto saveMenu = SaveMenuLayer::create(
@@ -115,6 +116,26 @@ bool GameUIController::init(Scene *scene,
                                           _player ? _player->getPosition() : Vec2::ZERO);
                                       if (saveMenu && _scene)
                                       {
+                                          // 关闭存档菜单后回到暂停菜单（仍保持暂停）
+                                          saveMenu->setCloseCallback([this]()
+                                                                     {
+                                                                         if (!_gameUI)
+                                                                         {
+                                                                             return;
+                                                                         }
+                                                                         // 若已切到其他场景（例如读档转场），不做 UI 恢复，避免访问无效对象
+                                                                         if (Director::getInstance()->getRunningScene() != _scene)
+                                                                         {
+                                                                             return;
+                                                                         }
+
+                                                                         _gameUI->showPauseMenu();
+                                                                         _paused = true;
+                                                                         if (_onPauseChanged)
+                                                                         {
+                                                                             _onPauseChanged(true);
+                                                                         }
+                                                                     });
                                           _scene->addChild(saveMenu, UI_Z_ORDER + 1);
                                       }
                                       CCLOG("GameScene - 打开保存游戏菜单"); });
@@ -125,10 +146,11 @@ bool GameUIController::init(Scene *scene,
                                           return;
 
                                       _gameUI->hidePauseMenu();
-                                      _paused = false;
+                                      // 打开读档菜单时同样保持暂停，避免底层世界继续运行
+                                      _paused = true;
                                       if (_onPauseChanged)
                                       {
-                                          _onPauseChanged(false);
+                                          _onPauseChanged(true);
                                       }
 
                                       auto saveMenu = SaveMenuLayer::create(SaveMenuLayer::Mode::LOAD);
@@ -140,6 +162,23 @@ bool GameUIController::init(Scene *scene,
                                                                                {
                                                                                    _onLoadSuccess(saveData);
                                                                                } });
+                                          saveMenu->setCloseCallback([this]()
+                                                                     {
+                                                                         if (!_gameUI)
+                                                                         {
+                                                                             return;
+                                                                         }
+                                                                         if (Director::getInstance()->getRunningScene() != _scene)
+                                                                         {
+                                                                             return;
+                                                                         }
+                                                                         _gameUI->showPauseMenu();
+                                                                         _paused = true;
+                                                                         if (_onPauseChanged)
+                                                                         {
+                                                                             _onPauseChanged(true);
+                                                                         }
+                                                                     });
                                           if (_scene)
                                           {
                                               _scene->addChild(saveMenu, UI_Z_ORDER + 1);
