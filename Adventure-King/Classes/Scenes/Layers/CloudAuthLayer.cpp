@@ -57,7 +57,7 @@ bool CloudAuthLayer::init(const DoneCallback &cb)
     _panel->addChild(title);
 
     // 提示信息
-    _messageLabel = Label::createWithTTF("提示：游客模式将禁用云存功能", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
+    _messageLabel = Label::createWithTTF("提示：游客模式将禁用云存功能（用户名3-32位；密码6-64位）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
     _messageLabel->setAnchorPoint(Vec2(0.5f, 1.0f));
     _messageLabel->setPosition(Vec2(panelW * 0.5f, panelH - 88.0f));
     _messageLabel->setTextColor(Color4B(200, 200, 200, 255));
@@ -75,13 +75,13 @@ bool CloudAuthLayer::init(const DoneCallback &cb)
         _panel->addChild(label);
     };
 
-    auto styleTextField = [&](ui::TextField *field, float y) {
+    auto styleTextField = [&](ui::TextField *field, float y, int maxLen) {
         field->setAnchorPoint(Vec2(0.0f, 0.5f));
         field->setPosition(Vec2(fieldX, y));
         field->setTextColor(Color4B(240, 240, 240, 255));
         field->setPlaceHolderColor(Color4B(160, 160, 160, 255));
         field->setMaxLengthEnabled(true);
-        field->setMaxLength(128);
+        field->setMaxLength(maxLen);
         field->setCursorEnabled(true);
         field->setCursorChar('|');
         _panel->addChild(field);
@@ -98,19 +98,19 @@ bool CloudAuthLayer::init(const DoneCallback &cb)
     // 默认端口使用 5174：5173 常被前端工具（例如 Vite）占用，容易产生端口冲突
     _urlField = ui::TextField::create("http://127.0.0.1:5174", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
     _urlField->setString("http://127.0.0.1:5174");
-    styleTextField(_urlField, startY);
+    styleTextField(_urlField, startY, 200);
 
     // 用户名
     addRowLabel("用户名", startY - rowH);
-    _userField = ui::TextField::create("请输入用户名", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
-    styleTextField(_userField, startY - rowH);
+    _userField = ui::TextField::create("3-32位字母/数字/下划线", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    styleTextField(_userField, startY - rowH, 32);
 
     // 密码
     addRowLabel("密码", startY - rowH * 2);
-    _passField = ui::TextField::create("至少6位", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    _passField = ui::TextField::create("请输入密码", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
     _passField->setPasswordEnabled(true);
     _passField->setPasswordStyleText("*");
-    styleTextField(_passField, startY - rowH * 2);
+    styleTextField(_passField, startY - rowH * 2, 64);
 
     // 按钮
     auto menu = Menu::create();
@@ -177,33 +177,15 @@ std::string CloudAuthLayer::getPassword() const
 
 void CloudAuthLayer::onLoginClicked()
 {
-    if (_busy)
-    {
-        return;
-    }
-
-    const std::string url = getUrl();
-    const std::string user = getUsername();
-    const std::string pass = getPassword();
-
-    setBusy(true);
-    setMessage("正在登录...", Color4B(200, 200, 200, 255));
-
-    auto cloud = CloudSyncService::getInstance();
-    cloud->login(url, user, pass, [this](bool ok, const std::string &msg) {
-        setBusy(false);
-        setMessage(msg, ok ? Color4B(120, 220, 120, 255) : Color4B(220, 120, 120, 255));
-        if (ok)
-        {
-            if (_doneCallback)
-            {
-                _doneCallback(true, msg);
-            }
-        }
-    });
+    startAuthRequest(false);
 }
 
 void CloudAuthLayer::onRegisterClicked()
+{
+    startAuthRequest(true);
+}
+
+void CloudAuthLayer::startAuthRequest(bool isRegister)
 {
     if (_busy)
     {
@@ -215,20 +197,31 @@ void CloudAuthLayer::onRegisterClicked()
     const std::string pass = getPassword();
 
     setBusy(true);
-    setMessage("正在注册...", Color4B(200, 200, 200, 255));
+    setMessage(isRegister ? "正在注册..." : "正在登录...", Color4B(200, 200, 200, 255));
 
     auto cloud = CloudSyncService::getInstance();
-    cloud->registerAndLogin(url, user, pass, [this](bool ok, const std::string &msg) {
+    auto done = [this](bool ok, const std::string &msg) {
         setBusy(false);
         setMessage(msg, ok ? Color4B(120, 220, 120, 255) : Color4B(220, 120, 120, 255));
-        if (ok)
+        if (ok && _doneCallback)
         {
-            if (_doneCallback)
+            // 安全性：登录成功后清空密码输入框，避免后续误操作/截图泄露
+            if (_passField)
             {
-                _doneCallback(true, msg);
+                _passField->setString("");
             }
+            _doneCallback(true, msg);
         }
-    });
+    };
+
+    if (isRegister)
+    {
+        cloud->registerAndLogin(url, user, pass, done);
+    }
+    else
+    {
+        cloud->login(url, user, pass, done);
+    }
 }
 
 void CloudAuthLayer::onCancelClicked()

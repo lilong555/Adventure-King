@@ -42,8 +42,12 @@ static std::string toHex(const std::vector<uint8_t> &bytes)
 
 static std::string randomHex(size_t numBytes)
 {
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    // 说明：random_device 在部分平台实现较慢；这里用 thread_local RNG 复用种子，避免每次调用都重新播种。
+    static thread_local std::mt19937 gen([] {
+        std::random_device rd;
+        std::seed_seq seq{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()};
+        return std::mt19937(seq);
+    }());
     std::uniform_int_distribution<int> dis(0, 255);
 
     std::vector<uint8_t> bytes;
@@ -72,6 +76,7 @@ static bool writeTextFileAtomic(const fs::path &path, const std::string &content
 {
     outErr.clear();
     const fs::path tmp = path.string() + ".tmp";
+    const fs::path bak = path.string() + ".bak";
 
     std::error_code ec;
     fs::create_directories(path.parent_path(), ec);
@@ -92,14 +97,49 @@ static bool writeTextFileAtomic(const fs::path &path, const std::string &content
         ofs.close();
     }
 
-    // Windows 上 rename 目标存在会失败，这里先删除
-    fs::remove(path, ec);
+    // 说明：尽量避免“先删旧文件再改名”的写法，防止改名失败导致原文件丢失。
+    // 做法：若目标存在则先改名为 .bak，tmp 改名为目标；成功后删除 .bak，失败则尝试回滚。
+    const bool hasOld = fs::exists(path, ec) && !ec;
     ec.clear();
+
+    if (hasOld)
+    {
+        fs::remove(bak, ec); // 忽略：可能不存在
+        ec.clear();
+
+        fs::rename(path, bak, ec);
+        if (ec)
+        {
+            outErr = "备份旧文件失败: " + ec.message();
+            fs::remove(tmp, ec);
+            return false;
+        }
+        ec.clear();
+    }
+
     fs::rename(tmp, path, ec);
     if (ec)
     {
-        outErr = "重命名失败: " + ec.message();
+        std::string renameErr = ec.message();
+        ec.clear();
+
+        // 尝试回滚：把 .bak 改回原文件
+        if (hasOld)
+        {
+            std::error_code ec2;
+            fs::rename(bak, path, ec2);
+            (void)ec2;
+        }
+
+        fs::remove(tmp, ec);
+        outErr = "重命名失败: " + renameErr;
         return false;
+    }
+
+    if (hasOld)
+    {
+        fs::remove(bak, ec);
+        ec.clear();
     }
     return true;
 }
@@ -330,9 +370,9 @@ public:
             outErr = "用户名不合法（仅支持字母/数字/下划线，长度 3-32）";
             return false;
         }
-        if (password.size() < 6)
+        if (password.size() < 6 || password.size() > 64)
         {
-            outErr = "密码过短（至少 6 位）";
+            outErr = "密码长度不合法（6-64 位）";
             return false;
         }
         if (_users.find(username) != _users.end())
@@ -410,7 +450,7 @@ private:
         std::string err;
         if (!parseJsonObject(content, doc, err))
         {
-            std::cerr << "[UserStore] users.json 解析失败，忽略并重建\n";
+            std::cerr << "[UserStore] users.json 解析失败，忽略并重建: " << err << "\n";
             return true;
         }
 
@@ -496,10 +536,13 @@ public:
     std::string createToken(const std::string &username, int expiresSec)
     {
         std::lock_guard<std::mutex> lock(_mu);
+        const int64_t now = nowMs();
+        maybeCleanupLocked(now);
+
         const std::string token = randomHex(32);
         Session s;
         s.username = username;
-        s.expireAtMs = nowMs() + static_cast<int64_t>(expiresSec) * 1000;
+        s.expireAtMs = now + static_cast<int64_t>(expiresSec) * 1000;
         _sessions[token] = s;
         return token;
     }
@@ -507,12 +550,14 @@ public:
     bool verifyToken(const std::string &token, std::string &outUsername)
     {
         std::lock_guard<std::mutex> lock(_mu);
+        const int64_t now = nowMs();
+        maybeCleanupLocked(now);
+
         auto it = _sessions.find(token);
         if (it == _sessions.end())
         {
             return false;
         }
-        const int64_t now = nowMs();
         if (now >= it->second.expireAtMs)
         {
             _sessions.erase(it);
@@ -525,6 +570,7 @@ public:
     void revokeUser(const std::string &username)
     {
         std::lock_guard<std::mutex> lock(_mu);
+        maybeCleanupLocked(nowMs());
         for (auto it = _sessions.begin(); it != _sessions.end();)
         {
             if (it->second.username == username)
@@ -539,7 +585,37 @@ public:
     }
 
 private:
+    void maybeCleanupLocked(int64_t now)
+    {
+        constexpr int64_t kCleanupIntervalMs = 60 * 1000;
+        constexpr size_t kSizeThreshold = 1024;
+        if (_sessions.empty())
+        {
+            _lastCleanupAtMs = now;
+            return;
+        }
+
+        if (now - _lastCleanupAtMs < kCleanupIntervalMs && _sessions.size() < kSizeThreshold)
+        {
+            return;
+        }
+
+        for (auto it = _sessions.begin(); it != _sessions.end();)
+        {
+            if (now >= it->second.expireAtMs)
+            {
+                it = _sessions.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        _lastCleanupAtMs = now;
+    }
+
     std::mutex _mu;
+    int64_t _lastCleanupAtMs = 0;
     std::unordered_map<std::string, Session> _sessions;
 };
 
@@ -571,6 +647,12 @@ public:
 
         std::error_code ec;
         fs::create_directories(historyDir, ec);
+        if (ec)
+        {
+            outErr = "创建用户目录失败: " + ec.message();
+            return false;
+        }
+        ec.clear();
         fs::create_directories(savesDir, ec);
         if (ec)
         {
@@ -582,8 +664,13 @@ public:
         if (fs::exists(packagePath))
         {
             const fs::path backupPath = historyDir / ("package_" + std::to_string(nowMs()) + ".json");
-            fs::copy_file(packagePath, backupPath, fs::copy_options::overwrite_existing, ec);
-            ec.clear();
+            std::error_code copyEc;
+            fs::copy_file(packagePath, backupPath, fs::copy_options::overwrite_existing, copyEc);
+            if (copyEc)
+            {
+                // 不阻断：历史备份失败不应影响主上传流程
+                std::cerr << "[SaveStore] 备份历史失败: " << copyEc.message() << "\n";
+            }
         }
 
         // 保存完整包
@@ -856,6 +943,9 @@ struct Args
     std::string adminToken;
 };
 
+// 单次上传的最大存档包大小（避免异常/恶意请求导致内存暴涨）
+static constexpr size_t MAX_SYNC_PACKAGE_BYTES = 8 * 1024 * 1024; // 8MB
+
 static bool parseArgs(int argc, char **argv, Args &out)
 {
     for (int i = 1; i < argc; ++i)
@@ -873,7 +963,45 @@ static bool parseArgs(int argc, char **argv, Args &out)
         }
         if (a == "--port" && i + 1 < argc)
         {
-            out.port = std::stoi(argv[++i]);
+            const std::string v = argv[++i];
+            int port = 0;
+            bool ok = true;
+            if (v.empty())
+            {
+                ok = false;
+            }
+            else
+            {
+                int64_t value = 0;
+                for (char c : v)
+                {
+                    if (c < '0' || c > '9')
+                    {
+                        ok = false;
+                        break;
+                    }
+                    value = value * 10 + (c - '0');
+                    if (value > 65535)
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok && value >= 1 && value <= 65535)
+                {
+                    port = static_cast<int>(value);
+                }
+                else
+                {
+                    ok = false;
+                }
+            }
+            if (!ok)
+            {
+                std::cerr << "端口不合法: " << v << "（范围 1-65535）\n";
+                return false;
+            }
+            out.port = port;
             continue;
         }
         if (a == "--admin-token" && i + 1 < argc)
@@ -950,228 +1078,36 @@ int main(int argc, char **argv)
     });
 
     // ========================= 管理页面（可视化） =========================
-    const std::string adminPageHtml = R"HTML(<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Adventure-King 云存管理</title>
-  <style>
-    :root { --bg:#0f1115; --panel:#171a21; --border:#2a2f3a; --text:#e7e7e7; --muted:#a8b0c0; --danger:#ff5b5b; --ok:#35d07f; --btn:#2b3342; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); }
-    header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
-    header h1 { font-size:16px; margin:0; font-weight:600; color:var(--text); }
-    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    input { background:#0b0d12; border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:8px; min-width:240px; }
-    button { background:var(--btn); border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:8px; cursor:pointer; }
-    button:hover { filter:brightness(1.1); }
-    button.danger { background:rgba(255,91,91,0.12); border-color:rgba(255,91,91,0.35); color:#ffb5b5; }
-    main { display:grid; grid-template-columns: 300px 1fr; gap:12px; padding:12px; }
-    .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-    .card h2 { margin:0; padding:12px 12px; font-size:14px; border-bottom:1px solid var(--border); color:var(--muted); }
-    .list { max-height: calc(100vh - 140px); overflow:auto; }
-    .item { padding:10px 12px; border-bottom:1px solid rgba(42,47,58,0.6); cursor:pointer; }
-    .item:hover { background: rgba(255,255,255,0.03); }
-    .item.active { background: rgba(53,208,127,0.08); }
-    .item .name { font-weight:600; }
-    .item .meta { font-size:12px; color:var(--muted); margin-top:4px; }
-    .content { padding:12px; }
-    .kv { display:grid; grid-template-columns: 120px 1fr; gap:8px 10px; margin-bottom:10px; }
-    .kv div { font-size:13px; }
-    .kv .k { color:var(--muted); }
-    .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 16px; }
-    .msg { margin-left:auto; font-size:12px; color:var(--muted); }
-    pre { background:#0b0d12; border:1px solid var(--border); padding:10px; border-radius:10px; overflow:auto; max-height: 360px; }
-    .history { display:flex; flex-direction:column; gap:8px; }
-    .hist-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px; background:#0b0d12; border:1px solid var(--border); border-radius:10px; }
-    .hist-item .left { display:flex; flex-direction:column; }
-    .hist-item .ts { font-weight:600; }
-    .hist-item .sub { font-size:12px; color:var(--muted); }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--border); color:var(--muted); }
-    .ok { color:var(--ok); }
-    .dangerText { color:var(--danger); }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Adventure-King 云存管理</h1>
-    <div class="row">
-      <input id="adminToken" placeholder="管理员 Token（请求头 X-AK-Admin-Token）" />
-      <button id="saveToken">保存</button>
-      <button id="refresh">刷新</button>
-      <span class="msg" id="msg"></span>
-    </div>
-  </header>
-  <main>
-    <div class="card">
-      <h2>用户列表</h2>
-      <div class="list" id="userList"></div>
-    </div>
-    <div class="card">
-      <h2>用户详情</h2>
-      <div class="content">
-        <div class="kv">
-          <div class="k">用户名</div><div id="detailUser">-</div>
-          <div class="k">创建时间</div><div id="detailCreated">-</div>
-          <div class="k">最近上传</div><div id="detailUploaded">-</div>
-        </div>
-        <div class="toolbar">
-          <button id="btnLoadPackage">查看当前存档包</button>
-          <button class="danger" id="btnDeleteUser">删除用户</button>
-          <span class="pill" id="detailHint">请选择左侧用户</span>
-        </div>
-        <h3 style="margin:0 0 8px;color:var(--muted);font-size:13px;">历史版本（可回滚）</h3>
-        <div class="history" id="history"></div>
-        <h3 style="margin:16px 0 8px;color:var(--muted);font-size:13px;">当前存档包（只读预览）</h3>
-        <pre id="packagePreview">{}</pre>
-      </div>
-    </div>
-  </main>
+    // 说明：管理页面放在 web/admin.html，避免把 200+ 行 HTML 直接写进 C++ 源码。
+    std::string adminPageHtml;
+    {
+        fs::path exeDir;
+        std::error_code ec2;
+        const fs::path exePath = fs::absolute(fs::path(argv[0]), ec2);
+        if (!ec2 && !exePath.empty())
+        {
+            exeDir = exePath.parent_path();
+        }
+        else
+        {
+            ec2.clear();
+            exeDir = fs::current_path(ec2);
+            if (ec2)
+            {
+                exeDir = fs::path(".");
+            }
+        }
 
-<script>
-  const $ = (id) => document.getElementById(id);
-  const msg = (text, ok) => { $('msg').textContent = text || ''; $('msg').className = ok ? 'msg ok' : 'msg'; };
-  const fmtTime = (ms) => {
-    if (!ms || ms <= 0) return '-';
-    const d = new Date(ms);
-    return d.toLocaleString();
-  };
-
-  let selectedUser = '';
-
-  function getToken() { return $('adminToken').value.trim(); }
-  function headers() {
-    const h = { 'Content-Type': 'application/json' };
-    const t = getToken();
-    if (t) h['X-AK-Admin-Token'] = t;
-    return h;
-  }
-
-  async function api(path, opts) {
-    const res = await fetch(path, { ...opts, headers: { ...(opts && opts.headers ? opts.headers : {}), ...headers() } });
-    const text = await res.text();
-    let json = null;
-    try { json = JSON.parse(text); } catch (_) {}
-    if (!res.ok) {
-      const m = (json && json.message) ? json.message : (text || ('HTTP ' + res.status));
-      throw new Error(m);
+        const fs::path htmlPath = exeDir / "web" / "admin.html";
+        if (!readTextFile(htmlPath, adminPageHtml))
+        {
+            std::cerr << "[WARN] 未找到管理页面: " << htmlPath.string() << "\n";
+            adminPageHtml =
+                "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"/>"
+                "<title>Adventure-King 云存管理</title></head><body>"
+                "<h2>管理页面缺失</h2><p>未找到 web/admin.html</p></body></html>";
+        }
     }
-    return json !== null ? json : text;
-  }
-
-  function renderUsers(users) {
-    const list = $('userList');
-    list.innerHTML = '';
-    users.forEach(u => {
-      const div = document.createElement('div');
-      div.className = 'item' + (u.username === selectedUser ? ' active' : '');
-      div.onclick = () => selectUser(u.username, u);
-      div.innerHTML = `
-        <div class="name">${u.username}</div>
-        <div class="meta">创建：${fmtTime(u.createdAtMs)} · 最近上传：${fmtTime(u.lastUploadAtMs)}</div>
-      `;
-      list.appendChild(div);
-    });
-    if (!users.length) list.innerHTML = '<div class="item"><div class="meta">暂无用户</div></div>';
-  }
-
-  function setDetail(user, createdAtMs, lastUploadAtMs) {
-    $('detailUser').textContent = user || '-';
-    $('detailCreated').textContent = fmtTime(createdAtMs);
-    $('detailUploaded').textContent = fmtTime(lastUploadAtMs);
-    $('detailHint').textContent = user ? '已选择用户，可执行删除/回滚' : '请选择左侧用户';
-  }
-
-  async function refreshUsers() {
-    msg('刷新中...', true);
-    const data = await api('/api/admin/users', { method: 'GET' });
-    renderUsers(data.users || []);
-    msg('已刷新', true);
-  }
-
-  async function selectUser(username, info) {
-    selectedUser = username;
-    renderUsers((await api('/api/admin/users', { method: 'GET' })).users || []);
-    $('packagePreview').textContent = '{}';
-    $('history').innerHTML = '';
-    setDetail(username, info.createdAtMs, info.lastUploadAtMs);
-    await refreshHistory();
-  }
-
-  async function refreshHistory() {
-    if (!selectedUser) return;
-    const data = await api(`/api/admin/users/${selectedUser}/history`, { method: 'GET' });
-    const items = data.history || [];
-    const box = $('history');
-    box.innerHTML = '';
-    if (!items.length) {
-      box.innerHTML = '<div class="hist-item"><div class="left"><div class="ts">暂无历史版本</div><div class="sub">用户还未产生回滚点</div></div></div>';
-      return;
-    }
-    items.forEach(h => {
-      const row = document.createElement('div');
-      row.className = 'hist-item';
-      row.innerHTML = `
-        <div class="left">
-          <div class="ts">${fmtTime(h.timestampMs)}</div>
-          <div class="sub">${h.filename} · ${Math.round((h.sizeBytes||0)/1024)} KB</div>
-        </div>
-        <div class="right">
-          <button class="danger" data-ts="${h.timestampMs}">回滚到此版本</button>
-        </div>
-      `;
-      row.querySelector('button').onclick = async () => {
-        if (!confirm('确认回滚？回滚会覆盖该用户当前云端 package.json，并自动备份当前版本到 history。')) return;
-        try {
-          msg('回滚中...', true);
-          await api(`/api/admin/users/${selectedUser}/rollback`, { method: 'POST', body: JSON.stringify({ timestampMs: h.timestampMs }) });
-          msg('回滚成功', true);
-          await refreshUsers();
-          await refreshHistory();
-        } catch (e) { msg('回滚失败：' + e.message, false); }
-      };
-      box.appendChild(row);
-    });
-  }
-
-  async function loadPackage() {
-    if (!selectedUser) return;
-    msg('加载存档包...', true);
-    const data = await api(`/api/admin/users/${selectedUser}/package`, { method: 'GET' });
-    $('packagePreview').textContent = JSON.stringify(data.package || {}, null, 2);
-    msg('已加载', true);
-  }
-
-  async function deleteUser() {
-    if (!selectedUser) return;
-    if (!confirm('确认删除该用户？此操作会删除用户账号与其所有云端存档（不可恢复）。')) return;
-    msg('删除中...', true);
-    await api(`/api/admin/users/${selectedUser}/delete`, { method: 'POST', body: '{}' });
-    selectedUser = '';
-    setDetail('', 0, 0);
-    $('packagePreview').textContent = '{}';
-    $('history').innerHTML = '';
-    await refreshUsers();
-    msg('已删除', true);
-  }
-
-  $('saveToken').onclick = () => {
-    localStorage.setItem('ak_admin_token', getToken());
-    msg('已保存 Token（仅本机浏览器）', true);
-  };
-  $('refresh').onclick = async () => {
-    try { await refreshUsers(); } catch (e) { msg('刷新失败：' + e.message, false); }
-  };
-  $('btnLoadPackage').onclick = async () => { try { await loadPackage(); } catch (e) { msg('加载失败：' + e.message, false); } };
-  $('btnDeleteUser').onclick = async () => { try { await deleteUser(); } catch (e) { msg('删除失败：' + e.message, false); } };
-
-  // init
-  const saved = localStorage.getItem('ak_admin_token') || '';
-  $('adminToken').value = saved;
-  refreshUsers().catch(e => msg('请先填写正确 Token：' + e.message, false));
-</script>
-</body>
-</html>)HTML";
 
     auto requireAdmin = [&args](const httplib::Request &req, httplib::Response &res) -> bool {
         const std::string token = req.get_header_value("X-AK-Admin-Token");
@@ -1424,6 +1360,12 @@ int main(int argc, char **argv)
             return;
         }
 
+        if (req.body.size() > MAX_SYNC_PACKAGE_BYTES)
+        {
+            respondJson(res, 413, makeErrorJson("存档包过大，请减少本地存档数量或清理无用存档后重试"));
+            return;
+        }
+
         std::string saveErr;
         if (!saveStore.savePackageForUser(username, req.body, saveErr))
         {
@@ -1451,6 +1393,7 @@ int main(int argc, char **argv)
         }
 
         res.status = 200;
+        res.set_header("X-AK-Server", "ak_cloud_save_server");
         res.set_header("Content-Type", "application/json; charset=utf-8");
         res.set_content(pkg, "application/json; charset=utf-8");
     });

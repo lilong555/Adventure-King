@@ -87,6 +87,12 @@ private:
                          const std::string &body,
                          const std::vector<std::string> &headers,
                          const std::function<void(bool ok, long httpCode, const std::string &respBody, const std::string &err)> &cb);
+    void sendAuthedJsonRequestWithRetry(const Config &cfg,
+                                        const std::string &method,
+                                        const std::string &path,
+                                        const std::string &body,
+                                        const std::function<void(bool ok, long httpCode, const std::string &respBody, const std::string &err)> &cb,
+                                        bool hasRetriedAuth = false);
 
     bool buildLocalPackageJson(std::string &outJson, std::string &outErr) const;
     bool applyRemotePackageMergeToLocal(const std::string &packageJson, std::string &outErr, bool &outLocalChanged);

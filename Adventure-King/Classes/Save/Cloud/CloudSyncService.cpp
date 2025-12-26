@@ -1,11 +1,13 @@
 #include "Save/Cloud/CloudSyncService.h"
 #include "Save/JsonSerializer.h"
+#include "Save/SaveData.h"
 #include "cocos2d.h"
 #include "json/document.h"
 #include "json/stringbuffer.h"
 #include "json/writer.h"
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <cstdlib>
 #include <sstream>
 
@@ -77,6 +79,55 @@ static bool parseJsonObject(const std::string &json, rapidjson::Document &outDoc
         return false;
     }
     return true;
+}
+
+static bool tryParseNonNegativeInt(const char *s, int &out)
+{
+    out = 0;
+    if (!s || !s[0])
+    {
+        return false;
+    }
+
+    int64_t value = 0;
+    for (const char *p = s; *p; ++p)
+    {
+        const char c = *p;
+        if (c < '0' || c > '9')
+        {
+            return false;
+        }
+        value = value * 10 + (c - '0');
+        if (value > INT_MAX)
+        {
+            return false;
+        }
+    }
+
+    out = static_cast<int>(value);
+    return true;
+}
+
+static bool isCloudNoPackageResponse(long httpCode, const std::string &respBody)
+{
+    if (httpCode != 404)
+    {
+        return false;
+    }
+
+    rapidjson::Document doc;
+    std::string err;
+    if (!parseJsonObject(respBody, doc, err))
+    {
+        return false;
+    }
+    if (!doc.HasMember("message") || !doc["message"].IsString())
+    {
+        return false;
+    }
+
+    const std::string msg = doc["message"].GetString();
+    return msg.find("暂无存档包") != std::string::npos;
 }
 
 static int64_t safeGetSaveTimestampFromSlotJsonValue(const rapidjson::Value &slotObj)
@@ -527,6 +578,38 @@ void CloudSyncService::ensureLogin(const Config &cfg,
     });
 }
 
+void CloudSyncService::sendAuthedJsonRequestWithRetry(const Config &cfg,
+                                                      const std::string &method,
+                                                      const std::string &path,
+                                                      const std::string &body,
+                                                      const std::function<void(bool ok, long httpCode, const std::string &respBody, const std::string &err)> &cb,
+                                                      bool hasRetriedAuth)
+{
+    ensureLogin(cfg, [this, cfg, method, path, body, cb, hasRetriedAuth](bool okLogin, const std::string &token, const std::string &errLogin) {
+        if (!okLogin)
+        {
+            cb(false, 0, "", errLogin);
+            return;
+        }
+
+        std::vector<std::string> headers;
+        headers.emplace_back("Authorization: Bearer " + token);
+
+        const std::string url = buildUrl(cfg.baseUrl, path);
+        sendJsonRequest(method, url, body, headers, [this, cfg, method, path, body, cb, hasRetriedAuth](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
+            // token 可能因服务端重启/多实例导致失效：遇到 401 清空 token 并重登一次后重试
+            if (!ok && httpCode == 401 && !hasRetriedAuth)
+            {
+                _token.clear();
+                _tokenExpireAtMs = 0;
+                sendAuthedJsonRequestWithRetry(cfg, method, path, body, cb, true);
+                return;
+            }
+            cb(ok, httpCode, respBody, err);
+        });
+    });
+}
+
 bool CloudSyncService::buildLocalPackageJson(std::string &outJson, std::string &outErr) const
 {
     auto saveManager = SaveManager::getInstance();
@@ -641,11 +724,7 @@ bool CloudSyncService::applyRemotePackageMergeToLocal(const std::string &package
         }
 
         int slotIndex = -1;
-        try
-        {
-            slotIndex = std::stoi(it->name.GetString());
-        }
-        catch (...)
+        if (!tryParseNonNegativeInt(it->name.GetString(), slotIndex))
         {
             continue;
         }
@@ -690,20 +769,29 @@ bool CloudSyncService::applyRemotePackageMergeToLocal(const std::string &package
         const std::string settingsJson = jsonStringify(pkg["settings"]);
         if (!settingsJson.empty())
         {
-            // 不强制失败：设置问题不应阻断云同步
-            if (saveManager->importSettingsFromJsonString(settingsJson))
+            // 规范化并比较：避免“内容未变但仍标记 localChanged=true”
+            SettingsSaveData remoteSettings;
+            if (JsonSerializer::deserialize(settingsJson, remoteSettings))
             {
-                outLocalChanged = true;
+                const std::string remoteNormalized = JsonSerializer::serialize(remoteSettings);
+                if (!remoteNormalized.empty())
+                {
+                    std::string localSettingsJson;
+                    saveManager->exportSettingsToJsonString(localSettingsJson);
+                    if (remoteNormalized != localSettingsJson)
+                    {
+                        // 不强制失败：设置问题不应阻断云同步
+                        if (saveManager->importSettingsFromJsonString(remoteNormalized))
+                        {
+                            outLocalChanged = true;
+                        }
+                    }
+                }
             }
         }
     }
 
     return true;
-}
-
-static bool isHttpUnauthorized(long httpCode)
-{
-    return httpCode == 401;
 }
 
 void CloudSyncService::uploadAllSaves(const ResultCallback &cb)
@@ -716,68 +804,28 @@ void CloudSyncService::uploadAllSaves(const ResultCallback &cb)
         return;
     }
 
-    ensureLogin(cfg, [this, cfg, cb](bool ok, const std::string &token, const std::string &err) {
+    std::string pkgJson;
+    std::string pkgErr;
+    if (!buildLocalPackageJson(pkgJson, pkgErr))
+    {
+        cb(false, pkgErr);
+        return;
+    }
+
+    sendAuthedJsonRequestWithRetry(cfg, "POST", "/api/sync/push", pkgJson, [cb](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
         if (!ok)
         {
-            cb(false, err);
-            return;
-        }
-
-        std::string pkgJson;
-        std::string pkgErr;
-        if (!buildLocalPackageJson(pkgJson, pkgErr))
-        {
-            cb(false, pkgErr);
-            return;
-        }
-
-        std::vector<std::string> headers;
-        headers.emplace_back("Authorization: Bearer " + token);
-
-        const std::string url = buildUrl(cfg.baseUrl, "/api/sync/push");
-        sendJsonRequest("POST", url, pkgJson, headers, [this, cfg, cb, pkgJson, headers](bool ok2, long code, const std::string &respBody, const std::string &err2) {
-            if (!ok2)
+            std::string msg = err;
+            if (!respBody.empty())
             {
-                // token 可能因服务重启而失效：遇到 401 尝试清空 token 并重登一次
-                if (isHttpUnauthorized(code))
-                {
-                    _token.clear();
-                    _tokenExpireAtMs = 0;
-                    ensureLogin(cfg, [this, cfg, cb, pkgJson](bool okLogin2, const std::string &token2, const std::string &errLogin2) {
-                        if (!okLogin2)
-                        {
-                            cb(false, errLogin2);
-                            return;
-                        }
-                        std::vector<std::string> headers2;
-                        headers2.emplace_back("Authorization: Bearer " + token2);
-                        const std::string url2 = buildUrl(cfg.baseUrl, "/api/sync/push");
-                        sendJsonRequest("POST", url2, pkgJson, headers2, [cb](bool ok3, long code3, const std::string &, const std::string &err3) {
-                            if (!ok3)
-                            {
-                                std::ostringstream oss;
-                                oss << "云存失败(" << code3 << "): " << err3;
-                                cb(false, oss.str());
-                                return;
-                            }
-                            cb(true, "云存成功");
-                        });
-                    });
-                    return;
-                }
-
-                std::ostringstream oss;
-                std::string msg = err2;
-                if (!respBody.empty())
-                {
-                    msg = msg + " (body=" + truncateForLog(respBody, 160) + ")";
-                }
-                oss << "云存失败(" << code << "): " << msg;
-                cb(false, oss.str());
-                return;
+                msg = msg + " (body=" + truncateForLog(respBody, 160) + ")";
             }
-            cb(true, "云存成功");
-        });
+            std::ostringstream oss;
+            oss << "云存失败(" << httpCode << "): " << msg;
+            cb(false, oss.str());
+            return;
+        }
+        cb(true, "云存成功");
     });
 }
 
@@ -791,185 +839,55 @@ void CloudSyncService::syncAll(const ResultCallback &cb)
         return;
     }
 
-    auto doSyncWithToken = [this, cfg, cb](const std::string &token, bool hasRetriedAuth) {
-        std::vector<std::string> headers;
-        headers.emplace_back("Authorization: Bearer " + token);
-
-        const std::string pullUrl = buildUrl(cfg.baseUrl, "/api/sync/pull");
-        sendJsonRequest("GET", pullUrl, "", headers, [this, cfg, token, cb, hasRetriedAuth](bool ok2, long code, const std::string &respBody, const std::string &err2) {
-            // 允许云端为空（404）：此时直接上传本地作为初始化
-            bool localChanged = false;
-            if (ok2)
+    sendAuthedJsonRequestWithRetry(cfg, "GET", "/api/sync/pull", "", [this, cfg, cb](bool okPull, long codePull, const std::string &respBodyPull, const std::string &errPull) {
+        // 允许云端为空（404 + “云端暂无存档包”）：此时直接上传本地作为初始化
+        bool localChanged = false;
+        if (okPull)
+        {
+            std::string mergeErr;
+            if (!applyRemotePackageMergeToLocal(respBodyPull, mergeErr, localChanged))
             {
-                std::string mergeErr;
-                if (!applyRemotePackageMergeToLocal(respBody, mergeErr, localChanged))
-                {
-                    cb(false, mergeErr);
-                    return;
-                }
+                cb(false, mergeErr);
+                return;
             }
-            else if (code != 404)
+        }
+        else if (!isCloudNoPackageResponse(codePull, respBodyPull))
+        {
+            std::string msg = errPull;
+            if (!respBodyPull.empty())
             {
-                // token 可能因服务重启而失效：遇到 401 清空 token 并重登一次
-                if (isHttpUnauthorized(code) && !hasRetriedAuth)
+                msg = msg + " (body=" + truncateForLog(respBodyPull, 160) + ")";
+            }
+            std::ostringstream oss;
+            oss << "云同步拉取失败(" << codePull << "): " << msg;
+            cb(false, oss.str());
+            return;
+        }
+
+        // 回传合并后的本地结果（保证“同步”两端一致）
+        std::string pkgJson;
+        std::string pkgErr;
+        if (!buildLocalPackageJson(pkgJson, pkgErr))
+        {
+            cb(false, pkgErr);
+            return;
+        }
+
+        sendAuthedJsonRequestWithRetry(cfg, "POST", "/api/sync/push", pkgJson, [cb, localChanged](bool okPush, long codePush, const std::string &respBodyPush, const std::string &errPush) {
+            if (!okPush)
+            {
+                std::string msg = errPush;
+                if (!respBodyPush.empty())
                 {
-                    _token.clear();
-                    _tokenExpireAtMs = 0;
-                    ensureLogin(cfg, [this, cfg, cb](bool okLogin2, const std::string &token2, const std::string &errLogin2) {
-                        if (!okLogin2)
-                        {
-                            cb(false, errLogin2);
-                            return;
-                        }
-                        // 仅重试一次
-                        std::vector<std::string> headers2;
-                        headers2.emplace_back("Authorization: Bearer " + token2);
-                        const std::string pullUrl2 = buildUrl(cfg.baseUrl, "/api/sync/pull");
-                        sendJsonRequest("GET", pullUrl2, "", headers2, [this, cfg, token2, cb](bool okPull2, long codePull2, const std::string &respBody2, const std::string &errPull2) {
-                            bool localChanged2 = false;
-                            if (okPull2)
-                            {
-                                std::string mergeErr2;
-                                if (!applyRemotePackageMergeToLocal(respBody2, mergeErr2, localChanged2))
-                                {
-                                    cb(false, mergeErr2);
-                                    return;
-                                }
-                            }
-                            else if (codePull2 != 404)
-                            {
-                                std::string msg = errPull2;
-                                if (!respBody2.empty())
-                                {
-                                    msg = msg + " (body=" + truncateForLog(respBody2, 160) + ")";
-                                }
-                                std::ostringstream oss;
-                                oss << "云同步拉取失败(" << codePull2 << "): " << msg;
-                                cb(false, oss.str());
-                                return;
-                            }
-
-                            // 回传合并后的本地结果
-                            std::string pkgJson2;
-                            std::string pkgErr2;
-                            if (!buildLocalPackageJson(pkgJson2, pkgErr2))
-                            {
-                                cb(false, pkgErr2);
-                                return;
-                            }
-
-                            std::vector<std::string> headersPush2;
-                            headersPush2.emplace_back("Authorization: Bearer " + token2);
-                            const std::string pushUrl2 = buildUrl(cfg.baseUrl, "/api/sync/push");
-                            sendJsonRequest("POST", pushUrl2, pkgJson2, headersPush2, [cb, localChanged2](bool okPush2, long codePush2, const std::string &respBodyPush2, const std::string &errPush2) {
-                                if (!okPush2)
-                                {
-                                    std::string msg = errPush2;
-                                    if (!respBodyPush2.empty())
-                                    {
-                                        msg = msg + " (body=" + truncateForLog(respBodyPush2, 160) + ")";
-                                    }
-                                    std::ostringstream oss;
-                                    oss << "云同步回传失败(" << codePush2 << "): " << msg;
-                                    cb(false, oss.str());
-                                    return;
-                                }
-                                cb(true, localChanged2 ? "云同步成功（已合并云端更新）" : "云同步成功");
-                            });
-                        });
-                    });
-                    return;
+                    msg = msg + " (body=" + truncateForLog(respBodyPush, 160) + ")";
                 }
-
                 std::ostringstream oss;
-                std::string msg = err2;
-                if (!respBody.empty())
-                {
-                    msg = msg + " (body=" + truncateForLog(respBody, 160) + ")";
-                }
-                oss << "云同步拉取失败(" << code << "): " << msg;
+                oss << "云同步回传失败(" << codePush << "): " << msg;
                 cb(false, oss.str());
                 return;
             }
 
-            // 回传合并后的本地结果（保证“同步”两端一致）
-            std::string pkgJson;
-            std::string pkgErr;
-            if (!buildLocalPackageJson(pkgJson, pkgErr))
-            {
-                cb(false, pkgErr);
-                return;
-            }
-
-            std::vector<std::string> headers2;
-            headers2.emplace_back("Authorization: Bearer " + token);
-            const std::string pushUrl = buildUrl(cfg.baseUrl, "/api/sync/push");
-            sendJsonRequest("POST", pushUrl, pkgJson, headers2, [this, cfg, cb, localChanged, hasRetriedAuth](bool ok3, long code3, const std::string &respBody3, const std::string &err3) {
-                if (!ok3)
-                {
-                    // token 可能因服务重启而失效：遇到 401 清空 token 并重登一次
-                    if (isHttpUnauthorized(code3) && !hasRetriedAuth)
-                    {
-                        _token.clear();
-                        _tokenExpireAtMs = 0;
-                        ensureLogin(cfg, [this, cfg, cb](bool okLogin2, const std::string &token2, const std::string &errLogin2) {
-                            if (!okLogin2)
-                            {
-                                cb(false, errLogin2);
-                                return;
-                            }
-                            // 仅重试一次：重新构建本地包并推送
-                            std::string pkgJson2;
-                            std::string pkgErr2;
-                            if (!buildLocalPackageJson(pkgJson2, pkgErr2))
-                            {
-                                cb(false, pkgErr2);
-                                return;
-                            }
-                            std::vector<std::string> headersPush2;
-                            headersPush2.emplace_back("Authorization: Bearer " + token2);
-                            const std::string pushUrl2 = buildUrl(cfg.baseUrl, "/api/sync/push");
-                            sendJsonRequest("POST", pushUrl2, pkgJson2, headersPush2, [cb](bool okPush2, long codePush2, const std::string &respBodyPush2, const std::string &errPush2) {
-                                if (!okPush2)
-                                {
-                                    std::string msg = errPush2;
-                                    if (!respBodyPush2.empty())
-                                    {
-                                        msg = msg + " (body=" + truncateForLog(respBodyPush2, 160) + ")";
-                                    }
-                                    std::ostringstream oss;
-                                    oss << "云同步回传失败(" << codePush2 << "): " << msg;
-                                    cb(false, oss.str());
-                                    return;
-                                }
-                                cb(true, "云同步成功");
-                            });
-                        });
-                        return;
-                    }
-
-                    std::string msg = err3;
-                    if (!respBody3.empty())
-                    {
-                        msg = msg + " (body=" + truncateForLog(respBody3, 160) + ")";
-                    }
-                    std::ostringstream oss;
-                    oss << "云同步回传失败(" << code3 << "): " << msg;
-                    cb(false, oss.str());
-                    return;
-                }
-
-                cb(true, localChanged ? "云同步成功（已合并云端更新）" : "云同步成功");
-            });
+            cb(true, localChanged ? "云同步成功（已合并云端更新）" : "云同步成功");
         });
-    };
-
-    ensureLogin(cfg, [this, cfg, cb, doSyncWithToken](bool ok, const std::string &token, const std::string &err) {
-        if (!ok)
-        {
-            cb(false, err);
-            return;
-        }
-        doSyncWithToken(token, false);
     });
 }

@@ -125,7 +125,28 @@ bool SaveMenuLayer::initTitle()
 
 bool SaveMenuLayer::initCloudControls()
 {
-    // 云端状态提示：不阻断存档菜单显示
+    _cloudStatusLabel = Label::createWithTTF("", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
+    if (!_cloudStatusLabel)
+    {
+        CCLOG("Error: Failed to create cloud status label!");
+        return false;
+    }
+    _cloudStatusLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
+    const float y = _titleLabel ? _titleLabel->getPositionY() : (_background->getContentSize().height / 12 * 11);
+    _cloudStatusLabel->setPosition(Vec2(_background->getContentSize().width - 40, y));
+    _background->addChild(_cloudStatusLabel);
+    refreshCloudStatusLabel();
+
+    return true;
+}
+
+void SaveMenuLayer::refreshCloudStatusLabel()
+{
+    if (!_cloudStatusLabel)
+    {
+        return;
+    }
+
     auto cloud = CloudSyncService::getInstance();
     const bool guest = cloud->isGuestMode();
     const bool configured = cloud->isConfigured();
@@ -149,19 +170,8 @@ bool SaveMenuLayer::initCloudControls()
         statusColor = Color4B(220, 120, 120, 255);
     }
 
-    _cloudStatusLabel = Label::createWithTTF(statusText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
-    if (!_cloudStatusLabel)
-    {
-        CCLOG("Error: Failed to create cloud status label!");
-        return false;
-    }
+    _cloudStatusLabel->setString(statusText);
     _cloudStatusLabel->setTextColor(statusColor);
-    _cloudStatusLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
-    _cloudStatusLabel->setPosition(Vec2(_background->getContentSize().width - 40,
-                                        _background->getContentSize().height / 12 * 11));
-    _background->addChild(_cloudStatusLabel);
-
-    return true;
 }
 
 bool SaveMenuLayer::initSlots()
@@ -232,12 +242,21 @@ bool SaveMenuLayer::initCloseButton()
                 }
 
                 showConfirmDialog("将上传本地【全部存档+设置】到云端账号（覆盖云端）。\n建议先保存一次当前进度到某个槽位。", [this, cloud]() {
+                    this->retain();
                     cloud->uploadAllSaves([this](bool ok, const std::string &msg) {
+                        if (!this->getParent())
+                        {
+                            CCLOG("SaveMenuLayer - 云存回调到达，但菜单已关闭：%s", msg.c_str());
+                            this->release();
+                            return;
+                        }
+
                         showConfirmDialog(msg, []() {});
                         if (ok)
                         {
                             reloadSlots();
                         }
+                        this->release();
                     });
                 });
             });
@@ -485,18 +504,27 @@ void SaveMenuLayer::onCloudClicked(int slotIndex)
             }
 
             auto saveManager = SaveManager::getInstance();
-            if (!saveManager->saveGame(slotIndex, _player, progressData))
-            {
-                showConfirmDialog("云存失败：本地保存失败", []() {});
-                return;
-            }
+        if (!saveManager->saveGame(slotIndex, _player, progressData))
+        {
+            showConfirmDialog("云存失败：本地保存失败", []() {});
+            return;
+        }
 
+            this->retain();
             cloud->uploadAllSaves([this](bool ok, const std::string &msg) {
+                if (!this->getParent())
+                {
+                    CCLOG("SaveMenuLayer - 云存回调到达，但菜单已关闭：%s", msg.c_str());
+                    this->release();
+                    return;
+                }
+
                 showConfirmDialog(msg, []() {});
                 if (ok)
                 {
                     reloadSlots();
                 }
+                this->release();
             });
         });
         return;
@@ -504,10 +532,19 @@ void SaveMenuLayer::onCloudClicked(int slotIndex)
 
     // 云读：云同步 -> 加载该槽位
     showConfirmDialog("将先进行云同步（按时间戳取最新），然后加载该槽位？", [this, slotIndex, cloud]() {
+        this->retain();
         cloud->syncAll([this, slotIndex](bool ok, const std::string &msg) {
+            if (!this->getParent())
+            {
+                CCLOG("SaveMenuLayer - 云同步回调到达，但菜单已关闭：%s", msg.c_str());
+                this->release();
+                return;
+            }
+
             if (!ok)
             {
                 showConfirmDialog(msg, []() {});
+                this->release();
                 return;
             }
 
@@ -521,10 +558,12 @@ void SaveMenuLayer::onCloudClicked(int slotIndex)
                     _loadSuccessCallback(loadedData);
                 }
                 this->removeFromParent();
+                this->release();
                 return;
             }
 
             showConfirmDialog("云同步成功，但加载该槽位失败", []() {});
+            this->release();
         });
     });
 }
@@ -540,12 +579,21 @@ void SaveMenuLayer::onCloudSyncClicked()
     }
 
     showConfirmDialog("将与云端进行双向同步（按时间戳取最新）？", [this, cloud]() {
+        this->retain();
         cloud->syncAll([this](bool ok, const std::string &msg) {
+            if (!this->getParent())
+            {
+                CCLOG("SaveMenuLayer - 云同步回调到达，但菜单已关闭：%s", msg.c_str());
+                this->release();
+                return;
+            }
+
             showConfirmDialog(msg, []() {});
             if (ok)
             {
                 reloadSlots();
             }
+            this->release();
         });
     });
 }
@@ -580,6 +628,7 @@ void SaveMenuLayer::reloadSlots()
 
     initSlots();
     layoutUI();
+    refreshCloudStatusLabel();
 }
 
 void SaveMenuLayer::showConfirmDialog(const std::string &message, const std::function<void()> &onConfirm)

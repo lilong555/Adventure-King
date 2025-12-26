@@ -77,6 +77,8 @@ private:
     bool initCloseButton();
     /// @brief 初始化云同步按钮/状态
     bool initCloudControls();
+    /// @brief 刷新云端状态文本（不重建节点）
+    void refreshCloudStatusLabel();
     /// @brief 布局 UI 元素
     void layoutUI();
 

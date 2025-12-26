@@ -44,8 +44,9 @@ private:
     std::string getUsername() const;
     std::string getPassword() const;
 
+    void startAuthRequest(bool isRegister);
+
     void onLoginClicked();
     void onRegisterClicked();
     void onCancelClicked();
 };
-
