@@ -35,6 +35,17 @@ export AK_CLOUD_SERVER_PORT=5173
 ./run_wsl.sh
 ```
 
+#### WSL ↔ Windows 访问说明
+
+通常 Windows 可通过 `http://localhost:5173` 访问到 WSL 内监听的服务。  
+若你的系统不支持 localhost 转发，请在 Windows 端改用 WSL IP（自行查询，不要写进仓库）：
+
+```bash
+hostname -I
+```
+
+然后在游戏中输入 `http://<wsl-ip>:5173`。
+
 ### Windows（推荐：无需安装 CMake）
 
 在 `tools/cloud_save_server` 目录下直接运行：
@@ -56,6 +67,36 @@ cmake -S . -B build
 cmake --build build -j
 ./build/ak_cloud_save_server --root ./cloud_data --host 127.0.0.1 --port 5173
 ```
+
+## 与游戏联动（推荐流程）
+
+### 1) 启动服务端
+
+WSL 里执行 `./run_wsl.sh` 后保持窗口运行即可。
+
+### 2) 游戏端登录/注册（主菜单）
+
+主菜单左上角提供两个入口：
+
+- **游客登录（禁用云存）**：启用后云端功能直接禁用（存档菜单显示“云端：游客模式”）
+- **登录/注册**：弹窗输入：
+  - 服务地址：`http://localhost:5173`（或你的 WSL IP）
+  - 用户名：`3~32` 位，仅支持 `字母/数字/下划线`
+  - 密码：至少 `6` 位
+
+登录成功后，存档菜单内即可使用“云存/云读/云同步”。
+
+### 3) 存档菜单的云按钮说明
+
+- 保存模式：
+  - 槽位右侧 **云存**：先保存该槽位，再上传本地【全部存档+设置】（覆盖云端）
+  - 底部 **云存(全量)**：直接上传本地【全部存档+设置】（覆盖云端）
+  - 底部 **云同步**：双向同步（按时间戳取最新），并回传合并结果
+- 读取模式：
+  - 槽位右侧 **云读**：先云同步，再加载该槽位
+  - 底部 **云同步**：双向同步（按时间戳取最新），并回传合并结果
+
+> 说明：云同步的冲突策略是“同槽位按 `saveTimestamp` 取最新”。
 
 ## 数据落盘结构（root 下）
 
@@ -79,13 +120,34 @@ cloud_data/
 - `POST /api/sync/push`（需 `Authorization: Bearer <token>`）body=存档包 JSON
 - `GET /api/sync/pull`（需 `Authorization: Bearer <token>`）→ 存档包 JSON
 
+## API 快速验证（可选）
+
+服务运行后，在 WSL 中可用 `curl` 进行快速验证：
+
+```bash
+curl -sS -X POST http://127.0.0.1:5173/api/register \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"user_01","password":"123456"}'
+
+curl -sS -X POST http://127.0.0.1:5173/api/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"user_01","password":"123456"}'
+```
+
 ## 游戏端配置（环境变量）
 
-在运行游戏前设置：
+如果你不想每次打开游戏都在 UI 里登录，也可以在运行游戏前设置环境变量（仅建议开发机使用）：
 
-- `AK_CLOUD_SYNC_URL`：例如 `http://127.0.0.1:5173`
+- `AK_CLOUD_SYNC_URL`：例如 `http://localhost:5173`
 - `AK_CLOUD_SYNC_USER`：用户名
 - `AK_CLOUD_SYNC_PASS`：密码
 
-这样“云存/云同步”按钮才会生效。  
+这样“云存/云同步”按钮会自动生效（无需主菜单登录）。  
 （出于安全考虑：仓库不提交任何公网 IP，请自行在本机环境变量里配置。）
+
+## 安全说明（重要）
+
+当前实现用于开发/演示：
+- HTTP 明文（未启用 TLS）
+- token 为内存态（服务重启后需重新登录）
+- 密码落盘为 `salt + sha256`（演示用；生产应替换为 `bcrypt/argon2` 等）
