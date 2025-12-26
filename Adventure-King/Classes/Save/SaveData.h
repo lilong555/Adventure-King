@@ -130,10 +130,12 @@ struct GameProgressSaveData
     std::vector<ArenaState> arenas;
 
     // 已刷新且仍存活的怪物快照（用于读档后恢复“场上还活着的怪”）
-    // 注意：竞技场怪物不在此列表中恢复（由 ArenaState 驱动重新刷出对应波次，保持逻辑一致）
+    // - 普通刷怪（enemy_g）：arenaID 为空
+    // - 竞技场怪物：arenaID 不为空（用于读档后恢复波次中的“剩余怪物”，避免重刷整波）
     struct MonsterState
     {
         std::string monsterType; // createMonsterByType 的输入（建议小写：goblin/goblu/obscur...）
+        std::string arenaID; // 若为竞技场怪物，保存所属 arenaID（不为空）；普通刷怪则为空
         float posX = 0.0f;
         float posY = 0.0f;
         float currentHP = 0.0f;

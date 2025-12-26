@@ -103,6 +103,24 @@ public:
                           const std::function<MonsterBase *(const std::string &)> &createMonsterByType);
 
     /**
+     * @brief 读档恢复：登记竞技场怪物（恢复 activeMonstersCount 与死亡回调，避免重刷整波）
+     * @note 调用前应先通过 applyArenaStates 恢复 arena 的 isActivated/currentWaveIndex 等基础状态
+     */
+    void registerRestoredArenaMonster(const std::string &arenaID,
+                                      MonsterBase *monster,
+                                      PlayerCharacter *player,
+                                      cocos2d::Node *gameLayer,
+                                      const std::function<MonsterBase *(const std::string &)> &createMonsterByType);
+
+    /**
+     * @brief 读档恢复：若竞技场已触发且当前没有存活怪，则继续刷出当前波次
+     * @note 需要在“恢复存活怪物”之后调用，避免重复刷怪
+     */
+    void resumeActiveArenasIfNeeded(PlayerCharacter *player,
+                                   cocos2d::Node *gameLayer,
+                                   const std::function<MonsterBase *(const std::string &)> &createMonsterByType);
+
+    /**
      * @brief 加载竞技场层数据
      * @param layerName Tiled中的对象层名称（如 "ArenaLayer"）
      * @param gameLayer 节点容器

@@ -206,7 +206,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
                     [this](const std::string &type)
                     { return this->createMonsterByType(type); });
 
-                // 恢复场上存活怪物（非竞技场）
+                // 恢复场上存活怪物（包含竞技场怪物：若标记了 arenaID，则登记死亡回调避免重刷整波）
                 for (const auto &m : progress.aliveMonsters)
                 {
                     if (m.monsterType.empty())
@@ -246,7 +246,26 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
                             goblu->setBreakMeterForSave(m.breakMeter);
                         }
                     }
+
+                    // 竞技场怪物：登记回调与计数，避免读档后重刷整波导致进度倒退
+                    if (_levelMap && !m.arenaID.empty())
+                    {
+                        _levelMap->registerRestoredArenaMonster(
+                            m.arenaID,
+                            monster,
+                            _player,
+                            _gameLayer,
+                            [this](const std::string &type)
+                            { return this->createMonsterByType(type); });
+                    }
                 }
+
+                // 若竞技场已触发但当前没有存活怪，则补刷当前波次（例如刚清完一波、或老存档未记录竞技场怪物）
+                _levelMap->resumeActiveArenasIfNeeded(
+                    _player,
+                    _gameLayer,
+                    [this](const std::string &type)
+                    { return this->createMonsterByType(type); });
             }
         }
     }
@@ -286,7 +305,7 @@ void GameScene::fillProgressDataForSave(GameProgressSaveData &outProgress) const
         outProgress.arenas = _levelMap->exportArenaStates();
     }
 
-    // 采集场上存活怪物（非竞技场）
+    // 采集场上存活怪物（包含竞技场怪物：通过 arenaID 标记归属）
     if (_gameLayer)
     {
         const auto &children = _gameLayer->getChildren();
@@ -295,13 +314,6 @@ void GameScene::fillProgressDataForSave(GameProgressSaveData &outProgress) const
         {
             auto *monster = dynamic_cast<MonsterBase *>(child);
             if (!monster)
-            {
-                continue;
-            }
-
-            // 竞技场怪物：由 ArenaState 恢复，不做逐只快照
-            const std::string name = monster->getName();
-            if (!name.empty() && name.rfind("arena:", 0) == 0)
             {
                 continue;
             }
@@ -319,6 +331,12 @@ void GameScene::fillProgressDataForSave(GameProgressSaveData &outProgress) const
 
             GameProgressSaveData::MonsterState s;
             s.monsterType = type;
+            // 竞技场怪物：名称以 "arena:<arenaID>" 标记，存档时记录归属，读档后可避免重刷整波
+            const std::string name = monster->getName();
+            if (!name.empty() && name.rfind("arena:", 0) == 0 && name.size() > 6)
+            {
+                s.arenaID = name.substr(6);
+            }
             s.posX = monster->getPositionX();
             s.posY = monster->getPositionY();
             s.currentHP = monster->getCurrentHP();

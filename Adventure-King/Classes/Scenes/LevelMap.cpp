@@ -714,9 +714,10 @@ void LevelMap::applyArenaStates(const std::vector<GameProgressSaveData::ArenaSta
                 gate->getPhysicsBody()->setEnabled(true);
             }
 
-            // 读档恢复：直接刷出“当前波次”的怪物
-            // 说明：竞技场怪物不做逐只快照恢复（避免复杂的波次/回调状态恢复），统一按波次重新生成。
-            spawnNextWave(arena, player, gameLayer, createMonsterByType);
+            // 读档恢复：先恢复门/波次状态；怪物由 GameScene 统一恢复：
+            // - 若存档里存在竞技场存活怪，则按存档恢复并登记死亡回调（避免重刷整波）
+            // - 若没有存活怪（例如刚清完一波），再由 resumeActiveArenasIfNeeded 补刷当前波次
+            arena->activeMonstersCount = 0;
         }
         else
         {
@@ -732,6 +733,97 @@ void LevelMap::applyArenaStates(const std::vector<GameProgressSaveData::ArenaSta
                 gate->getPhysicsBody()->setEnabled(false);
             }
         }
+    }
+}
+
+void LevelMap::registerRestoredArenaMonster(const std::string &arenaID,
+                                           MonsterBase *monster,
+                                           PlayerCharacter *player,
+                                           Node *gameLayer,
+                                           const std::function<MonsterBase *(const std::string &)> &createMonsterByType)
+{
+    if (arenaID.empty() || !monster || !player || !gameLayer || !createMonsterByType)
+    {
+        return;
+    }
+
+    auto it = _arenas.find(arenaID);
+    if (it == _arenas.end() || !it->second)
+    {
+        return;
+    }
+
+    auto *arena = it->second;
+
+    // 兜底：若存档里漏写 arena 状态，但怪物标记了 arenaID，则默认视为“已触发且未完成”
+    arena->isActivated = true;
+    arena->isFinished = false;
+
+    // 关门：保证竞技场进行中时不会提前离开
+    for (auto gate : arena->gates)
+    {
+        if (!gate || !gate->getPhysicsBody())
+        {
+            continue;
+        }
+        gate->stopAllActions();
+        gate->setVisible(true);
+        gate->setOpacity(255);
+        gate->getPhysicsBody()->setEnabled(true);
+    }
+
+    // 标记“竞技场怪物”：用于存档时归属识别
+    monster->setName("arena:" + arenaID);
+
+    // 恢复死亡回调：与 spawnNextWave 保持一致（本波清完后进入下一波）
+    monster->setOnDeathCallback([this, arena, player, gameLayer, createMonsterByType](CharacterBase *)
+                                {
+                                    arena->activeMonstersCount--;
+                                    if (arena->activeMonstersCount <= 0)
+                                    {
+                                        arena->currentWaveIndex++;
+
+                                        auto delay = DelayTime::create(1.5f);
+                                        auto next = CallFunc::create([this, arena, player, gameLayer, createMonsterByType]()
+                                                                     {
+                                                                         this->spawnNextWave(arena, player, gameLayer, createMonsterByType);
+                                                                     });
+                                        gameLayer->runAction(Sequence::create(delay, next, nullptr));
+                                    }
+                                });
+
+    arena->activeMonstersCount++;
+}
+
+void LevelMap::resumeActiveArenasIfNeeded(PlayerCharacter *player,
+                                         Node *gameLayer,
+                                         const std::function<MonsterBase *(const std::string &)> &createMonsterByType)
+{
+    if (_arenas.empty() || !player || !gameLayer || !createMonsterByType)
+    {
+        return;
+    }
+
+    for (auto &pair : _arenas)
+    {
+        auto *arena = pair.second;
+        if (!arena)
+        {
+            continue;
+        }
+
+        if (!arena->isActivated || arena->isFinished)
+        {
+            continue;
+        }
+
+        if (arena->activeMonstersCount > 0)
+        {
+            continue;
+        }
+
+        // 若当前没有存活怪物，则补刷当前波次（用于“读档时没有恢复到竞技场怪”的情况）
+        spawnNextWave(arena, player, gameLayer, createMonsterByType);
     }
 }
 

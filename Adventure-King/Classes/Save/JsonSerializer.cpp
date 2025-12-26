@@ -300,12 +300,13 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     }
     progressObj.AddMember("arenas", arenasArr, allocator);
 
-    // 场上存活怪物快照（非竞技场）
+    // 场上存活怪物快照（包含竞技场怪物：通过 arenaID 标记归属）
     rapidjson::Value aliveMonstersArr(rapidjson::kArrayType);
     for (const auto &m : data.progressData.aliveMonsters)
     {
         rapidjson::Value mObj(rapidjson::kObjectType);
         mObj.AddMember("monsterType", rapidjson::Value(m.monsterType.c_str(), allocator).Move(), allocator);
+        mObj.AddMember("arenaID", rapidjson::Value(m.arenaID.c_str(), allocator).Move(), allocator);
         mObj.AddMember("posX", m.posX, allocator);
         mObj.AddMember("posY", m.posY, allocator);
         mObj.AddMember("currentHP", m.currentHP, allocator);
@@ -565,7 +566,7 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
                 }
             }
 
-            // 场上存活怪物快照（非竞技场）
+            // 场上存活怪物快照（包含竞技场怪物：通过 arenaID 标记归属）
             if (progress.HasMember("aliveMonsters") && progress["aliveMonsters"].IsArray())
             {
                 const auto &arr = progress["aliveMonsters"];
@@ -578,6 +579,7 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
                     const auto &obj = arr[i];
                     GameProgressSaveData::MonsterState m;
                     m.monsterType = getString(obj, "monsterType", m.monsterType);
+                    m.arenaID = getString(obj, "arenaID", m.arenaID);
                     m.posX = getFloat(obj, "posX", m.posX);
                     m.posY = getFloat(obj, "posY", m.posY);
                     m.currentHP = getFloat(obj, "currentHP", m.currentHP);
