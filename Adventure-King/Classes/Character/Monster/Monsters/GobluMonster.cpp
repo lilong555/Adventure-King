@@ -147,6 +147,12 @@ GobluMonster::~GobluMonster()
     CC_SAFE_RELEASE(_attackAnimateFar);
 }
 
+void GobluMonster::setBreakMeterForSave(int value)
+{
+    // 注意：这里只恢复数值，不恢复倒地/起身的动作链状态，避免“读档瞬间卡在倒地中”的复杂边界。
+    _breakMeter = std::max(0, std::min(GameConfig::Monster::Goblu::BREAK_MAX, value));
+}
+
 int GobluMonster::getExpReward(int playerLevel) const
 {
     if (playerLevel < 1)

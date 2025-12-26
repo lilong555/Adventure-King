@@ -9,6 +9,7 @@
 #include "2d/CCTMXTiledMap.h"
 #include "cocos2d.h"
 #include "Configs/ArenaConfig.h" // 确保你之前定义的这个头文件在路径中
+#include "Save/SaveData.h"
 #include <map>
 #include <functional>
 #include <string>
@@ -74,6 +75,50 @@ public:
                            const std::function<MonsterBase *(const std::string &)> &createMonsterByType,
                            float viewDistanceX,
                            float dt);
+
+    //================== 存档/读档：世界状态（刷怪点/竞技场） ==================
+
+    /**
+     * @brief 导出 enemy_g 刷怪点状态（hasSpawned 等）
+     */
+    std::vector<GameProgressSaveData::EnemySpawnPointState> exportEnemySpawnPointStates() const;
+
+    /**
+     * @brief 应用 enemy_g 刷怪点状态（用于读档恢复，避免重复刷怪）
+     */
+    void applyEnemySpawnPointStates(const std::vector<GameProgressSaveData::EnemySpawnPointState> &states);
+
+    /**
+     * @brief 导出竞技场状态（是否触发/第几波/是否完成）
+     */
+    std::vector<GameProgressSaveData::ArenaState> exportArenaStates() const;
+
+    /**
+     * @brief 应用竞技场状态（用于读档恢复）
+     * @note 若存档记录为“已触发但未完成”，会立即刷出对应波次并关闭门
+     */
+    void applyArenaStates(const std::vector<GameProgressSaveData::ArenaState> &states,
+                          PlayerCharacter *player,
+                          cocos2d::Node *gameLayer,
+                          const std::function<MonsterBase *(const std::string &)> &createMonsterByType);
+
+    /**
+     * @brief 读档恢复：登记竞技场怪物（恢复 activeMonstersCount 与死亡回调，避免重刷整波）
+     * @note 调用前应先通过 applyArenaStates 恢复 arena 的 isActivated/currentWaveIndex 等基础状态
+     */
+    void registerRestoredArenaMonster(const std::string &arenaID,
+                                      MonsterBase *monster,
+                                      PlayerCharacter *player,
+                                      cocos2d::Node *gameLayer,
+                                      const std::function<MonsterBase *(const std::string &)> &createMonsterByType);
+
+    /**
+     * @brief 读档恢复：若竞技场已触发且当前没有存活怪，则继续刷出当前波次
+     * @note 需要在“恢复存活怪物”之后调用，避免重复刷怪
+     */
+    void resumeActiveArenasIfNeeded(PlayerCharacter *player,
+                                   cocos2d::Node *gameLayer,
+                                   const std::function<MonsterBase *(const std::string &)> &createMonsterByType);
 
     /**
      * @brief 加载竞技场层数据

@@ -21,6 +21,7 @@
 #include "Character/Monster/Monsters/GoblinMonster.h"
 #include "Character/Monster/Monsters/GobluMonster.h"
 #include "Character/Monster/Monsters/ObscurMonster.h"
+#include "Character/Monster/Monsters/TrainingDummyMonster.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Configs/PlayerRoleConfig.h"
 #include "GameUI.h"
@@ -41,6 +42,33 @@ namespace
     const char *const MAP_LOAD_FAILED_TEXT = GameSceneConfig::Scene::MAP_LOAD_FAILED_TEXT;
 
     const PhysicsMaterial PLAYER_PHYSICS_MATERIAL = GameConfig::Material::PLAYER;
+
+    std::string getMonsterTypeForSave(const MonsterBase *monster)
+    {
+        if (!monster)
+        {
+            return "";
+        }
+
+        if (dynamic_cast<const GoblinMonster *>(monster))
+        {
+            return "goblin";
+        }
+        if (dynamic_cast<const GobluMonster *>(monster))
+        {
+            return "goblu";
+        }
+        if (dynamic_cast<const ObscurMonster *>(monster))
+        {
+            return "obscur";
+        }
+        if (dynamic_cast<const TrainingDummyMonster *>(monster))
+        {
+            return "trainingdummy";
+        }
+
+        return "";
+    }
 }
 
 cocos2d::Scene *GameScene::createScene()
@@ -157,6 +185,91 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     scheduleUpdate();
     initUIController();
 
+    //-------------------------------------------------------------------------
+    // 读档：恢复世界状态（刷怪点/竞技场/怪物快照）
+    // 说明：必须在“出生点一开始就在视野内”的刷怪检测前应用，否则会产生重复刷怪。
+    //-------------------------------------------------------------------------
+    if (_levelMap && _player)
+    {
+        if (auto saveManager = SaveManager::getInstance())
+        {
+            if (saveManager->hasRuntimeProgressData())
+            {
+                GameProgressSaveData progress = saveManager->getRuntimeProgressData();
+                saveManager->clearRuntimeProgressData();
+
+                _levelMap->applyEnemySpawnPointStates(progress.enemySpawnPoints);
+                _levelMap->applyArenaStates(
+                    progress.arenas,
+                    _player,
+                    _gameLayer,
+                    [this](const std::string &type)
+                    { return this->createMonsterByType(type); });
+
+                // 恢复场上存活怪物（包含竞技场怪物：若标记了 arenaID，则登记死亡回调避免重刷整波）
+                for (const auto &m : progress.aliveMonsters)
+                {
+                    if (m.monsterType.empty())
+                    {
+                        continue;
+                    }
+
+                    // 注意：必须通过 createMonsterByType 创建怪物，保证与正常刷怪一致的初始化逻辑：
+                    // - HP 随玩家等级缩放（如 Goblin）
+                    // - Boss 绑定 UI（如 Goblu）
+                    auto monster = createMonsterByType(m.monsterType);
+                    if (!monster)
+                    {
+                        continue;
+                    }
+
+                    const Vec2 pos(m.posX, m.posY);
+                    monster->setPosition(pos);
+                    monster->setTarget(_player);
+                    monster->setHome(pos);
+                    _gameLayer->addChild(monster, GameConfig::LevelMap::DEFAULT_CHARACTER_Z_ORDER);
+
+                    if (m.currentHP > 0.0f)
+                    {
+                        monster->setCurrentHP(m.currentHP);
+                    }
+                    if (m.currentMP >= 0.0f)
+                    {
+                        monster->setCurrentMP(m.currentMP);
+                    }
+
+                    // Boss 击破条：仅恢复数值（不恢复倒地/起身序列状态）
+                    if (m.breakMeter > 0)
+                    {
+                        if (auto goblu = dynamic_cast<GobluMonster *>(monster))
+                        {
+                            goblu->setBreakMeterForSave(m.breakMeter);
+                        }
+                    }
+
+                    // 竞技场怪物：登记回调与计数，避免读档后重刷整波导致进度倒退
+                    if (_levelMap && !m.arenaID.empty())
+                    {
+                        _levelMap->registerRestoredArenaMonster(
+                            m.arenaID,
+                            monster,
+                            _player,
+                            _gameLayer,
+                            [this](const std::string &type)
+                            { return this->createMonsterByType(type); });
+                    }
+                }
+
+                // 若竞技场已触发但当前没有存活怪，则补刷当前波次（例如刚清完一波、或老存档未记录竞技场怪物）
+                _levelMap->resumeActiveArenasIfNeeded(
+                    _player,
+                    _gameLayer,
+                    [this](const std::string &type)
+                    { return this->createMonsterByType(type); });
+            }
+        }
+    }
+
     // 处理“出生点一开始就在视野内”的情况
     if (_levelMap && _player)
     {
@@ -171,6 +284,67 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
 
     CCLOG("Scene initialized with physics config: %s", getLevelName().c_str());
     return true;
+}
+
+void GameScene::fillProgressDataForSave(GameProgressSaveData &outProgress) const
+{
+    outProgress.currentSceneName = getLevelName();
+    if (_player)
+    {
+        outProgress.playerPosX = _player->getPositionX();
+        outProgress.playerPosY = _player->getPositionY();
+    }
+
+    outProgress.enemySpawnPoints.clear();
+    outProgress.arenas.clear();
+    outProgress.aliveMonsters.clear();
+
+    if (_levelMap)
+    {
+        outProgress.enemySpawnPoints = _levelMap->exportEnemySpawnPointStates();
+        outProgress.arenas = _levelMap->exportArenaStates();
+    }
+
+    // 采集场上存活怪物（包含竞技场怪物：通过 arenaID 标记归属）
+    if (_gameLayer)
+    {
+        const auto &children = _gameLayer->getChildren();
+        outProgress.aliveMonsters.reserve(children.size());
+        for (auto *child : children)
+        {
+            auto *monster = dynamic_cast<MonsterBase *>(child);
+            if (!monster)
+            {
+                continue;
+            }
+
+            if (monster->isDead())
+            {
+                continue;
+            }
+
+            const std::string type = getMonsterTypeForSave(monster);
+            if (type.empty())
+            {
+                continue;
+            }
+
+            GameProgressSaveData::MonsterState s;
+            s.monsterType = type;
+            // 竞技场怪物：名称以 "arena:<arenaID>" 标记，存档时记录归属，读档后可避免重刷整波
+            const std::string name = monster->getName();
+            if (!name.empty() && name.rfind("arena:", 0) == 0 && name.size() > 6)
+            {
+                s.arenaID = name.substr(6);
+            }
+            s.posX = monster->getPositionX();
+            s.posY = monster->getPositionY();
+            s.currentHP = monster->getCurrentHP();
+            s.currentMP = monster->getCurrentMP();
+            s.breakMeter = monster->getBreakMeter();
+            outProgress.aliveMonsters.push_back(std::move(s));
+        }
+    }
 }
 
 bool GameScene::initLevelMap(const LevelConfig &config)
@@ -390,6 +564,7 @@ void GameScene::initUIController()
             {
                 saveManager->setRuntimePlayerData(saveData.playerData);
                 saveManager->setRuntimePlayerPosition(Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY));
+                saveManager->setRuntimeProgressData(saveData.progressData);
             }
 
             // 3. 统一进入 LoadingScene
@@ -520,6 +695,11 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
     {
         auto obscur = ObscurMonster::create();
         return obscur;
+    }
+
+    if (key == "trainingdummy" || key == "trainingdummymonster" || key == "dummy")
+    {
+        return TrainingDummyMonster::create();
     }
 
     CCLOG("Warning: Unknown monster type '%s'", monsterType.c_str());

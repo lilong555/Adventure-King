@@ -17,6 +17,7 @@
 #include <climits>
 #include <cmath>
 #include <cstdlib>
+#include <unordered_map>
 
 USING_NS_CC;
 
@@ -545,6 +546,287 @@ void LevelMap::updateEnemySpawns(PlayerCharacter *player,
     }
 }
 
+//================== 存档/读档：世界状态（刷怪点/竞技场） ==================
+
+namespace
+{
+std::string buildEnemySpawnPointKey(const std::string &monsterType, float x, float y, int count)
+{
+    // 说明：刷怪点坐标来自 TMX，通常是整数；为了兼容浮点误差，这里统一四舍五入到整数生成 key。
+    const int ix = static_cast<int>(std::lround(x));
+    const int iy = static_cast<int>(std::lround(y));
+    const int c = std::max(1, count);
+    return monsterType + "|" + std::to_string(ix) + "|" + std::to_string(iy) + "|" + std::to_string(c);
+}
+}
+
+std::vector<GameProgressSaveData::EnemySpawnPointState> LevelMap::exportEnemySpawnPointStates() const
+{
+    std::vector<GameProgressSaveData::EnemySpawnPointState> out;
+    out.reserve(_enemySpawnPoints.size());
+
+    for (const auto &sp : _enemySpawnPoints)
+    {
+        GameProgressSaveData::EnemySpawnPointState s;
+        s.monsterType = sp.monsterType;
+        s.posX = sp.position.x;
+        s.posY = sp.position.y;
+        s.count = sp.count;
+        s.hasSpawned = sp.hasSpawned;
+        out.push_back(std::move(s));
+    }
+
+    return out;
+}
+
+void LevelMap::applyEnemySpawnPointStates(const std::vector<GameProgressSaveData::EnemySpawnPointState> &states)
+{
+    if (_enemySpawnPoints.empty() || states.empty())
+    {
+        return;
+    }
+
+    std::unordered_map<std::string, bool> saved;
+    saved.reserve(states.size());
+    for (const auto &s : states)
+    {
+        if (s.monsterType.empty())
+        {
+            continue;
+        }
+        saved[buildEnemySpawnPointKey(s.monsterType, s.posX, s.posY, s.count)] = s.hasSpawned;
+    }
+
+    for (auto &sp : _enemySpawnPoints)
+    {
+        const auto it = saved.find(buildEnemySpawnPointKey(sp.monsterType, sp.position.x, sp.position.y, sp.count));
+        if (it != saved.end())
+        {
+            sp.hasSpawned = it->second;
+        }
+    }
+
+    // 重新计算剩余未触发数量，保证 updateEnemySpawns 的 early-return 判断正确
+    size_t pending = 0;
+    for (const auto &sp : _enemySpawnPoints)
+    {
+        if (!sp.hasSpawned)
+        {
+            pending++;
+        }
+    }
+    _pendingEnemySpawnPoints = pending;
+    _enemySpawnCheckAccumulator = 0.0f;
+}
+
+std::vector<GameProgressSaveData::ArenaState> LevelMap::exportArenaStates() const
+{
+    std::vector<GameProgressSaveData::ArenaState> out;
+    out.reserve(_arenas.size());
+
+    for (const auto &pair : _arenas)
+    {
+        const ArenaConfig *arena = pair.second;
+        if (!arena)
+        {
+            continue;
+        }
+
+        GameProgressSaveData::ArenaState s;
+        s.arenaID = arena->arenaID;
+        s.currentWaveIndex = arena->currentWaveIndex;
+        s.isActivated = arena->isActivated;
+        s.isFinished = arena->isFinished;
+        out.push_back(std::move(s));
+    }
+
+    return out;
+}
+
+void LevelMap::applyArenaStates(const std::vector<GameProgressSaveData::ArenaState> &states,
+                               PlayerCharacter *player,
+                               Node *gameLayer,
+                               const std::function<MonsterBase *(const std::string &)> &createMonsterByType)
+{
+    if (_arenas.empty() || states.empty() || !player || !gameLayer || !createMonsterByType)
+    {
+        return;
+    }
+
+    std::unordered_map<std::string, GameProgressSaveData::ArenaState> saved;
+    saved.reserve(states.size());
+    for (const auto &s : states)
+    {
+        if (!s.arenaID.empty())
+        {
+            saved[s.arenaID] = s;
+        }
+    }
+
+    for (auto &pair : _arenas)
+    {
+        ArenaConfig *arena = pair.second;
+        if (!arena)
+        {
+            continue;
+        }
+
+        auto it = saved.find(arena->arenaID);
+        if (it == saved.end())
+        {
+            continue;
+        }
+
+        const auto &s = it->second;
+        arena->currentWaveIndex = std::max(0, s.currentWaveIndex);
+        arena->isActivated = s.isActivated;
+        arena->isFinished = s.isFinished;
+
+        if (arena->isFinished)
+        {
+            arena->isActivated = false;
+            // 直接开门：禁用碰撞并隐藏
+            for (auto gate : arena->gates)
+            {
+                if (!gate || !gate->getPhysicsBody())
+                {
+                    continue;
+                }
+                gate->stopAllActions();
+                gate->setVisible(false);
+                gate->getPhysicsBody()->setEnabled(false);
+            }
+            continue;
+        }
+
+        if (arena->isActivated)
+        {
+            // 关门：启用碰撞并显示
+            for (auto gate : arena->gates)
+            {
+                if (!gate || !gate->getPhysicsBody())
+                {
+                    continue;
+                }
+                gate->stopAllActions();
+                gate->setVisible(true);
+                gate->setOpacity(255);
+                gate->getPhysicsBody()->setEnabled(true);
+            }
+
+            // 读档恢复：先恢复门/波次状态；怪物由 GameScene 统一恢复：
+            // - 若存档里存在竞技场存活怪，则按存档恢复并登记死亡回调（避免重刷整波）
+            // - 若没有存活怪（例如刚清完一波），再由 resumeActiveArenasIfNeeded 补刷当前波次
+            arena->activeMonstersCount = 0;
+        }
+        else
+        {
+            // 未触发：保持默认开门状态
+            for (auto gate : arena->gates)
+            {
+                if (!gate || !gate->getPhysicsBody())
+                {
+                    continue;
+                }
+                gate->stopAllActions();
+                gate->setVisible(false);
+                gate->getPhysicsBody()->setEnabled(false);
+            }
+        }
+    }
+}
+
+void LevelMap::registerRestoredArenaMonster(const std::string &arenaID,
+                                           MonsterBase *monster,
+                                           PlayerCharacter *player,
+                                           Node *gameLayer,
+                                           const std::function<MonsterBase *(const std::string &)> &createMonsterByType)
+{
+    if (arenaID.empty() || !monster || !player || !gameLayer || !createMonsterByType)
+    {
+        return;
+    }
+
+    auto it = _arenas.find(arenaID);
+    if (it == _arenas.end() || !it->second)
+    {
+        return;
+    }
+
+    auto *arena = it->second;
+
+    // 兜底：若存档里漏写 arena 状态，但怪物标记了 arenaID，则默认视为“已触发且未完成”
+    arena->isActivated = true;
+    arena->isFinished = false;
+
+    // 关门：保证竞技场进行中时不会提前离开
+    for (auto gate : arena->gates)
+    {
+        if (!gate || !gate->getPhysicsBody())
+        {
+            continue;
+        }
+        gate->stopAllActions();
+        gate->setVisible(true);
+        gate->setOpacity(255);
+        gate->getPhysicsBody()->setEnabled(true);
+    }
+
+    // 标记“竞技场怪物”：用于存档时归属识别
+    monster->setName("arena:" + arenaID);
+
+    // 恢复死亡回调：与 spawnNextWave 保持一致（本波清完后进入下一波）
+    monster->setOnDeathCallback([this, arena, player, gameLayer, createMonsterByType](CharacterBase *)
+                                {
+                                    arena->activeMonstersCount--;
+                                    if (arena->activeMonstersCount <= 0)
+                                    {
+                                        arena->currentWaveIndex++;
+
+                                        auto delay = DelayTime::create(1.5f);
+                                        auto next = CallFunc::create([this, arena, player, gameLayer, createMonsterByType]()
+                                                                     {
+                                                                         this->spawnNextWave(arena, player, gameLayer, createMonsterByType);
+                                                                     });
+                                        gameLayer->runAction(Sequence::create(delay, next, nullptr));
+                                    }
+                                });
+
+    arena->activeMonstersCount++;
+}
+
+void LevelMap::resumeActiveArenasIfNeeded(PlayerCharacter *player,
+                                         Node *gameLayer,
+                                         const std::function<MonsterBase *(const std::string &)> &createMonsterByType)
+{
+    if (_arenas.empty() || !player || !gameLayer || !createMonsterByType)
+    {
+        return;
+    }
+
+    for (auto &pair : _arenas)
+    {
+        auto *arena = pair.second;
+        if (!arena)
+        {
+            continue;
+        }
+
+        if (!arena->isActivated || arena->isFinished)
+        {
+            continue;
+        }
+
+        if (arena->activeMonstersCount > 0)
+        {
+            continue;
+        }
+
+        // 若当前没有存活怪物，则补刷当前波次（用于“读档时没有恢复到竞技场怪”的情况）
+        spawnNextWave(arena, player, gameLayer, createMonsterByType);
+    }
+}
+
 //下面实现连战逻辑相关代码
 
 void LevelMap::loadArenas(const std::string& layerName, Node* gameLayer) {
@@ -650,6 +932,9 @@ void LevelMap::spawnNextWave(ArenaConfig* arena, PlayerCharacter* player, Node* 
         for (int i = 0; i < count; ++i) {
             auto monster = createMonsterByType(type);
             if (!monster) continue;
+
+            // 标记“竞技场怪物”：用于存档时记录 arenaID（读档时可恢复“本波剩余怪物”，避免整波重刷）
+            monster->setName("arena:" + arena->arenaID);
 
             // 随机选择竞技场内的刷怪点
             Vec2 spawnPos = arena->spawnPoints[random(0, (int)arena->spawnPoints.size() - 1)];

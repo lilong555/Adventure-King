@@ -30,6 +30,7 @@
 class PlayerCharacter;
 class MonsterBase;
 class LevelMap;
+struct GameProgressSaveData;
 
 // ============================================================
 // GameScene 基类
@@ -60,6 +61,12 @@ public:
      * @return 玩家角色指针，如果不存在则返回 nullptr
      */
     PlayerCharacter *getPlayer() const { return _player; }
+
+    /**
+     * @brief 构建用于存档的关卡进度数据（含刷怪点/竞技场/怪物快照）
+     * @note 仅用于“保存游戏”时采集当前世界状态
+     */
+    void fillProgressDataForSave(GameProgressSaveData &outProgress) const;
 
     // -------------------------------
     // 节点标签枚举
