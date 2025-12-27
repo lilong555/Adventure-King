@@ -199,7 +199,7 @@ protected:
      * @brief 切换暂停菜单显示状态
      */
     void togglePauseMenu();
-
+    void toggleInventory();
     /**
      * @brief 设置游戏暂停/恢复（只冻结世界逻辑，UI 仍可交互）
      */

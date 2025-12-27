@@ -356,49 +356,38 @@ void GameUIController::update(float dt)
     _gameUI->updateDisplay();
 }
 
-void GameUIController::togglePauseMenu()
+void GameUIController::togglePauseMenu() // 此时该函数建议理解为“handleEscKey”
 {
-    if (!_gameUI)
-        return;
+    if (!_gameUI) return;
 
-    // 角色死亡菜单显示时不允许打开/关闭暂停菜单，避免误恢复游戏
-    if (_gameUI->isDeathMenuShowing())
-    {
-        return;
-    }
+    // 1. 角色死亡菜单显示时不允许任何操作
+    if (_gameUI->isDeathMenuShowing()) return;
 
-    // 若背包界面正在显示，Esc 优先关闭背包并回到暂停菜单
+    // 2. 核心修改：若背包正在显示，Esc 直接关闭背包并回到游戏（不再去暂停菜单）
     if (_gameUI->isInventoryShowing())
     {
         _gameUI->hideInventory();
-        _gameUI->showPauseMenu();
-        _paused = true;
-        if (_onPauseChanged)
-        {
-            _onPauseChanged(true);
-        }
+        _paused = false;
+        if (_onPauseChanged) _onPauseChanged(false);
+        CCLOG("Inventory closed, game resumed");
         return;
     }
 
+    // 3. 兼容处理：若玩家通过其他方式（如点击按钮）打开了暂停菜单，Esc 负责关闭它
     if (_gameUI->isPauseMenuShowing())
     {
         _gameUI->hidePauseMenu();
         _paused = false;
-        if (_onPauseChanged)
-        {
-            _onPauseChanged(false);
-        }
-        CCLOG("Game resumed");
+        if (_onPauseChanged) _onPauseChanged(false);
+        CCLOG("Pause menu closed, game resumed");
     }
+    // 4. 默认行为：正常状态下按 Esc 直接呼出背包
     else
     {
-        _gameUI->showPauseMenu();
+        _gameUI->showInventory(); // 修改点：默认打开背包
         _paused = true;
-        if (_onPauseChanged)
-        {
-            _onPauseChanged(true);
-        }
-        CCLOG("Game paused");
+        if (_onPauseChanged) _onPauseChanged(true);
+        CCLOG("Inventory opened, game paused");
     }
 }
 

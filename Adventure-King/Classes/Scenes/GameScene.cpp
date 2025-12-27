@@ -636,6 +636,7 @@ void GameScene::togglePauseMenu()
     }
 }
 
+
 void GameScene::setGamePaused(bool paused)
 {
     if (_isPaused == paused)
