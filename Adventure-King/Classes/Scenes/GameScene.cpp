@@ -609,23 +609,24 @@ void GameScene::initCameraFollow()
 void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos) {
     // 停止当前正在执行的所有相机平移动作，防止动作叠加冲突
     _gameLayer->stopActionByTag(1001);
+        if (lock) {
+            _gameLayer->stopActionByTag(837); // 停止跟随
 
-    if (lock) {
-        // 1. 必须停止跟随动作，否则 Follow 动作每帧会把 gameLayer 位置拽回玩家处
-        _gameLayer->stopActionByTag(837);
+            auto visibleSize = Director::getInstance()->getVisibleSize();
+            float targetScale = 0.85f; // 你的目标缩放值
 
-        auto visibleSize = Director::getInstance()->getVisibleSize();
-        cocos2d::Vec2 layerPos(-targetPos.x + visibleSize.width / 2,
-            -targetPos.y + visibleSize.height / 2);
+            // --- 修正后的坐标计算 ---
+            // 必须将目标坐标乘以缩放系数，才能抵消缩放带来的视觉偏移
+            cocos2d::Vec2 layerPos(
+                (visibleSize.width / 2) - (targetPos.x * targetScale),
+                (visibleSize.height / 2) - (targetPos.y * targetScale)
+            );
 
-        auto moveTo = MoveTo::create(1.0f, layerPos);
-        auto scaleTo = ScaleTo::create(1.0f, 0.85f);
-        auto spawn = Spawn::create(moveTo, scaleTo, nullptr);
-
-        spawn->setTag(1001); // 设置过渡动画 Tag
-        _gameLayer->runAction(EaseExponentialOut::create(spawn));
-    }
-    else {
+            auto moveTo = MoveTo::create(1.0f, layerPos);
+            auto scaleTo = ScaleTo::create(1.0f, targetScale);
+            auto spawn = Spawn::create(moveTo, scaleTo, nullptr);
+            _gameLayer->runAction(EaseExponentialOut::create(spawn));
+        }else {
         // 恢复逻辑：先拉回缩放，并在结束后重启动 Follow
         auto resetScale = ScaleTo::create(0.5f, 1.0f);
         auto callback = CallFunc::create([this]() {
