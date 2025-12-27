@@ -8,6 +8,7 @@
 #include "Character/components/SkillComponent.h"
 #include "Character/components/StateMachineComponent.h"
 #include "Character/components/StatusEffectVfxComponent.h"
+#include "Character/StatusEffects/Implementations/AIBlessingEffect.h"
 #include "Objects/Projectiles/Bomb.h"
 #include "Configs/GameConfig.h"
 #include "Configs/GamePhysicsCategory.h"
@@ -1102,6 +1103,70 @@ void PlayerCharacter::activateOutgoingDamageMultiplier(float multiplier, float d
     {
         removeExpertKeepVfx(this);
     }
+}
+
+// =================================================================
+// AI/NPC 赐福（覆盖式 Buff）
+// =================================================================
+
+void PlayerCharacter::applyAiBlessingBonus(const Attributes &bonus)
+{
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return;
+    }
+
+    // 覆盖式：先移除旧赐福，再添加新赐福
+    attr->removeStatusEffect(StatusEffectType::AI_BLESSING);
+
+    if (!bonus.values.empty())
+    {
+        if (auto effect = AIBlessingEffect::create(bonus))
+        {
+            attr->addStatusEffect(effect);
+        }
+    }
+}
+
+void PlayerCharacter::clearAiBlessingBonus()
+{
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return;
+    }
+    attr->removeStatusEffect(StatusEffectType::AI_BLESSING);
+}
+
+bool PlayerCharacter::hasAiBlessingBonus() const
+{
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return false;
+    }
+    return attr->hasStatusEffect(StatusEffectType::AI_BLESSING);
+}
+
+Attributes PlayerCharacter::getAiBlessingBonus() const
+{
+    Attributes out;
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return out;
+    }
+
+    for (auto e : attr->getStatusEffects())
+    {
+        if (e && e->type == StatusEffectType::AI_BLESSING && !e->isExpired())
+        {
+            out = e->getAttributeBonus();
+            break;
+        }
+    }
+    return out;
 }
 
 void PlayerCharacter::takeDamage(const DamageInfo& info)

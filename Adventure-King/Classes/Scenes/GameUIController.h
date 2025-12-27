@@ -33,6 +33,9 @@ public:
     /// @brief 当前是否暂停
     bool isPaused() const { return _paused; }
 
+    /// @brief 设置 NPC 交互提示检测（例如：HomeScene 赐福入口）
+    void setNpcHintQuery(const std::function<bool()> &isPlayerAtNpc) { _isPlayerAtNpc = isPlayerAtNpc; }
+
     /// @brief 显示角色死亡菜单（强制暂停）
     void showDeathMenu();
     /// @brief 死亡菜单是否显示中
@@ -47,11 +50,20 @@ private:
     GameUI *_gameUI = nullptr;
 
     bool _paused = false;
-    bool _wasAtGate = false;
+
+    enum class InteractionHintSource
+    {
+        NONE = 0,
+        GATE = 1,
+        BLESSING_NPC = 2,
+    };
+    InteractionHintSource _hintSource = InteractionHintSource::NONE;
+
     float _updateAccumulator = 0.0f;
 
     std::function<void()> _onReturnToMap;
     std::function<void(bool)> _onPauseChanged;
     std::function<bool()> _isPlayerAtGate;
+    std::function<bool()> _isPlayerAtNpc;
     std::function<void(const SaveSlotData &)> _onLoadSuccess;
 };

@@ -82,7 +82,13 @@ enum class StatusEffectType : uint8_t
     EQUIP_BLOOD_PACT_SWORD, // 血契短剑：吸血
     EQUIP_EMBER_STAFF,      // 焰纹法杖：命中概率施加燃烧
     EQUIP_EMERGENCY_MASK,   // 急救面罩：低血量救援（带冷却）
-    EQUIP_HUNTER_BOOTS      // 追猎之靴：击杀触发亢奋加速
+    EQUIP_HUNTER_BOOTS,     // 追猎之靴：击杀触发亢奋加速
+
+    // -----------------------------
+    // AI/NPC：展示阶段赐福 Buff（覆盖式，重复触发只保留一个）
+    // 注意：放在枚举末尾，避免影响旧存档/旧协议中的数值映射。
+    // -----------------------------
+    AI_BLESSING
 };
 
 //================== 属性结构 ==================

@@ -36,6 +36,7 @@ private:
     cocos2d::MenuItemLabel *_cancelItem = nullptr;
 
     bool _busy = false;
+    bool _ctrlDown = false;
 
     void setBusy(bool busy);
     void setMessage(const std::string &msg, const cocos2d::Color4B &color = cocos2d::Color4B::WHITE);

@@ -186,6 +186,18 @@ public:
     /// @brief 激活出伤倍率（带持续时间）
     void activateOutgoingDamageMultiplier(float multiplier, float durationSeconds);
 
+    // =============================================================
+    // AI/NPC 赐福（覆盖式 Buff）
+    // =============================================================
+    /// @brief 应用 AI 赐福属性加成（会覆盖旧赐福）
+    void applyAiBlessingBonus(const Attributes &bonus);
+    /// @brief 清空 AI 赐福
+    void clearAiBlessingBonus();
+    /// @brief 当前是否存在 AI 赐福
+    bool hasAiBlessingBonus() const;
+    /// @brief 获取当前 AI 赐福的属性加成（无则返回空）
+    Attributes getAiBlessingBonus() const;
+
     /// @brief 使用技能槽位
     void useSkill(size_t slotIndex); // 技能
 

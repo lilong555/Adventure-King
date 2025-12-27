@@ -27,6 +27,7 @@ class BossHealthBar;
 class PauseMenu;
 class PlayerDeathMenu;
 class InventoryLayer;
+class BlessingNpcLayer;
 
 class GameUI : public cocos2d::Node
 {
@@ -135,6 +136,19 @@ public:
     InventoryLayer *getInventoryLayer() const { return _inventoryLayer; }
 
     //=========================================================================
+    // 赐福 NPC（展示接口）
+    //=========================================================================
+
+    /// @brief 显示赐福 NPC 弹窗
+    void showBlessingNpc();
+    /// @brief 隐藏赐福 NPC 弹窗
+    void hideBlessingNpc();
+    /// @brief 赐福 NPC 弹窗是否显示中
+    bool isBlessingNpcShowing() const;
+    /// @brief 获取赐福 NPC 弹窗
+    BlessingNpcLayer *getBlessingNpcLayer() const { return _blessingNpcLayer; }
+
+    //=========================================================================
     // 原有功能
     //=========================================================================
 
@@ -186,6 +200,8 @@ protected:
     void createDeathMenu();
     // 创建背包/技能 UI
     void createInventoryLayer();
+    // 创建赐福 NPC 弹窗
+    void createBlessingNpcLayer();
     // 创建地图按钮 UI
     void createMapButton();
     // 创建交互提示 UI
@@ -211,6 +227,8 @@ protected:
     PlayerDeathMenu *_deathMenu = nullptr;
     // 背包/技能界面
     InventoryLayer *_inventoryLayer = nullptr;
+    // 赐福 NPC 弹窗
+    BlessingNpcLayer *_blessingNpcLayer = nullptr;
 
     // 地图按钮
     cocos2d::MenuItemImage *_mapButton = nullptr;

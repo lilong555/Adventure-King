@@ -213,6 +213,11 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     playerObj.AddMember("outgoingDamageMultiplier", data.playerData.outgoingDamageMultiplier, allocator);
     playerObj.AddMember("outgoingDamageMultiplierRemainingSeconds", data.playerData.outgoingDamageMultiplierRemainingSeconds, allocator);
 
+    // AI/NPC 赐福（覆盖式 Buff）：为空则表示无赐福
+    rapidjson::Value blessingObj(rapidjson::kObjectType);
+    serializeAttributes(blessingObj, data.playerData.aiBlessingBonus, allocator);
+    playerObj.AddMember("aiBlessingBonus", blessingObj, allocator);
+
     // 基础属性
     rapidjson::Value baseAttrObj(rapidjson::kObjectType);
     serializeAttributes(baseAttrObj, data.playerData.baseAttributes, allocator);
@@ -400,6 +405,12 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
             outData.playerData.currentMP = getFloat(player, "currentMP", outData.playerData.currentMP);
             outData.playerData.outgoingDamageMultiplier = getFloat(player, "outgoingDamageMultiplier", outData.playerData.outgoingDamageMultiplier);
             outData.playerData.outgoingDamageMultiplierRemainingSeconds = getFloat(player, "outgoingDamageMultiplierRemainingSeconds", outData.playerData.outgoingDamageMultiplierRemainingSeconds);
+
+            // AI/NPC 赐福：兼容旧存档缺失该字段
+            if (player.HasMember("aiBlessingBonus"))
+            {
+                deserializeAttributes(player["aiBlessingBonus"], outData.playerData.aiBlessingBonus);
+            }
 
             // 技能点：优先读取新字段；兼容旧存档 skillPoints（按 1:1 平分到主动/被动）
             const bool hasActivePoints = player.HasMember("activeSkillPoints") && player["activeSkillPoints"].IsInt();
