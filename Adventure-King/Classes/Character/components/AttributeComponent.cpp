@@ -154,14 +154,35 @@ bool AttributeComponent::hasStatusEffect(StatusEffectType type) const {
 
 void AttributeComponent::executeReceiveDamageHooks(CharacterBase* attacker, DamageInfo& info) {
     auto owner = static_cast<CharacterBase*>(getOwner());
-    for (auto& effect : _effects) {
+    // 注意：状态钩子里可能会新增/移除状态，直接遍历 _effects 会触发迭代器失效（Win Debug 常见：vector iterators incompatible）
+    // 因此这里使用快照遍历，保证遍历期间容器可安全修改。
+    auto effectsSnapshot = _effects;
+    auto isEffectStillPresent = [this](StatusEffect* effect) -> bool {
+        return std::find(_effects.begin(), _effects.end(), effect) != _effects.end();
+    };
+    for (auto* effect : effectsSnapshot)
+    {
+        if (!effect || !isEffectStillPresent(effect))
+        {
+            continue;
+        }
         effect->onModifyReceiveDamage(owner, attacker, info);
     }
 }
 
 void AttributeComponent::executeDealDamageHooks(CharacterBase* target, DamageInfo& info) {
     auto owner = static_cast<CharacterBase*>(getOwner());
-    for (auto& effect : _effects) {
+    // 见 executeReceiveDamageHooks 注释：使用快照遍历避免迭代器失效
+    auto effectsSnapshot = _effects;
+    auto isEffectStillPresent = [this](StatusEffect* effect) -> bool {
+        return std::find(_effects.begin(), _effects.end(), effect) != _effects.end();
+    };
+    for (auto* effect : effectsSnapshot)
+    {
+        if (!effect || !isEffectStillPresent(effect))
+        {
+            continue;
+        }
         effect->onModifyDealDamage(owner, target, info);
     }
 }
@@ -174,18 +195,28 @@ void AttributeComponent::executeAfterReceiveDamageHooks(CharacterBase* attacker,
         return;
     }
 
+    // 注意：钩子里可能会增删状态（例如急救面罩可能移除/添加其它效果），用快照遍历避免迭代器失效。
+    auto effectsSnapshot = _effects;
+    auto isEffectStillPresent = [this](StatusEffect* effect) -> bool {
+        return std::find(_effects.begin(), _effects.end(), effect) != _effects.end();
+    };
+
     // 优先执行“濒死救援类”机制，避免装备顺序导致逻辑不一致（例如急救面罩应先于反伤/其他触发）
-    for (auto& effect : _effects)
+    for (auto* effect : effectsSnapshot)
     {
-        if (effect && effect->type == StatusEffectType::EQUIP_EMERGENCY_MASK)
+        if (!effect || !isEffectStillPresent(effect))
+        {
+            continue;
+        }
+        if (effect->type == StatusEffectType::EQUIP_EMERGENCY_MASK)
         {
             effect->onAfterReceiveDamage(owner, attacker, finalDamage, info, wouldDieBeforeCallback);
         }
     }
 
-    for (auto& effect : _effects)
+    for (auto* effect : effectsSnapshot)
     {
-        if (!effect || effect->type == StatusEffectType::EQUIP_EMERGENCY_MASK)
+        if (!effect || !isEffectStillPresent(effect) || effect->type == StatusEffectType::EQUIP_EMERGENCY_MASK)
         {
             continue;
         }
@@ -196,8 +227,17 @@ void AttributeComponent::executeAfterReceiveDamageHooks(CharacterBase* attacker,
 void AttributeComponent::executeAfterDealDamageHooks(CharacterBase* target, float finalDamage, const DamageInfo& info, bool targetDied)
 {
     auto owner = static_cast<CharacterBase*>(getOwner());
-    for (auto& effect : _effects)
+    // 注意：钩子里可能会增删状态（例如追猎之靴击杀后给自己加 EXCITED），直接遍历 _effects 会导致迭代器失效崩溃。
+    auto effectsSnapshot = _effects;
+    auto isEffectStillPresent = [this](StatusEffect* effect) -> bool {
+        return std::find(_effects.begin(), _effects.end(), effect) != _effects.end();
+    };
+    for (auto* effect : effectsSnapshot)
     {
+        if (!effect || !isEffectStillPresent(effect))
+        {
+            continue;
+        }
         effect->onAfterDealDamage(owner, target, finalDamage, info, targetDied);
     }
 }
