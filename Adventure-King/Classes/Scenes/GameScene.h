@@ -161,6 +161,7 @@ protected:
      * @brief 初始化相机跟随
      */
     virtual void initCameraFollow();
+    void handleArenaCamera(bool lock, cocos2d::Vec2 targetPos);
 
     /**
      * @brief 初始化 UI 系统

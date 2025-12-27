@@ -281,7 +281,11 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
             getEnemySpawnViewDistance(),
             0.0f);
     }
-
+    if (_levelMap) {
+        _levelMap->onArenaCameraRequest = [this](bool lock, cocos2d::Vec2 pos) {
+            this->handleArenaCamera(lock, pos);
+            };
+    }
     CCLOG("Scene initialized with physics config: %s", getLevelName().c_str());
     return true;
 }
@@ -587,21 +591,51 @@ void GameScene::initUIController()
 
 void GameScene::initCameraFollow()
 {
-    if (!_player || !_gameLayer)
-    {
-        CCLOG("Warning: Cannot init camera follow - player or gameLayer not created");
-        return;
-    }
-
+    if (!_player || !_gameLayer)return;
+    _gameLayer->stopActionByTag(837);
     Size mapSize = _levelMap ? _levelMap->getMapSizeInPixels() : Director::getInstance()->getVisibleSize();
     Rect worldBound(0, 0, mapSize.width, mapSize.height);
 
     auto followAction = Follow::create(_player, worldBound);
-    _gameLayer->runAction(followAction);
 
     CCLOG("Camera follow enabled on gameLayer, world bound: (%.0f, %.0f, %.0f, %.0f)",
           worldBound.origin.x, worldBound.origin.y,
           worldBound.size.width, worldBound.size.height);
+
+    followAction->setTag(837); // 为跟随动作设置一个固定 Tag，方便寻找
+    _gameLayer->runAction(followAction);
+}
+
+void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos) {
+    // 停止当前正在执行的所有相机平移动作，防止动作叠加冲突
+    _gameLayer->stopActionByTag(1001);
+
+    if (lock) {
+        // 1. 必须停止跟随动作，否则 Follow 动作每帧会把 gameLayer 位置拽回玩家处
+        _gameLayer->stopActionByTag(837);
+
+        auto visibleSize = Director::getInstance()->getVisibleSize();
+        cocos2d::Vec2 layerPos(-targetPos.x + visibleSize.width / 2,
+            -targetPos.y + visibleSize.height / 2);
+
+        auto moveTo = MoveTo::create(1.0f, layerPos);
+        auto scaleTo = ScaleTo::create(1.0f, 0.85f);
+        auto spawn = Spawn::create(moveTo, scaleTo, nullptr);
+
+        spawn->setTag(1001); // 设置过渡动画 Tag
+        _gameLayer->runAction(EaseExponentialOut::create(spawn));
+    }
+    else {
+        // 恢复逻辑：先拉回缩放，并在结束后重启动 Follow
+        auto resetScale = ScaleTo::create(0.5f, 1.0f);
+        auto callback = CallFunc::create([this]() {
+            this->initCameraFollow(); // 重新启动 Tag 为 837 的动作
+            });
+
+        auto seq = Sequence::create(resetScale, callback, nullptr);
+        seq->setTag(1001); // 同样设置 Tag
+        _gameLayer->runAction(seq);
+    }
 }
 
 void GameScene::returnToMapScene()

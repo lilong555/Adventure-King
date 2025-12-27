@@ -131,6 +131,8 @@ public:
      * @param layerName Tiled中的对象层名称（如 "ArenaLayer"）
      * @param gameLayer 节点容器
      */
+     // 增加回调定义：参数 1 为是否锁定，参数 2 为锁定点坐标
+    std::function<void(bool, cocos2d::Vec2)> onArenaCameraRequest;
     void loadArenas(const std::string& layerName, cocos2d::Node* gameLayer);
     /**
      * @brief 最终状态检查
