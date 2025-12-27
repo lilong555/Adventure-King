@@ -151,7 +151,7 @@ struct LevelConfig
      namespace Save
      {
          // 存档槽位与自动存档
-         inline constexpr int MAX_SLOTS = 5;
+         inline constexpr int MAX_SLOTS = 3;
          inline constexpr float AUTO_SAVE_INTERVAL_SECONDS = 300.0f;
      }
 

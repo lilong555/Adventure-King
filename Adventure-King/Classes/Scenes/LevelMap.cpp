@@ -992,6 +992,12 @@ void LevelMap::updateArenas(PlayerCharacter* player, Node* gameLayer,
         if (arena->triggerRect.containsPoint(player->getPosition())) {
             arena->isActivated = true;
 
+            if (onArenaCameraRequest) {
+                // 计算触发区域的中心点作为锁定点
+                cocos2d::Vec2 center(arena->triggerRect.getMidX(), arena->triggerRect.getMidY());
+                onArenaCameraRequest(true, center);
+            }
+
             // 1. 关门：启用碰撞和显示（可以加特效）
             for (auto gate : arena->gates) {
                 gate->setVisible(true);
@@ -1025,6 +1031,9 @@ void LevelMap::spawnNextWave(ArenaConfig* arena, PlayerCharacter* player, Node* 
             ));
         }
         CCLOG("Arena [%s] Cleared!", arena->arenaID.c_str());
+        if (onArenaCameraRequest) {
+            onArenaCameraRequest(false, cocos2d::Vec2::ZERO); // 发信号解除锁定
+        }
         return;
     }
 

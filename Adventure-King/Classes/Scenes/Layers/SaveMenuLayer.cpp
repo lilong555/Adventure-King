@@ -284,8 +284,8 @@ void SaveMenuLayer::layoutUI()
         origin.y + visibleSize.height / 2));
 
     // 布局存档槽位
-    float slotStartY = _background->getContentSize().height / 12 * 9.5f;
-    float slotSpacing = _background->getContentSize().height / 12 * 1.5f;
+    float slotStartY = _background->getContentSize().height*0.72f;
+    float slotSpacing = _background->getContentSize().height *0.213f;
 
     for (size_t i = 0; i < _slotNodes.size(); ++i)
     {
@@ -295,104 +295,134 @@ void SaveMenuLayer::layoutUI()
     }
 }
 
-cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &slotData)
+cocos2d::Node* SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData& slotData)
 {
     auto node = Node::create();
-    node->setContentSize(Size(_background->getContentSize().width * 0.9f, 80));
-
-    // 背景
-    auto bg = LayerColor::create(Color4B(50, 50, 50, 200), node->getContentSize().width, node->getContentSize().height);
-    bg->setPosition(Vec2(-node->getContentSize().width / 2, -node->getContentSize().height / 2));
-    node->addChild(bg);
+    node->setContentSize(Size(_background->getContentSize().width * 0.6f, 120));
 
     // 槽位标题
     std::string slotTitle = "槽位 " + std::to_string(slotIndex + 1);
-    auto titleLabel = Label::createWithTTF(slotTitle, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24);
-    titleLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 80, 0));
+    auto titleLabel = Label::createWithTTF(
+        slotTitle,
+        "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+        30
+    );
     titleLabel->setAnchorPoint(Vec2(0, 0.5f));
+    titleLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, 20));
     node->addChild(titleLabel);
 
-    // 检查是否有存档
+    // 是否有存档
     bool hasSave = (slotData.saveTimestamp > 0);
 
     if (hasSave)
     {
-        // 显示存档信息
-        const CharacterRole role = static_cast<CharacterRole>(slotData.playerData.role);
-        const std::string sceneName = slotData.progressData.currentSceneName.empty()
-                                          ? "未知地图"
-                                          : slotData.progressData.currentSceneName;
-        const int posX = static_cast<int>(std::lround(slotData.progressData.playerPosX));
-        const int posY = static_cast<int>(std::lround(slotData.progressData.playerPosY));
-        std::string infoText = StringUtils::format("%s | %s | Lv.%d | (%d,%d) | %s",
-                                                   PlayerRoleConfig::getDisplayName(role),
-                                                   sceneName.c_str(),
-                                                   slotData.playerData.level,
-                                                   posX,
-                                                   posY,
-                                                   formatTimestamp(slotData.saveTimestamp).c_str());
-        auto infoLabel = Label::createWithTTF(infoText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
-        infoLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 80, -20));
+        // 存档信息
+        const CharacterRole role =
+            static_cast<CharacterRole>(slotData.playerData.role);
+
+        const std::string sceneName =
+            slotData.progressData.currentSceneName.empty()
+            ? "未知地图"
+            : slotData.progressData.currentSceneName;
+
+        int posX = static_cast<int>(std::lround(slotData.progressData.playerPosX));
+        int posY = static_cast<int>(std::lround(slotData.progressData.playerPosY));
+
+        std::string infoText = StringUtils::format(
+            "%s | %s | Lv.%d | (%d,%d) | %s",
+            PlayerRoleConfig::getDisplayName(role),
+            sceneName.c_str(),
+            slotData.playerData.level,
+            posX,
+            posY,
+            formatTimestamp(slotData.saveTimestamp).c_str()
+        );
+
+        auto infoLabel = Label::createWithTTF(
+            infoText,
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            18
+        );
         infoLabel->setAnchorPoint(Vec2(0, 0.5f));
+        infoLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -20));
         infoLabel->setTextColor(Color4B(200, 200, 200, 255));
         node->addChild(infoLabel);
     }
     else
     {
-        // 空槽位
-        auto emptyLabel = Label::createWithTTF("空槽位", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
-        emptyLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 80, -20));
+        // 空槽位提示
+        auto emptyLabel = Label::createWithTTF(
+            "空槽位",
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            20
+        );
         emptyLabel->setAnchorPoint(Vec2(0, 0.5f));
+        emptyLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -30));
         emptyLabel->setTextColor(Color4B(150, 150, 150, 255));
         node->addChild(emptyLabel);
     }
 
-    // 右侧按钮组：删除 / 云存(云读) / 保存(加载)
+    // ================= 右侧按钮组 =================
     auto menu = Menu::create();
     menu->setPosition(Vec2::ZERO);
     node->addChild(menu);
 
-    const float rightX = node->getContentSize().width / 2;
-    float x = rightX - 30.0f;
+    float x = node->getContentSize().width / 2 - 30.0f;
 
-    // 云端按钮：保存模式=云存（保存该槽并上传全部存档包），加载模式=云读（云同步并加载该槽）
+    // 云存 / 云读
     std::string cloudText = (_mode == Mode::SAVE) ? "云存" : "云读";
     auto cloudItem = MenuItemLabel::create(
-        Label::createWithTTF(cloudText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20),
-        [this, slotIndex](Ref *)
+        Label::createWithTTF(
+            cloudText,
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            20
+        ),
+        [this, slotIndex](Ref*)
         {
             onCloudClicked(slotIndex);
-        });
+        }
+    );
     cloudItem->setPosition(Vec2(x, 0));
     menu->addChild(cloudItem);
     x -= 70.0f;
 
-    // 主按钮（保存/加载）
+    // 保存 / 加载
     std::string buttonText = (_mode == Mode::SAVE) ? "保存" : "加载";
     auto mainItem = MenuItemLabel::create(
-        Label::createWithTTF(buttonText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
-        [this, slotIndex](Ref *)
+        Label::createWithTTF(
+            buttonText,
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            24
+        ),
+        [this, slotIndex](Ref*)
         {
             onSlotClicked(slotIndex);
-        });
+        }
+    );
     mainItem->setPosition(Vec2(x, 0));
     menu->addChild(mainItem);
     x -= 90.0f;
 
-    // 删除按钮（仅在有存档时显示）
+    // 删除（仅有存档时）
     if (hasSave)
     {
         auto deleteItem = MenuItemLabel::create(
-            Label::createWithTTF("删除", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20),
-            [this, slotIndex](Ref *)
+            Label::createWithTTF(
+                "删除",
+                "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+                20
+            ),
+            [this, slotIndex](Ref*)
             {
                 onDeleteClicked(slotIndex);
-            });
+            }
+        );
         deleteItem->setPosition(Vec2(x, 0));
+        deleteItem->setColor(Color3B::RED);
         menu->addChild(deleteItem);
     }
 
-    // 如果是加载模式且槽位为空，禁用本地“加载”按钮（云读仍可用）
+    // 加载模式 + 空槽位 → 禁用“加载”
     if (_mode == Mode::LOAD && !hasSave)
     {
         mainItem->setEnabled(false);
@@ -401,6 +431,7 @@ cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &
 
     return node;
 }
+
 
 void SaveMenuLayer::onSlotClicked(int slotIndex)
 {

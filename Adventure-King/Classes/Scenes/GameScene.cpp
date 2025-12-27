@@ -152,6 +152,12 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     _gameLayer = Node::create();
     addChild(_gameLayer, 0);
 
+    if (!_cameraAnchor) {
+        _cameraAnchor = cocos2d::Node::create();
+        _cameraAnchor->retain();              // 生命周期和 GameScene 一致
+        _gameLayer->addChild(_cameraAnchor);  //  必须在 gameLayer 里
+    }
+
     //-------------------------------------------------------------------------
     // 步骤2：加载关卡地图（TMX/碰撞/门区/敌人点）
     //-------------------------------------------------------------------------
@@ -177,7 +183,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     //-------------------------------------------------------------------------
     // 步骤5：设置相机跟随
     //-------------------------------------------------------------------------
-    initCameraFollow();
+    initCameraFollow(_player);
 
     //-------------------------------------------------------------------------
     // 步骤6：启用帧更新和初始化 UI
@@ -281,7 +287,11 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
             getEnemySpawnViewDistance(),
             0.0f);
     }
-
+    if (_levelMap) {
+        _levelMap->onArenaCameraRequest = [this](bool lock, cocos2d::Vec2 pos) {
+            this->handleArenaCamera(lock, pos);
+            };
+    }
     CCLOG("Scene initialized with physics config: %s", getLevelName().c_str());
     return true;
 }
@@ -509,20 +519,26 @@ void GameScene::initInputController()
                                    { returnToMapScene(); });
 
     auto keyboardListener = EventListenerKeyboard::create();
-    keyboardListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event *event)
-    {
-        if (_inputController)
+    keyboardListener->onKeyPressed =
+        [this](EventKeyboard::KeyCode keyCode, Event* event)
         {
-            _inputController->onKeyPressed(keyCode);
-        }
-    };
-    keyboardListener->onKeyReleased = [this](EventKeyboard::KeyCode keyCode, Event *event)
-    {
-        if (_inputController)
+            if (!_inputEnabled) return;   // 添加禁输入功能
+
+            if (_inputController)
+            {
+                _inputController->onKeyPressed(keyCode);
+            }
+        };
+    keyboardListener->onKeyReleased =
+        [this](EventKeyboard::KeyCode keyCode, Event* event)
         {
-            _inputController->onKeyReleased(keyCode);
-        }
-    };
+            if (!_inputEnabled) return;   // ⭐ 关键一行
+
+            if (_inputController)
+            {
+                _inputController->onKeyReleased(keyCode);
+            }
+        };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
 
     CCLOG("Input controller initialized");
@@ -585,23 +601,101 @@ void GameScene::initUIController()
     }
 }
 
-void GameScene::initCameraFollow()
+void GameScene::initCameraFollow(cocos2d::Node* target)
 {
-    if (!_player || !_gameLayer)
-    {
-        CCLOG("Warning: Cannot init camera follow - player or gameLayer not created");
-        return;
-    }
+    if (!target || !_gameLayer) return;
 
-    Size mapSize = _levelMap ? _levelMap->getMapSizeInPixels() : Director::getInstance()->getVisibleSize();
+    _gameLayer->stopActionByTag(837);
+
+    Size mapSize = _levelMap
+        ? _levelMap->getMapSizeInPixels()
+        : Director::getInstance()->getVisibleSize();
+
     Rect worldBound(0, 0, mapSize.width, mapSize.height);
 
-    auto followAction = Follow::create(_player, worldBound);
-    _gameLayer->runAction(followAction);
+    auto followAction = Follow::create(target, worldBound);
+    followAction->setTag(837);
 
-    CCLOG("Camera follow enabled on gameLayer, world bound: (%.0f, %.0f, %.0f, %.0f)",
-          worldBound.origin.x, worldBound.origin.y,
-          worldBound.size.width, worldBound.size.height);
+    _gameLayer->runAction(followAction);
+}
+
+
+Vec2 GameScene::clampLayerPosition(Vec2 pos) {
+    if (!_levelMap) return pos;
+
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    Size mapSize = _levelMap->getMapSizeInPixels();
+
+    // 计算 gameLayer 位置的合法范围（与 Follow 逻辑一致）
+    float minX = -(mapSize.width - visibleSize.width);
+    float minY = -(mapSize.height - visibleSize.height);
+
+    // 只有地图比屏幕大时才需要裁剪
+    float finalX = clampf(pos.x, std::min(minX, 0.0f), 0.0f);
+    float finalY = clampf(pos.y, std::min(minY, 0.0f), 0.0f);
+
+    return Vec2(finalX, finalY);
+}
+
+Vec2 GameScene::calcFollowLayerPos(Vec2 targetWorldPos) {
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    Vec2 rawPos(
+        -targetWorldPos.x + visibleSize.width / 2,
+        -targetWorldPos.y + visibleSize.height / 2
+    );
+    return clampLayerPosition(rawPos);
+}
+
+void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos)
+{
+    _gameLayer->stopActionByTag(1001);
+    _gameLayer->stopActionByTag(837);
+
+    if (lock)
+    {
+        // ---------- 锁定 ----------
+        auto visibleSize = Director::getInstance()->getVisibleSize();
+        float targetScale = 1.0f;
+
+        Vec2 layerPos(
+            visibleSize.width / 2 - targetPos.x * targetScale,
+            visibleSize.height - targetPos.y * targetScale
+        );
+
+        auto moveTo = MoveTo::create(1.0f, clampLayerPosition(layerPos));
+        auto scaleTo = ScaleTo::create(1.0f, targetScale);
+
+        auto action = EaseSineOut::create(
+            Spawn::create(moveTo, scaleTo, nullptr)
+        );
+
+        action->setTag(1001);
+        _gameLayer->runAction(action);
+    }
+    else
+    {
+
+        _gameLayer->stopActionByTag(837);
+        _gameLayer->stopActionByTag(1001);
+
+        // ② 计算“当前帧”玩家对应的相机位置
+        Vec2 targetLayerPos = calcFollowLayerPos(_player->getPosition());
+
+        // ③ 相机平滑移动
+        auto move = MoveTo::create(0.4f, targetLayerPos);
+        auto ease = EaseSineOut::create(move);
+
+        auto onFinish = CallFunc::create([this]() {
+
+            // ④ 动画结束 → 启用 Follow
+            initCameraFollow(_player);
+            });
+
+        auto seq = Sequence::create(ease, onFinish, nullptr);
+        seq->setTag(1001);
+
+        _gameLayer->runAction(seq);
+    }
 }
 
 void GameScene::returnToMapScene()
@@ -635,6 +729,7 @@ void GameScene::togglePauseMenu()
         _uiController->togglePauseMenu();
     }
 }
+
 
 void GameScene::setGamePaused(bool paused)
 {

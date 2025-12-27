@@ -158,9 +158,12 @@ protected:
     virtual void initInputController();
 
     /**
-     * @brief 初始化相机跟随
+     * @brief 相机跟随相关
      */
-    virtual void initCameraFollow();
+    virtual void initCameraFollow(cocos2d::Node* target);
+    cocos2d::Vec2 clampLayerPosition(cocos2d::Vec2 pos);
+    cocos2d::Vec2 calcFollowLayerPos(cocos2d::Vec2 targetWorldPos);
+    void handleArenaCamera(bool lock, cocos2d::Vec2 targetPos);
 
     /**
      * @brief 初始化 UI 系统
@@ -199,7 +202,7 @@ protected:
      * @brief 切换暂停菜单显示状态
      */
     void togglePauseMenu();
-
+    void toggleInventory();
     /**
      * @brief 设置游戏暂停/恢复（只冻结世界逻辑，UI 仍可交互）
      */
@@ -244,6 +247,8 @@ protected:
     virtual LevelConfig getLevelConfig() const { return LevelConfig(); }
 
 private:
+    bool _inputEnabled = true;
+    cocos2d::Node* _cameraAnchor = nullptr;
     /**
      * @brief 显示地图加载失败的 UI
      */
