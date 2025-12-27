@@ -6,6 +6,7 @@
 #include <string>
 
 class PlayerCharacter;
+struct Attributes;
 
 /**
  * @brief 赐福 NPC 弹窗（展示阶段：用于验证 OpenAI 兼容接口 + 覆盖式属性 Buff）
