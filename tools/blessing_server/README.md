@@ -13,17 +13,28 @@
 
    `cd tools/blessing_server`
 
-2. 创建虚拟环境并安装依赖：
+2. 创建虚拟环境并安装依赖（首次需要）：
 
    `python3 -m venv .venv`
 
    `source .venv/bin/activate`
+
+   `python -m pip install -U pip`
 
    `pip install -r requirements.txt`
 
 3. 启动服务（默认端口 5181）：
 
    `python3 ak_blessing_server.py serve --host 0.0.0.0 --port 5181`
+
+也可以用一键脚本（推荐）：
+
+`./run.sh`
+
+可选环境变量：
+
+- `AK_BLESSING_HOST`（默认 `0.0.0.0`）
+- `AK_BLESSING_PORT`（默认 `5181`）
 
 ## OpenAI 兼容 Base URL
 
@@ -46,4 +57,3 @@
 - `http://127.0.0.1:5181`
 
 `apiKey` 填写你的 OpenAI 兼容 Bearer Token（展示阶段手动输入）。
-
