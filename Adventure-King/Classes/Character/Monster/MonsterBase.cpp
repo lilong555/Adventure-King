@@ -230,13 +230,25 @@ void MonsterBase::applyHpScalingForPlayerLevel(int playerLevel, bool isBoss)
         return;
     }
 
+    const int rawPlayerLevel = playerLevel;
     playerLevel = std::max(1, playerLevel);
+#if COCOS2D_DEBUG > 0
+    if (rawPlayerLevel < 1)
+    {
+        CCLOG("MonsterBase::applyHpScalingForPlayerLevel 收到非法 playerLevel=%d，已自动夹取到 1。", rawPlayerLevel);
+    }
+#endif
 
     // 读取“基础 MAX_HP”（不含装备/状态加成），避免缩放受其它系统影响
     float baseHp = attr->getBaseAttributes().get(AttributeType::MAX_HP, 0.0f);
     if (baseHp <= 0.0f)
     {
         // 兜底：若未设置 baseAttributes，则退回读取最终值（至少不至于出现 0 血量）
+#if COCOS2D_DEBUG > 0
+        CCLOG("MonsterBase::applyHpScalingForPlayerLevel: base MAX_HP<=0，回退读取最终属性（playerLevel=%d, isBoss=%d）。",
+              playerLevel,
+              isBoss ? 1 : 0);
+#endif
         baseHp = attr->getAttributeValue(AttributeType::MAX_HP);
     }
     if (baseHp <= 0.0f)
@@ -262,7 +274,6 @@ void MonsterBase::applyHpScalingForPlayerLevel(int playerLevel, bool isBoss)
 
     // 同步缓存并补满血（怪物创建时默认满血）
     refreshCacheAttributes();
-    ensureHpBar();
     setCurrentHP(_maxHP);
     updateHpBar();
 }

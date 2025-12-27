@@ -676,19 +676,19 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
         if (goblu)
         {
             goblu->setAutoRemoveOnDeath(false);
-        }
-        if (goblu && _player)
-        {
-            goblu->applyHpScalingForPlayerLevel(_player->getLevel(), true);
-        }
-
-        if (goblu && _uiController)
-        {
-            if (auto ui = _uiController->getGameUI())
+            if (_player)
             {
-                ui->bindBoss(goblu, "Goblu", 1);
+                goblu->applyHpScalingForPlayerLevel(_player->getLevel(), true);
             }
-            _boss = goblu;
+
+            if (_uiController)
+            {
+                if (auto ui = _uiController->getGameUI())
+                {
+                    ui->bindBoss(goblu, "Goblu", 1);
+                }
+                _boss = goblu;
+            }
         }
         return goblu;
     }
