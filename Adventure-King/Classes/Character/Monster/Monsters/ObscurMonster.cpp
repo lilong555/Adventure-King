@@ -14,6 +14,8 @@ namespace
     const char* const OBSCUR_MELEE_ATTACK_ANIM_KEY = "obscur_attack";
     const char* const OBSCUR_USEICE_LOOP_ANIM_KEY = "obscur_useice_loop";
     const char* const OBSCUR_ICE_ANIM_KEY = "obscur_ice";
+    const char* const OBSCUR_REMOTE_HITBOX_SCHEDULE_KEY = "obscur_remote_hitbox";
+    const char* const OBSCUR_REMOTE_FINISH_SCHEDULE_KEY = "obscur_remote_finish";
 
     // Obscur_useice_x 循环动作标签（避免和状态机动画互相影响）
     constexpr int ACTION_TAG_OBSCUR_USEICE_LOOP = 2331;
@@ -374,6 +376,9 @@ void ObscurMonster::performMeleeAttack()
 void ObscurMonster::performRemoteAttack()
 {
     stopActionByTag(ACTION_TAG_OBSCUR_USEICE_LOOP);
+    // 远程攻击判定使用 scheduleOnce：避免被受击 stopAllActions 打断后“动画在播但无判定框”
+    unschedule(OBSCUR_REMOTE_HITBOX_SCHEDULE_KEY);
+    unschedule(OBSCUR_REMOTE_FINISH_SCHEDULE_KEY);
 
     if (!_target)
     {
@@ -441,26 +446,38 @@ void ObscurMonster::performRemoteAttack()
 
     const float iceDuration = iceAnim ? iceAnim->getDuration() : 0.5f;
     const float finishDelay = std::max(0.0f, iceDuration - hitStartTime);
+    const float totalDuration = hitStartTime + finishDelay;
 
-    auto remoteSequence = Sequence::create(
-        DelayTime::create(hitStartTime),
-        CallFunc::create([this, hitboxCenter, hitboxSize, damageTag, hitDuration]()
-                         { this->spawnAttackHitboxAt(hitboxCenter, hitboxSize, std::max(1, damageTag), hitDuration, 999); }),
-        // 远程攻击总时长：对齐冰动画时长，结束后恢复状态并停止 useice 循环
-        DelayTime::create(finishDelay),
-        CallFunc::create([this]()
-                         {
-                             stopActionByTag(ACTION_TAG_OBSCUR_USEICE_LOOP);
+    scheduleOnce(
+        [this, hitboxCenter, hitboxSize, damageTag, hitDuration](float)
+        {
+            if (isDead())
+            {
+                return;
+            }
 
-                             if (auto sm = getStateMachineComponent())
-                             {
-                                 if (sm->getCurrentState() != CharacterState::DEAD)
-                                 {
-                                     sm->changeState(CharacterState::IDLE);
-                                 }
-                             } }),
-        nullptr);
-    runAction(remoteSequence);
+            this->spawnAttackHitboxAt(hitboxCenter, hitboxSize, std::max(1, damageTag), hitDuration, 999);
+        },
+        hitStartTime,
+        OBSCUR_REMOTE_HITBOX_SCHEDULE_KEY);
+
+    // 远程攻击总时长：对齐冰动画时长，结束后恢复状态并停止 useice 循环
+    scheduleOnce(
+        [this](float)
+        {
+            stopActionByTag(ACTION_TAG_OBSCUR_USEICE_LOOP);
+
+            if (auto sm = getStateMachineComponent())
+            {
+                // 仅在仍处于“攻击中”时收尾，避免覆盖受击/死亡状态
+                if (sm->getCurrentState() == CharacterState::ATTACKING)
+                {
+                    sm->changeState(CharacterState::IDLE);
+                }
+            }
+        },
+        totalDuration,
+        OBSCUR_REMOTE_FINISH_SCHEDULE_KEY);
 }
 
 Vec2 ObscurMonster::getTargetBottomCenterPosInParentSpace() const
