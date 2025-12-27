@@ -66,9 +66,59 @@ bool BlessingNpcLayer::init()
         s.erase(std::remove(s.begin(), s.end(), '\n'), s.end());
         return s;
     };
+    auto utf8PrefixByChars = [](const std::string &s, int maxChars) -> std::string {
+        // 以“字符数”截断 UTF-8 字符串，避免按字节截断导致乱码/非法 UTF-8
+        if (maxChars <= 0)
+        {
+            return std::string();
+        }
+
+        std::size_t i = 0;
+        int chars = 0;
+        const std::size_t n = s.size();
+
+        while (i < n && chars < maxChars)
+        {
+            unsigned char c = static_cast<unsigned char>(s[i]);
+            std::size_t charLen = 1;
+
+            if ((c & 0x80) == 0x00)
+            {
+                charLen = 1; // ASCII
+            }
+            else if ((c & 0xE0) == 0xC0)
+            {
+                charLen = 2; // 2-byte sequence
+            }
+            else if ((c & 0xF0) == 0xE0)
+            {
+                charLen = 3; // 3-byte sequence
+            }
+            else if ((c & 0xF8) == 0xF0)
+            {
+                charLen = 4; // 4-byte sequence
+            }
+            else
+            {
+                // 非法 UTF-8 首字节：停止，避免输出非法序列
+                break;
+            }
+
+            if (i + charLen > n)
+            {
+                // 末尾字符不完整：不包含它
+                break;
+            }
+
+            i += charLen;
+            ++chars;
+        }
+
+        return s.substr(0, i);
+    };
 
     auto keyListener = EventListenerKeyboard::create();
-    keyListener->onKeyPressed = [this, getActiveField, sanitizeClipboard](EventKeyboard::KeyCode keyCode, Event *event) {
+    keyListener->onKeyPressed = [this, getActiveField, sanitizeClipboard, utf8PrefixByChars](EventKeyboard::KeyCode keyCode, Event *event) {
         if (!_showing)
         {
             return;
@@ -116,10 +166,7 @@ bool BlessingNpcLayer::init()
                     {
                         return;
                     }
-                    if ((int)clip.size() > remain)
-                    {
-                        clip = clip.substr(0, (size_t)remain);
-                    }
+                    clip = utf8PrefixByChars(clip, remain);
                 }
 
                 field->setString(field->getString() + clip);
@@ -225,7 +272,8 @@ bool BlessingNpcLayer::init()
     // baseUrl
     addRowLabel("baseUrl", startY);
     // 公共服务默认URL：https://elysiver.h-e.top（来源：https://linux.do/t/topic/1175087/27）
-    _urlField = ui::TextField::create("例如 https://elysiver.h-e.top", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    // 注意：第三方社区服务存在安全与隐私风险，请谨慎填写与使用。
+    _urlField = ui::TextField::create("例如 https://elysiver.h-e.top（第三方服务有安全/隐私风险）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
     _urlField->setString("https://elysiver.h-e.top");
     styleTextField(_urlField, startY, 220);
 
@@ -289,6 +337,12 @@ bool BlessingNpcLayer::init()
     auto menu = Menu::create();
     menu->setPosition(Vec2::ZERO);
     _panel->addChild(menu, 10);
+
+    // apiKey 显示/隐藏：默认隐藏，避免输入长 key 时无法校验导致误输
+    _toggleApiKeyLabel = Label::createWithTTF("显示", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
+    _toggleApiKeyItem = MenuItemLabel::create(_toggleApiKeyLabel, [this](Ref *) { onToggleApiKeyMaskClicked(); });
+    _toggleApiKeyItem->setPosition(Vec2(panelW - 68.0f, startY - rowH));
+    menu->addChild(_toggleApiKeyItem);
 
     _saveItem = MenuItemLabel::create(
         Label::createWithTTF("确认", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
@@ -669,6 +723,29 @@ void BlessingNpcLayer::onCloseClicked()
     if (_closeCallback)
     {
         _closeCallback();
+    }
+}
+
+void BlessingNpcLayer::onToggleApiKeyMaskClicked()
+{
+    if (!_apiKeyField || !_toggleApiKeyLabel)
+    {
+        return;
+    }
+
+    _apiKeyMasked = !_apiKeyMasked;
+    if (_apiKeyMasked)
+    {
+        _apiKeyField->setPasswordEnabled(true);
+        _apiKeyField->setPasswordStyleText("*");
+        _toggleApiKeyLabel->setString("显示");
+        setMessage("已隐藏 apiKey（如需校验输入可点击“显示”）。", Color4B(200, 200, 200, 255));
+    }
+    else
+    {
+        _apiKeyField->setPasswordEnabled(false);
+        _toggleApiKeyLabel->setString("隐藏");
+        setMessage("已显示 apiKey（注意隐私与录屏风险）。", Color4B(220, 180, 120, 255));
     }
 }
 

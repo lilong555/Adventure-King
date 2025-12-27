@@ -62,9 +62,59 @@ bool CloudAuthLayer::init(const DoneCallback &cb)
         s.erase(std::remove(s.begin(), s.end(), '\n'), s.end());
         return s;
     };
+    auto utf8PrefixByChars = [](const std::string &s, int maxChars) -> std::string {
+        // 以“字符数”截断 UTF-8 字符串，避免按字节截断导致乱码/非法 UTF-8
+        if (maxChars <= 0)
+        {
+            return std::string();
+        }
+
+        std::size_t i = 0;
+        int chars = 0;
+        const std::size_t n = s.size();
+
+        while (i < n && chars < maxChars)
+        {
+            unsigned char c = static_cast<unsigned char>(s[i]);
+            std::size_t charLen = 1;
+
+            if ((c & 0x80) == 0x00)
+            {
+                charLen = 1; // ASCII
+            }
+            else if ((c & 0xE0) == 0xC0)
+            {
+                charLen = 2; // 2-byte sequence
+            }
+            else if ((c & 0xF0) == 0xE0)
+            {
+                charLen = 3; // 3-byte sequence
+            }
+            else if ((c & 0xF8) == 0xF0)
+            {
+                charLen = 4; // 4-byte sequence
+            }
+            else
+            {
+                // 非法 UTF-8 首字节：停止，避免输出非法序列
+                break;
+            }
+
+            if (i + charLen > n)
+            {
+                // 末尾字符不完整：不包含它
+                break;
+            }
+
+            i += charLen;
+            ++chars;
+        }
+
+        return s.substr(0, i);
+    };
 
     auto keyListener = EventListenerKeyboard::create();
-    keyListener->onKeyPressed = [this, getActiveField, sanitizeClipboard](EventKeyboard::KeyCode keyCode, Event *event) {
+    keyListener->onKeyPressed = [this, getActiveField, sanitizeClipboard, utf8PrefixByChars](EventKeyboard::KeyCode keyCode, Event *event) {
         if (event)
         {
             // 弹窗显示时吞掉按键，避免穿透到主菜单快捷键
@@ -107,10 +157,7 @@ bool CloudAuthLayer::init(const DoneCallback &cb)
                     {
                         return;
                     }
-                    if ((int)clip.size() > remain)
-                    {
-                        clip = clip.substr(0, (size_t)remain);
-                    }
+                    clip = utf8PrefixByChars(clip, remain);
                 }
 
                 field->setString(field->getString() + clip);

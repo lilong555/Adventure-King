@@ -103,6 +103,22 @@ bool HomeScene::init() {
     return true;
 }
 
+void HomeScene::onExit()
+{
+    // 清理回调，避免场景退出后仍有输入事件触发回调导致访问已释放对象
+    if (_inputController)
+    {
+        _inputController->setNpcQuery({});
+        _inputController->setNpcInteract({});
+    }
+    if (_uiController)
+    {
+        _uiController->setNpcHintQuery({});
+    }
+
+    GameScene::onExit();
+}
+
 void HomeScene::initBlessingNpc()
 {
     _blessingNpcSprite = nullptr;

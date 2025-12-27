@@ -46,6 +46,7 @@ private:
     void onRequestBlessingClicked();
     void onClearBlessingClicked();
     void onCloseClicked();
+    void onToggleApiKeyMaskClicked();
 
     std::string buildBlessingSummary(const Attributes &bonus) const;
 
@@ -58,6 +59,9 @@ private:
     cocos2d::ui::TextField *_urlField = nullptr;
     cocos2d::ui::TextField *_apiKeyField = nullptr;
     cocos2d::ui::TextField *_modelField = nullptr;
+    cocos2d::Label *_toggleApiKeyLabel = nullptr;
+    cocos2d::MenuItemLabel *_toggleApiKeyItem = nullptr;
+    bool _apiKeyMasked = true;
 
     // 对话框：展示 NPC 问题与玩家回答
     cocos2d::LayerColor *_dialogPanel = nullptr;

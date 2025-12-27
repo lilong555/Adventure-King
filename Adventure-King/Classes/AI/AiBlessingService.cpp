@@ -541,6 +541,27 @@ void AiBlessingService::sendJsonRequest(const std::string &url,
 {
     using namespace cocos2d::network;
 
+    // 安全提示：若使用 HTTP（非 HTTPS）发送 Bearer Token，会明文传输，存在被窃听风险。
+    // 本项目展示阶段允许本地/自建服务使用 HTTP，但会在日志中提示风险。
+    if (!apiKey.empty())
+    {
+        const std::string lower = toLowerCopy(url);
+        const bool isHttps = lower.rfind("https://", 0) == 0;
+        const bool isHttp = lower.rfind("http://", 0) == 0;
+        const bool isLocal = lower.rfind("http://127.0.0.1", 0) == 0 || lower.rfind("http://localhost", 0) == 0;
+        if (isHttp && !isHttps)
+        {
+            if (isLocal)
+            {
+                CCLOG("AiBlessingService - 提示：当前使用 HTTP 本地服务，apiKey 将明文传输，仅建议本地开发环境使用。");
+            }
+            else
+            {
+                CCLOG("AiBlessingService - 警告：当前使用非 HTTPS 服务，apiKey 将明文传输，存在泄露风险：%s", url.c_str());
+            }
+        }
+    }
+
     auto req = new (std::nothrow) HttpRequest();
     if (!req)
     {

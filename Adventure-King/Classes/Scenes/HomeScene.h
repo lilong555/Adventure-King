@@ -13,6 +13,7 @@ class HomeScene : public GameScene
 public:
     static cocos2d::Scene* createScene();
     virtual bool init() override;
+    virtual void onExit() override;
 
     // “家”不需要刷怪
     virtual float getEnemySpawnViewDistance() const override { return 0.0f; }
