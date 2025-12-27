@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="298" height="45" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="37">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="298" height="45" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="39">
  <tileset firstgid="1" source="dungeon_1.tsx"/>
  <tileset firstgid="2921" source="2.tsx"/>
  <tileset firstgid="5961" source="3.tsx"/>
@@ -201,8 +201,8 @@
 </data>
  </layer>
  <objectgroup id="5" name="collisions">
-  <object id="1" x="480.433" y="6.1594" width="178.623" height="1435.14"/>
-  <object id="3" x="468.114" y="1127.17" width="4792.01" height="86.2316"/>
+  <object id="1" x="412.433" y="2.1594" width="178.623" height="1435.14"/>
+  <object id="3" x="2464.11" y="1127.17" width="2796.01" height="86.2316"/>
   <object id="4" x="5235.49" y="874.635" width="874.635" height="35.4346"/>
   <object id="5" x="5549.62" y="511.23" width="868.475" height="30.797"/>
   <object id="7" x="5500.34" y="1238.04" width="2088.23" height="104.71"/>
@@ -215,9 +215,13 @@
   <object id="24" x="7584" y="1244">
    <polygon points="0,0 476,-124 476,-8 4,96"/>
   </object>
+  <object id="37" x="304" y="1068" width="2000" height="48"/>
+  <object id="38" x="2304" y="1068.67">
+   <polygon points="0,0 160,59.3333 160.667,143.333 -0.666667,47.3333"/>
+  </object>
  </objectgroup>
  <objectgroup id="9" name="ArenaLayer">
-  <object id="32" name="ArenaTrigger" x="3256" y="4" width="524" height="1144">
+  <object id="32" name="ArenaTrigger" x="3264" y="64" width="510" height="1084">
    <properties>
     <property name="arenaID" value="Forest_AncientAltar_Arena"/>
     <property name="type" value="ArenaTrigger"/>
@@ -260,7 +264,7 @@
  </objectgroup>
  <objectgroup id="8" name="enemy_g"/>
  <objectgroup id="7" name="born">
-  <object id="13" name="PlayerSpawn" x="1201.5" y="759.2">
+  <object id="13" name="PlayerSpawn" x="793.5" y="711.2">
    <point/>
   </object>
   <object id="18" x="7076" y="-164" width="340" height="752"/>
