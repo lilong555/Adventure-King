@@ -23,7 +23,7 @@ public:
     {
         std::string baseUrl; // 赐福后端地址，例如 http://127.0.0.1:5181
         std::string apiKey;  // OpenAI 兼容 Bearer token（展示阶段由玩家填写；用于后端调用 LLM）
-        std::string model;   // 例如 gemini-3-flash-preview（可选）
+        std::string model;   // 例如 gemini-3-flash-preview（取决于你使用的网关/模型提供方）
     };
 
     using BlessingCallback = std::function<void(bool ok,

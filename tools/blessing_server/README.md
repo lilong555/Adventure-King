@@ -48,7 +48,7 @@
 
 示例：
 
-`AK_OPENAI_BASE_URL="https://elysiver.h-e.top/v1" python3 ak_blessing_server.py serve --host 0.0.0.0 --port 5181`
+`AK_OPENAI_BASE_URL=https://elysiver.h-e.top/v1 python3 ak_blessing_server.py serve --host 0.0.0.0 --port 5181`
 
 ## 客户端配置
 
