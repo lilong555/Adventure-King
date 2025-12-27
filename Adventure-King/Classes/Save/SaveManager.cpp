@@ -746,6 +746,16 @@ PlayerSaveData SaveManager::extractPlayerData(PlayerCharacter *player) const
     data.outgoingDamageMultiplier = player->getOutgoingDamageMultiplier();
     data.outgoingDamageMultiplierRemainingSeconds = player->getOutgoingDamageMultiplierRemainingSeconds();
 
+    // AI/NPC 赐福（覆盖式 Buff）
+    {
+        const Attributes blessing = player->getAiBlessingBonus();
+        for (std::map<AttributeType, float>::const_iterator it = blessing.values.begin();
+             it != blessing.values.end(); ++it)
+        {
+            data.aiBlessingBonus.values[static_cast<int>(it->first)] = it->second;
+        }
+    }
+
     // 基础属性
     auto attrComp = player->getAttributeComponent();
     if (attrComp)
@@ -1175,6 +1185,19 @@ void SaveManager::applyPlayerData(PlayerCharacter *player, const PlayerSaveData 
 
     // 补齐默认测试物品（不重复加入），便于版本更新后直接验证新装备/被动机制
     player->ensureDefaultInventory();
+
+    // AI/NPC 赐福：读档以存档为准（先清空再恢复）
+    player->clearAiBlessingBonus();
+    if (!data.aiBlessingBonus.values.empty())
+    {
+        Attributes bonus;
+        for (std::map<int, float>::const_iterator it = data.aiBlessingBonus.values.begin();
+             it != data.aiBlessingBonus.values.end(); ++it)
+        {
+            bonus.values[static_cast<AttributeType>(it->first)] = it->second;
+        }
+        player->applyAiBlessingBonus(bonus);
+    }
 
     // 根据最终上限夹取 HP/MP
     player->setCurrentHP(savedHP);

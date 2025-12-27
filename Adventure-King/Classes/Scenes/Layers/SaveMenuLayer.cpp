@@ -2,6 +2,7 @@
 #include "Configs/GameConfig.h"
 #include "Configs/PlayerRoleConfig.h"
 #include "Save/SaveManager.h"
+#include "Save/Cloud/CloudSyncService.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Scenes/GameScene.h"
 #include <cmath>
@@ -43,6 +44,9 @@ bool SaveMenuLayer::init(Mode mode,
         return false;
 
     if (!initTitle())
+        return false;
+
+    if (!initCloudControls())
         return false;
 
     if (!initSlots())
@@ -119,6 +123,57 @@ bool SaveMenuLayer::initTitle()
     return true;
 }
 
+bool SaveMenuLayer::initCloudControls()
+{
+    _cloudStatusLabel = Label::createWithTTF("", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
+    if (!_cloudStatusLabel)
+    {
+        CCLOG("Error: Failed to create cloud status label!");
+        return false;
+    }
+    _cloudStatusLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
+    const float y = _titleLabel ? _titleLabel->getPositionY() : (_background->getContentSize().height / 12 * 11);
+    _cloudStatusLabel->setPosition(Vec2(_background->getContentSize().width - 40, y));
+    _background->addChild(_cloudStatusLabel);
+    refreshCloudStatusLabel();
+
+    return true;
+}
+
+void SaveMenuLayer::refreshCloudStatusLabel()
+{
+    if (!_cloudStatusLabel)
+    {
+        return;
+    }
+
+    auto cloud = CloudSyncService::getInstance();
+    const bool guest = cloud->isGuestMode();
+    const bool configured = cloud->isConfigured();
+
+    std::string statusText;
+    Color4B statusColor;
+    if (guest)
+    {
+        statusText = "云端：游客模式";
+        statusColor = Color4B(210, 200, 120, 255);
+    }
+    else if (configured)
+    {
+        const std::string user = cloud->getActiveUsername();
+        statusText = user.empty() ? "云端：已登录" : ("云端：已登录(" + user + ")");
+        statusColor = Color4B(120, 220, 120, 255);
+    }
+    else
+    {
+        statusText = "云端：未配置";
+        statusColor = Color4B(220, 120, 120, 255);
+    }
+
+    _cloudStatusLabel->setString(statusText);
+    _cloudStatusLabel->setTextColor(statusColor);
+}
+
 bool SaveMenuLayer::initSlots()
 {
     // 获取所有存档槽位信息
@@ -152,15 +207,62 @@ bool SaveMenuLayer::initCloseButton()
         return false;
     }
 
-    auto menu = Menu::create(closeItem, nullptr);
+    auto menu = Menu::create();
     menu->setPosition(Vec2::ZERO);
     _background->addChild(menu, 10);
 
-    closeItem->setPosition(
-        _background->getContentSize().width / 2,
-        _background->getContentSize().height / 8);
+    const float baseX = _background->getContentSize().width / 2;
+    const float baseY = _background->getContentSize().height / 8;
 
+    closeItem->setPosition(Vec2(baseX, baseY));
     closeItem->setScale(0.5f);
+    menu->addChild(closeItem);
+
+    // 云同步按钮：两种模式都可用
+    auto cloudSyncItem = MenuItemLabel::create(
+        Label::createWithTTF("云同步", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
+        [this](Ref *) {
+            onCloudSyncClicked();
+        });
+    cloudSyncItem->setPosition(Vec2(baseX + 220.0f, baseY));
+    menu->addChild(cloudSyncItem);
+
+    // 云存按钮：仅保存模式显示（上传本地全部存档包）
+    if (_mode == Mode::SAVE)
+    {
+        auto cloudSaveAllItem = MenuItemLabel::create(
+            Label::createWithTTF("云存(全量)", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
+            [this](Ref *) {
+                auto cloud = CloudSyncService::getInstance();
+                std::string hint;
+                if (!cloud->isConfigured(&hint))
+                {
+                    showConfirmDialog(hint, []() {});
+                    return;
+                }
+
+                showConfirmDialog("将上传本地【全部存档+设置】到云端账号（覆盖云端）。\n建议先保存一次当前进度到某个槽位。", [this, cloud]() {
+                    this->retain();
+                    cloud->uploadAllSaves([this](bool ok, const std::string &msg) {
+                        if (!this->getParent())
+                        {
+                            CCLOG("SaveMenuLayer - 云存回调到达，但菜单已关闭：%s", msg.c_str());
+                            this->release();
+                            return;
+                        }
+
+                        showConfirmDialog(msg, []() {});
+                        if (ok)
+                        {
+                            reloadSlots();
+                        }
+                        this->release();
+                    });
+                });
+            });
+        cloudSaveAllItem->setPosition(Vec2(baseX - 220.0f, baseY));
+        menu->addChild(cloudSaveAllItem);
+    }
 
     return true;
 }
@@ -193,94 +295,143 @@ void SaveMenuLayer::layoutUI()
     }
 }
 
-cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &slotData)
+cocos2d::Node* SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData& slotData)
 {
     auto node = Node::create();
     node->setContentSize(Size(_background->getContentSize().width * 0.6f, 120));
 
-    // 背景
-    //auto bg = LayerColor::create(Color4B(50, 50, 50, 200), node->getContentSize().width, node->getContentSize().height);
-    //bg->setPosition(Vec2(-node->getContentSize().width / 2, -node->getContentSize().height / 2));
-    //node->addChild(bg);
-
     // 槽位标题
     std::string slotTitle = "槽位 " + std::to_string(slotIndex + 1);
-    auto titleLabel = Label::createWithTTF(slotTitle, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 30);
-    titleLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, 20));
+    auto titleLabel = Label::createWithTTF(
+        slotTitle,
+        "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+        30
+    );
     titleLabel->setAnchorPoint(Vec2(0, 0.5f));
+    titleLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, 20));
     node->addChild(titleLabel);
 
-    // 检查是否有存档
+    // 是否有存档
     bool hasSave = (slotData.saveTimestamp > 0);
 
     if (hasSave)
     {
-        // 显示存档信息
-        const CharacterRole role = static_cast<CharacterRole>(slotData.playerData.role);
-        const std::string sceneName = slotData.progressData.currentSceneName.empty()
-                                          ? "未知地图"
-                                          : slotData.progressData.currentSceneName;
-        const int posX = static_cast<int>(std::lround(slotData.progressData.playerPosX));
-        const int posY = static_cast<int>(std::lround(slotData.progressData.playerPosY));
-        std::string infoText = StringUtils::format("%s | %s | Lv.%d | (%d,%d) | %s",
-                                                   PlayerRoleConfig::getDisplayName(role),
-                                                   sceneName.c_str(),
-                                                   slotData.playerData.level,
-                                                   posX,
-                                                   posY,
-                                                   formatTimestamp(slotData.saveTimestamp).c_str());
-        auto infoLabel = Label::createWithTTF(infoText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
-        infoLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -20));
+        // 存档信息
+        const CharacterRole role =
+            static_cast<CharacterRole>(slotData.playerData.role);
+
+        const std::string sceneName =
+            slotData.progressData.currentSceneName.empty()
+            ? "未知地图"
+            : slotData.progressData.currentSceneName;
+
+        int posX = static_cast<int>(std::lround(slotData.progressData.playerPosX));
+        int posY = static_cast<int>(std::lround(slotData.progressData.playerPosY));
+
+        std::string infoText = StringUtils::format(
+            "%s | %s | Lv.%d | (%d,%d) | %s",
+            PlayerRoleConfig::getDisplayName(role),
+            sceneName.c_str(),
+            slotData.playerData.level,
+            posX,
+            posY,
+            formatTimestamp(slotData.saveTimestamp).c_str()
+        );
+
+        auto infoLabel = Label::createWithTTF(
+            infoText,
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            18
+        );
         infoLabel->setAnchorPoint(Vec2(0, 0.5f));
+        infoLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -20));
         infoLabel->setTextColor(Color4B(200, 200, 200, 255));
         node->addChild(infoLabel);
-
-        // 删除按钮（仅在有存档时显示）
-        auto deleteItem = MenuItemLabel::create(
-            Label::createWithTTF("删除", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20),
-            [this, slotIndex](Ref *) {
-                onDeleteClicked(slotIndex);
-            });
-        deleteItem->setPosition(Vec2(node->getContentSize().width / 2 - 40, -40));
-
-        auto deleteMenu = Menu::create(deleteItem, nullptr);
-        deleteMenu->setPosition(Vec2::ZERO);
-        deleteMenu->setColor(Color3B::RED);
-        node->addChild(deleteMenu);
     }
     else
     {
-        // 空槽位
-        auto emptyLabel = Label::createWithTTF("空槽位", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
-        emptyLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -30));
+        // 空槽位提示
+        auto emptyLabel = Label::createWithTTF(
+            "空槽位",
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            20
+        );
         emptyLabel->setAnchorPoint(Vec2(0, 0.5f));
+        emptyLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -30));
         emptyLabel->setTextColor(Color4B(150, 150, 150, 255));
         node->addChild(emptyLabel);
     }
 
-    // 主按钮（保存/加载）
+    // ================= 右侧按钮组 =================
+    auto menu = Menu::create();
+    menu->setPosition(Vec2::ZERO);
+    node->addChild(menu);
+
+    float x = node->getContentSize().width / 2 - 30.0f;
+
+    // 云存 / 云读
+    std::string cloudText = (_mode == Mode::SAVE) ? "云存" : "云读";
+    auto cloudItem = MenuItemLabel::create(
+        Label::createWithTTF(
+            cloudText,
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            20
+        ),
+        [this, slotIndex](Ref*)
+        {
+            onCloudClicked(slotIndex);
+        }
+    );
+    cloudItem->setPosition(Vec2(x, 0));
+    menu->addChild(cloudItem);
+    x -= 70.0f;
+
+    // 保存 / 加载
     std::string buttonText = (_mode == Mode::SAVE) ? "保存" : "加载";
     auto mainItem = MenuItemLabel::create(
-        Label::createWithTTF(buttonText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 30),
-        [this, slotIndex](Ref *) {
+        Label::createWithTTF(
+            buttonText,
+            "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+            24
+        ),
+        [this, slotIndex](Ref*)
+        {
             onSlotClicked(slotIndex);
-        });
-    mainItem->setPosition(Vec2(node->getContentSize().width / 2 - 50, 20));
+        }
+    );
+    mainItem->setPosition(Vec2(x, 0));
+    menu->addChild(mainItem);
+    x -= 90.0f;
 
-    // 如果是加载模式且槽位为空，禁用按钮
+    // 删除（仅有存档时）
+    if (hasSave)
+    {
+        auto deleteItem = MenuItemLabel::create(
+            Label::createWithTTF(
+                "删除",
+                "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+                20
+            ),
+            [this, slotIndex](Ref*)
+            {
+                onDeleteClicked(slotIndex);
+            }
+        );
+        deleteItem->setPosition(Vec2(x, 0));
+        deleteItem->setColor(Color3B::RED);
+        menu->addChild(deleteItem);
+    }
+
+    // 加载模式 + 空槽位 → 禁用“加载”
     if (_mode == Mode::LOAD && !hasSave)
     {
         mainItem->setEnabled(false);
         mainItem->setColor(Color3B(100, 100, 100));
     }
 
-    auto mainMenu = Menu::create(mainItem, nullptr);
-    mainMenu->setPosition(Vec2::ZERO);
-    mainMenu->setColor(Color3B::GREEN);
-    node->addChild(mainMenu);
-
     return node;
 }
+
 
 void SaveMenuLayer::onSlotClicked(int slotIndex)
 {
@@ -356,6 +507,128 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
     }
 }
 
+void SaveMenuLayer::onCloudClicked(int slotIndex)
+{
+    auto cloud = CloudSyncService::getInstance();
+    std::string hint;
+    if (!cloud->isConfigured(&hint))
+    {
+        showConfirmDialog(hint, []() {});
+        return;
+    }
+
+    if (_mode == Mode::SAVE)
+    {
+        // 云存：先保存该槽位，再上传【全部本地存档包】
+        showConfirmDialog("将保存该槽位并上传【全部本地存档+设置】到云端账号（覆盖云端）？", [this, slotIndex, cloud]() {
+            // 构建完整进度数据：包含刷怪点/竞技场/怪物快照（用于读档恢复）
+            GameProgressSaveData progressData;
+            if (auto gameScene = dynamic_cast<GameScene *>(this->getScene()))
+            {
+                gameScene->fillProgressDataForSave(progressData);
+            }
+            else
+            {
+                progressData.currentSceneName = _sceneName;
+                progressData.playerPosX = _playerPos.x;
+                progressData.playerPosY = _playerPos.y;
+            }
+
+            auto saveManager = SaveManager::getInstance();
+        if (!saveManager->saveGame(slotIndex, _player, progressData))
+        {
+            showConfirmDialog("云存失败：本地保存失败", []() {});
+            return;
+        }
+
+            this->retain();
+            cloud->uploadAllSaves([this](bool ok, const std::string &msg) {
+                if (!this->getParent())
+                {
+                    CCLOG("SaveMenuLayer - 云存回调到达，但菜单已关闭：%s", msg.c_str());
+                    this->release();
+                    return;
+                }
+
+                showConfirmDialog(msg, []() {});
+                if (ok)
+                {
+                    reloadSlots();
+                }
+                this->release();
+            });
+        });
+        return;
+    }
+
+    // 云读：云同步 -> 加载该槽位
+    showConfirmDialog("将先进行云同步（按时间戳取最新），然后加载该槽位？", [this, slotIndex, cloud]() {
+        this->retain();
+        cloud->syncAll([this, slotIndex](bool ok, const std::string &msg) {
+            if (!this->getParent())
+            {
+                CCLOG("SaveMenuLayer - 云同步回调到达，但菜单已关闭：%s", msg.c_str());
+                this->release();
+                return;
+            }
+
+            if (!ok)
+            {
+                showConfirmDialog(msg, []() {});
+                this->release();
+                return;
+            }
+
+            auto saveManager = SaveManager::getInstance();
+            SaveSlotData loadedData;
+            if (saveManager->loadGame(slotIndex, loadedData))
+            {
+                CCLOG("SaveMenuLayer - 云同步并加载成功: slot=%d", slotIndex);
+                if (_loadSuccessCallback)
+                {
+                    _loadSuccessCallback(loadedData);
+                }
+                this->removeFromParent();
+                this->release();
+                return;
+            }
+
+            showConfirmDialog("云同步成功，但加载该槽位失败", []() {});
+            this->release();
+        });
+    });
+}
+
+void SaveMenuLayer::onCloudSyncClicked()
+{
+    auto cloud = CloudSyncService::getInstance();
+    std::string hint;
+    if (!cloud->isConfigured(&hint))
+    {
+        showConfirmDialog(hint, []() {});
+        return;
+    }
+
+    showConfirmDialog("将与云端进行双向同步（按时间戳取最新）？", [this, cloud]() {
+        this->retain();
+        cloud->syncAll([this](bool ok, const std::string &msg) {
+            if (!this->getParent())
+            {
+                CCLOG("SaveMenuLayer - 云同步回调到达，但菜单已关闭：%s", msg.c_str());
+                this->release();
+                return;
+            }
+
+            showConfirmDialog(msg, []() {});
+            if (ok)
+            {
+                reloadSlots();
+            }
+            this->release();
+        });
+    });
+}
+
 void SaveMenuLayer::onDeleteClicked(int slotIndex)
 {
     showConfirmDialog("确定要删除此存档吗？", [this, slotIndex]() {
@@ -371,6 +644,22 @@ void SaveMenuLayer::onDeleteClicked(int slotIndex)
             CCLOG("SaveMenuLayer - 删除失败");
         }
     });
+}
+
+void SaveMenuLayer::reloadSlots()
+{
+    for (auto *node : _slotNodes)
+    {
+        if (node)
+        {
+            node->removeFromParent();
+        }
+    }
+    _slotNodes.clear();
+
+    initSlots();
+    layoutUI();
+    refreshCloudStatusLabel();
 }
 
 void SaveMenuLayer::showConfirmDialog(const std::string &message, const std::function<void()> &onConfirm)

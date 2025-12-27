@@ -69,8 +69,15 @@ void GameInputController::onKeyPressed(EventKeyboard::KeyCode keyCode)
         break;
 
     case EventKeyboard::KeyCode::KEY_W:
-        // 优先门区交互，其次执行跳跃。
-        if (_isAtGate && _isAtGate())
+        // 优先 NPC 交互，其次门区交互，最后执行跳跃。
+        if (_isAtNpc && _isAtNpc())
+        {
+            if (_interactNpc)
+            {
+                _interactNpc();
+            }
+        }
+        else if (_isAtGate && _isAtGate())
         {
             if (_enterGate)
             {

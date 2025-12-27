@@ -201,8 +201,8 @@
 </data>
  </layer>
  <objectgroup id="5" name="collisions">
-  <object id="1" x="412.433" y="2.1594" width="178.623" height="1435.14"/>
-  <object id="3" x="2464.11" y="1127.17" width="2796.01" height="86.2316"/>
+  <object id="1" x="480.433" y="6.1594" width="178.623" height="1435.14"/>
+  <object id="3" x="2448.11" y="1127.17" width="2812.01" height="86.2316"/>
   <object id="4" x="5235.49" y="874.635" width="874.635" height="35.4346"/>
   <object id="5" x="5549.62" y="511.23" width="868.475" height="30.797"/>
   <object id="7" x="5500.34" y="1238.04" width="2088.23" height="104.71"/>

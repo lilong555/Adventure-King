@@ -52,11 +52,17 @@
     <Filter Include="src\Save">
       <UniqueIdentifier>{5879635e-04e4-4c14-a72a-c4cdc828da6f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Save\Cloud">
+      <UniqueIdentifier>{b1f86de1-2a44-4a2e-9f0c-2a3d0b3f2a7e}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Character\Player\SkillSets">
       <UniqueIdentifier>{e505816f-ca50-4b8b-a68d-a924446f71ec}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\Configs">
       <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\AI">
+      <UniqueIdentifier>{dda4f6e3-5e9d-459e-8a89-3093070b9ac2}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\Utils">
       <UniqueIdentifier>{8d0e40b6-10c9-4b5a-a1b5-9f5b3f6b2c33}</UniqueIdentifier>
@@ -77,6 +83,9 @@
     </ClCompile>
     <ClCompile Include="..\Classes\AppDelegate.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\AI\AiBlessingService.cpp">
+      <Filter>src\AI</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp">
       <Filter>src\Character\components</Filter>
@@ -135,6 +144,9 @@
     <ClCompile Include="..\Classes\Scenes\MapScene.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Utils\ClipboardHelper.cpp">
+      <Filter>src\Utils</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Utils\ImeHelper.cpp">
       <Filter>src\Utils</Filter>
     </ClCompile>
@@ -160,6 +172,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\UI\InventoryLayer.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\BlessingNpcLayer.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.cpp">
@@ -192,6 +207,9 @@
     <ClCompile Include="..\Classes\Save\SaveManager.cpp">
       <Filter>src\Save</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Save\Cloud\CloudSyncService.cpp">
+      <Filter>src\Save\Cloud</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Save\SaveData.cpp">
       <Filter>src\Save</Filter>
     </ClCompile>
@@ -220,6 +238,9 @@
       <Filter>src\Character\components</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Scenes\Layers\BagLayer.cpp">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Scenes\Layers\CloudAuthLayer.cpp">
       <Filter>src\Scenes\Layers</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Character\Base\StatusEffect.cpp">
@@ -252,6 +273,9 @@
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\HunterBootsEffect.cpp">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\AIBlessingEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
       <Filter>src\Objects\Projectiles</Filter>
     </ClCompile>
@@ -265,6 +289,9 @@
     </ClInclude>
     <ClInclude Include="..\Classes\AppDelegate.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\AI\AiBlessingService.h">
+      <Filter>src\AI</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\components\AttributeComponent.h">
       <Filter>src\Character\components</Filter>
@@ -320,6 +347,9 @@
     <ClInclude Include="..\Classes\Scenes\MapScene.h">
       <Filter>src\Scenes</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Utils\ClipboardHelper.h">
+      <Filter>src\Utils</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Utils\ImeHelper.h">
       <Filter>src\Utils</Filter>
     </ClInclude>
@@ -374,11 +404,17 @@
     <ClInclude Include="..\Classes\UI\InventoryLayer.h">
       <Filter>src\UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\UI\BlessingNpcLayer.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Save\SaveData.h">
       <Filter>src\Save</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Save\SaveManager.h">
       <Filter>src\Save</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Save\Cloud\CloudSyncService.h">
+      <Filter>src\Save\Cloud</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Save\JsonSerializer.h">
       <Filter>src\Save</Filter>
@@ -428,6 +464,9 @@
     <ClInclude Include="..\Classes\Scenes\Layers\BagLayer.h">
       <Filter>src\Scenes\Layers</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\Scenes\Layers\CloudAuthLayer.h">
+      <Filter>src\Scenes\Layers</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Utils\ParticlePreloadHelper.h">
       <Filter>src\Utils</Filter>
     </ClInclude>
@@ -441,6 +480,9 @@
       <Filter>src\Character\Base</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\AIBlessingEffect.h">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h">

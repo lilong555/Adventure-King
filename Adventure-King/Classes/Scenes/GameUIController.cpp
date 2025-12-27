@@ -16,6 +16,7 @@
 #include "UI/PauseMenu.h"
 #include "UI/PlayerDeathMenu.h"
 #include "UI/InventoryLayer.h"
+#include "UI/BlessingNpcLayer.h"
 #include "Configs/GameSceneConfig.h"
 
 USING_NS_CC;
@@ -23,6 +24,7 @@ USING_NS_CC;
 namespace
 {
     const char *const GATE_INTERACTION_HINT = GameSceneConfig::UI::GATE_INTERACTION_HINT;
+    const char *const BLESSING_NPC_INTERACTION_HINT = "按W进入赐福";
     constexpr int UI_Z_ORDER = GameSceneConfig::UI::Z_ORDER;
     constexpr float UI_UPDATE_INTERVAL_SECONDS = GameSceneConfig::UI::UPDATE_INTERVAL_SECONDS;
 }
@@ -238,6 +240,21 @@ bool GameUIController::init(Scene *scene,
                                     });
     }
 
+    // 赐福 NPC 关闭后恢复游戏（赐福入口改为地图 NPC 交互，不再挂在暂停菜单里）
+    if (auto blessing = _gameUI->getBlessingNpcLayer())
+    {
+        blessing->setCloseCallback([this]()
+                                   {
+                                       if (!_gameUI)
+                                           return;
+                                       _paused = false;
+                                       if (_onPauseChanged)
+                                       {
+                                           _onPauseChanged(false);
+                                       }
+                                   });
+    }
+
     // 角色死亡菜单（强制暂停）
     if (auto deathMenu = _gameUI->getDeathMenu())
     {
@@ -329,21 +346,33 @@ void GameUIController::update(float dt)
     if (!_gameUI)
         return;
 
-    bool atGate = false;
-    if (_isPlayerAtGate)
+    // 交互提示优先级：NPC（赐福） > Gate（传送门）
+    InteractionHintSource newHint = InteractionHintSource::NONE;
+    if (_isPlayerAtNpc && _isPlayerAtNpc())
     {
-        atGate = _isPlayerAtGate();
+        newHint = InteractionHintSource::BLESSING_NPC;
+    }
+    else if (_isPlayerAtGate && _isPlayerAtGate())
+    {
+        newHint = InteractionHintSource::GATE;
     }
 
-    if (atGate && !_wasAtGate)
+    if (newHint != _hintSource)
     {
-        _gameUI->showInteractionHint(GATE_INTERACTION_HINT);
+        if (newHint == InteractionHintSource::NONE)
+        {
+            _gameUI->hideInteractionHint();
+        }
+        else if (newHint == InteractionHintSource::BLESSING_NPC)
+        {
+            _gameUI->showInteractionHint(BLESSING_NPC_INTERACTION_HINT);
+        }
+        else // GATE
+        {
+            _gameUI->showInteractionHint(GATE_INTERACTION_HINT);
+        }
+        _hintSource = newHint;
     }
-    else if (!atGate && _wasAtGate)
-    {
-        _gameUI->hideInteractionHint();
-    }
-    _wasAtGate = atGate;
 
     _updateAccumulator += dt;
     // UI 更新节流，避免每帧刷新造成开销。
@@ -373,7 +402,17 @@ void GameUIController::togglePauseMenu() // 此时该函数建议理解为“han
         return;
     }
 
-    // 3. 兼容处理：若玩家通过其他方式（如点击按钮）打开了暂停菜单，Esc 负责关闭它
+    // 若赐福 NPC 弹窗正在显示，Esc 优先关闭弹窗并恢复游戏
+    if (_gameUI->isBlessingNpcShowing())
+    {
+        _gameUI->hideBlessingNpc();
+        _paused = false;
+        if (_onPauseChanged)
+        {
+            _onPauseChanged(false);
+        }
+        return;
+    }
     if (_gameUI->isPauseMenuShowing())
     {
         _gameUI->hidePauseMenu();

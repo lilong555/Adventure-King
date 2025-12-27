@@ -674,8 +674,6 @@ void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos)
     }
     else
     {
-        // ① 禁用输入（立刻）
-        _inputEnabled = false;
 
         _gameLayer->stopActionByTag(837);
         _gameLayer->stopActionByTag(1001);
@@ -691,9 +689,6 @@ void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos)
 
             // ④ 动画结束 → 启用 Follow
             initCameraFollow(_player);
-
-            // ⑤ 恢复输入（只在这里）
-            _inputEnabled = true;
             });
 
         auto seq = Sequence::create(ease, onFinish, nullptr);

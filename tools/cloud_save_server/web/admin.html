@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Adventure-King 云存管理</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f5f5f7;
+      --surface-secondary: #e8e8ed;
+      --border: rgba(0, 0, 0, 0.08);
+      --text-primary: #1d1d1f;
+      --text-secondary: rgba(0, 0, 0, 0.56);
+      --text-tertiary: rgba(0, 0, 0, 0.4);
+      --accent: #1d1d1f;
+      --danger: #ff3b30;
+      --success: #34c759;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Noto Sans SC", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 24px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Form Elements */
+    input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      min-width: 280px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    input:focus {
+      border-color: rgba(0, 0, 0, 0.2);
+      background: var(--bg);
+      box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.04);
+    }
+
+    button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    button:hover {
+      background: var(--surface-secondary);
+      border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.primary {
+      background: var(--text-primary);
+      color: var(--bg);
+      border-color: transparent;
+    }
+
+    button.primary:hover {
+      background: rgba(0, 0, 0, 0.85);
+    }
+
+    button.danger {
+      background: rgba(255, 69, 58, 0.15);
+      border-color: rgba(255, 69, 58, 0.3);
+      color: var(--danger);
+    }
+
+    button.danger:hover {
+      background: rgba(255, 69, 58, 0.25);
+    }
+
+    button.small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .status-msg {
+      font-size: 13px;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+
+    .status-msg.success {
+      color: var(--success);
+    }
+
+    /* Main Layout */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      min-height: calc(100vh - 80px);
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-header h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    /* User List */
+    .user-list {
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    .user-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .user-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .user-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .user-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .user-item:last-child {
+      border-bottom: none;
+    }
+
+    .user-item:hover {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .user-item.active {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .user-item .username {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .user-item .meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-tertiary);
+      font-size: 14px;
+    }
+
+    /* Detail Section */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 700px) {
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .detail-item {
+      background: var(--surface-secondary);
+      padding: 16px;
+      border-radius: var(--radius-md);
+    }
+
+    .detail-item .label {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .detail-item .value {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      background: var(--surface-secondary);
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+
+    /* Section Title */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    /* History List */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px;
+      background: var(--surface-secondary);
+      border-radius: var(--radius-md);
+      transition: all 0.15s ease;
+    }
+
+    .history-item:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .history-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-time {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .history-meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* Save Slots */
+    .save-slots {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .save-slot {
+      background: var(--surface-secondary);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      transition: all 0.15s ease;
+    }
+
+    .save-slot:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .save-slot-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .save-slot-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .save-slot-time {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .save-slot-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .save-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .save-stat-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .save-stat-value {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .save-slot-scene {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .save-slot-empty {
+      color: var(--text-tertiary);
+      font-size: 14px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+    }
+
+    .tab:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .tab.active {
+      background: var(--text-primary);
+      color: var(--bg);
+    }
+
+    /* Code Preview */
+    .code-preview {
+      background: var(--surface-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow: auto;
+      max-height: 400px;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .code-preview::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .code-preview::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .code-preview::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1>Adventure-King 云存管理</h1>
+      <div class="header-actions">
+        <input id="adminToken" type="password" placeholder="管理员 Token" />
+        <button id="saveToken">保存</button>
+        <button id="refresh" class="primary">刷新</button>
+        <span class="status-msg" id="msg"></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="card-header">
+        <h2>用户列表</h2>
+      </div>
+      <div class="user-list" id="userList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>用户详情</h2>
+      </div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="label">用户名</div>
+            <div class="value" id="detailUser">-</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">创建时间</div>
+            <div class="value" id="detailCreated">-</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">最近上传</div>
+            <div class="value" id="detailUploaded">-</div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button id="btnLoadPackage">查看最新存档包</button>
+          <button class="danger" id="btnDeleteUser">删除用户</button>
+          <span class="status-badge" id="detailHint">请选择用户</span>
+        </div>
+
+        <h3 class="section-title">历史版本</h3>
+        <div class="history-list" id="history"></div>
+
+        <h3 class="section-title">存档数据</h3>
+        <div class="tabs">
+          <button class="tab active" data-tab="slots">存档槽位</button>
+          <button class="tab" data-tab="settings">游戏设置</button>
+          <button class="tab" data-tab="raw">原始 JSON</button>
+        </div>
+
+        <div id="tabSlots" class="tab-content">
+          <div class="save-slots" id="saveSlots">
+            <div class="save-slot-empty">点击「查看最新存档包」加载数据</div>
+          </div>
+        </div>
+
+        <div id="tabSettings" class="tab-content hidden">
+          <div class="detail-grid" id="settingsGrid">
+            <div class="save-slot-empty">点击「查看最新存档包」加载数据</div>
+          </div>
+        </div>
+
+        <div id="tabRaw" class="tab-content hidden">
+          <pre class="code-preview" id="packagePreview">{}</pre>
+        </div>
+      </div>
+    </div>
+  </main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const msg = (text, ok) => {
+    const el = $('msg');
+    el.textContent = text || '';
+    el.className = ok ? 'status-msg success' : 'status-msg';
+  };
+  const fmtTime = (ms) => {
+    if (!ms || ms <= 0) return '-';
+    const d = new Date(ms);
+    return d.toLocaleString();
+  };
+  const fmtDuration = (seconds) => {
+    if (!seconds || seconds <= 0) return '-';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
+  const ROLE_NAMES = { 0: '法师', 1: '战士', 2: '刺客' };
+
+  let selectedUser = '';
+  let currentPackage = null;
+
+  function getToken() { return $('adminToken').value.trim(); }
+  function headers() {
+    const h = { 'Content-Type': 'application/json' };
+    const t = getToken();
+    if (t) h['X-AK-Admin-Token'] = t;
+    return h;
+  }
+
+  async function api(path, opts) {
+    const res = await fetch(path, { ...opts, headers: { ...(opts && opts.headers ? opts.headers : {}), ...headers() } });
+    const text = await res.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch (_) {}
+    if (!res.ok) {
+      const m = (json && json.message) ? json.message : (text || ('HTTP ' + res.status));
+      throw new Error(m);
+    }
+    return json !== null ? json : text;
+  }
+
+  function renderUsers(users) {
+    const list = $('userList');
+    list.innerHTML = '';
+    users.forEach(u => {
+      const div = document.createElement('div');
+      div.className = 'user-item fade-in' + (u.username === selectedUser ? ' active' : '');
+      div.onclick = () => selectUser(u.username, u);
+      div.innerHTML = `
+        <div class="username">${u.username}</div>
+        <div class="meta">创建 ${fmtTime(u.createdAtMs)} · 上传 ${fmtTime(u.lastUploadAtMs)}</div>
+      `;
+      list.appendChild(div);
+    });
+    if (!users.length) {
+      list.innerHTML = '<div class="empty-state">暂无用户</div>';
+    }
+  }
+
+  function setDetail(user, createdAtMs, lastUploadAtMs) {
+    $('detailUser').textContent = user || '-';
+    $('detailCreated').textContent = fmtTime(createdAtMs);
+    $('detailUploaded').textContent = fmtTime(lastUploadAtMs);
+    $('detailHint').textContent = user ? '已选择' : '请选择用户';
+  }
+
+  async function refreshUsers() {
+    msg('刷新中...', true);
+    const data = await api('/api/admin/users', { method: 'GET' });
+    renderUsers(data.users || []);
+    msg('已刷新', true);
+  }
+
+  async function selectUser(username, info) {
+    selectedUser = username;
+    currentPackage = null;
+    renderUsers((await api('/api/admin/users', { method: 'GET' })).users || []);
+    clearPackageDisplay();
+    setDetail(username, info.createdAtMs, info.lastUploadAtMs);
+    await refreshHistory();
+  }
+
+  function clearPackageDisplay() {
+    $('packagePreview').textContent = '{}';
+    $('saveSlots').innerHTML = '<div class="save-slot-empty">点击「查看最新存档包」加载数据</div>';
+    $('settingsGrid').innerHTML = '<div class="save-slot-empty">点击「查看最新存档包」加载数据</div>';
+  }
+
+  async function refreshHistory() {
+    if (!selectedUser) return;
+    const data = await api(`/api/admin/users/${selectedUser}/history`, { method: 'GET' });
+    const items = data.history || [];
+    const box = $('history');
+    box.innerHTML = '';
+    if (!items.length) {
+      box.innerHTML = '<div class="history-item"><div class="history-info"><div class="history-time">暂无历史版本</div><div class="history-meta">用户还未产生回滚点</div></div></div>';
+      return;
+    }
+    items.forEach(h => {
+      const row = document.createElement('div');
+      row.className = 'history-item fade-in';
+      row.innerHTML = `
+        <div class="history-info">
+          <div class="history-time">${fmtTime(h.timestampMs)}</div>
+          <div class="history-meta">${h.filename} · ${Math.round((h.sizeBytes||0)/1024)} KB</div>
+        </div>
+        <button class="danger small" data-ts="${h.timestampMs}">回滚</button>
+      `;
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('确认回滚？回滚会覆盖该用户当前云端存档，并自动备份当前版本。')) return;
+        try {
+          msg('回滚中...', true);
+          await api(`/api/admin/users/${selectedUser}/rollback`, { method: 'POST', body: JSON.stringify({ timestampMs: h.timestampMs }) });
+          msg('回滚成功', true);
+          await refreshUsers();
+          await refreshHistory();
+        } catch (e) { msg('回滚失败：' + e.message, false); }
+      };
+      box.appendChild(row);
+    });
+  }
+
+  function renderSaveSlots(pkg) {
+    const saves = pkg.saves || {};
+    const slots = $('saveSlots');
+    slots.innerHTML = '';
+
+    const keys = Object.keys(saves).sort((a, b) => parseInt(a) - parseInt(b));
+    if (!keys.length) {
+      slots.innerHTML = '<div class="save-slot-empty">暂无存档槽位</div>';
+      return;
+    }
+
+    keys.forEach(key => {
+      const save = saves[key];
+      // 兼容两种结构：新版 meta/player/progress，旧版 playerData/progressData
+      const meta = save.meta || {};
+      const player = save.player || save.playerData || {};
+      const progress = save.progress || save.progressData || {};
+      const slotIndex = meta.slotIndex !== undefined ? meta.slotIndex : (save.slotIndex !== undefined ? save.slotIndex : key);
+      const saveTimestamp = meta.saveTimestamp || save.saveTimestamp || 0;
+
+      const slot = document.createElement('div');
+      slot.className = 'save-slot fade-in';
+      slot.innerHTML = `
+        <div class="save-slot-header">
+          <span class="save-slot-title">槽位 ${slotIndex}</span>
+          <span class="save-slot-time">${fmtTime(saveTimestamp)}</span>
+        </div>
+        <div class="save-slot-stats">
+          <div class="save-stat">
+            <span class="save-stat-label">职业</span>
+            <span class="save-stat-value">${ROLE_NAMES[player.role] || '未知'}</span>
+          </div>
+          <div class="save-stat">
+            <span class="save-stat-label">等级</span>
+            <span class="save-stat-value">Lv.${player.level || 1}</span>
+          </div>
+          <div class="save-stat">
+            <span class="save-stat-label">经验</span>
+            <span class="save-stat-value">${player.experience || 0}</span>
+          </div>
+          <div class="save-stat">
+            <span class="save-stat-label">游戏时长</span>
+            <span class="save-stat-value">${fmtDuration(progress.playTimeSeconds)}</span>
+          </div>
+          <div class="save-stat">
+            <span class="save-stat-label">HP</span>
+            <span class="save-stat-value">${Math.round(player.currentHP || 0)}</span>
+          </div>
+          <div class="save-stat">
+            <span class="save-stat-label">MP</span>
+            <span class="save-stat-value">${Math.round(player.currentMP || 0)}</span>
+          </div>
+        </div>
+        <div class="save-slot-scene">
+          场景: ${progress.currentSceneName || '-'}
+        </div>
+      `;
+      slots.appendChild(slot);
+    });
+  }
+
+  function renderSettings(pkg) {
+    const settings = pkg.settings || {};
+    const grid = $('settingsGrid');
+    grid.innerHTML = '';
+
+    const items = [
+      { label: '音乐音量', value: `${Math.round((settings.musicVolume || 0) * 100)}%` },
+      { label: '音效音量', value: `${Math.round((settings.sfxVolume || 0) * 100)}%` },
+      { label: '音乐开关', value: settings.musicEnabled ? '开启' : '关闭' },
+      { label: '音效开关', value: settings.sfxEnabled ? '开启' : '关闭' },
+    ];
+
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'detail-item fade-in';
+      div.innerHTML = `
+        <div class="label">${item.label}</div>
+        <div class="value">${item.value}</div>
+      `;
+      grid.appendChild(div);
+    });
+
+    if (!Object.keys(settings).length) {
+      grid.innerHTML = '<div class="save-slot-empty">暂无设置数据</div>';
+    }
+  }
+
+  async function loadPackage() {
+    if (!selectedUser) return;
+    msg('加载中...', true);
+    const data = await api(`/api/admin/users/${selectedUser}/package`, { method: 'GET' });
+    currentPackage = data.package || {};
+    $('packagePreview').textContent = JSON.stringify(currentPackage, null, 2);
+    renderSaveSlots(currentPackage);
+    renderSettings(currentPackage);
+    msg('已加载', true);
+  }
+
+  async function deleteUser() {
+    if (!selectedUser) return;
+    if (!confirm('确认删除该用户？此操作会删除用户账号与其所有云端存档，不可恢复。')) return;
+    msg('删除中...', true);
+    await api(`/api/admin/users/${selectedUser}/delete`, { method: 'POST', body: '{}' });
+    selectedUser = '';
+    currentPackage = null;
+    setDetail('', 0, 0);
+    clearPackageDisplay();
+    $('history').innerHTML = '';
+    await refreshUsers();
+    msg('已删除', true);
+  }
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const target = tab.dataset.tab;
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      $('tab' + target.charAt(0).toUpperCase() + target.slice(1)).classList.remove('hidden');
+    };
+  });
+
+  $('saveToken').onclick = () => {
+    localStorage.setItem('ak_admin_token', getToken());
+    msg('Token 已保存', true);
+  };
+  $('refresh').onclick = async () => {
+    try { await refreshUsers(); } catch (e) { msg('刷新失败：' + e.message, false); }
+  };
+  $('btnLoadPackage').onclick = async () => { try { await loadPackage(); } catch (e) { msg('加载失败：' + e.message, false); } };
+  $('btnDeleteUser').onclick = async () => { try { await deleteUser(); } catch (e) { msg('删除失败：' + e.message, false); } };
+
+  // init
+  const saved = localStorage.getItem('ak_admin_token') || '';
+  $('adminToken').value = saved;
+  refreshUsers().catch(e => msg('请填写正确 Token：' + e.message, false));
+</script>
+</body>
+</html>

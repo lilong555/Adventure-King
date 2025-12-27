@@ -28,6 +28,11 @@ public:
     /// @brief 设置门区进入回调
     void setGateEnter(const std::function<void()> &enterGate) { _enterGate = enterGate; }
 
+    /// @brief 设置 NPC 交互检测回调（例如：HomeScene 赐福入口）
+    void setNpcQuery(const std::function<bool()> &isAtNpc) { _isAtNpc = isAtNpc; }
+    /// @brief 设置 NPC 交互回调
+    void setNpcInteract(const std::function<void()> &interactNpc) { _interactNpc = interactNpc; }
+
     /// @brief 按键按下事件
     void onKeyPressed(cocos2d::EventKeyboard::KeyCode keyCode);
     /// @brief 按键释放事件
@@ -63,4 +68,7 @@ private:
     std::function<bool()> _isPaused;
     std::function<bool()> _isAtGate;
     std::function<void()> _enterGate;
+
+    std::function<bool()> _isAtNpc;
+    std::function<void()> _interactNpc;
 };

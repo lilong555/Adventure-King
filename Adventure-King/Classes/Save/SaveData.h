@@ -84,6 +84,9 @@ struct PlayerSaveData
     float outgoingDamageMultiplier = 1.0f;
     float outgoingDamageMultiplierRemainingSeconds = 0.0f;
 
+    // AI/NPC 赐福（覆盖式属性 Buff）：存储当前赐福的属性加成（空表示无赐福）
+    AttributesSaveData aiBlessingBonus;
+
     // 属性
     AttributesSaveData baseAttributes;
 

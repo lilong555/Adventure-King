@@ -3,12 +3,17 @@
 
 #include "GameScene.h"
 
+namespace cocos2d
+{
+class Sprite;
+}
 
 class HomeScene : public GameScene
 {
 public:
     static cocos2d::Scene* createScene();
     virtual bool init() override;
+    virtual void onExit() override;
 
     // “家”不需要刷怪
     virtual float getEnemySpawnViewDistance() const override { return 0.0f; }
@@ -25,6 +30,12 @@ public:
 protected:
     // 关卡名（用于 UI 显示与存档标识）
     virtual std::string getLevelName() const override { return "冒险王之家"; }
+
+private:
+    void initBlessingNpc();
+    bool isPlayerAtBlessingNpc() const;
+
+    cocos2d::Sprite *_blessingNpcSprite = nullptr;
 };
 
 #endif

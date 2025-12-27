@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="100" height="45" tilewidth="32" tileheight="32" infinite="0" nextlayerid="6" nextobjectid="10">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="100" height="45" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="13">
  <tileset firstgid="1" source="HomeBackground_1.tsx"/>
  <tileset firstgid="3881" source="../Origin_Mushroom/Env_Tree_Oak_Giant_Green.tsx"/>
- <layer id="1" name="图块层 1" width="100" height="45" visible="0">
+ <layer id="1" name="图块层 1" width="100" height="45">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -62,9 +62,7 @@
   </object>
  </objectgroup>
  <objectgroup id="5" name="gate">
-  <object id="8" x="2975.71" y="1334.75">
-   <point/>
-  </object>
+  <object id="11" x="2777.02" y="1159.43" width="144.929" height="229.081"/>
  </objectgroup>
  <layer id="3" name="图块层 2" width="100" height="45" visible="0">
   <data encoding="csv">
@@ -115,4 +113,9 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4673,4674,4675,4676,4677,4678,4679,4680,4681,4682,4683,4684,4685,4686,4687,4688,4689,4690,4691,4692,4693,4694,4695,4696,4697,4698,4699,4700,4701,4702,4703,4704,4705,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="6" name="npc">
+  <object id="10" name="npc" type="npc" x="1477.34" y="1388.51">
+   <point/>
+  </object>
+ </objectgroup>
 </map>

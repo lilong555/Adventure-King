@@ -33,14 +33,32 @@ AttributeComponent* CharacterBase::getAttributeComponent()
     return static_cast<AttributeComponent*>(this->getComponent("AttributeComponent"));
 }
 
+AttributeComponent* CharacterBase::getAttributeComponent() const
+{
+    // Cocos2d-x 的 getComponent 未提供 const 重载，这里做 const 转换以支持只读查询
+    return const_cast<CharacterBase*>(this)->getAttributeComponent();
+}
+
 StateMachineComponent* CharacterBase::getStateMachineComponent()
 {
     return static_cast<StateMachineComponent*>(this->getComponent("StateMachineComponent"));
 }
 
+StateMachineComponent* CharacterBase::getStateMachineComponent() const
+{
+    // Cocos2d-x 的 getComponent 未提供 const 重载，这里做 const 转换以支持只读查询
+    return const_cast<CharacterBase*>(this)->getStateMachineComponent();
+}
+
 SkillComponent* CharacterBase::getSkillComponent()
 {
     return static_cast<SkillComponent*>(this->getComponent("SkillComponent"));
+}
+
+SkillComponent* CharacterBase::getSkillComponent() const
+{
+    // Cocos2d-x 的 getComponent 未提供 const 重载，这里做 const 转换以支持只读查询
+    return const_cast<CharacterBase*>(this)->getSkillComponent();
 }
 
 cocos2d::Sprite* CharacterBase::getVisualSprite() const

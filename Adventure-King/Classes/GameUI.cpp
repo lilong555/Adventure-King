@@ -10,6 +10,7 @@
 #include "UI/PauseMenu.h"
 #include "UI/PlayerDeathMenu.h"
 #include "UI/InventoryLayer.h"
+#include "UI/BlessingNpcLayer.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Character/Base/CharacterBase.h"
 #include "Configs/GameSceneConfig.h"
@@ -75,6 +76,7 @@ bool GameUI::init()
     createPauseMenu();
     createDeathMenu();
     createInventoryLayer();
+    createBlessingNpcLayer();
 
     CCLOG("GameUI initialized with all components");
     return true;
@@ -142,6 +144,16 @@ void GameUI::createInventoryLayer()
     if (_inventoryLayer)
     {
         this->addChild(_inventoryLayer, 101); // 高于 PauseMenu
+    }
+}
+
+void GameUI::createBlessingNpcLayer()
+{
+    _blessingNpcLayer = BlessingNpcLayer::create();
+    if (_blessingNpcLayer)
+    {
+        // 高于背包/暂停菜单，保证可输入与交互
+        this->addChild(_blessingNpcLayer, 220);
     }
 }
 
@@ -218,6 +230,32 @@ void GameUI::bindPlayer(PlayerCharacter *player)
     {
         _inventoryLayer->bindPlayer(player);
     }
+
+    if (_blessingNpcLayer)
+    {
+        _blessingNpcLayer->bindPlayer(player);
+    }
+}
+
+void GameUI::showBlessingNpc()
+{
+    if (_blessingNpcLayer)
+    {
+        _blessingNpcLayer->show();
+    }
+}
+
+void GameUI::hideBlessingNpc()
+{
+    if (_blessingNpcLayer)
+    {
+        _blessingNpcLayer->hide();
+    }
+}
+
+bool GameUI::isBlessingNpcShowing() const
+{
+    return _blessingNpcLayer && _blessingNpcLayer->isShowing();
 }
 
 void GameUI::bindBoss(CharacterBase *boss, const std::string &bossName, int phaseCount)
