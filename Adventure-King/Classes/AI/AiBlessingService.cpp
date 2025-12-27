@@ -224,7 +224,7 @@ void AiBlessingService::requestBlessing(const std::string &userPrompt, const Ble
 
     const std::string url = buildChatCompletionsUrl(cfg.baseUrl);
     sendJsonRequest(url, cfg.apiKey, buffer.GetString(),
-                    [this, cb](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
+                    [this, cb, url](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
                         if (!ok)
                         {
                             std::ostringstream oss;
@@ -236,6 +236,12 @@ void AiBlessingService::requestBlessing(const std::string &userPrompt, const Ble
                             if (!err.empty())
                             {
                                 oss << "：" << err;
+                            }
+                            // 关键排查信息：把实际请求 URL 打出来，避免 baseUrl 填错（例如误填云存服务端口）
+                            oss << "\n请求URL：" << url;
+                            if (!respBody.empty())
+                            {
+                                oss << "\n响应片段：" << shortResp(respBody);
                             }
                             cb(false, "", Attributes{}, oss.str());
                             return;
@@ -325,18 +331,20 @@ void AiBlessingService::sendJsonRequest(const std::string &url,
         }
 
         const long httpCode = response->getResponseCode();
-        if (!response->isSucceed())
-        {
-            std::string err = response->getErrorBuffer();
-            cb(false, httpCode, "", err.empty() ? "网络请求失败" : err);
-            return;
-        }
 
+        // 即使失败，也尽量把响应体带回（很多服务会在 4xx/5xx 中返回 JSON 错误信息）
         std::string respBody;
         std::vector<char> *data = response->getResponseData();
         if (data && !data->empty())
         {
             respBody.assign(data->begin(), data->end());
+        }
+
+        if (!response->isSucceed())
+        {
+            std::string err = response->getErrorBuffer();
+            cb(false, httpCode, respBody, err.empty() ? "网络请求失败" : err);
+            return;
         }
         cb(true, httpCode, respBody, "");
     });
