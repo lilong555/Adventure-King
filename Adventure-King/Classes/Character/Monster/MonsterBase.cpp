@@ -222,6 +222,46 @@ void MonsterBase::refreshCacheAttributes()
 #pragma endregion
 // MonsterBase.cpp -> update
 
+void MonsterBase::applyHpScalingForPlayerLevel(int playerLevel, bool isBoss)
+{
+    auto attr = getAttributeComponent();
+    if (!attr)
+    {
+        return;
+    }
+
+    playerLevel = std::max(1, playerLevel);
+
+    // 读取“基础 MAX_HP”（不含装备/状态加成），避免缩放受其它系统影响
+    float baseHp = attr->getBaseAttributes().get(AttributeType::MAX_HP, 0.0f);
+    if (baseHp <= 0.0f)
+    {
+        // 兜底：若未设置 baseAttributes，则退回读取最终值（至少不至于出现 0 血量）
+        baseHp = attr->getAttributeValue(AttributeType::MAX_HP);
+    }
+    if (baseHp <= 0.0f)
+    {
+        return;
+    }
+
+    const float perLevel = isBoss ? GameConfig::Monster::LevelScaling::BOSS_HP_PER_LEVEL
+                                  : GameConfig::Monster::LevelScaling::NORMAL_HP_PER_LEVEL;
+    const float maxMultiplier = isBoss ? GameConfig::Monster::LevelScaling::BOSS_HP_MAX_MULTIPLIER
+                                       : GameConfig::Monster::LevelScaling::NORMAL_HP_MAX_MULTIPLIER;
+
+    float multiplier = 1.0f + static_cast<float>(playerLevel - 1) * perLevel;
+    multiplier = std::max(1.0f, std::min(multiplier, maxMultiplier));
+
+    // 应用缩放：覆盖 MAX_HP 的基础值（再由 AttributeComponent 统一重算 finalAttributes）
+    attr->setBaseAttribute(AttributeType::MAX_HP, baseHp * multiplier);
+
+    // 同步缓存并补满血（怪物创建时默认满血）
+    refreshCacheAttributes();
+    ensureHpBar();
+    setCurrentHP(_maxHP);
+    updateHpBar();
+}
+
 void MonsterBase::update(float dt)
 {
     CharacterBase::update(dt);

@@ -21,9 +21,6 @@ public:
     // 初始化哥布林资源与数据
     virtual bool init(const std::string& spriteFrameName);
 
-    // 根据玩家等级缩放哥布林血量：200 + L*100 + floor(L/10)*1000
-    void applyHpScalingForPlayerLevel(int playerLevel);
-
     // 实现普通攻击
     virtual void attack() override;
 

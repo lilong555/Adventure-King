@@ -665,7 +665,7 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
         auto goblin = GoblinMonster::create();
         if (goblin && _player)
         {
-            goblin->applyHpScalingForPlayerLevel(_player->getLevel());
+            goblin->applyHpScalingForPlayerLevel(_player->getLevel(), false);
         }
         return goblin;
     }
@@ -676,6 +676,10 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
         if (goblu)
         {
             goblu->setAutoRemoveOnDeath(false);
+        }
+        if (goblu && _player)
+        {
+            goblu->applyHpScalingForPlayerLevel(_player->getLevel(), true);
         }
 
         if (goblu && _uiController)
@@ -692,6 +696,10 @@ MonsterBase *GameScene::createMonsterByType(const std::string &monsterType)
     if (key == "obscur" || key == "obscurmonster")
     {
         auto obscur = ObscurMonster::create();
+        if (obscur && _player)
+        {
+            obscur->applyHpScalingForPlayerLevel(_player->getLevel(), false);
+        }
         return obscur;
     }
 
