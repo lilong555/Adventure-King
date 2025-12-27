@@ -12,6 +12,7 @@
 - 2. 快速体验：从启动到战斗（含键位）
 - 3. 功能清单：你能在游戏里看到什么
 - 4. 工程实现详解（每个系统怎么落地）
+  - 4.0 工程目录速览（从哪里找什么）
   - 4.1 场景与资源：SceneRegistry / LoadingScene / 预加载与预热
   - 4.2 输入：GameInputController / 输入法(IME)禁用
   - 4.3 暂停与死亡：真正“冻结世界”的实现
@@ -173,6 +174,27 @@
 - 运行时流程（像“把代码翻译成中文”）
 - 为什么这么做（取舍）
 - 典型坑点（会在第 6 章再集中复盘）
+
+### 4.0 工程目录速览（从哪里找什么）
+
+先解决一个“行外人最容易迷路”的问题：**这个仓库里，到底从哪里开始看？**
+
+> 你本地工程目录可能叫 `fansqim/`（只是你电脑上的文件夹名），但在 GitHub 上它就是仓库根目录。  
+> 所以我们在文档里都从“仓库根目录”开始描述结构，不额外加一层本地路径前缀。
+
+- `Adventure-King/`：**游戏本体**（Cocos2d-x 工程）
+  - `Classes/`：C++ 游戏逻辑（角色、战斗、关卡、UI、存档等）
+  - `Resources/`：运行时资源（贴图、粒子、TMX、音频）
+  - `proj.win32/`：Windows VS 工程与可执行文件输出
+  - `proj.android/` / `proj.ios_mac/` / `proj.linux/`：跨平台工程（本项目以 Win32 为主）
+- `docs/`：对外文档（你正在看的这份）
+- `tools/cloud_save_server/`：云存演示后端（WSL 启动的本地服务 + 管理页）
+- `scripts/`：WSL/Windows 同步脚本与辅助脚本
+
+如果你只想快速理解运行路径，可以按“入口索引”直接跳到：
+- 主菜单/角色选择：`Adventure-King/Classes/Scenes/HelloWorldScene.cpp`
+- Loading/预热：`Adventure-King/Classes/Scenes/LoadingScene.cpp`
+- 战斗关卡：`Adventure-King/Classes/Scenes/GameScene.cpp`
 
 ### 4.1 场景与资源：SceneRegistry / LoadingScene / 预加载与预热
 
