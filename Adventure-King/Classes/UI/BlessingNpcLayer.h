@@ -52,6 +52,7 @@ private:
     PlayerCharacter *_player = nullptr;
 
     cocos2d::LayerColor *_panel = nullptr;
+    cocos2d::Label *_guideLabel = nullptr; // 左侧步骤说明（避免挤在面板内）
     cocos2d::Label *_messageLabel = nullptr;
 
     cocos2d::ui::TextField *_urlField = nullptr;

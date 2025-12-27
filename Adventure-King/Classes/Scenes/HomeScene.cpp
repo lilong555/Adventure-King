@@ -179,6 +179,12 @@ void HomeScene::initBlessingNpc()
             ui->showBlessingNpc();
         });
     }
+
+    // UI 提示：靠近 NPC 显示“按W进入赐福”
+    if (_uiController)
+    {
+        _uiController->setNpcHintQuery([this]() { return this->isPlayerAtBlessingNpc(); });
+    }
 }
 
 bool HomeScene::isPlayerAtBlessingNpc() const

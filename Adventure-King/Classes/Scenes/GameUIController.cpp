@@ -24,6 +24,7 @@ USING_NS_CC;
 namespace
 {
     const char *const GATE_INTERACTION_HINT = GameSceneConfig::UI::GATE_INTERACTION_HINT;
+    const char *const BLESSING_NPC_INTERACTION_HINT = "按W进入赐福";
     constexpr int UI_Z_ORDER = GameSceneConfig::UI::Z_ORDER;
     constexpr float UI_UPDATE_INTERVAL_SECONDS = GameSceneConfig::UI::UPDATE_INTERVAL_SECONDS;
 }
@@ -345,21 +346,33 @@ void GameUIController::update(float dt)
     if (!_gameUI)
         return;
 
-    bool atGate = false;
-    if (_isPlayerAtGate)
+    // 交互提示优先级：NPC（赐福） > Gate（传送门）
+    InteractionHintSource newHint = InteractionHintSource::NONE;
+    if (_isPlayerAtNpc && _isPlayerAtNpc())
     {
-        atGate = _isPlayerAtGate();
+        newHint = InteractionHintSource::BLESSING_NPC;
+    }
+    else if (_isPlayerAtGate && _isPlayerAtGate())
+    {
+        newHint = InteractionHintSource::GATE;
     }
 
-    if (atGate && !_wasAtGate)
+    if (newHint != _hintSource)
     {
-        _gameUI->showInteractionHint(GATE_INTERACTION_HINT);
+        if (newHint == InteractionHintSource::NONE)
+        {
+            _gameUI->hideInteractionHint();
+        }
+        else if (newHint == InteractionHintSource::BLESSING_NPC)
+        {
+            _gameUI->showInteractionHint(BLESSING_NPC_INTERACTION_HINT);
+        }
+        else // GATE
+        {
+            _gameUI->showInteractionHint(GATE_INTERACTION_HINT);
+        }
+        _hintSource = newHint;
     }
-    else if (!atGate && _wasAtGate)
-    {
-        _gameUI->hideInteractionHint();
-    }
-    _wasAtGate = atGate;
 
     _updateAccumulator += dt;
     // UI 更新节流，避免每帧刷新造成开销。

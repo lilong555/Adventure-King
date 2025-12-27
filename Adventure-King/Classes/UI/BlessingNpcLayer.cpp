@@ -151,8 +151,28 @@ bool BlessingNpcLayer::init()
     const float panelW = std::min(920.0f, visibleSize.width * 0.92f);
     const float panelH = std::min(640.0f, visibleSize.height * 0.90f);
     _panel = LayerColor::create(Color4B(35, 35, 35, 235), panelW, panelH);
-    _panel->setPosition(Vec2(center.x - panelW * 0.5f, center.y - panelH * 0.5f));
+    // 面板整体靠右，为左侧“步骤说明”留空间（避免挤在面板内）
+    _panel->setPosition(Vec2(origin.x + visibleSize.width - panelW - 20.0f, center.y - panelH * 0.5f));
     this->addChild(_panel, 1);
+
+    // 左侧步骤说明（屏幕左边，不堆在面板里）
+    const float guideRightEdge = _panel->getPositionX() - 18.0f;
+    const float guideW = std::min(360.0f, std::max(240.0f, guideRightEdge - origin.x - 20.0f));
+    _guideLabel = Label::createWithTTF(
+        "步骤1：填写 baseUrl / apiKey\n"
+        "步骤2：点击【确认】生成问题\n"
+        "步骤3：在对话框输入回答\n"
+        "步骤4：点击【提交回答】获得赐福（覆盖旧赐福）\n"
+        "提示：本页面已恢复中文输入法，可直接输入中文",
+        "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+        20);
+    _guideLabel->setAnchorPoint(Vec2(0.0f, 1.0f));
+    _guideLabel->setPosition(Vec2(origin.x + 20.0f, origin.y + visibleSize.height - 22.0f));
+    _guideLabel->setTextColor(Color4B(220, 220, 220, 255));
+    _guideLabel->setDimensions(guideW, visibleSize.height * 0.55f);
+    _guideLabel->setHorizontalAlignment(TextHAlignment::LEFT);
+    _guideLabel->setVerticalAlignment(TextVAlignment::TOP);
+    this->addChild(_guideLabel, 2);
 
     // 标题
     auto title = Label::createWithTTF("赐福 NPC（展示接口）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 30);
@@ -161,7 +181,7 @@ bool BlessingNpcLayer::init()
 
     // 提示信息
     _messageLabel = Label::createWithTTF(
-        "步骤1：填写 baseUrl/apiKey → 点击【确认】让 NPC 提问\n步骤2：在对话框输入你的回答 → 点击【提交回答】获得赐福（覆盖旧赐福）\n提示：输入框支持 Ctrl+V 粘贴 / Ctrl+C 复制",
+        "提示：输入框支持 Ctrl+V 粘贴 / Ctrl+C 复制",
         "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
         18);
     _messageLabel->setAnchorPoint(Vec2(0.5f, 1.0f));
