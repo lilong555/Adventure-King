@@ -41,10 +41,16 @@ public:
 
     /// @brief 获取属性组件
     AttributeComponent* getAttributeComponent();
+    /// @brief 获取属性组件（const 版本：用于只读查询）
+    AttributeComponent* getAttributeComponent() const;
     /// @brief 获取状态机组件
     StateMachineComponent* getStateMachineComponent();
+    /// @brief 获取状态机组件（const 版本：用于只读查询）
+    StateMachineComponent* getStateMachineComponent() const;
     /// @brief 获取技能组件
     SkillComponent* getSkillComponent();
+    /// @brief 获取技能组件（const 版本：用于只读查询）
+    SkillComponent* getSkillComponent() const;
 
     /// @brief 获取用于播放动画的精灵（默认是自身）
     cocos2d::Sprite* getVisualSprite() const;

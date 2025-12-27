@@ -16,6 +16,7 @@
 #include "UI/PauseMenu.h"
 #include "UI/PlayerDeathMenu.h"
 #include "UI/InventoryLayer.h"
+#include "UI/BlessingNpcLayer.h"
 #include "Configs/GameSceneConfig.h"
 
 USING_NS_CC;
