@@ -375,36 +375,6 @@ bool HelloWorld::init()
         cloudMenu->addChild(loginItem);
     }
 
-    // 1/2/3 快捷切换职业（战士/刺客/法师）
-    auto keyListener = EventListenerKeyboard::create();
-    keyListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event*)
-    {
-        CharacterRole newRole = _selectedRole;
-        if (keyCode == EventKeyboard::KeyCode::KEY_1)
-        {
-            newRole = CharacterRole::WARRIOR;
-        }
-        else if (keyCode == EventKeyboard::KeyCode::KEY_2)
-        {
-            newRole = CharacterRole::ASSASSIN;
-        }
-        else if (keyCode == EventKeyboard::KeyCode::KEY_3)
-        {
-            newRole = CharacterRole::MAGE;
-        }
-
-        if (newRole != _selectedRole)
-        {
-            _selectedRole = newRole;
-            updateRoleHintLabel();
-            if (auto saveManager = SaveManager::getInstance())
-            {
-                saveManager->setSessionSelectedRole(_selectedRole);
-            }
-        }
-    };
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyListener, this);
-
     std::string musicFile = "Scene/MusicOfScene/Music_HelloWorldScene.mp3";
     float musicVolume = GameSceneConfig::UI::MainMenu::BGM_VOLUME;
     this->scheduleOnce(
@@ -424,7 +394,7 @@ void HelloWorld::updateRoleHintLabel()
         return;
     }
 
-    _roleHintLabel->setString(StringUtils::format("当前职业：%s（点击开始后选择；或按 1/2/3 快捷切换）",
+    _roleHintLabel->setString(StringUtils::format("当前职业：%s（开始游戏后可重新选择）",
         PlayerRoleConfig::getDisplayName(_selectedRole)));
 }
 
@@ -874,7 +844,7 @@ void HelloWorld::onEnter()
 {
     Scene::onEnter(); // 必须先调用父类的实现
 
-    // 进入主菜单时禁用输入法，防止玩家按 1/2/3 切换职业时弹出输入框
+    // 进入主菜单时禁用输入法，避免中文输入法抢占键盘输入影响快捷键操作
     ImeHelper::pushDisableIme();
     CCLOG("HelloWorld: Entered scene, IME disabled.");
 }
