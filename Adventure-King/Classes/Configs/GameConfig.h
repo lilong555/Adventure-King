@@ -650,7 +650,7 @@ namespace GameConfig
         namespace Blessing
         {
             // OpenAI 兼容接口默认模型名（可在 UI 中覆盖）
-            inline constexpr const char *DEFAULT_MODEL = "gpt-4o-mini";
+            inline constexpr const char *DEFAULT_MODEL = "gemini-3-flash-preview";
 
             // 赐福一次选择的属性条目数量（由 AI 从下列候选中挑选）
             inline constexpr int PICK_COUNT = 2;
