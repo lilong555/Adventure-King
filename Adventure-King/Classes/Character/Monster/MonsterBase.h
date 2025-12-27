@@ -36,6 +36,14 @@ public:
     /// @brief 设置血条缩放
     void setHpBarScale(float scale);
 
+    /// @brief 按玩家等级缩放最大生命（用于保持数值在合理区间）
+    /// @details
+    /// - 只建议在“怪物创建时”调用（例如 GameScene::createMonsterByType），避免运行中频繁改写导致血条/当前血量不一致
+    /// - 注意：必须在怪物的 init()（包含 initAttributes/setupCharacterStats）成功完成之后再调用本方法
+    /// - 缩放曲线与上限在 GameConfig::Monster::LevelScaling 中配置
+    /// - 用于避免高等级回低级怪“秒杀”，同时避免血量无限增长导致后期怪过于肉
+    void applyHpScalingForPlayerLevel(int playerLevel, bool isBoss = false);
+
     /// @brief 设置攻击目标
     void setTarget(cocos2d::Node* target);
     /// @brief 设置出生点/回家点

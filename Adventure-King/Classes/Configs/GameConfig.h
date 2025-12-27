@@ -418,19 +418,39 @@ namespace GameConfig
             inline constexpr float FACE_DEADZONE_X = 8.0f;
         }
 
+        // 怪物数值：血量随玩家等级缩放（统一由 GameScene::createMonsterByType 在“创建怪物时”应用）
+        // 说明：
+        // - 只影响“新刷出的怪物”。同一张地图中，玩家升级后再刷出的怪会更耐打。
+        // - 当前流程是：怪物 initAttributes/setupCharacterStats 先写入基础 MAX_HP，再由 Scene 在创建后调用缩放函数覆盖一次。
+        //   这样可以保持怪物类解耦（怪物不需要知道玩家等级），代价是创建时会有一次“MAX_HP 二次写入”，属于可接受的初始化开销。
+        // 目的：避免高等级回低级怪“秒杀”，同时也避免血量无限增长导致后期怪过于肉。
+        namespace LevelScaling
+        {
+            // 基础倍率：用于快速整体调参（不改动每个怪物的 MAX_HP 基础值）
+            // - 普通怪整体更脆：0.5 倍
+            // - Boss 整体更肉：1.5 倍
+            inline constexpr float NORMAL_BASE_MULTIPLIER = 0.5f;
+            inline constexpr float BOSS_BASE_MULTIPLIER = 1.5f;
+
+            // 普通怪
+            inline constexpr float NORMAL_HP_PER_LEVEL = 0.05f;      // 每级 +5% 最大生命倍率
+            inline constexpr float NORMAL_HP_MAX_MULTIPLIER = 3.0f;  // 上限：最多 3 倍
+
+            // Boss
+            inline constexpr float BOSS_HP_PER_LEVEL = 0.06f;        // 每级 +6%
+            inline constexpr float BOSS_HP_MAX_MULTIPLIER = 4.0f;    // 上限：最多 4 倍
+        }
+
         // --- 哥布林 (Goblin) 专属配置 ---
         namespace Goblin
         {
             // 基础属性
             
-            inline constexpr float MAX_HP = 1.0f;//700 注意这只是缩放之前的基础数值 
+            inline constexpr float MAX_HP = 700.0f;
             inline constexpr float MAX_MP = 0.0f; // 哥布林可能没蓝条
             inline constexpr float STRENGTH = 10.0f;
             inline constexpr float DEFENSE = 2.0f;
             inline constexpr float CRITICAL_RATE = 0.05f;
-            inline constexpr int HP_SCALE_BASE = 1.0f;         // 基础缩放倍率
-            inline constexpr int HP_SCALE_PER_LEVEL = 0.1f;    // 每级倍率增量
-            inline constexpr int HP_SCALE_PER_10_LEVEL = 0; // 每10级额外增量
 
             // 经验奖励（按玩家等级简单缩放）
             inline constexpr int EXP_REWARD_BASE = 20;
@@ -466,7 +486,7 @@ namespace GameConfig
         namespace Goblu
         {
             // 基础属性
-            inline constexpr float MAX_HP = 1.0f;  //1000
+            inline constexpr float MAX_HP = 1000.0f;
             inline constexpr float MAX_MP = 0.0f;
             inline constexpr float STRENGTH = 25.0f;
             inline constexpr float DEFENSE = 6.0f;
@@ -517,7 +537,7 @@ namespace GameConfig
         namespace Obscur
         {
             // 基础属性（可后续按数值体验再调）
-            inline constexpr float MAX_HP = 1.0f;//500
+            inline constexpr float MAX_HP = 500.0f;
             inline constexpr float MAX_MP = 0.0f;
             inline constexpr float STRENGTH = 18.0f;
             inline constexpr float DEFENSE = 4.0f;
