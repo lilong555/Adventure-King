@@ -67,7 +67,7 @@ void PauseMenu::createBackground()
 
     // 中央面板
     float panelWidth = 300;
-    float panelHeight = 500;
+    float panelHeight = 420;
     Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
     auto panel = DrawNode::create();
@@ -91,8 +91,8 @@ void PauseMenu::createTitle()
     auto origin = Director::getInstance()->getVisibleOrigin();
     Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
-    _titleLabel = Label::createWithTTF("游戏暂停", "fonts/ZCOOLKuaiLe-Regular.ttf", 36);
-    _titleLabel->setPosition(Vec2(center.x, center.y + 180));
+    _titleLabel = Label::createWithTTF("游戏暂停", "fonts/ZCOOLKuaiLe-Regular.ttf", 40);
+    _titleLabel->setPosition(Vec2(center.x, center.y + 160));
     _titleLabel->setColor(Color3B(255, 220, 100));
     _titleLabel->enableOutline(Color4B::BLACK, 2);
     _container->addChild(_titleLabel, 2);
@@ -111,7 +111,7 @@ void PauseMenu::createMenuButtons()
     auto loadBtn = createButton("加载游戏", CC_CALLBACK_1(PauseMenu::onLoadClicked, this));
     auto settingsBtn = createButton("设置", CC_CALLBACK_1(PauseMenu::onSettingsClicked, this));
     auto mainMenuBtn = createButton("返回主菜单", CC_CALLBACK_1(PauseMenu::onMainMenuClicked, this));
-    auto quitBtn = createButton("退出游戏", CC_CALLBACK_1(PauseMenu::onQuitClicked, this));
+    //auto quitBtn = createButton("退出游戏", CC_CALLBACK_1(PauseMenu::onQuitClicked, this));
 
     std::vector<MenuItemLabel *> buttons = {
         resumeBtn,
@@ -120,12 +120,12 @@ void PauseMenu::createMenuButtons()
         loadBtn,
         settingsBtn,
         mainMenuBtn,
-        quitBtn,
+        //quitBtn,
     };
 
     // 设置按钮位置
-    float buttonSpacing = 46.0f;
-    float startY = center.y + 110.0f;
+    float buttonSpacing = 50.0f;
+    float startY = center.y + 100.0f;
     for (size_t i = 0; i < buttons.size(); ++i)
     {
         buttons[i]->setPosition(Vec2(center.x, startY - buttonSpacing * static_cast<float>(i)));
@@ -142,7 +142,7 @@ void PauseMenu::createMenuButtons()
 
 MenuItemLabel *PauseMenu::createButton(const std::string &text, const ccMenuCallback &callback)
 {
-    auto label = Label::createWithTTF(text, "fonts/ZCOOLKuaiLe-Regular.ttf", 24);
+    auto label = Label::createWithTTF(text, "fonts/ZCOOLKuaiLe-Regular.ttf", 30);
     label->setColor(Color3B::WHITE);
 
     auto button = MenuItemLabel::create(label, callback);
