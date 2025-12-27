@@ -1,10 +1,12 @@
 #include "HomeScene.h"
 #include "GameScene.h"
+#include "GameUI.h"
 #include "Scenes/LevelMap.h"
 #include "Managers/SceneTransitionManager.h"
 #include "Managers/MusicManager.h"
 #include "Managers/SceneRegistry.h"
 #include "Configs/GameConfig.h"
+#include "Character/Player/PlayerCharacter.h"
 
 USING_NS_CC;
 
