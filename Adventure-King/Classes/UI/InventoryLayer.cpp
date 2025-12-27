@@ -75,36 +75,39 @@ namespace
         return label;
     }
 
-    cocos2d::ui::Button *createTextButton(const std::string &text, const cocos2d::Size &targetSize,
-                                          const std::function<void(cocos2d::Ref *)> &callback,
-                                          float fontSize = 26.0f,
-                                          const cocos2d::Color3B &titleColor = cocos2d::Color3B::WHITE,
-                                          const cocos2d::Color3B &backgroundTint = cocos2d::Color3B(80, 80, 90))
+    cocos2d::ui::Button* createTextButton(const std::string& text, const cocos2d::Size& targetSize,
+        const std::function<void(cocos2d::Ref*)>& callback,
+        float fontSize, const cocos2d::Color3B& titleColor,
+        const cocos2d::Color3B& backgroundTint)
     {
-        auto btn = cocos2d::ui::Button::create(PLACEHOLDER_ICON_PATH, PLACEHOLDER_ICON_PATH);
-        if (!btn)
-        {
-            return nullptr;
-        }
+        // 1. 创建一个容器 Node
+        auto container = cocos2d::Node::create();
+        container->setContentSize(targetSize);
 
-        btn->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
-        btn->setPressedActionEnabled(true);
+        // 2. 创建 DrawNode 绘制按钮背景（代替占位图）
+        auto bg = cocos2d::DrawNode::create();
+        float w = targetSize.width / 2;
+        float h = targetSize.height / 2;
+        // 绘制深色填充和亮色边框
+        bg->drawSolidRect(cocos2d::Vec2(-w, -h), cocos2d::Vec2(w, h), cocos2d::Color4F(backgroundTint));
+        bg->drawRect(cocos2d::Vec2(-w, -h), cocos2d::Vec2(w, h), cocos2d::Color4F(0.5f, 0.5f, 0.6f, 1.0f));
+        container->addChild(bg, 0);
 
-        // 使用 Scale9 让按钮尺寸稳定（占位贴图仅作为背景）
+        // 3. 创建一个没有贴图的 Button 仅用于处理点击和显示文字
+        // 使用一个透明的 1x1 像素或空路径（Cocos 会回退到默认，或者你可以传一个透明图片）
+        auto btn = cocos2d::ui::Button::create();
         btn->setScale9Enabled(true);
-        btn->setCapInsets(cocos2d::Rect(10, 10, 10, 10));
         btn->setContentSize(targetSize);
-        btn->setColor(backgroundTint);
 
         btn->setTitleText(text);
-        btn->setTitleFontName(UI_FONT_PATH);
+        btn->setTitleFontName(UI_FONT_PATH); // 使用你定义的字体
         btn->setTitleFontSize(fontSize);
         btn->setTitleColor(titleColor);
 
-        if (callback)
-        {
+        if (callback) {
             btn->addClickEventListener(callback);
         }
+
         return btn;
     }
 
@@ -1217,15 +1220,22 @@ void InventoryLayer::refreshAttributePage()
 
     // 中间属性列表面板（参考截图 1 的横条列表）
     // 注意：需要避免与右侧“等级/战斗数据”面板重叠
-    const float statsW = 860.0f;
+    constexpr int kRowCount = 5;//条目总数
+    const float statsW = 520.0f;
     const float rightPanelLeft = safeRight - statsW;
     const float gapX = 60.0f;
+    const float rowH = 84.0f;
+    const float rowGap = 16.0f;
 
     const float attrListW = std::min(900.0f, rightPanelLeft - gapX - safeLeft);
-    const float attrListH = 520.0f;
-    const float attrListX = rightPanelLeft - gapX - attrListW;
+    const float attrListH = (kRowCount * rowH) + ((kRowCount + 3) * rowGap);
+    const float attrListX = (DESIGN_WIDTH - attrListW) * 0.5f;
     const float attrListTop = safeTop - 220.0f;
     const Rect attrListRect(attrListX, attrListTop - attrListH, attrListW, attrListH);
+
+    const float rowW = attrListRect.size.width - 80.0f;
+    const float rowX = attrListRect.getMinX() + 40.0f;
+    const float firstRowTop = attrListRect.getMaxY() - 30.0f;//小框起始高度
 
     auto attrBg = DrawNode::create();
     drawPanelRect(attrBg, attrListRect, Color4F(0.10f, 0.10f, 0.14f, 0.85f), PANEL_BORDER_COLOR);
@@ -1235,12 +1245,11 @@ void InventoryLayer::refreshAttributePage()
     const int availablePoints = _player ? _player->getAttributePoints() : 0;
     if (auto points = createUiLabel(StringUtils::format("现有点数 %d", availablePoints), 32.0f, TITLE_COLOR))
     {
-        points->setPosition(Vec2(attrListRect.getMidX(), attrListRect.getMaxY() + 60.0f));
+        points->setPosition(Vec2(DESIGN_WIDTH * 0.5f, attrListRect.getMaxY() + 60.0f));
         _attributePage->addChild(points, 2);
     }
 
     // 5 行属性条（使用文字渲染，避免“纯 PNG”导致排版错位）
-    constexpr int kRowCount = 5;
     struct AttrRowDef
     {
         const char *name = nullptr;
@@ -1255,11 +1264,7 @@ void InventoryLayer::refreshAttributePage()
         {"暴击率", AttributeType::CRITICAL_RATE, true},
     };
 
-    const float rowH = 84.0f;
-    const float rowGap = 16.0f;
-    const float rowW = attrListRect.size.width - 80.0f;
-    const float rowX = attrListRect.getMinX() + 40.0f;
-    const float firstRowTop = attrListRect.getMaxY() - 60.0f;
+
 
     for (int i = 0; i < kRowCount; ++i)
     {
@@ -1327,7 +1332,7 @@ void InventoryLayer::refreshAttributePage()
     }
 
     // 右上角：等级区块（参考截图 1 的“等级 + 大数字”）
-    const float levelW = 520.0f;
+    const float levelW = statsW; 
     const float levelH = 300.0f;
     const Rect levelRect(safeRight - levelW, safeTop - levelH, levelW, levelH);
     auto levelBg = DrawNode::create();
@@ -1786,9 +1791,9 @@ void InventoryLayer::refreshEquipmentPage()
     }
 
     // 底部材料栏（占位）
-    const float matW = 980.0f;
+    const float matW = rightW;
     const float matH = 150.0f;
-    const Rect matRect(DESIGN_WIDTH * 0.5f - matW * 0.5f, safeBottom + 30.0f, matW, matH);
+    const Rect matRect(rightX, safeBottom + 30.0f, matW, matH);
     auto matBg = DrawNode::create();
     drawPanelRect(matBg, matRect, Color4F(0.10f, 0.10f, 0.14f, 0.80f), PANEL_BORDER_COLOR);
     _equipmentPage->addChild(matBg, 1);
@@ -2115,10 +2120,10 @@ void InventoryLayer::refreshSkillPage()
                 }
                 showDetailOverlay();
                 refresh();
-            }, 22.0f, Color3B::WHITE, Color3B(120, 60, 60));
+            }, 30.0f, Color3B::WHITE, Color3B(120, 60, 60));
             if (unequipBtn)
             {
-                unequipBtn->setPosition(Vec2(slotX + 118.0f, slotY));
+                unequipBtn->setPosition(Vec2(slotX + 100.0f, slotY));
                 _skillPage->addChild(unequipBtn, 3);
             }
         }
