@@ -119,6 +119,9 @@ struct LevelConfig
          inline constexpr float SKILL_BAR_OFFSET_Y = 80.0f;
          inline constexpr float BOSS_BAR_OFFSET_Y = 60.0f;
          inline constexpr float MAP_BUTTON_OFFSET = 40.0f;
+         // 背包按钮（bag.png）相对右上角的额外偏移（在 PADDING 基础上再减去该值）
+         inline constexpr float INVENTORY_BUTTON_OFFSET_X = 48.0f;
+         inline constexpr float INVENTORY_BUTTON_OFFSET_Y = 120.0f;
          inline constexpr float INTERACTION_HINT_OFFSET_Y = 80.0f;
          inline constexpr float LEVEL_NAME_OFFSET_X = 100.0f;
          inline constexpr float LEVEL_NAME_OFFSET_Y = 50.0f;

@@ -403,6 +403,49 @@ bool LevelMap::isPointAtGate(const Vec2 &worldPos) const
     return false;
 }
 
+namespace
+{
+void activateGateVfxForRects(cocos2d::Node* parent, const std::vector<cocos2d::Rect>& rects)
+{
+    if (!parent)
+    {
+        return;
+    }
+
+    using namespace ParticleVfxHelper;
+
+    for (const auto& rect : rects)
+    {
+        PlayOptions options;
+        options.zOrder = 10;
+        options.useBodyCenter = false;
+        options.position = Vec2(rect.getMidX(), rect.getMidY());
+        options.autoRemoveOnFinish = false;
+        options.name = "active_portal";
+
+        playOnce(parent, "Particle/portal_active.plist", options, [](cocos2d::ParticleSystemQuad* p) {
+            p->setScale(0.3f);
+            p->setDuration(-1);
+            p->resetSystem();
+        });
+    }
+}
+}
+
+void LevelMap::restoreLevelClearedForLoad(bool cleared)
+{
+    // 读档恢复仅设置状态与门特效，不弹“胜利横幅”
+    _isLevelCleared = cleared;
+
+    if (!_isLevelCleared)
+    {
+        return;
+    }
+
+    // 读档后需要重新创建门激活特效
+    activateGateVfxForRects(_tileMap, _gateAreas);
+}
+
 void LevelMap::onMonsterKilled() {
     _currentActiveMonsters--; // 递减当前活跃怪物数
 
@@ -430,29 +473,8 @@ void LevelMap::triggerLevelClear() {
     if (_isLevelCleared) return;
     _isLevelCleared = true;
 
-    using namespace ParticleVfxHelper;
-
     // 2. 为所有门区域播放激活特效
-    for (auto& rect : _gateAreas) {
-        // 配置播放参数
-        PlayOptions options;
-        options.zOrder = 10;                // 设置层级
-        options.useBodyCenter = false;      // 门是区域(Rect)，不使用物理体中心
-        options.position = Vec2(rect.getMidX(), rect.getMidY()); // 设置为区域中心
-        options.autoRemoveOnFinish = false; // 传送门通常需要一直存在，直到玩家离开
-        options.name = "active_portal";     // 命名方便后续可能的查找
-        options.useBodyCenter = false;
-        options.position = Vec2(rect.getMidX(), rect.getMidY());
-
-        // 3. 使用 Helper 统一创建播放
-        // playOnce 内部已包含对 plist 路径的判空保护，防止断言闪退
-        playOnce(_tileMap, "Particle/portal_active.plist", options, [](cocos2d::ParticleSystemQuad* p) {
-            // --- 在这里调整特效在游戏中的表现 ---
-            p->setScale(0.3f);      // 整体放大 0.3 倍
-            p->setDuration(-1);     // 设置为永久播放 (直到关卡切换)
-            p->resetSystem();       // 强制重新开始发射粒子
-            });
-    }
+    activateGateVfxForRects(_tileMap, _gateAreas);
 
     // 4. 调用 UI 提示
     showVictoryBanner();

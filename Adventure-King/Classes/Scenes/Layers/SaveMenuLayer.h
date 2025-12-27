@@ -17,7 +17,8 @@ public:
     enum class Mode
     {
         SAVE, // 保存模式
-        LOAD  // 加载模式
+        LOAD, // 加载模式
+        START // 开始游戏：强制选择一个槽位（空槽位=新开局；非空=加载）
     };
 
     /**
@@ -50,6 +51,11 @@ public:
     using LoadSuccessCallback = std::function<void(const SaveSlotData &)>;
     void setLoadSuccessCallback(const LoadSuccessCallback &callback) { _loadSuccessCallback = callback; }
 
+    // 开始游戏槽位选择回调（仅在 START 模式下使用）
+    // hasSave=false 表示该槽位为空，将进入“新开局”流程。
+    using StartSlotCallback = std::function<void(int slotIndex, bool hasSave, const SaveSlotData &loadedData)>;
+    void setStartSlotCallback(const StartSlotCallback &callback) { _startSlotCallback = callback; }
+
 private:
     SaveMenuLayer() = default;
 
@@ -64,6 +70,7 @@ private:
     std::vector<cocos2d::Node *> _slotNodes; // 存档槽位节点
 
     LoadSuccessCallback _loadSuccessCallback = nullptr;
+    StartSlotCallback _startSlotCallback = nullptr;
     CloseCallback _closeCallback = nullptr;
 
     // 初始化方法

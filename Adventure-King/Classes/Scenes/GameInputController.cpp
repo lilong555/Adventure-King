@@ -32,6 +32,16 @@ void GameInputController::onKeyPressed(EventKeyboard::KeyCode keyCode)
         return;
     }
 
+    // 背包快捷键：允许在暂停状态下按 B 关闭/打开（与 Esc 一样属于 UI 层行为）
+    if (keyCode == EventKeyboard::KeyCode::KEY_B)
+    {
+        if (_toggleInventory)
+        {
+            _toggleInventory();
+        }
+        return;
+    }
+
     if (!_player)
         return;
     if (_isPaused && _isPaused())

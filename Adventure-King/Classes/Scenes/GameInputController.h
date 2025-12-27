@@ -20,6 +20,8 @@ public:
 
     /// @brief 设置暂停切换回调
     void setPauseToggle(const std::function<void()> &togglePause) { _togglePause = togglePause; }
+    /// @brief 设置背包切换回调（B 键 / HUD 背包按钮）
+    void setInventoryToggle(const std::function<void()> &toggleInventory) { _toggleInventory = toggleInventory; }
     /// @brief 设置暂停状态查询
     void setIsPausedGetter(const std::function<bool()> &isPaused) { _isPaused = isPaused; }
 
@@ -65,6 +67,7 @@ private:
     int _jumpCount = 0;
 
     std::function<void()> _togglePause;
+    std::function<void()> _toggleInventory;
     std::function<bool()> _isPaused;
     std::function<bool()> _isAtGate;
     std::function<void()> _enterGate;

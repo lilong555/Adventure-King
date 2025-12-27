@@ -67,6 +67,15 @@ public:
     /// @brief 判断点是否处于任意门区
     bool isPointAtGate(const cocos2d::Vec2 &worldPos) const;
 
+    /// @brief 当前关卡是否已通关（用于 gate 可交互判断/存档）
+    bool isLevelCleared() const { return _isLevelCleared; }
+
+    /**
+     * @brief 读档恢复“关卡通关”状态
+     * @note 只恢复 gate 可交互与门特效，不触发胜利横幅（避免读档弹提示）
+     */
+    void restoreLevelClearedForLoad(bool cleared);
+
     //通关相关交互函数
     void onMonsterKilled();
     bool checkAllClear();
