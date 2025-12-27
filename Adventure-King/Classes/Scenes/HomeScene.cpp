@@ -8,6 +8,13 @@
 
 USING_NS_CC;
 
+namespace
+{
+    constexpr float BLESSING_NPC_INTERACT_DISTANCE = 220.0f;
+    // 说明：该 NPC 原图尺寸 1521x2670，非常大，需缩放到合理大小
+    constexpr float BLESSING_NPC_SPRITE_SCALE = 0.08f;
+} // namespace
+
 Scene *HomeScene::createScene()
 {
     return HomeScene::create();
@@ -26,6 +33,7 @@ void HomeScene::setupRegistry()
         "Map/Home/home.png",
         "Map/Home/HomeBackground_1.png",
         "Map/Origin_Mushroom/Env_Tree_Oak_Giant_Green.png",
+        "Sprites/Characters/Npc/spr_shutouj.png",
     };
 
     SceneRegistry::getInstance()->registerScene(ID, info);
@@ -37,13 +45,13 @@ bool HomeScene::init() {
 
     // 2. 关卡特化配置
     LevelConfig config;
-    config.tmxMapPath = "Scene/Backgrounds/HomeBackground_1.tmx";
+    config.tmxMapPath = "Map/Home/home.tmx";
     config.playerSpritePath = GameSceneConfig::Scene::DEFAULT_PLAYER_SPRITE;
 
     // 对应 Tiled 里的图层名
     config.collisionLayerName = "collisions"; // 包含地面和左右边界
-    config.gateLayerName = "gates";           // 包含传送门区域
-    config.bornLayerName = "collisions";      // 包含 PlayerSpawn 点
+    config.gateLayerName = "gate";            // 包含传送门区域
+    config.bornLayerName = "born";            // 包含 PlayerSpawn 点
 
     // 物理参数
     config.gravity = -980.0f;               // 标准重力
@@ -74,6 +82,10 @@ bool HomeScene::init() {
             //_gameLayer->setContentSize(Size(mapSize.width * scaleY, mapSize.height * scaleY));
         }
     }
+
+    // 赐福入口 NPC（在 Home 地图点位生成）
+    initBlessingNpc();
+
     // 4.播放背景音乐
     std::string musicFile = "Scene/MusicOfScene/Music_HomeScene.mp3";
     float musicVolume = GameSceneConfig::UI::MainMenu::BGM_VOLUME;
@@ -87,4 +99,94 @@ bool HomeScene::init() {
     );
     CCLOG("HomeScene - Initialized successfully");
     return true;
+}
+
+void HomeScene::initBlessingNpc()
+{
+    _blessingNpcSprite = nullptr;
+    if (!_levelMap || !_gameLayer)
+    {
+        return;
+    }
+
+    auto tiledMap = _levelMap->getTileMap();
+    if (!tiledMap)
+    {
+        return;
+    }
+
+    auto group = tiledMap->getObjectGroup("npc");
+    if (!group)
+    {
+        CCLOG("HomeScene - 未找到 objectgroup: npc");
+        return;
+    }
+
+    Vec2 npcPos = Vec2::ZERO;
+    bool found = false;
+    auto objects = group->getObjects();
+    for (const auto &obj : objects)
+    {
+        auto dict = obj.asValueMap();
+        if (dict["name"].asString() != "npc")
+        {
+            continue;
+        }
+        npcPos = Vec2(dict["x"].asFloat(), dict["y"].asFloat());
+        found = true;
+        break;
+    }
+
+    if (!found)
+    {
+        CCLOG("HomeScene - npc 组内未找到 name=npc 的点位");
+        return;
+    }
+
+    auto sprite = Sprite::create("Sprites/Characters/Npc/spr_shutouj.png");
+    if (!sprite)
+    {
+        CCLOG("HomeScene - 创建赐福 NPC 失败：spr_shutouj.png");
+        return;
+    }
+
+    sprite->setAnchorPoint(Vec2(0.5f, 0.0f)); // 脚下锚点，贴地更直观
+    sprite->setPosition(npcPos);
+    sprite->setScale(BLESSING_NPC_SPRITE_SCALE);
+    _gameLayer->addChild(sprite, PLAYER_Z_ORDER - 1);
+    _blessingNpcSprite = sprite;
+
+    // W 键交互：靠近 NPC 时进入赐福（优先级高于门区与跳跃）
+    if (_inputController)
+    {
+        _inputController->setNpcQuery([this]() { return this->isPlayerAtBlessingNpc(); });
+        _inputController->setNpcInteract([this]() {
+            if (!_uiController)
+            {
+                return;
+            }
+
+            auto ui = _uiController->getGameUI();
+            if (!ui || ui->isBlessingNpcShowing())
+            {
+                return;
+            }
+
+            // 进入赐福时暂停世界（Home 也可能有玩家移动/跳跃）
+            setGamePaused(true);
+            ui->showBlessingNpc();
+        });
+    }
+}
+
+bool HomeScene::isPlayerAtBlessingNpc() const
+{
+    if (!_player || !_blessingNpcSprite)
+    {
+        return false;
+    }
+
+    const Vec2 playerPos = _player->getPosition();
+    const Vec2 npcPos = _blessingNpcSprite->getPosition();
+    return playerPos.distance(npcPos) <= BLESSING_NPC_INTERACT_DISTANCE;
 }

@@ -107,7 +107,6 @@ void PauseMenu::createMenuButtons()
     // 创建菜单按钮
     auto resumeBtn = createButton("继续游戏", CC_CALLBACK_1(PauseMenu::onResumeClicked, this));
     auto inventoryBtn = createButton("背包 / 技能", CC_CALLBACK_1(PauseMenu::onInventoryClicked, this));
-    auto blessingBtn = createButton("赐福 NPC", CC_CALLBACK_1(PauseMenu::onBlessingClicked, this));
     auto saveBtn = createButton("保存游戏", CC_CALLBACK_1(PauseMenu::onSaveClicked, this));
     auto loadBtn = createButton("加载游戏", CC_CALLBACK_1(PauseMenu::onLoadClicked, this));
     auto settingsBtn = createButton("设置", CC_CALLBACK_1(PauseMenu::onSettingsClicked, this));
@@ -117,7 +116,6 @@ void PauseMenu::createMenuButtons()
     std::vector<MenuItemLabel *> buttons = {
         resumeBtn,
         inventoryBtn,
-        blessingBtn,
         saveBtn,
         loadBtn,
         settingsBtn,
@@ -226,16 +224,6 @@ void PauseMenu::onInventoryClicked(Ref *sender)
     if (_inventoryCallback)
     {
         _inventoryCallback();
-    }
-}
-
-void PauseMenu::onBlessingClicked(Ref *sender)
-{
-    // 打开赐福弹窗时隐藏暂停菜单，避免 UI 叠加导致误触
-    hide();
-    if (_blessingCallback)
-    {
-        _blessingCallback();
     }
 }
 

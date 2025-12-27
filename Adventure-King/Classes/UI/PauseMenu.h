@@ -59,8 +59,6 @@ public:
     void setLoadCallback(const std::function<void()> &callback) { _loadCallback = callback; }
     /// @brief 设置“背包/技能”回调
     void setInventoryCallback(const std::function<void()> &callback) { _inventoryCallback = callback; }
-    /// @brief 设置“赐福NPC”回调
-    void setBlessingCallback(const std::function<void()> &callback) { _blessingCallback = callback; }
     /// @brief 设置“设置”回调
     void setSettingsCallback(const std::function<void()> &callback) { _settingsCallback = callback; }
     /// @brief 设置“主菜单”回调
@@ -85,8 +83,6 @@ protected:
     void onLoadClicked(cocos2d::Ref *sender);
     /// @brief 点击“背包/技能”
     void onInventoryClicked(cocos2d::Ref *sender);
-    /// @brief 点击“赐福NPC”
-    void onBlessingClicked(cocos2d::Ref *sender);
     /// @brief 点击“设置”
     void onSettingsClicked(cocos2d::Ref *sender);
     /// @brief 点击“主菜单”
@@ -113,7 +109,6 @@ protected:
     std::function<void()> _saveCallback;
     std::function<void()> _loadCallback;
     std::function<void()> _inventoryCallback;
-    std::function<void()> _blessingCallback;
     std::function<void()> _settingsCallback;
     std::function<void()> _mainMenuCallback;
     std::function<void()> _quitCallback;

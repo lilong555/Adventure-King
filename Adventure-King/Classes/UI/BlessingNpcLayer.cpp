@@ -2,6 +2,7 @@
 #include "AI/AiBlessingService.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Utils/ClipboardHelper.h"
+#include "Utils/ImeHelper.h"
 
 #include <cmath>
 #include <algorithm>
@@ -148,7 +149,7 @@ bool BlessingNpcLayer::init()
     _eventDispatcher->addEventListenerWithSceneGraphPriority(keyListener, this);
 
     const float panelW = std::min(920.0f, visibleSize.width * 0.92f);
-    const float panelH = std::min(520.0f, visibleSize.height * 0.86f);
+    const float panelH = std::min(640.0f, visibleSize.height * 0.90f);
     _panel = LayerColor::create(Color4B(35, 35, 35, 235), panelW, panelH);
     _panel->setPosition(Vec2(center.x - panelW * 0.5f, center.y - panelH * 0.5f));
     this->addChild(_panel, 1);
@@ -160,7 +161,7 @@ bool BlessingNpcLayer::init()
 
     // 提示信息
     _messageLabel = Label::createWithTTF(
-        "步骤1：填写 baseUrl/apiKey → 点击【确认】让 NPC 提问\n步骤2：在“对话”里输入你的回答 → 点击【提交回答】获得赐福（覆盖旧赐福）\n提示：输入框支持 Ctrl+V 粘贴 / Ctrl+C 复制",
+        "步骤1：填写 baseUrl/apiKey → 点击【确认】让 NPC 提问\n步骤2：在对话框输入你的回答 → 点击【提交回答】获得赐福（覆盖旧赐福）\n提示：输入框支持 Ctrl+V 粘贴 / Ctrl+C 复制",
         "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
         18);
     _messageLabel->setAnchorPoint(Vec2(0.5f, 1.0f));
@@ -171,7 +172,7 @@ bool BlessingNpcLayer::init()
     const float leftX = 70.0f;
     const float fieldX = 230.0f;
     const float rowH = 56.0f;
-    const float startY = panelH - 140.0f;
+    const float startY = panelH - 160.0f;
 
     auto addRowLabel = [&](const std::string &text, float y) {
         auto label = Label::createWithTTF(text, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
@@ -219,11 +220,50 @@ bool BlessingNpcLayer::init()
     _modelField->setString("");
     styleTextField(_modelField, startY - rowH * 2, 80);
 
-    // prompt
-    addRowLabel("对话", startY - rowH * 3);
-    _promptField = ui::TextField::create("可选：你希望什么样的赐福？（用于生成问题）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
-    _promptField->setString("");
-    styleTextField(_promptField, startY - rowH * 3, 200);
+    // 对话框：用于展示 NPC 问题与玩家回答（确认后才需要输入回答）
+    const float dialogW = panelW - 100.0f;
+    const float dialogH = 240.0f;
+    _dialogPanel = LayerColor::create(Color4B(20, 20, 20, 220), dialogW, dialogH);
+    _dialogPanel->setPosition(Vec2((panelW - dialogW) * 0.5f, 118.0f));
+    _panel->addChild(_dialogPanel, 2);
+
+    auto dialogTitle = Label::createWithTTF("对话框", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    dialogTitle->setAnchorPoint(Vec2(0.0f, 1.0f));
+    dialogTitle->setPosition(Vec2(18.0f, dialogH - 14.0f));
+    dialogTitle->setTextColor(Color4B(220, 220, 220, 255));
+    _dialogPanel->addChild(dialogTitle);
+
+    _dialogNpcLabel = Label::createWithTTF(
+        "点击【确认】后，NPC 会提出考验冒险决心的问题。",
+        "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+        18);
+    _dialogNpcLabel->setAnchorPoint(Vec2(0.0f, 1.0f));
+    _dialogNpcLabel->setPosition(Vec2(18.0f, dialogH - 46.0f));
+    _dialogNpcLabel->setTextColor(Color4B(200, 200, 200, 255));
+    _dialogNpcLabel->setDimensions(dialogW - 36.0f, dialogH - 110.0f);
+    _dialogNpcLabel->setHorizontalAlignment(TextHAlignment::LEFT);
+    _dialogNpcLabel->setVerticalAlignment(TextVAlignment::TOP);
+    _dialogPanel->addChild(_dialogNpcLabel);
+
+    auto answerLabel = Label::createWithTTF("你的回答：", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
+    answerLabel->setAnchorPoint(Vec2(0.0f, 0.5f));
+    answerLabel->setPosition(Vec2(18.0f, 38.0f));
+    _dialogPanel->addChild(answerLabel);
+
+    _promptField = ui::TextField::create("先点击【确认】生成问题", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
+    _promptField->setAnchorPoint(Vec2(0.0f, 0.5f));
+    _promptField->setPosition(Vec2(118.0f, 38.0f));
+    _promptField->setTextColor(Color4B(240, 240, 240, 255));
+    _promptField->setPlaceHolderColor(Color4B(160, 160, 160, 255));
+    _promptField->setMaxLengthEnabled(true);
+    _promptField->setMaxLength(400);
+    _promptField->setCursorEnabled(true);
+    _promptField->setCursorChar('|');
+    _dialogPanel->addChild(_promptField);
+
+    auto answerUnderline = LayerColor::create(Color4B(90, 90, 90, 255), dialogW - 118.0f - 18.0f, 2.0f);
+    answerUnderline->setPosition(Vec2(118.0f, 20.0f));
+    _dialogPanel->addChild(answerUnderline);
 
     // 按钮
     auto menu = Menu::create();
@@ -276,6 +316,17 @@ bool BlessingNpcLayer::init()
     return true;
 }
 
+void BlessingNpcLayer::onExit()
+{
+    // 兜底：若弹窗仍处于“恢复 IME”状态就被销毁，先把计数补回，避免 GameScene::onExit 再 pop 导致不匹配
+    if (_imeRestored)
+    {
+        ImeHelper::pushDisableIme();
+        _imeRestored = false;
+    }
+    LayerColor::onExit();
+}
+
 void BlessingNpcLayer::bindPlayer(PlayerCharacter *player)
 {
     _player = player;
@@ -288,6 +339,14 @@ void BlessingNpcLayer::show()
         return;
     }
     _showing = true;
+
+    // 进入赐福页面时恢复输入法（允许中文输入）
+    if (!_imeRestored)
+    {
+        ImeHelper::popDisableIme();
+        _imeRestored = true;
+    }
+
     setVisible(true);
     setBusy(false);
     _waitingForAnswer = false;
@@ -296,8 +355,12 @@ void BlessingNpcLayer::show()
         _requestItem->setEnabled(false);
     if (_promptField)
     {
-        _promptField->setPlaceHolder("可选：你希望什么样的赐福？（用于生成问题）");
+        _promptField->setPlaceHolder("先点击【确认】生成问题");
         _promptField->setString("");
+    }
+    if (_dialogNpcLabel)
+    {
+        _dialogNpcLabel->setString("点击【确认】后，NPC 会提出考验冒险决心的问题。");
     }
 
     // 淡入
@@ -312,6 +375,13 @@ void BlessingNpcLayer::hide()
         return;
     }
     _showing = false;
+
+    // 退出赐福页面时重新禁用输入法，避免抢按键
+    if (_imeRestored)
+    {
+        ImeHelper::pushDisableIme();
+        _imeRestored = false;
+    }
 
     auto fadeOut = FadeOut::create(0.15f);
     auto cb = CallFunc::create([this]() {
@@ -395,9 +465,13 @@ void BlessingNpcLayer::onSaveConfigClicked()
     if (_requestItem)
         _requestItem->setEnabled(false);
 
-    const std::string userPrompt = getUserPrompt();
+    const std::string userPrompt = "";
     setBusy(true);
     setMessage("赐福考验开始：正在生成问题...", Color4B(200, 200, 200, 255));
+    if (_dialogNpcLabel)
+    {
+        _dialogNpcLabel->setString("正在生成问题...");
+    }
 
     // 防御性：请求期间保持节点存活，避免场景切换导致回调访问已释放对象
     this->retain();
@@ -431,8 +505,11 @@ void BlessingNpcLayer::onSaveConfigClicked()
             if (_requestItem)
                 _requestItem->setEnabled(true);
 
-            std::string msg = "赐福考验：\n" + npcQuestions + "\n\n请在“对话”里输入回答，然后点击【提交回答】。";
-            setMessage(msg, Color4B(200, 200, 200, 255));
+            if (_dialogNpcLabel)
+            {
+                _dialogNpcLabel->setString("赐福考验：\n" + npcQuestions);
+            }
+            setMessage("问题已生成：请在对话框输入回答，然后点击【提交回答】。", Color4B(200, 200, 200, 255));
             setBusy(false);
             this->release();
         });
@@ -473,7 +550,7 @@ void BlessingNpcLayer::onRequestBlessingClicked()
     const std::string answer = getUserPrompt();
     if (answer.empty())
     {
-        setMessage("请先在“对话”里输入你的回答。", Color4B(220, 180, 120, 255));
+        setMessage("请先在对话框输入你的回答。", Color4B(220, 180, 120, 255));
         return;
     }
 
@@ -507,12 +584,16 @@ void BlessingNpcLayer::onRequestBlessingClicked()
             }
 
             std::string summary = buildBlessingSummary(bonus);
-            std::string msg = npcText;
-            if (!summary.empty())
+            if (_dialogNpcLabel)
             {
-                msg += "\n赐福：" + summary + "\n（已覆盖旧赐福）";
+                std::string msg = npcText;
+                if (!summary.empty())
+                {
+                    msg += "\n赐福：" + summary + "\n（已覆盖旧赐福）";
+                }
+                _dialogNpcLabel->setString(msg);
             }
-            setMessage(msg, Color4B(120, 220, 120, 255));
+            setMessage("赐福完成（已覆盖旧赐福）", Color4B(120, 220, 120, 255));
 
             // 一次对话完成后回到初始状态，允许再次发起新的考验（再次点击【确认】）
             _waitingForAnswer = false;
@@ -521,7 +602,7 @@ void BlessingNpcLayer::onRequestBlessingClicked()
                 _requestItem->setEnabled(false);
             if (_promptField)
             {
-                _promptField->setPlaceHolder("可选：你希望什么样的赐福？（用于生成问题）");
+                _promptField->setPlaceHolder("先点击【确认】生成问题");
                 _promptField->setString("");
             }
 
@@ -548,8 +629,12 @@ void BlessingNpcLayer::onClearBlessingClicked()
         _requestItem->setEnabled(false);
     if (_promptField)
     {
-        _promptField->setPlaceHolder("可选：你希望什么样的赐福？（用于生成问题）");
+        _promptField->setPlaceHolder("先点击【确认】生成问题");
         _promptField->setString("");
+    }
+    if (_dialogNpcLabel)
+    {
+        _dialogNpcLabel->setString("已清空赐福。点击【确认】开始新的考验。");
     }
     setMessage("已清空赐福（对话已重置）", Color4B(200, 200, 200, 255));
 }

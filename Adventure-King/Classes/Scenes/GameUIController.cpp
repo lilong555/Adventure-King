@@ -221,20 +221,6 @@ bool GameUIController::init(Scene *scene,
                                            }
                                            _gameUI->showInventory();
                                        });
-
-        pauseMenu->setBlessingCallback([this]()
-                                      {
-                                          if (!_gameUI)
-                                              return;
-
-                                          // 打开赐福时保持暂停状态：由 PauseMenu 自身先 hide，这里只负责显示弹窗
-                                          _paused = true;
-                                          if (_onPauseChanged)
-                                          {
-                                              _onPauseChanged(true);
-                                          }
-                                          _gameUI->showBlessingNpc();
-                                      });
     }
 
     // 背包关闭后回到暂停菜单（仍保持暂停）
@@ -253,19 +239,18 @@ bool GameUIController::init(Scene *scene,
                                     });
     }
 
-    // 赐福 NPC 关闭后回到暂停菜单（仍保持暂停）
+    // 赐福 NPC 关闭后恢复游戏（赐福入口改为地图 NPC 交互，不再挂在暂停菜单里）
     if (auto blessing = _gameUI->getBlessingNpcLayer())
     {
         blessing->setCloseCallback([this]()
                                    {
                                        if (!_gameUI)
                                            return;
-                                       _paused = true;
+                                       _paused = false;
                                        if (_onPauseChanged)
                                        {
-                                           _onPauseChanged(true);
+                                           _onPauseChanged(false);
                                        }
-                                       _gameUI->showPauseMenu();
                                    });
     }
 
@@ -411,15 +396,14 @@ void GameUIController::togglePauseMenu()
         return;
     }
 
-    // 若赐福 NPC 弹窗正在显示，Esc 优先关闭弹窗并回到暂停菜单（保持暂停）
+    // 若赐福 NPC 弹窗正在显示，Esc 优先关闭弹窗并恢复游戏
     if (_gameUI->isBlessingNpcShowing())
     {
         _gameUI->hideBlessingNpc();
-        _gameUI->showPauseMenu();
-        _paused = true;
+        _paused = false;
         if (_onPauseChanged)
         {
-            _onPauseChanged(true);
+            _onPauseChanged(false);
         }
         return;
     }

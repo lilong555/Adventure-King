@@ -22,6 +22,7 @@ public:
 
     static BlessingNpcLayer *create();
     bool init() override;
+    void onExit() override;
 
     void bindPlayer(PlayerCharacter *player);
     void setCloseCallback(const CloseCallback &cb) { _closeCallback = cb; }
@@ -56,7 +57,11 @@ private:
     cocos2d::ui::TextField *_urlField = nullptr;
     cocos2d::ui::TextField *_apiKeyField = nullptr;
     cocos2d::ui::TextField *_modelField = nullptr;
-    cocos2d::ui::TextField *_promptField = nullptr;
+
+    // 对话框：展示 NPC 问题与玩家回答
+    cocos2d::LayerColor *_dialogPanel = nullptr;
+    cocos2d::Label *_dialogNpcLabel = nullptr;
+    cocos2d::ui::TextField *_promptField = nullptr; // 复用为“回答输入框”
 
     cocos2d::MenuItemLabel *_saveItem = nullptr;
     cocos2d::MenuItemLabel *_requestItem = nullptr;
@@ -66,6 +71,7 @@ private:
     bool _busy = false;
     bool _showing = false;
     bool _ctrlDown = false;
+    bool _imeRestored = false;
 
     bool _waitingForAnswer = false;
     std::string _cachedQuestions;
