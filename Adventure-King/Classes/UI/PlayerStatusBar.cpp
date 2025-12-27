@@ -295,6 +295,11 @@ void PlayerStatusBar::updateStatusEffectBar()
             return nullptr;
         };
 
+        if (findEffect(StatusEffectType::AI_BLESSING))
+        {
+            states.push_back("赐福");
+        }
+
         if (auto burning = findEffect(StatusEffectType::BURNING))
         {
             if (burning->stacks > 1)

@@ -157,6 +157,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Classes\AppDelegate.cpp" />
+    <ClCompile Include="..\Classes\AI\AiBlessingService.cpp" />
     <ClCompile Include="..\Classes\Character\Base\CharacterBase.cpp" />
     <ClCompile Include="..\Classes\Character\Base\StatusEffect.cpp" />
     <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp" />
@@ -181,6 +182,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\EmberStaffEffect.cpp" />
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\EmergencyMaskEffect.cpp" />
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\HunterBootsEffect.cpp" />
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\AIBlessingEffect.cpp" />
     <ClCompile Include="..\Classes\Character\StatusEffects\StatusEffectFactory.cpp" />
     <ClCompile Include="..\Classes\GameUI.cpp" />
     <ClCompile Include="..\Classes\Managers\MusicManager.cpp" />
@@ -219,10 +221,12 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClCompile Include="..\Classes\UI\PauseMenu.cpp" />
     <ClCompile Include="..\Classes\UI\PlayerDeathMenu.cpp" />
     <ClCompile Include="..\Classes\UI\InventoryLayer.cpp" />
+    <ClCompile Include="..\Classes\UI\BlessingNpcLayer.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Classes\AppDelegate.h" />
+    <ClInclude Include="..\Classes\AI\AiBlessingService.h" />
     <ClInclude Include="..\Classes\Character\Base\CharacterBase.h" />
     <ClInclude Include="..\Classes\Character\Base\CharacterData.h" />
     <ClInclude Include="..\Classes\Character\Base\StatusEffect.h" />
@@ -245,6 +249,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.h" />
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\RegenEffect.h" />
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.h" />
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\AIBlessingEffect.h" />
     <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h" />
     <ClInclude Include="..\Classes\Configs\ArenaConfig.h" />
     <ClInclude Include="..\Classes\Configs\CharacterAssetConfig.h" />
@@ -269,6 +274,7 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)\Resources\" /D /E /I /F /Y
     <ClInclude Include="..\Classes\UI\PauseMenu.h" />
     <ClInclude Include="..\Classes\UI\PlayerDeathMenu.h" />
     <ClInclude Include="..\Classes\UI\InventoryLayer.h" />
+    <ClInclude Include="..\Classes\UI\BlessingNpcLayer.h" />
     <ClInclude Include="..\Classes\Managers\MusicManager.h" />
     <ClInclude Include="..\Classes\Managers\SceneTransitionManager.h" />
     <ClInclude Include="..\Classes\Save\SaveData.h" />

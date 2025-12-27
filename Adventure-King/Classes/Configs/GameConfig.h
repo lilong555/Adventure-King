@@ -644,6 +644,44 @@ namespace GameConfig
         inline constexpr int BREAK_DAMAGE_SKILL = 3;
     }
 
+    // --- AI/NPC 配置（展示阶段：范围写死，便于快速迭代） ---
+    namespace AI
+    {
+        namespace Blessing
+        {
+            // OpenAI 兼容接口默认模型名（可在 UI 中覆盖）
+            inline constexpr const char *DEFAULT_MODEL = "gpt-4o-mini";
+
+            // 赐福一次选择的属性条目数量（由 AI 从下列候选中挑选）
+            inline constexpr int PICK_COUNT = 2;
+
+            // 属性范围（由你写死即可，展示阶段不做外部配置）
+            inline constexpr float STRENGTH_MIN = 2.0f;
+            inline constexpr float STRENGTH_MAX = 10.0f;
+
+            // 攻速：使用 AttributeType::ATTACKINTERVAL（越大越快/越小越快取决于你现有逻辑）
+            // 若现有实现是“攻击间隔倍率”请把范围调成更合理的倍率值（例如 0.8~1.2）。
+            inline constexpr float ATTACK_INTERVAL_MIN = 0.0f;
+            inline constexpr float ATTACK_INTERVAL_MAX = 0.0f;
+
+            inline constexpr float DEFENSE_MIN = 1.0f;
+            inline constexpr float DEFENSE_MAX = 6.0f;
+
+            // 暴击率：0.05 = +5%
+            inline constexpr float CRIT_RATE_MIN = 0.02f;
+            inline constexpr float CRIT_RATE_MAX = 0.10f;
+
+            inline constexpr float MOVE_SPEED_MIN = 10.0f;
+            inline constexpr float MOVE_SPEED_MAX = 60.0f;
+
+            inline constexpr float MAX_HP_MIN = 30.0f;
+            inline constexpr float MAX_HP_MAX = 150.0f;
+
+            inline constexpr float MAX_MP_MIN = 10.0f;
+            inline constexpr float MAX_MP_MAX = 80.0f;
+        }
+    }
+
     // --- 物理材质 (密度, 弹性, 摩擦) ---
     // 可以在代码中直接使用: PhysicsBody::createBox(size, GameConfig::Material::DEFAULT)
     namespace Material

@@ -61,6 +61,9 @@
     <Filter Include="src\Configs">
       <UniqueIdentifier>{b8534a20-4c5e-4aab-8cb1-7a423919ac65}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\AI">
+      <UniqueIdentifier>{dda4f6e3-5e9d-459e-8a89-3093070b9ac2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Utils">
       <UniqueIdentifier>{8d0e40b6-10c9-4b5a-a1b5-9f5b3f6b2c33}</UniqueIdentifier>
     </Filter>
@@ -80,6 +83,9 @@
     </ClCompile>
     <ClCompile Include="..\Classes\AppDelegate.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\AI\AiBlessingService.cpp">
+      <Filter>src\AI</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Character\components\AttributeComponent.cpp">
       <Filter>src\Character\components</Filter>
@@ -163,6 +169,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\UI\InventoryLayer.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\UI\BlessingNpcLayer.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\ExplosiveProjectile.cpp">
@@ -261,6 +270,9 @@
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\HunterBootsEffect.cpp">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\AIBlessingEffect.cpp">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
       <Filter>src\Objects\Projectiles</Filter>
     </ClCompile>
@@ -274,6 +286,9 @@
     </ClInclude>
     <ClInclude Include="..\Classes\AppDelegate.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\AI\AiBlessingService.h">
+      <Filter>src\AI</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\components\AttributeComponent.h">
       <Filter>src\Character\components</Filter>
@@ -383,6 +398,9 @@
     <ClInclude Include="..\Classes\UI\InventoryLayer.h">
       <Filter>src\UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Classes\UI\BlessingNpcLayer.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Classes\Save\SaveData.h">
       <Filter>src\Save</Filter>
     </ClInclude>
@@ -456,6 +474,9 @@
       <Filter>src\Character\Base</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\ThornsEffect.h">
+      <Filter>src\Character\StatusEffects\Implementations</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\AIBlessingEffect.h">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Character\StatusEffects\StatusEffectFactory.h">
