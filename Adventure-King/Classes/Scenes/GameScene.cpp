@@ -540,6 +540,13 @@ void GameScene::initInputController()
     _inputController->bindPlayer(_player);
     _inputController->setPauseToggle([this]()
                                      { togglePauseMenu(); });
+    _inputController->setInventoryToggle([this]()
+                                         {
+                                             if (_uiController)
+                                             {
+                                                 _uiController->toggleInventory();
+                                             }
+                                         });
     _inputController->setIsPausedGetter([this]()
                                         { return _isPaused; });
     _inputController->setGateQuery([this]()
