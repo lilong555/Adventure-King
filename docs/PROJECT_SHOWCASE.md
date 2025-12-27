@@ -1,6 +1,6 @@
-# Adventure‑King《冒险王之神兵传奇》项目介绍（对外展示版｜超详细）
+# Adventure-King《冒险王之神兵传奇》项目介绍（对外展示版｜超详细）
 
-> 这份文档是“介绍我们自己”的材料，面向不熟悉 C++/Cocos2d‑x 的读者。  
+> 这份文档是“介绍我们自己”的材料，面向不熟悉 C++/Cocos2d-x 的读者。  
 > 我们会用尽量直观的语言解释：项目做了什么、为什么这样做、以及我们在工程实现上踩过哪些坑、如何解决。
 
 ---
@@ -23,7 +23,7 @@
   - 4.9 背包与装备：装备/技能/属性页面 + 装备特效接口
   - 4.10 掉落物：生成、自动拾取、拾取反馈动画
   - 4.11 Boss：击破条 + Boss 血条的连击统计与受击反馈
-  - 4.12 存档：本地 SQLite‑KV + JSON 备份 + 云同步接口（演示）
+  - 4.12 存档：本地 SQLite-KV + JSON 备份 + 云同步接口（演示）
 - 5. 扩展指南：如何加新怪物/技能/装备/粒子/地图（按步骤）
 - 6. 踩坑记录：我们遇到的真实问题、根因与修复方式
 - 7. 作者与入口索引
@@ -42,7 +42,7 @@
 
 - **Scene（场景）**：一个完整页面/关卡（主菜单、加载页、战斗关卡都算）。
 - **Node（节点）**：画面中的一个对象（角色、UI、粒子、判定框都属于 Node）。
-- **Action（动作）**：Cocos2d‑x 的时间轴系统（延迟、序列、循环动画等）。
+- **Action（动作）**：Cocos2d-x 的时间轴系统（延迟、序列、循环动画等）。
 - **Scheduler（调度器）**：按时间调用的回调（`scheduleOnce`/`schedule`）。
 - **PhysicsWorld / PhysicsBody（物理世界/物理体）**：负责碰撞与物理模拟（重力、坡面滑动）。
 - **Hitbox（命中判定框）**：攻击瞬间生成的“伤害区域”。
@@ -58,7 +58,7 @@
 
 ### 1.1 一句话概括
 
-我们用 **Cocos2d‑x** 做了一款**横版动作冒险**原型：  
+我们用 **Cocos2d-x** 做了一款**横版动作冒险**原型：  
 **选职业 → 进关卡 → 战斗与成长（技能/装备/状态效果）→ Boss 机制（击破）→ 存档（本地 DB + 云同步演示）**。
 
 ### 1.2 我们要做的不是“演示”，而是“可扩展原型”
@@ -161,7 +161,7 @@
 
 ### 3.7 存档与云同步（演示）
 
-- 本地存档：SQLite‑KV（`cocos2d::localStorage`，底层 sqlite3）作为主存储 + JSON 备份
+- 本地存档：SQLite-KV（`cocos2d::localStorage`，底层 sqlite3）作为主存储 + JSON 备份
 - 云同步：客户端 HTTP 同步接口 + WSL 可运行的 C++ 后端 + `/admin` 可视化管理（删除/回滚）
 
 ---
@@ -402,14 +402,14 @@
 - 连击很密集时，缩放动画容易“回不来”（结束点必须回到初始 scale）
 - 因此动画必须以“初始状态”为收敛点，而不能以“当前 scale”为收敛点
 
-### 4.12 存档：本地 SQLite‑KV + JSON 备份 + 云同步接口（演示）
+### 4.12 存档：本地 SQLite-KV + JSON 备份 + 云同步接口（演示）
 
 关键文件（客户端）：
 - `Adventure-King/Classes/Save/SaveManager.*`
 - `Adventure-King/Classes/Save/Cloud/CloudSyncService.*`
 
 本地存档策略：
-- SQLite‑KV 作为主存储（跨平台、便于增量更新）
+- SQLite-KV 作为主存储（跨平台、便于增量更新）
 - JSON 作为备份（容灾与排查）
 - 优先读 DB，没有则回退读 JSON，并在读取成功后“回写 DB”完成迁移
 
@@ -443,7 +443,7 @@
 
 ### 5.3 加新被动技能或装备特效
 
-原则：不要在 PlayerCharacter 核心战斗函数里堆 if‑else。
+原则：不要在 PlayerCharacter 核心战斗函数里堆 if-else。
 
 推荐路径：
 - 用 AttributeComponent hooks 或 StatusEffect 回调实现触发
@@ -600,4 +600,3 @@
 - 存档：`Adventure-King/Classes/Save/SaveManager.cpp`
 - 云同步客户端：`Adventure-King/Classes/Save/Cloud/CloudSyncService.cpp`
 - 云存服务端：`tools/cloud_save_server/README.md`
-
