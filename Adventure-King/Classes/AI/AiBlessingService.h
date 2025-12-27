@@ -6,22 +6,24 @@
 #include <string>
 
 /**
- * @brief AI 赐福服务（OpenAI 兼容 ChatCompletions）
+ * @brief AI 赐福服务（LangChain 后端）
  *
  * 设计目标（展示阶段）：
- * - 游戏内由玩家手动填写 baseUrl + apiKey（不写死在代码里）
- * - 走 OpenAI 格式 API：POST {baseUrl}/v1/chat/completions
- * - 由 AI 在“写死的属性范围”内选择赐福属性，并返回结构化 JSON
- * - 客户端只负责解析与应用 Buff（覆盖旧赐福）
+ * - 游戏内由玩家手动填写：赐福后端 baseUrl + OpenAI 兼容 apiKey（不写死在代码里）
+ * - 客户端调用后端接口：
+ *   - POST {baseUrl}/api/blessing/question 生成考验问题
+ *   - POST {baseUrl}/api/blessing/answer   根据回答返回赐福（工具调用约束）
+ * - 后端再通过 LangChain 调用 OpenAI 兼容接口（base url 由后端环境变量配置）
+ * - 客户端仍会二次校验范围，确保数值安全；赐福为覆盖式 buff
  */
 class AiBlessingService final
 {
 public:
     struct Config
     {
-        std::string baseUrl; // 例如 http://127.0.0.1:8000 或 http://127.0.0.1:8000/v1
-        std::string apiKey;  // Bearer token（展示阶段由玩家填写）
-        std::string model;   // 例如 gpt-4o-mini（可选）
+        std::string baseUrl; // 赐福后端地址，例如 http://127.0.0.1:5181
+        std::string apiKey;  // OpenAI 兼容 Bearer token（展示阶段由玩家填写；用于后端调用 LLM）
+        std::string model;   // 例如 gemini-3-flash-preview（可选）
     };
 
     using BlessingCallback = std::function<void(bool ok,
@@ -64,18 +66,22 @@ private:
     AiBlessingService &operator=(const AiBlessingService &) = delete;
 
     static std::string trimTrailingSlash(const std::string &s);
-    static std::string buildChatCompletionsUrl(const std::string &baseUrl);
-    static std::string safeExtractJsonObject(const std::string &text);
+    static std::string buildBlessingQuestionUrl(const std::string &baseUrl);
+    static std::string buildBlessingAnswerUrl(const std::string &baseUrl);
 
     void sendJsonRequest(const std::string &url,
                          const std::string &apiKey,
                          const std::string &body,
                          const std::function<void(bool ok, long httpCode, const std::string &respBody, const std::string &err)> &cb);
 
-    bool parseBlessingFromResponse(const std::string &respBody,
-                                  std::string &outNpcText,
-                                  Attributes &outBonus,
-                                  std::string &outErr) const;
+    bool parseBlessingFromServerResponse(const std::string &respBody,
+                                         std::string &outNpcText,
+                                         Attributes &outBonus,
+                                         std::string &outErr) const;
+
+    bool parseQuestionsFromServerResponse(const std::string &respBody,
+                                          std::string &outQuestions,
+                                          std::string &outErr) const;
 
     Config _runtimeConfig;
     bool _hasRuntimeConfig = false;
