@@ -159,6 +159,11 @@ public:
     void setMapButtonCallback(const std::function<void()> &callback);
 
     /**
+     * @brief 设置背包按钮回调（HUD 上的 bag 图标）
+     */
+    void setInventoryButtonCallback(const std::function<void()> &callback) { _inventoryButtonCallback = callback; }
+
+    /**
      * @brief 显示交互提示（如 "按 W 进入传送门"）
      * @param message 提示信息
      */
@@ -204,6 +209,8 @@ protected:
     void createBlessingNpcLayer();
     // 创建地图按钮 UI
     void createMapButton();
+    // 创建背包按钮 UI（可点击）
+    void createInventoryButton();
     // 创建交互提示 UI
     void createInteractionHint();
     // 创建关卡名称 UI
@@ -211,6 +218,8 @@ protected:
 
     // 地图按钮点击回调
     void onMapButtonClicked(cocos2d::Ref *sender);
+    // 背包按钮点击回调
+    void onInventoryButtonClicked(cocos2d::Ref *sender);
 
 protected:
     // 玩家相关UI
@@ -234,6 +243,10 @@ protected:
     cocos2d::MenuItemImage *_mapButton = nullptr;
     cocos2d::Menu *_mapMenu = nullptr;
 
+    // 背包按钮
+    cocos2d::MenuItemImage *_inventoryButton = nullptr;
+    cocos2d::Menu *_inventoryMenu = nullptr;
+
     // 交互提示标签
     cocos2d::Label *_interactionHint = nullptr;
 
@@ -242,9 +255,12 @@ protected:
 
     // 地图按钮回调
     std::function<void()> _mapButtonCallback;
+    // 背包按钮回调
+    std::function<void()> _inventoryButtonCallback;
 
     // UI 元素的相对位置（相对于屏幕）
     cocos2d::Vec2 _mapButtonPos;
+    cocos2d::Vec2 _inventoryButtonPos;
     cocos2d::Vec2 _interactionHintPos;
     cocos2d::Vec2 _levelNamePos;
     cocos2d::Vec2 _statusBarPos;

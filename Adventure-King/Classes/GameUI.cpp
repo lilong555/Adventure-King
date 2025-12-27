@@ -58,6 +58,10 @@ bool GameUI::init()
     /*_mapButtonPos = Vec2(origin.x + visibleSize.width  - GameSceneConfig::UI::MAP_BUTTON_OFFSET,
                          origin.y + visibleSize.height  - GameSceneConfig::UI::MAP_BUTTON_OFFSET);*/
 
+    // 背包按钮位置：右上角（与地图按钮逻辑无关，避免挡住技能栏）
+    _inventoryButtonPos = Vec2(origin.x + visibleSize.width - padding - 48.0f,
+                               origin.y + visibleSize.height - padding - 120.0f);
+
     // 交互提示位置：屏幕底部中央
     _interactionHintPos = Vec2(origin.x + visibleSize.width / 2,
                                origin.y + GameSceneConfig::UI::INTERACTION_HINT_OFFSET_Y);
@@ -71,6 +75,7 @@ bool GameUI::init()
     createSkillBar();
     createBossHealthBar();
     createMapButton();
+    createInventoryButton();
     createInteractionHint();
     createLevelNameLabel();
     createPauseMenu();
@@ -173,6 +178,26 @@ void GameUI::createMapButton()
         _mapMenu = Menu::create(_mapButton, nullptr);
         _mapMenu->setPosition(Vec2::ZERO);
         this->addChild(_mapMenu, 10);
+    }
+}
+
+void GameUI::createInventoryButton()
+{
+    // HUD 背包按钮：点击等同于按 B（打开/关闭背包）
+    _inventoryButton = MenuItemImage::create(
+        "Scene/UI/bag.png",
+        "Scene/UI/bag.png",
+        CC_CALLBACK_1(GameUI::onInventoryButtonClicked, this));
+
+    if (_inventoryButton)
+    {
+        // 与 Map 按钮保持相近的缩放风格
+        _inventoryButton->setScale(0.25f);
+        _inventoryButton->setPosition(_inventoryButtonPos);
+
+        _inventoryMenu = Menu::create(_inventoryButton, nullptr);
+        _inventoryMenu->setPosition(Vec2::ZERO);
+        this->addChild(_inventoryMenu, 10);
     }
 }
 
@@ -349,6 +374,14 @@ void GameUI::onMapButtonClicked(Ref *sender)
     if (_mapButtonCallback)
     {
         _mapButtonCallback();
+    }
+}
+
+void GameUI::onInventoryButtonClicked(Ref *)
+{
+    if (_inventoryButtonCallback)
+    {
+        _inventoryButtonCallback();
     }
 }
 

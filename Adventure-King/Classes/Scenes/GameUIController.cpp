@@ -66,6 +66,11 @@ bool GameUIController::init(Scene *scene,
                                           _onReturnToMap();
                                       } });
     _gameUI->setLevelName(levelName);
+    _gameUI->setInventoryButtonCallback([this]()
+                                        {
+                                            // HUD 背包按钮：等同于按 B
+                                            this->toggleInventory();
+                                        });
 
     if (_player)
     {
@@ -188,6 +193,7 @@ bool GameUIController::init(Scene *scene,
 
                                            // 打开背包时保持暂停状态：隐藏暂停菜单，展示背包界面
                                            _gameUI->hidePauseMenu();
+                                           _inventoryReturnToPauseOnClose = true;
                                            _paused = true;
                                            if (_onPauseChanged)
                                            {
@@ -197,19 +203,30 @@ bool GameUIController::init(Scene *scene,
                                        });
     }
 
-    // 背包关闭后回到暂停菜单（仍保持暂停）
+    // 背包关闭行为：根据“从哪进入背包”决定回到暂停菜单还是回到游戏
     if (auto inventory = _gameUI->getInventoryLayer())
     {
         inventory->setCloseCallback([this]()
                                     {
                                         if (!_gameUI)
                                             return;
-                                        _paused = true;
-                                        if (_onPauseChanged)
+                                        if (_inventoryReturnToPauseOnClose)
                                         {
-                                            _onPauseChanged(true);
+                                            _paused = true;
+                                            if (_onPauseChanged)
+                                            {
+                                                _onPauseChanged(true);
+                                            }
+                                            _gameUI->showPauseMenu();
                                         }
-                                        _gameUI->showPauseMenu();
+                                        else
+                                        {
+                                            _paused = false;
+                                            if (_onPauseChanged)
+                                            {
+                                                _onPauseChanged(false);
+                                            }
+                                        }
                                     });
     }
 
@@ -404,13 +421,14 @@ void GameUIController::togglePauseMenu() // 此时该函数建议理解为“han
     // 1. 角色死亡菜单显示时不允许任何操作
     if (_gameUI->isDeathMenuShowing()) return;
 
-    // 2. 核心修改：若背包正在显示，Esc 直接关闭背包并回到游戏（不再去暂停菜单）
+    // 2. 若背包正在显示：Esc 关闭背包并进入暂停菜单（Esc=暂停键）
     if (_gameUI->isInventoryShowing())
     {
         _gameUI->hideInventory();
-        _paused = false;
-        if (_onPauseChanged) _onPauseChanged(false);
-        CCLOG("Inventory closed, game resumed");
+        _paused = true;
+        if (_onPauseChanged) _onPauseChanged(true);
+        _gameUI->showPauseMenu();
+        CCLOG("Inventory closed, pause menu opened");
         return;
     }
 
@@ -432,14 +450,60 @@ void GameUIController::togglePauseMenu() // 此时该函数建议理解为“han
         if (_onPauseChanged) _onPauseChanged(false);
         CCLOG("Pause menu closed, game resumed");
     }
-    // 4. 默认行为：正常状态下按 Esc 直接呼出背包
+    // 4. 默认行为：正常状态下按 Esc 呼出暂停菜单
     else
     {
-        _gameUI->showInventory(); // 修改点：默认打开背包
         _paused = true;
         if (_onPauseChanged) _onPauseChanged(true);
-        CCLOG("Inventory opened, game paused");
+        _gameUI->showPauseMenu();
+        CCLOG("Pause menu opened, game paused");
     }
+}
+
+void GameUIController::toggleInventory()
+{
+    if (!_gameUI) return;
+
+    // 角色死亡菜单显示时不允许任何操作
+    if (_gameUI->isDeathMenuShowing()) return;
+
+    // 赐福弹窗优先级更高，避免 UI 叠层乱序
+    if (_gameUI->isBlessingNpcShowing()) return;
+
+    // 背包已开：按 B / 点击按钮关闭（根据来源决定回到暂停菜单还是回到游戏）
+    if (_gameUI->isInventoryShowing())
+    {
+        _gameUI->hideInventory();
+        if (_inventoryReturnToPauseOnClose)
+        {
+            _paused = true;
+            if (_onPauseChanged) _onPauseChanged(true);
+            _gameUI->showPauseMenu();
+        }
+        else
+        {
+            _paused = false;
+            if (_onPauseChanged) _onPauseChanged(false);
+        }
+        return;
+    }
+
+    // 暂停菜单显示中：B 直接进入背包（关闭背包后返回暂停菜单）
+    if (_gameUI->isPauseMenuShowing())
+    {
+        _gameUI->hidePauseMenu();
+        _inventoryReturnToPauseOnClose = true;
+        _paused = true;
+        if (_onPauseChanged) _onPauseChanged(true);
+        _gameUI->showInventory();
+        return;
+    }
+
+    // 正常游戏中：B 打开背包并暂停（关闭背包回到游戏）
+    _inventoryReturnToPauseOnClose = false;
+    _gameUI->showInventory();
+    _paused = true;
+    if (_onPauseChanged) _onPauseChanged(true);
 }
 
 void GameUIController::showDeathMenu()

@@ -33,6 +33,8 @@ public:
 
     /// @brief 切换暂停菜单显示
     void togglePauseMenu();
+    /// @brief 切换背包显示（B 键 / HUD 背包按钮）
+    void toggleInventory();
     /// @brief 当前是否暂停
     bool isPaused() const { return _paused; }
 
@@ -56,6 +58,8 @@ private:
     GameUI *_gameUI = nullptr;
 
     bool _paused = false;
+    // 当前背包关闭时是否回到暂停菜单（从暂停菜单进入背包时为 true）
+    bool _inventoryReturnToPauseOnClose = false;
 
     enum class InteractionHintSource
     {
