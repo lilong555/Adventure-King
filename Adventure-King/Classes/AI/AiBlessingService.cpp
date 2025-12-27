@@ -395,6 +395,10 @@ void AiBlessingService::sendJsonRequest(const std::string &url,
 {
     using namespace cocos2d::network;
 
+    // 超时：避免网络异常导致界面长时间无响应（HttpClient 为全局单例，此处设置为较保守的值）
+    HttpClient::getInstance()->setTimeoutForConnect(8);
+    HttpClient::getInstance()->setTimeoutForRead(25);
+
     // 安全提示：若使用 HTTP（非 HTTPS）发送 Bearer Token，会明文传输，存在被窃听风险。
     // 本项目展示阶段允许本地/自建服务使用 HTTP，但会在日志中提示风险。
     if (!apiKey.empty())

@@ -67,3 +67,4 @@ xcuserdata/
 # ========================
 .venv/
 venv/
+__pycache__/

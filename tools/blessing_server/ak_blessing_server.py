@@ -10,13 +10,14 @@ Adventure-King 赐福后端（LangChain）
 - 默认 OpenAI 兼容 Base URL 读取自 AK_OPENAI_BASE_URL（未配置则用公共网关）
 
 注意：
-- 不会在日志中输出 apiKey
+- 本服务自身不会主动打印 apiKey；请勿在反向代理/中间件里记录 Authorization 头
 - 若 AI 未按要求调用工具/输出越界，服务端会兜底生成合法赐福
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import random
 import re
@@ -40,6 +41,13 @@ DEFAULT_MODEL = (
     or "gemini-3-flash-preview"
 )
 
+# 日志：仅用于服务端排查问题，不会向客户端暴露异常细节
+logging.basicConfig(
+    level=os.environ.get("AK_BLESSING_LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("ak_blessing_server")
+
 # 与 C++ 侧 GameConfig::AI::Blessing 保持一致（展示阶段写死）
 PICK_COUNT = 2
 RANGES: Dict[str, Tuple[float, float]] = {
@@ -60,7 +68,28 @@ def _extract_bearer_token(authorization: Optional[str]) -> str:
     if not authorization:
         return ""
     m = re.match(r"(?i)^\s*bearer\s+(.+?)\s*$", authorization)
-    return m.group(1) if m else ""
+    token = m.group(1) if m else ""
+    if not token:
+        return ""
+
+    # 基础校验：避免超长/异常字符导致后续请求或日志异常
+    if len(token) < 10 or len(token) > 512:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9_\-\.~+=/]+", token):
+        return ""
+    return token
+
+
+_MODEL_RE = re.compile(r"^[A-Za-z0-9_\-\.~:/]{1,80}$")
+
+
+def _sanitize_model(model: str) -> str:
+    m = (model or "").strip()
+    if not m:
+        return DEFAULT_MODEL
+    if not _MODEL_RE.fullmatch(m):
+        return DEFAULT_MODEL
+    return m
 
 
 @dataclass
@@ -124,7 +153,18 @@ def apply_blessing(
     critical_rate: float = 0,
     move_speed: float = 0,
 ) -> dict:
-    """给玩家应用赐福属性加成（服务端会再次校验范围与数量）。"""
+    """
+    给玩家应用赐福属性加成（服务端会再次校验范围与数量）。
+
+    注意：为了符合 Python 代码风格，工具参数使用 snake_case，但传给客户端的 buff.key 使用 camelCase。
+
+    - strength      -> "strength"
+    - defense       -> "defense"
+    - max_hp        -> "maxHp"
+    - max_mp        -> "maxMp"
+    - critical_rate -> "criticalRate"
+    - move_speed    -> "moveSpeed"
+    """
     buff = []
     if strength:
         buff.append({"key": "strength", "value": strength})
@@ -142,14 +182,14 @@ def apply_blessing(
 
 
 class QuestionRequest(BaseModel):
-    model: str = Field(default=DEFAULT_MODEL)
-    user_prompt: str = Field(default="")
+    model: str = Field(default=DEFAULT_MODEL, max_length=80)
+    user_prompt: str = Field(default="", max_length=800)
 
 
 class AnswerRequest(BaseModel):
-    model: str = Field(default=DEFAULT_MODEL)
-    npc_questions: str = Field(default="")
-    player_answer: str = Field(default="")
+    model: str = Field(default=DEFAULT_MODEL, max_length=80)
+    npc_questions: str = Field(default="", max_length=500)
+    player_answer: str = Field(default="", max_length=800)
 
 
 app = FastAPI()
@@ -162,9 +202,15 @@ async def root():
 
 def _build_llm(model: str, api_key: str) -> ChatOpenAI:
     base_url = _get_openai_base_url()
-    # 通过环境变量也兼容 openai 库的行为（不把 apiKey 写入 env）
-    os.environ.setdefault("OPENAI_BASE_URL", base_url)
-    return ChatOpenAI(model=model or DEFAULT_MODEL, api_key=api_key, temperature=0.6)
+    safe_model = _sanitize_model(model)
+    return ChatOpenAI(
+        model=safe_model,
+        api_key=api_key,
+        base_url=base_url,
+        temperature=0.6,
+        timeout=30.0,
+        max_retries=1,
+    )
 
 
 @app.post("/api/blessing/question")
@@ -191,6 +237,7 @@ async def blessing_question(req: QuestionRequest, authorization: Optional[str] =
         return {"ok": True, "data": {"npcQuestions": text}}
     except Exception:
         # 不泄露 key，不返回异常细节
+        logger.exception("生成问题失败")
         return {"ok": False, "error": "生成问题失败（请检查网络/模型/Key）"}
 
 
@@ -224,24 +271,31 @@ async def blessing_answer(req: AnswerRequest, authorization: Optional[str] = Hea
     try:
         resp = llm.invoke([SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)])
         tool_calls = getattr(resp, "tool_calls", None) or []
-        if not tool_calls:
+        if not isinstance(tool_calls, list) or not tool_calls:
             fallback = _fallback_blessing("你的回答尚可……收下这份赐福。")
-            return {"ok": True, "data": {"npcText": fallback.npc_text, "buff": fallback.buff, "fallback": True}}
+            return {"ok": True, "data": {"npcText": fallback.npc_text, "buff": fallback.buff}, "fallback": True, "fallbackReason": "no_tool_calls"}
 
         # 只取第一个工具调用
-        args = tool_calls[0].get("args", {}) if isinstance(tool_calls[0], dict) else {}
+        first_call = tool_calls[0]
+        if not isinstance(first_call, dict):
+            raise TypeError(f"Unexpected tool_calls[0] type: {type(first_call)!r}")
+        args = first_call.get("args")
+        if not isinstance(args, dict):
+            raise ValueError("Tool call 'args' is missing or not a dict.")
+
         tool_ret = apply_blessing.invoke(args)
         npc_text = str(tool_ret.get("npcText") or "").strip() or "愿你无惧前路。"
         buff_raw = tool_ret.get("buff") or []
         ok, err, normalized = _validate_and_normalize_buff(buff_raw)
         if not ok:
             fallback = _fallback_blessing("你的誓言未尽……仍可受赐。")
-            return {"ok": True, "data": {"npcText": fallback.npc_text, "buff": fallback.buff, "fallback": True, "hint": err}}
+            return {"ok": True, "data": {"npcText": fallback.npc_text, "buff": fallback.buff}, "fallback": True, "fallbackReason": "invalid_buff", "hint": err}
 
         return {"ok": True, "data": {"npcText": npc_text, "buff": normalized}}
     except Exception:
+        logger.exception("生成赐福失败")
         fallback = _fallback_blessing("风起云涌……赐福仍将降临。")
-        return {"ok": True, "data": {"npcText": fallback.npc_text, "buff": fallback.buff, "fallback": True}}
+        return {"ok": True, "data": {"npcText": fallback.npc_text, "buff": fallback.buff}, "fallback": True, "fallbackReason": "exception"}
 
 
 def main():
