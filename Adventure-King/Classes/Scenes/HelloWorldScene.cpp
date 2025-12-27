@@ -513,8 +513,21 @@ void HelloWorld::menuStartCallback(Ref* pSender)
             auto mapScene = MapScene::createScene();
             if (mapScene)
             {
+                // 场景跳转前恢复按钮可点（避免 MapScene 创建失败/转场中断导致主菜单卡死）
+                if (startMenuItem)
+                {
+                    startMenuItem->setEnabled(true);
+                }
                 auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
                 Director::getInstance()->replaceScene(transition);
+            }
+            else
+            {
+                // 仍停留在主菜单：必须恢复按钮可点
+                if (startMenuItem)
+                {
+                    startMenuItem->setEnabled(true);
+                }
             }
             return;
         }
@@ -534,12 +547,28 @@ void HelloWorld::menuStartCallback(Ref* pSender)
             auto mapScene = MapScene::createScene();
             if (mapScene)
             {
+                if (startMenuItem)
+                {
+                    startMenuItem->setEnabled(true);
+                }
                 auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
                 Director::getInstance()->replaceScene(transition);
+            }
+            else
+            {
+                if (startMenuItem)
+                {
+                    startMenuItem->setEnabled(true);
+                }
             }
             return;
         }
 
+        // 正常跳转前恢复按钮可点（保持与其它路径一致；同时避免极端情况下转场被取消后卡死）
+        if (startMenuItem)
+        {
+            startMenuItem->setEnabled(true);
+        }
         auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, loadingScene, Color3B::BLACK);
         Director::getInstance()->replaceScene(transition);
     });
