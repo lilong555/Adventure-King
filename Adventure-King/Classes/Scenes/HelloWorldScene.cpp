@@ -113,12 +113,6 @@ bool HelloWorld::init()
         "Scene/UI/SetingSelect.png",
         CC_CALLBACK_1(HelloWorld::menuSetCallback, this));
 
-    // 地图按钮 (中央下方)
-    auto MapItem = createMenuItem(
-        "Scene/UI/MapNormal.png",
-        "Scene/UI/MapSelect.png",
-        CC_CALLBACK_1(HelloWorld::menuMapCallback, this));
-
     // 存档按钮 (右侧)
     auto SaveItem = createMenuItem(
         "Scene/UI/SaveNormal.png",
@@ -138,29 +132,23 @@ bool HelloWorld::init()
     // 下方按钮组的 Y 坐标
     float sub_menu_y = -subMenuYMultiplier * StartItem->getContentSize().height;
 
-    if (MapItem)
-    {
-        // MapItem 在 StartItem 下方居中
-        MapItem->setPosition(Vec2(0, sub_menu_y));
-    }
-
     if (SetItem)
     {
-        // SetItem 在 MapItem 左侧
-        SetItem->setPosition(Vec2(-buttonHorizontalSpacing, sub_menu_y));
+        // SetItem 在下方按钮组左侧
+        SetItem->setPosition(Vec2(-buttonHorizontalSpacing * 0.5f, sub_menu_y));
     }
 
     if (SaveItem)
     {
-        // SaveItem 在 MapItem 右侧
-        SaveItem->setPosition(Vec2(buttonHorizontalSpacing, sub_menu_y));
+        // SaveItem 在下方按钮组右侧
+        SaveItem->setPosition(Vec2(buttonHorizontalSpacing * 0.5f, sub_menu_y));
     }
 
     // ==========================================================
     // 4. 创建菜单并添加
     // ==========================================================
 
-    auto menu = Menu::create(StartItem, SetItem, SaveItem, MapItem, NULL);
+    auto menu = Menu::create(StartItem, SetItem, SaveItem, NULL);
 
     // --- 核心设置 ---
     //menu->ignoreAnchorPointForPosition(false);
@@ -474,7 +462,9 @@ void HelloWorld::menuCloseCallback(Ref *pSender)
 
 void HelloWorld::menuStartCallback(Ref* pSender)
 {
-    // 点击“开始游戏”先弹出职业选择，再进入游戏
+    // 点击“开始游戏”强制先选择一个存档槽位：
+    // - 空槽位：新开游戏（进入职业选择）
+    // - 非空槽位：读取存档并直接进入对应关卡
     auto startMenuItem = dynamic_cast<MenuItem*>(pSender);
     if (!startMenuItem)
     {
@@ -482,7 +472,80 @@ void HelloWorld::menuStartCallback(Ref* pSender)
         return;
     }
 
-    showRoleSelectLayer(startMenuItem);
+    // 防止连点弹出多个菜单
+    startMenuItem->setEnabled(false);
+
+    auto saveMenu = SaveMenuLayer::create(SaveMenuLayer::Mode::START);
+    if (!saveMenu)
+    {
+        CCLOG("HelloWorld::menuStartCallback - 创建存档槽位选择菜单失败");
+        startMenuItem->setEnabled(true);
+        return;
+    }
+
+    // 关闭（取消）时恢复按钮可点
+    saveMenu->setCloseCallback([startMenuItem]() {
+        if (startMenuItem)
+        {
+            startMenuItem->setEnabled(true);
+        }
+    });
+
+    saveMenu->setStartSlotCallback([this, startMenuItem](int /*slotIndex*/, bool hasSave, const SaveSlotData &saveData)
+                                   {
+        // 选中槽位后，菜单会被移除，按钮可由 closeCallback 统一恢复
+
+        if (!hasSave)
+        {
+            // 新开局：进入职业选择（职业选择确认后进入 HOME）
+            this->showRoleSelectLayer(startMenuItem);
+            return;
+        }
+
+        // 读取存档：统一走 LoadingScene（与 MapScene/关卡内读档一致）
+        const std::string &sceneName = saveData.progressData.currentSceneName;
+        auto registry = SceneRegistry::getInstance();
+        SceneID targetID = registry ? registry->getSceneIDByName(sceneName) : SceneID::NONE;
+
+        if (targetID == SceneID::NONE)
+        {
+            CCLOG("HelloWorld - 读档失败：注册表中不存在场景 [%s]，跳转到地图选择", sceneName.c_str());
+            auto mapScene = MapScene::createScene();
+            if (mapScene)
+            {
+                auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
+                Director::getInstance()->replaceScene(transition);
+            }
+            return;
+        }
+
+        auto saveManager = SaveManager::getInstance();
+        if (saveManager)
+        {
+            saveManager->setRuntimePlayerData(saveData.playerData);
+            saveManager->setRuntimePlayerPosition(Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY));
+            saveManager->setRuntimeProgressData(saveData.progressData);
+        }
+
+        auto loadingScene = LoadingScene::createScene(targetID);
+        if (!loadingScene)
+        {
+            CCLOG("HelloWorld - 创建 LoadingScene 失败，跳转到地图选择");
+            auto mapScene = MapScene::createScene();
+            if (mapScene)
+            {
+                auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
+                Director::getInstance()->replaceScene(transition);
+            }
+            return;
+        }
+
+        auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, loadingScene, Color3B::BLACK);
+        Director::getInstance()->replaceScene(transition);
+    });
+
+    // 直接添加到场景而不是 contentContainer，避免受容器缩放影响
+    this->addChild(saveMenu, GameSceneConfig::UI::Z_ORDER);
 }
 
 void HelloWorld::menuSaveCallback(Ref *pSender)

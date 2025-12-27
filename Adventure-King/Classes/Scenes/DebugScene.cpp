@@ -623,6 +623,11 @@ void DebugScene::initGameUIController()
         { returnToMapScene(); },
         [this](bool paused)
         { setGamePaused(paused); },
+        [](std::string &outMessage) -> bool
+        {
+            outMessage = "调试场景暂不支持保存";
+            return false;
+        },
         []()
         { return false; },
         [](const SaveSlotData &saveData)

@@ -10,6 +10,7 @@
 #include "Configs/GameConfig.h"
 #include "Configs/GameSceneConfig.h"
 #include "Configs/PlayerRoleConfig.h"
+#include "Save/SaveManager.h"
 #include "ui/CocosGUI.h"
 #include <algorithm>
 #include <cmath>
@@ -1525,6 +1526,10 @@ void InventoryLayer::refreshEquipmentPage()
                                                {
                                                    _player->equip(it);
                                                    showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已装备", Color3B(200, 255, 200));
+                                                   if (auto saveManager = SaveManager::getInstance())
+                                                   {
+                                                       saveManager->requestImmediateSave("装备变更");
+                                                   }
                                                    break;
                                                }
                                            }
@@ -1684,6 +1689,10 @@ void InventoryLayer::refreshEquipmentPage()
                 {
                     _player->equip(it);
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已装备", Color3B(200, 255, 200));
+                    if (auto saveManager = SaveManager::getInstance())
+                    {
+                        saveManager->requestImmediateSave("装备变更");
+                    }
                     break;
                 }
             }
@@ -1767,6 +1776,10 @@ void InventoryLayer::refreshEquipmentPage()
 
             if (upgraded)
             {
+                if (auto saveManager = SaveManager::getInstance())
+                {
+                    saveManager->requestImmediateSave("装备变更");
+                }
                 showDetailOverlay();
             }
             refresh();
@@ -2041,6 +2054,10 @@ void InventoryLayer::refreshSkillPage()
                     comp->learnSkill(s);
                     _player->setActiveSkillPoints(_player->getActiveSkillPoints() - 1);
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
+                    if (auto saveManager = SaveManager::getInstance())
+                    {
+                        saveManager->requestImmediateSave("技能变更");
+                    }
                     break;
                 }
             }
@@ -2050,7 +2067,13 @@ void InventoryLayer::refreshSkillPage()
                 auto active = std::dynamic_pointer_cast<ActiveSkill>(skill);
                 if (active)
                 {
-                    comp->equipActiveSkill(active, _selectedActiveSlotIndex);
+                    if (comp->equipActiveSkill(active, _selectedActiveSlotIndex))
+                    {
+                        if (auto saveManager = SaveManager::getInstance())
+                        {
+                            saveManager->requestImmediateSave("技能变更");
+                        }
+                    }
                 }
             }
 
@@ -2115,7 +2138,13 @@ void InventoryLayer::refreshSkillPage()
                 {
                     if (auto comp = _player->getSkillComponent())
                     {
-                        comp->unequipActiveSkill(i);
+                        if (comp->unequipActiveSkill(i))
+                        {
+                            if (auto saveManager = SaveManager::getInstance())
+                            {
+                                saveManager->requestImmediateSave("技能变更");
+                            }
+                        }
                     }
                 }
                 showDetailOverlay();
@@ -2402,6 +2431,10 @@ void InventoryLayer::refreshPassiveSkillPage()
                     comp->learnSkill(s);
                     _player->setPassiveSkillPoints(_player->getPassiveSkillPoints() - 1);
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已学习", Color3B(200, 255, 200));
+                    if (auto saveManager = SaveManager::getInstance())
+                    {
+                        saveManager->requestImmediateSave("技能变更");
+                    }
                     break;
                 }
                 showDetailOverlay();
@@ -2415,6 +2448,10 @@ void InventoryLayer::refreshPassiveSkillPage()
                 if (comp->unequipPassiveSkillById(id))
                 {
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已卸下", Color3B(255, 220, 160));
+                    if (auto saveManager = SaveManager::getInstance())
+                    {
+                        saveManager->requestImmediateSave("技能变更");
+                    }
                 }
             }
             else
@@ -2424,6 +2461,10 @@ void InventoryLayer::refreshPassiveSkillPage()
                 if (passive && comp->equipPassiveSkill(passive))
                 {
                     showToast(_panelRoot, Vec2(DESIGN_WIDTH * 0.5f, SAFE_MARGIN_Y + 160.0f), "已装备", Color3B(200, 255, 200));
+                    if (auto saveManager = SaveManager::getInstance())
+                    {
+                        saveManager->requestImmediateSave("技能变更");
+                    }
                 }
             }
 

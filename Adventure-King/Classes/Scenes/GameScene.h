@@ -253,6 +253,23 @@ private:
      * @brief 显示地图加载失败的 UI
      */
     void showMapLoadFailedUI();
+
+    /**
+     * @brief 保存到“当前会话绑定槽位”（开始游戏强制选择的槽位）
+     * @param toastTitle 提示标题（例如：保存/自动保存）
+     * @param detail 细节（例如：升级/装备变更），用于拼接提示
+     * @param outMessage 输出提示文案
+     * @return 保存是否成功
+     */
+    bool saveToActiveSlotInternal(const std::string &toastTitle,
+                                  const std::string &detail,
+                                  std::string &outMessage);
+
+    /**
+     * @brief 处理自动保存/状态变更保存请求
+     * @note 世界暂停时也会执行（用于背包内操作触发保存）
+     */
+    void processSaveRequests(float dt);
 };
 
 #endif // __GAME_SCENE_H__

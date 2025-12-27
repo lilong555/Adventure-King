@@ -34,6 +34,7 @@ bool GameUIController::init(Scene *scene,
                             const std::string &levelName,
                             const std::function<void()> &onReturnToMap,
                             const std::function<void(bool paused)> &onPauseChanged,
+                            const GameUIController::RequestSaveCallback &onRequestSave,
                             const std::function<bool()> &isPlayerAtGate,
                             const std::function<void(const SaveSlotData &)> &onLoadSuccess)
 {
@@ -47,6 +48,7 @@ bool GameUIController::init(Scene *scene,
     _player = player;
     _onReturnToMap = onReturnToMap;
     _onPauseChanged = onPauseChanged;
+    _onRequestSave = onRequestSave;
     _isPlayerAtGate = isPlayerAtGate;
     _onLoadSuccess = onLoadSuccess;
 
@@ -98,60 +100,31 @@ bool GameUIController::init(Scene *scene,
                                                CCLOG("Error: Failed to create main menu scene!");
                                            } });
 
-        pauseMenu->setSaveCallback([this, levelName]()
+        pauseMenu->setSaveCallback([this]()
                                   {
                                       if (!_gameUI)
                                           return;
 
-                                      _gameUI->hidePauseMenu();
-                                      // 打开存档菜单时必须保持“世界暂停”，否则玩家在菜单中仍会被攻击/滑动等
-                                      _paused = true;
-                                      if (_onPauseChanged)
+                                      // 需求：开始游戏强制选择存档位后，游戏内保存应写入“当前会话绑定的槽位”，不再弹出选槽 UI
+                                      std::string hint;
+                                      bool ok = false;
+                                      if (_onRequestSave)
                                       {
-                                          _onPauseChanged(true);
+                                          ok = _onRequestSave(hint);
+                                      }
+                                      else
+                                      {
+                                          hint = "未配置保存回调";
                                       }
 
-                                      auto saveMenu = SaveMenuLayer::create(
-                                          SaveMenuLayer::Mode::SAVE,
-                                          _player,
-                                          levelName,
-                                          _player ? _player->getPosition() : Vec2::ZERO);
-                                      if (saveMenu && _scene)
+                                      if (hint.empty())
                                       {
-                                          // 关闭存档菜单后回到暂停菜单（仍保持暂停）
-                                          saveMenu->setCloseCallback([this]()
-                                                                     {
-                                                                         if (!_gameUI)
-                                                                         {
-                                                                             return;
-                                                                         }
-                                                                         if (!_scene)
-                                                                         {
-                                                                             return;
-                                                                         }
-                                                                         // 若已切到其他场景（例如读档转场），不做 UI 恢复，避免访问无效对象
-                                                                         auto runningScene = Director::getInstance()->getRunningScene();
-                                                                         if (runningScene != _scene)
-                                                                         {
-                                                                             return;
-                                                                         }
-
-                                                                         // 进一步校验：确保 GameUI 仍挂在当前场景上，避免极端情况下访问已被移除的节点
-                                                                         if (_gameUI->getParent() != _scene)
-                                                                         {
-                                                                             return;
-                                                                         }
-
-                                                                         _gameUI->showPauseMenu();
-                                                                         _paused = true;
-                                                                         if (_onPauseChanged)
-                                                                         {
-                                                                             _onPauseChanged(true);
-                                                                         }
-                                                                     });
-                                          _scene->addChild(saveMenu, UI_Z_ORDER + 1);
+                                          hint = ok ? "保存成功" : "保存失败";
                                       }
-                                      CCLOG("GameScene - 打开保存游戏菜单"); });
+
+                                      showToast(hint, ok ? Color3B(200, 255, 200) : Color3B(255, 180, 180));
+                                      CCLOG("GameUIController - 手动保存：%s", ok ? "成功" : "失败");
+                                  });
 
         pauseMenu->setLoadCallback([this]()
                                   {
@@ -339,6 +312,45 @@ bool GameUIController::init(Scene *scene,
     _updateAccumulator = UI_UPDATE_INTERVAL_SECONDS;
     _gameUI->updateDisplay();
     return true;
+}
+
+void GameUIController::showToast(const std::string &text, const cocos2d::Color3B &color)
+{
+    if (!_scene)
+    {
+        return;
+    }
+
+    // 使用固定 tag，确保同一时刻只显示一条提示，避免连点/连存导致叠满屏幕
+    constexpr int TOAST_TAG = 88001;
+    if (auto old = _scene->getChildByTag(TOAST_TAG))
+    {
+        old->removeFromParent();
+    }
+
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    auto origin = Director::getInstance()->getVisibleOrigin();
+
+    auto label = Label::createWithTTF(text, GameSceneConfig::Scene::DEFAULT_FONT_PATH, 28);
+    if (!label)
+    {
+        return;
+    }
+
+    label->setColor(color);
+    label->setOpacity(0);
+    label->setTag(TOAST_TAG);
+    label->setPosition(Vec2(origin.x + visibleSize.width * 0.5f, origin.y + visibleSize.height * 0.86f));
+    _scene->addChild(label, UI_Z_ORDER + 200);
+
+    // 弹幕效果：淡入 -> 停留 -> 淡出 -> 自销毁
+    auto seq = Sequence::create(
+        FadeIn::create(0.12f),
+        DelayTime::create(1.1f),
+        FadeOut::create(0.35f),
+        RemoveSelf::create(),
+        nullptr);
+    label->runAction(seq);
 }
 
 void GameUIController::update(float dt)

@@ -91,18 +91,32 @@ public:
     void setAutoSaveInterval(float seconds);
 
     /**
-     * 执行自动存档（通常在 GameScene 的 update 中调用）
-     * @param player 玩家角色指针
-     * @param sceneName 当前场景名称
-     * @param playerPos 玩家位置
+     * 推进自动存档计时器
+     * @param dt 本帧 delta time
+     * @return 到达间隔则返回 true（表示“应当执行一次自动保存”）
+     *
+     * @note
+     * - 该函数只负责计时与触发判断，不会直接写盘；
+     * - 由 GameScene 统一采集 progressData 并调用 saveGame 写入“当前会话绑定的存档槽位”（setActiveSaveSlot）。
      */
-    void performAutoSave(PlayerCharacter *player,
-                         const std::string &sceneName, const cocos2d::Vec2 &playerPos);
+    bool tickAutoSave(float dt);
 
     /**
      * 重置自动存档计时器
      */
     void resetAutoSaveTimer();
+
+    /**
+     * 标记“需要尽快保存”（用于：升级/装备变更/技能学习等关键状态变化）
+     * @note 仅设置标记，不会直接写盘；由 GameScene 在合适时机采集 progressData 并调用 saveGame。
+     */
+    void requestImmediateSave(const std::string &reason);
+
+    /**
+     * 消费一次“立即保存”请求
+     * @return 若有待处理请求则返回 true 并写入 reason
+     */
+    bool consumeImmediateSaveRequest(std::string &outReason);
 
     //================== 设置管理 ==================
 
@@ -246,6 +260,17 @@ public:
      */
     void clearRuntimePlayerPosition();
 
+    //================== 当前会话绑定的存档槽位（强制选槽位） ==================
+
+    /**
+     * 设置当前会话“绑定的存档槽位”
+     * @note 开始游戏强制选择槽位后，游戏内的手动保存/自动保存都会写入该槽位。
+     */
+    void setActiveSaveSlot(int slotIndex);
+    bool hasActiveSaveSlot() const { return _hasActiveSaveSlot; }
+    int getActiveSaveSlot() const { return _activeSaveSlot; }
+    void clearActiveSaveSlot();
+
 private:
     // 私有构造，外部不可实例化
     SaveManager();
@@ -259,6 +284,10 @@ private:
     float _autoSaveInterval = GameSceneConfig::Save::AUTO_SAVE_INTERVAL_SECONDS; // 默认 5 分钟
     float _autoSaveTimer = 0.0f;
     int _lastAutoSaveSlot = -1; // 上次自动存档的槽位
+
+    // “关键状态变化”触发的立即保存请求（由 GameScene 统一落盘）
+    bool _hasImmediateSaveRequest = false;
+    std::string _immediateSaveReason;
 
     // 运行时玩家数据：用于关卡切换时保持进度，不落盘
     bool _hasRuntimePlayerData = false;
@@ -275,6 +304,10 @@ private:
     // 运行时玩家位置：用于读档后恢复落点（只对下一次进入 GameScene 生效）
     bool _hasRuntimePlayerPosition = false;
     cocos2d::Vec2 _runtimePlayerPosition = cocos2d::Vec2::ZERO;
+
+    // 当前会话绑定的存档槽位：用于“开始游戏强制选槽位”与后续保存
+    bool _hasActiveSaveSlot = false;
+    int _activeSaveSlot = -1;
 
     // 构建存档文件路径
     std::string getSaveFilePath(int slotIndex) const;

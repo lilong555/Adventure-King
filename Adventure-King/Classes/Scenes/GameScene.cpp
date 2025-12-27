@@ -554,6 +554,12 @@ void GameScene::initUIController()
         getLevelName(),
         [this]() { returnToMapScene(); },
         [this](bool paused) { setGamePaused(paused); },
+        // 手动保存：写入“开始游戏强制选择的槽位”
+        [this](std::string &outMessage) -> bool
+        {
+            // 允许在暂停状态下保存（世界冻结，但 UI 仍在运行）
+            return this->saveToActiveSlotInternal("保存", "", outMessage);
+        },
         [this]() {
             return _levelMap && _player && _levelMap->isPointAtGate(_player->getPosition());
         },
@@ -842,6 +848,8 @@ void GameScene::update(float dt)
         {
             _uiController->update(dt);
         }
+        // 暂停状态下仍允许保存（例如在背包/技能界面完成装备/学习后触发自动保存）
+        processSaveRequests(dt);
         return;
     }
 
@@ -885,6 +893,83 @@ void GameScene::update(float dt)
         );
     }
 
+    processSaveRequests(dt);
+}
+
+bool GameScene::saveToActiveSlotInternal(const std::string &toastTitle,
+                                         const std::string &detail,
+                                         std::string &outMessage)
+{
+    auto saveManager = SaveManager::getInstance();
+    if (!saveManager || !_player)
+    {
+        outMessage = "保存失败";
+        return false;
+    }
+
+    if (!saveManager->hasActiveSaveSlot())
+    {
+        outMessage = "未选择存档位";
+        return false;
+    }
+
+    GameProgressSaveData progressData;
+    fillProgressDataForSave(progressData);
+
+    const int slotIndex = saveManager->getActiveSaveSlot();
+    const bool ok = saveManager->saveGame(slotIndex, _player, progressData);
+
+    outMessage = toastTitle + (ok ? "成功" : "失败");
+    if (!detail.empty())
+    {
+        outMessage += "（" + detail + "）";
+    }
+
+    if (ok)
+    {
+        // 任何一次成功保存都会重置自动存档计时器，避免“刚保存完立刻又自动保存一次”
+        saveManager->resetAutoSaveTimer();
+    }
+
+    return ok;
+}
+
+void GameScene::processSaveRequests(float dt)
+{
+    auto saveManager = SaveManager::getInstance();
+    if (!saveManager || !_player)
+    {
+        return;
+    }
+
+    if (!saveManager->hasActiveSaveSlot())
+    {
+        return;
+    }
+
+    // 1) 状态变更触发：优先级高于定时自动存档
+    std::string reason;
+    if (saveManager->consumeImmediateSaveRequest(reason))
+    {
+        std::string toast;
+        const bool ok = saveToActiveSlotInternal("自动保存", reason, toast);
+        if (_uiController && !toast.empty())
+        {
+            _uiController->showToast(toast, ok ? Color3B(200, 255, 200) : Color3B(255, 180, 180));
+        }
+        return;
+    }
+
+    // 2) 定时自动存档：每 60 秒一次（间隔由 SaveManager 配置）
+    if (saveManager->tickAutoSave(dt))
+    {
+        std::string toast;
+        const bool ok = saveToActiveSlotInternal("自动保存", "", toast);
+        if (_uiController && !toast.empty())
+        {
+            _uiController->showToast(toast, ok ? Color3B(200, 255, 200) : Color3B(255, 180, 180));
+        }
+    }
 }
 
 void GameScene::showMapLoadFailedUI()

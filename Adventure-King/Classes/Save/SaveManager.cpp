@@ -49,6 +49,10 @@ SaveManager::SaveManager()
 {
     _sessionStartTime = std::chrono::steady_clock::now();
 
+    // 默认启用自动保存：每 60 秒一次（写入当前会话绑定的存档槽位）
+    _autoSaveEnabled = true;
+    _autoSaveInterval = 60.0f;
+
     // 确保存档目录存在
     std::string savesDir = FileUtils::getInstance()->getWritablePath() + "saves/";
     if (!FileUtils::getInstance()->isDirectoryExist(savesDir))
@@ -159,6 +163,29 @@ void SaveManager::clearRuntimePlayerPosition()
 {
     _hasRuntimePlayerPosition = false;
     _runtimePlayerPosition = Vec2::ZERO;
+}
+
+//================== 当前会话绑定的存档槽位（强制选槽位） ==================
+
+void SaveManager::setActiveSaveSlot(int slotIndex)
+{
+    if (slotIndex < 0 || slotIndex >= MAX_SAVE_SLOTS)
+    {
+        CCLOG("SaveManager::setActiveSaveSlot - 无效槽位: %d", slotIndex);
+        _hasActiveSaveSlot = false;
+        _activeSaveSlot = -1;
+        return;
+    }
+
+    _hasActiveSaveSlot = true;
+    _activeSaveSlot = slotIndex;
+    CCLOG("SaveManager::setActiveSaveSlot - 当前会话槽位=%d", slotIndex);
+}
+
+void SaveManager::clearActiveSaveSlot()
+{
+    _hasActiveSaveSlot = false;
+    _activeSaveSlot = -1;
 }
 
 //================== 辅助方法 ==================
@@ -502,37 +529,57 @@ void SaveManager::setAutoSaveInterval(float seconds)
     CCLOG("SaveManager::setAutoSaveInterval - 自动存档间隔: %.1f 秒", seconds);
 }
 
-void SaveManager::performAutoSave(PlayerCharacter *player,
-                                  const std::string &sceneName, const cocos2d::Vec2 &playerPos)
+bool SaveManager::tickAutoSave(float dt)
 {
-    if (!_autoSaveEnabled || player == nullptr)
+    if (!_autoSaveEnabled)
     {
-        return;
+        return false;
     }
 
-    _autoSaveTimer += Director::getInstance()->getDeltaTime();
-
-    if (_autoSaveTimer >= _autoSaveInterval)
+    if (!_hasActiveSaveSlot)
     {
-        // 预留最后一个槽位用于自动存档，避免覆盖手动存档
-        int autoSaveSlot = AUTO_SAVE_SLOT;
-        if (saveGame(autoSaveSlot, player, sceneName, playerPos))
-        {
-            CCLOG("SaveManager::performAutoSave - 自动存档成功 (slot %d)", autoSaveSlot);
-            _lastAutoSaveSlot = autoSaveSlot;
-        }
-        else
-        {
-            CCLOG("SaveManager::performAutoSave - 自动存档失败");
-        }
-
+        // 尚未选择槽位：不累计计时，避免“刚选择槽位就立刻触发一次自动存档”
         _autoSaveTimer = 0.0f;
+        return false;
     }
+
+    if (dt <= 0.0f)
+    {
+        return false;
+    }
+
+    _autoSaveTimer += dt;
+    if (_autoSaveTimer < _autoSaveInterval)
+    {
+        return false;
+    }
+
+    _autoSaveTimer = 0.0f;
+    return true;
 }
 
 void SaveManager::resetAutoSaveTimer()
 {
     _autoSaveTimer = 0.0f;
+}
+
+void SaveManager::requestImmediateSave(const std::string &reason)
+{
+    _hasImmediateSaveRequest = true;
+    _immediateSaveReason = reason;
+}
+
+bool SaveManager::consumeImmediateSaveRequest(std::string &outReason)
+{
+    if (!_hasImmediateSaveRequest)
+    {
+        outReason.clear();
+        return false;
+    }
+    _hasImmediateSaveRequest = false;
+    outReason = _immediateSaveReason;
+    _immediateSaveReason.clear();
+    return true;
 }
 
 //================== 设置管理 ==================

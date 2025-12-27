@@ -17,6 +17,7 @@
 #include "Utils/ParticleVfxHelper.h"
 #include "Utils/WeaponHitboxVfxHelper.h"
 #include "Utils/SpriteFrameCacheHelper.h"
+#include "Save/SaveManager.h"
 #include "cocos2d.h"
 
 #include <algorithm>
@@ -568,6 +569,12 @@ void PlayerCharacter::levelUp()
     playLevelUpVFX();
 
     CCLOG("Character Level Up: Level %d", _level);
+
+    // 关键状态变化：升级后应尽快落盘（由 GameScene 统一触发保存）
+    if (auto saveManager = SaveManager::getInstance())
+    {
+        saveManager->requestImmediateSave("升级");
+    }
 }
 
 /**
@@ -645,6 +652,12 @@ bool PlayerCharacter::upgradeAttribute(AttributeType type)
     // 维持当前血量/蓝量的相对状态，只做上限夹取
     setCurrentHP(getCurrentHP());
     setCurrentMP(getCurrentMP());
+
+    // 关键状态变化：加点后应尽快落盘（由 GameScene 统一触发保存）
+    if (auto saveManager = SaveManager::getInstance())
+    {
+        saveManager->requestImmediateSave("属性变更");
+    }
     return true;
 }
 

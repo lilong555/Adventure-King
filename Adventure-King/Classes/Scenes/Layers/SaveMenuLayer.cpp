@@ -104,7 +104,22 @@ bool SaveMenuLayer::initBackground()
 
 bool SaveMenuLayer::initTitle()
 {
-    std::string titleText = (_mode == Mode::SAVE) ? "保存游戏" : "加载游戏";
+    std::string titleText;
+    switch (_mode)
+    {
+    case Mode::SAVE:
+        titleText = "保存游戏";
+        break;
+    case Mode::LOAD:
+        titleText = "加载游戏";
+        break;
+    case Mode::START:
+        titleText = "选择存档位";
+        break;
+    default:
+        titleText = "存档";
+        break;
+    }
 
     _titleLabel = Label::createWithTTF(titleText, "fonts/MaShanZheng-Regular.ttf", 55);
     if (!_titleLabel)
@@ -386,8 +401,20 @@ cocos2d::Node* SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData& 
     menu->addChild(cloudItem);
     x -= 70.0f;
 
-    // 保存 / 加载
-    std::string buttonText = (_mode == Mode::SAVE) ? "保存" : "加载";
+    // 保存 / 加载 / 开始
+    std::string buttonText;
+    if (_mode == Mode::SAVE)
+    {
+        buttonText = "保存";
+    }
+    else if (_mode == Mode::LOAD)
+    {
+        buttonText = "加载";
+    }
+    else // START
+    {
+        buttonText = hasSave ? "继续" : "新开";
+    }
     auto mainItem = MenuItemLabel::create(
         Label::createWithTTF(
             buttonText,
@@ -461,12 +488,13 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
             // 避免重复采集逻辑导致维护困难。
             const GameProgressSaveData snapshot = progressData;
             showConfirmDialog("确定要覆盖此存档吗？", [this, saveManager, slotIndex, snapshot]() {
-                if (saveManager->saveGame(slotIndex, _player, snapshot))
-                {
-                    CCLOG("SaveMenuLayer - 保存成功到槽位 %d", slotIndex);
-                    // 刷新界面
-                    this->removeFromParent();
-                }
+            if (saveManager->saveGame(slotIndex, _player, snapshot))
+            {
+                CCLOG("SaveMenuLayer - 保存成功到槽位 %d", slotIndex);
+                saveManager->setActiveSaveSlot(slotIndex);
+                // 刷新界面
+                this->removeFromParent();
+            }
                 else
                 {
                     CCLOG("SaveMenuLayer - 保存失败");
@@ -479,6 +507,7 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
             if (saveManager->saveGame(slotIndex, _player, progressData))
             {
                 CCLOG("SaveMenuLayer - 保存成功到槽位 %d", slotIndex);
+                saveManager->setActiveSaveSlot(slotIndex);
                 this->removeFromParent();
             }
             else
@@ -487,13 +516,14 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
             }
         }
     }
-    else
+    else if (_mode == Mode::LOAD)
     {
         // 加载模式
         SaveSlotData loadedData;
         if (saveManager->loadGame(slotIndex, loadedData))
         {
             CCLOG("SaveMenuLayer - 加载成功从槽位 %d", slotIndex);
+            saveManager->setActiveSaveSlot(slotIndex);
             if (_loadSuccessCallback)
             {
                 _loadSuccessCallback(loadedData);
@@ -504,6 +534,26 @@ void SaveMenuLayer::onSlotClicked(int slotIndex)
         {
             CCLOG("SaveMenuLayer - 加载失败");
         }
+    }
+    else // START
+    {
+        const bool hasSave = saveManager->hasSave(slotIndex);
+        SaveSlotData loadedData;
+        if (hasSave)
+        {
+            if (!saveManager->loadGame(slotIndex, loadedData))
+            {
+                CCLOG("SaveMenuLayer - 开始游戏：加载失败 slot=%d", slotIndex);
+                return;
+            }
+        }
+
+        saveManager->setActiveSaveSlot(slotIndex);
+        if (_startSlotCallback)
+        {
+            _startSlotCallback(slotIndex, hasSave, loadedData);
+        }
+        this->removeFromParent();
     }
 }
 
