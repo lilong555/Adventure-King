@@ -29,6 +29,10 @@ public:
                                                 const Attributes &bonus,
                                                 const std::string &err)>;
 
+    using ChallengeCallback = std::function<void(bool ok,
+                                                 const std::string &npcQuestions,
+                                                 const std::string &err)>;
+
     static AiBlessingService *getInstance();
     static void destroyInstance();
 
@@ -44,6 +48,14 @@ public:
 
     /// @brief 发送赐福请求（userPrompt 可为空，空则使用默认文案）
     void requestBlessing(const std::string &userPrompt, const BlessingCallback &cb);
+
+    /// @brief 赐福对话阶段1：让 AI 先提出“考验冒险决心”的问题
+    void requestChallengeQuestions(const std::string &userPrompt, const ChallengeCallback &cb);
+
+    /// @brief 赐福对话阶段2：玩家回答后，AI 给出赐福（严格 JSON）
+    void requestBlessingFromDialogue(const std::string &npcQuestions,
+                                    const std::string &playerAnswer,
+                                    const BlessingCallback &cb);
 
 private:
     AiBlessingService() = default;
@@ -70,4 +82,3 @@ private:
 
     static AiBlessingService *_instance;
 };
-

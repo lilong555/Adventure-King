@@ -159,7 +159,10 @@ bool BlessingNpcLayer::init()
     _panel->addChild(title);
 
     // 提示信息
-    _messageLabel = Label::createWithTTF("提示：在此填写 baseUrl + apiKey，然后点击“请求赐福”（会覆盖旧赐福）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
+    _messageLabel = Label::createWithTTF(
+        "步骤1：点击【开始对话】→ NPC 提问\n步骤2：在“对话”里输入回答 → 点击【提交回答】获得赐福（覆盖旧赐福）\n提示：输入框支持 Ctrl+V 粘贴 / Ctrl+C 复制",
+        "fonts/NotoSansSC/NotoSansSC-Regular.ttf",
+        18);
     _messageLabel->setAnchorPoint(Vec2(0.5f, 1.0f));
     _messageLabel->setPosition(Vec2(panelW * 0.5f, panelH - 82.0f));
     _messageLabel->setTextColor(Color4B(200, 200, 200, 255));
@@ -200,8 +203,9 @@ bool BlessingNpcLayer::init()
 
     // baseUrl
     addRowLabel("baseUrl", startY);
-    _urlField = ui::TextField::create("例如 http://127.0.0.1:8000", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
-    _urlField->setString("http://127.0.0.1:8000");
+    // 公共服务默认URL：https://elysiver.h-e.top（来源：https://linux.do/t/topic/1175087/27）
+    _urlField = ui::TextField::create("例如 https://elysiver.h-e.top", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    _urlField->setString("https://elysiver.h-e.top");
     styleTextField(_urlField, startY, 220);
 
     // apiKey
@@ -217,8 +221,8 @@ bool BlessingNpcLayer::init()
 
     // prompt
     addRowLabel("对话", startY - rowH * 3);
-    _promptField = ui::TextField::create("例如：请赐予我新的赐福", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
-    _promptField->setString("请赐予我新的赐福（会覆盖旧赐福）。");
+    _promptField = ui::TextField::create("可选：你希望什么样的赐福？（用于生成问题）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    _promptField->setString("");
     styleTextField(_promptField, startY - rowH * 3, 200);
 
     // 按钮
@@ -233,7 +237,7 @@ bool BlessingNpcLayer::init()
     menu->addChild(_saveItem);
 
     _requestItem = MenuItemLabel::create(
-        Label::createWithTTF("请求赐福", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
+        Label::createWithTTF("开始对话", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
         [this](Ref *) { onRequestBlessingClicked(); });
     _requestItem->setPosition(Vec2(panelW * 0.45f, 58.0f));
     menu->addChild(_requestItem);
@@ -286,6 +290,17 @@ void BlessingNpcLayer::show()
     _showing = true;
     setVisible(true);
     setBusy(false);
+    _waitingForAnswer = false;
+    _cachedQuestions.clear();
+    if (auto label = dynamic_cast<Label *>(_requestItem ? _requestItem->getLabel() : nullptr))
+    {
+        label->setString("开始对话");
+    }
+    if (_promptField)
+    {
+        _promptField->setPlaceHolder("可选：你希望什么样的赐福？（用于生成问题）");
+        _promptField->setString("");
+    }
 
     // 淡入
     _panel->setOpacity(0);
@@ -386,6 +401,13 @@ void BlessingNpcLayer::onRequestBlessingClicked()
         return;
     }
 
+    // 每次点击都以输入框为准更新运行时配置，避免“没点保存”导致仍使用旧配置
+    AiBlessingService::Config cfg;
+    cfg.baseUrl = getBaseUrl();
+    cfg.apiKey = getApiKey();
+    cfg.model = getModel();
+    AiBlessingService::getInstance()->setRuntimeConfig(cfg);
+
     std::string hint;
     if (!AiBlessingService::getInstance()->isConfigured(&hint))
     {
@@ -393,45 +415,112 @@ void BlessingNpcLayer::onRequestBlessingClicked()
         return;
     }
 
-    setBusy(true);
-    setMessage("正在请求赐福...", Color4B(200, 200, 200, 255));
-
-    const std::string userPrompt = getUserPrompt();
-
     // 防御性：请求期间保持节点存活，避免场景切换导致回调访问已释放对象
     this->retain();
 
-    AiBlessingService::getInstance()->requestBlessing(userPrompt,
-                                                      [this](bool ok, const std::string &npcText, const Attributes &bonus, const std::string &err) {
-                                                          if (!this->getParent())
-                                                          {
-                                                              this->release();
-                                                              return;
-                                                          }
+    if (!_waitingForAnswer)
+    {
+        const std::string userPrompt = getUserPrompt();
+        setBusy(true);
+        setMessage("赐福考验开始：正在生成问题...", Color4B(200, 200, 200, 255));
 
-                                                          if (!ok)
-                                                          {
-                                                              setBusy(false);
-                                                              setMessage(err.empty() ? "赐福失败" : err, Color4B(220, 120, 120, 255));
-                                                              this->release();
-                                                              return;
-                                                          }
+        AiBlessingService::getInstance()->requestChallengeQuestions(
+            userPrompt,
+            [this](bool ok, const std::string &npcQuestions, const std::string &err) {
+                if (!this->getParent())
+                {
+                    this->release();
+                    return;
+                }
 
-                                                          if (_player)
-                                                          {
-                                                              _player->applyAiBlessingBonus(bonus);
-                                                          }
+                if (!ok)
+                {
+                    setBusy(false);
+                    setMessage(err.empty() ? "生成问题失败" : err, Color4B(220, 120, 120, 255));
+                    this->release();
+                    return;
+                }
 
-                                                          std::string summary = buildBlessingSummary(bonus);
-                                                          std::string msg = npcText;
-                                                          if (!summary.empty())
-                                                          {
-                                                              msg += "\n赐福：" + summary + "\n（已覆盖旧赐福）";
-                                                          }
-                                                          setMessage(msg, Color4B(120, 220, 120, 255));
-                                                          setBusy(false);
-                                                          this->release();
-                                                      });
+                _cachedQuestions = npcQuestions;
+                _waitingForAnswer = true;
+
+                if (auto label = dynamic_cast<Label *>(_requestItem ? _requestItem->getLabel() : nullptr))
+                {
+                    label->setString("提交回答");
+                }
+                if (_promptField)
+                {
+                    _promptField->setPlaceHolder("请在此输入你的回答（提交后获得赐福）");
+                    _promptField->setString("");
+                }
+
+                std::string msg = "赐福考验：\n" + npcQuestions + "\n\n请在“对话”里输入回答，然后点击【提交回答】。";
+                setMessage(msg, Color4B(200, 200, 200, 255));
+                setBusy(false);
+                this->release();
+            });
+        return;
+    }
+
+    // 已进入“等待回答”阶段：提交回答并获得赐福
+    const std::string answer = getUserPrompt();
+    if (answer.empty())
+    {
+        setMessage("请先在“对话”里输入你的回答。", Color4B(220, 180, 120, 255));
+        this->release();
+        return;
+    }
+
+    setBusy(true);
+    setMessage("正在分析你的回答并赐福...", Color4B(200, 200, 200, 255));
+
+    AiBlessingService::getInstance()->requestBlessingFromDialogue(
+        _cachedQuestions,
+        answer,
+        [this](bool ok, const std::string &npcText, const Attributes &bonus, const std::string &err) {
+            if (!this->getParent())
+            {
+                this->release();
+                return;
+            }
+
+            if (!ok)
+            {
+                setBusy(false);
+                setMessage(err.empty() ? "赐福失败" : err, Color4B(220, 120, 120, 255));
+                this->release();
+                return;
+            }
+
+            if (_player)
+            {
+                _player->applyAiBlessingBonus(bonus);
+            }
+
+            std::string summary = buildBlessingSummary(bonus);
+            std::string msg = npcText;
+            if (!summary.empty())
+            {
+                msg += "\n赐福：" + summary + "\n（已覆盖旧赐福）";
+            }
+            setMessage(msg, Color4B(120, 220, 120, 255));
+
+            // 一次对话完成后回到初始状态，允许再次发起新的考验
+            _waitingForAnswer = false;
+            _cachedQuestions.clear();
+            if (auto label = dynamic_cast<Label *>(_requestItem ? _requestItem->getLabel() : nullptr))
+            {
+                label->setString("开始对话");
+            }
+            if (_promptField)
+            {
+                _promptField->setPlaceHolder("可选：你希望什么样的赐福？（用于生成问题）");
+                _promptField->setString("");
+            }
+
+            setBusy(false);
+            this->release();
+        });
 }
 
 void BlessingNpcLayer::onClearBlessingClicked()
@@ -446,7 +535,18 @@ void BlessingNpcLayer::onClearBlessingClicked()
         return;
     }
     _player->clearAiBlessingBonus();
-    setMessage("已清空赐福", Color4B(200, 200, 200, 255));
+    _waitingForAnswer = false;
+    _cachedQuestions.clear();
+    if (auto label = dynamic_cast<Label *>(_requestItem ? _requestItem->getLabel() : nullptr))
+    {
+        label->setString("开始对话");
+    }
+    if (_promptField)
+    {
+        _promptField->setPlaceHolder("可选：你希望什么样的赐福？（用于生成问题）");
+        _promptField->setString("");
+    }
+    setMessage("已清空赐福（对话已重置）", Color4B(200, 200, 200, 255));
 }
 
 void BlessingNpcLayer::onCloseClicked()

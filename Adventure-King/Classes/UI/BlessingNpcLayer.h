@@ -67,5 +67,8 @@ private:
     bool _showing = false;
     bool _ctrlDown = false;
 
+    bool _waitingForAnswer = false;
+    std::string _cachedQuestions;
+
     CloseCallback _closeCallback = nullptr;
 };
