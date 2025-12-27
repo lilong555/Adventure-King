@@ -144,6 +144,9 @@
     <ClCompile Include="..\Classes\Scenes\MapScene.cpp">
       <Filter>src\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="..\Classes\Utils\ClipboardHelper.cpp">
+      <Filter>src\Utils</Filter>
+    </ClCompile>
     <ClCompile Include="..\Classes\Utils\ImeHelper.cpp">
       <Filter>src\Utils</Filter>
     </ClCompile>
@@ -343,6 +346,9 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Scenes\MapScene.h">
       <Filter>src\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Classes\Utils\ClipboardHelper.h">
+      <Filter>src\Utils</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Utils\ImeHelper.h">
       <Filter>src\Utils</Filter>

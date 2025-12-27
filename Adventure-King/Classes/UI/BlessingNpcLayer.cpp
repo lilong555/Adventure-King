@@ -1,8 +1,10 @@
 #include "UI/BlessingNpcLayer.h"
 #include "AI/AiBlessingService.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Utils/ClipboardHelper.h"
 
 #include <cmath>
+#include <algorithm>
 
 USING_NS_CC;
 
@@ -38,15 +40,109 @@ bool BlessingNpcLayer::init()
     _eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, this);
 
     // ESC 关闭
+    auto getActiveField = [this]() -> ui::TextField * {
+        ui::TextField *fields[] = {_urlField, _apiKeyField, _modelField, _promptField};
+        for (auto *f : fields)
+        {
+            if (f && f->getAttachWithIME())
+            {
+                return f;
+            }
+        }
+        for (auto *f : fields)
+        {
+            if (f && f->isFocused())
+            {
+                return f;
+            }
+        }
+        return nullptr;
+    };
+
+    auto sanitizeClipboard = [](std::string s) {
+        // 常见场景：从浏览器/终端复制时带换行，直接粘贴会导致请求失败
+        s.erase(std::remove(s.begin(), s.end(), '\r'), s.end());
+        s.erase(std::remove(s.begin(), s.end(), '\n'), s.end());
+        return s;
+    };
+
     auto keyListener = EventListenerKeyboard::create();
-    keyListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event *) {
+    keyListener->onKeyPressed = [this, getActiveField, sanitizeClipboard](EventKeyboard::KeyCode keyCode, Event *event) {
         if (!_showing)
         {
+            return;
+        }
+        if (event)
+        {
+            // 弹窗显示时吞掉按键，避免穿透到游戏输入
+            event->stopPropagation();
+        }
+
+        if (keyCode == EventKeyboard::KeyCode::KEY_CTRL || keyCode == EventKeyboard::KeyCode::KEY_RIGHT_CTRL)
+        {
+            _ctrlDown = true;
             return;
         }
         if (keyCode == EventKeyboard::KeyCode::KEY_ESCAPE)
         {
             onCloseClicked();
+            return;
+        }
+
+        // Ctrl+V / Ctrl+C：解决 ui::TextField 默认不支持复制粘贴的问题
+        if (_ctrlDown && (keyCode == EventKeyboard::KeyCode::KEY_V || keyCode == EventKeyboard::KeyCode::KEY_C))
+        {
+            auto *field = getActiveField();
+            if (!field)
+            {
+                setMessage("请先点击输入框（让光标出现），再使用 Ctrl+V / Ctrl+C。", Color4B(220, 180, 120, 255));
+                return;
+            }
+
+            if (keyCode == EventKeyboard::KeyCode::KEY_V)
+            {
+                std::string clip = sanitizeClipboard(ClipboardHelper::getText());
+                if (clip.empty())
+                {
+                    setMessage("剪贴板为空，无法粘贴。", Color4B(220, 120, 120, 255));
+                    return;
+                }
+
+                if (field->isMaxLengthEnabled())
+                {
+                    const int remain = field->getMaxLength() - field->getStringLength();
+                    if (remain <= 0)
+                    {
+                        return;
+                    }
+                    if ((int)clip.size() > remain)
+                    {
+                        clip = clip.substr(0, (size_t)remain);
+                    }
+                }
+
+                field->setString(field->getString() + clip);
+                field->setCursorPosition((std::size_t)field->getStringLength());
+            }
+            else // KEY_C
+            {
+                ClipboardHelper::setText(field->getString());
+                setMessage("已复制当前输入框内容到剪贴板。", Color4B(120, 220, 120, 255));
+            }
+        }
+    };
+    keyListener->onKeyReleased = [this](EventKeyboard::KeyCode keyCode, Event *event) {
+        if (!_showing)
+        {
+            return;
+        }
+        if (event)
+        {
+            event->stopPropagation();
+        }
+        if (keyCode == EventKeyboard::KeyCode::KEY_CTRL || keyCode == EventKeyboard::KeyCode::KEY_RIGHT_CTRL)
+        {
+            _ctrlDown = false;
         }
     };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(keyListener, this);

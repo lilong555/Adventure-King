@@ -65,6 +65,7 @@ private:
 
     bool _busy = false;
     bool _showing = false;
+    bool _ctrlDown = false;
 
     CloseCallback _closeCallback = nullptr;
 };
