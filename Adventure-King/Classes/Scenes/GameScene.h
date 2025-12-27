@@ -158,9 +158,10 @@ protected:
     virtual void initInputController();
 
     /**
-     * @brief 初始化相机跟随
+     * @brief 相机跟随相关
      */
     virtual void initCameraFollow();
+    cocos2d::Vec2 clampLayerPosition(cocos2d::Vec2 pos);
     void handleArenaCamera(bool lock, cocos2d::Vec2 targetPos);
 
     /**

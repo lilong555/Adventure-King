@@ -606,35 +606,79 @@ void GameScene::initCameraFollow()
     _gameLayer->runAction(followAction);
 }
 
+Vec2 GameScene::clampLayerPosition(Vec2 pos) {
+    if (!_levelMap) return pos;
+
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    Size mapSize = _levelMap->getMapSizeInPixels();
+
+    // 计算 gameLayer 位置的合法范围（与 Follow 逻辑一致）
+    float minX = -(mapSize.width - visibleSize.width);
+    float minY = -(mapSize.height - visibleSize.height);
+
+    // 只有地图比屏幕大时才需要裁剪
+    float finalX = clampf(pos.x, std::min(minX, 0.0f), 0.0f);
+    float finalY = clampf(pos.y, std::min(minY, 0.0f), 0.0f);
+
+    return Vec2(finalX, finalY);
+}
+
 void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos) {
-    // 停止当前正在执行的所有相机平移动作，防止动作叠加冲突
+    // 停止当前正在执行的过渡动画，防止冲突
     _gameLayer->stopActionByTag(1001);
-        if (lock) {
-            _gameLayer->stopActionByTag(837); // 停止跟随
 
-            auto visibleSize = Director::getInstance()->getVisibleSize();
-            float targetScale = 0.85f; // 你的目标缩放值
+    if (lock) {
+        // --- 锁定逻辑 ---
+        _gameLayer->stopActionByTag(837); // 停止跟随玩家
 
-            // --- 修正后的坐标计算 ---
-            // 必须将目标坐标乘以缩放系数，才能抵消缩放带来的视觉偏移
-            cocos2d::Vec2 layerPos(
-                (visibleSize.width / 2) - (targetPos.x * targetScale),
-                (visibleSize.height / 2) - (targetPos.y * targetScale)
-            );
+        auto visibleSize = cocos2d::Director::getInstance()->getVisibleSize();
+        float targetScale = 1.0f;
 
-            auto moveTo = MoveTo::create(1.0f, layerPos);
-            auto scaleTo = ScaleTo::create(1.0f, targetScale);
-            auto spawn = Spawn::create(moveTo, scaleTo, nullptr);
-            _gameLayer->runAction(EaseExponentialOut::create(spawn));
-        }else {
-        // 恢复逻辑：先拉回缩放，并在结束后重启动 Follow
-        auto resetScale = ScaleTo::create(0.5f, 1.0f);
-        auto callback = CallFunc::create([this]() {
-            this->initCameraFollow(); // 重新启动 Tag 为 837 的动作
+        // 计算锁定位置，并应用边界裁剪防止看到黑边
+        cocos2d::Vec2 layerPos(
+            (visibleSize.width / 2) - (targetPos.x * targetScale),
+            (visibleSize.height) - (targetPos.y * targetScale)
+        );
+
+        auto moveTo = MoveTo::create(1.0f, this->clampLayerPosition(layerPos));
+        auto scaleTo = ScaleTo::create(1.0f, targetScale);
+        auto spawn = Spawn::create(moveTo, scaleTo, nullptr);
+
+        auto action = EaseSineOut::create(spawn);
+        action->setTag(1001);
+        _gameLayer->runAction(action);
+    }
+    else {
+        // --- 取消锁定逻辑 ---
+
+        auto onFinished = CallFunc::create([this]() {
+            if (!_player) return;
+
+            // 1. 获取当前最新玩家位置（消除 0.8s 动画期间的位移差）
+            auto visibleSize = cocos2d::Director::getInstance()->getVisibleSize();
+            Vec2 nowPos = _player->getPosition();
+            Vec2 correctedPos(-nowPos.x + visibleSize.width / 2, -nowPos.y + visibleSize.height / 2);
+
+            // 2. 应用边界裁剪并瞬间同步
+            _gameLayer->setPosition(this->clampLayerPosition(correctedPos));
+
+            // 3. 启动正式的 Follow 动作
+            this->initCameraFollow();
             });
 
-        auto seq = Sequence::create(resetScale, callback, nullptr);
-        seq->setTag(1001); // 同样设置 Tag
+        // 4. 计算动画开始时的目标位置
+        auto visibleSize = cocos2d::Director::getInstance()->getVisibleSize();
+        Vec2 startPlayerPos = _player->getPosition();
+        Vec2 targetLayerPos(-startPlayerPos.x + visibleSize.width / 2, -startPlayerPos.y + visibleSize.height / 2);
+
+        // 5. 执行平滑回归动画
+        auto moveTo = MoveTo::create(0.8f, this->clampLayerPosition(targetLayerPos));
+        auto resetScale = ScaleTo::create(0.8f, 1.0f);
+        auto spawn = Spawn::create(moveTo, resetScale, nullptr);
+
+        // 6. 按顺序：平移动画 -> 位置校正回调 -> 启动 Follow
+        auto seq = Sequence::create(EaseSineOut::create(spawn), onFinished, nullptr);
+        seq->setTag(1001);
         _gameLayer->runAction(seq);
     }
 }
