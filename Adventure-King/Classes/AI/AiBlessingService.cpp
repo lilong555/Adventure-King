@@ -154,8 +154,8 @@ bool AiBlessingService::isConfigured(std::string *outHint) const
         std::ostringstream oss;
         oss << "未配置 AI 服务。\n\n";
         oss << "请在赐福界面填写：\n";
-        oss << "- baseUrl（例如 https://elysiver.h-e.top 或 http://127.0.0.1:8000/v1）\n";
-        oss << "- apiKey（OpenAI 格式 Bearer Token）\n";
+        oss << "- baseUrl（赐福后端地址，例如 http://127.0.0.1:5181）\n";
+        oss << "- apiKey（OpenAI 兼容 Bearer Token，用于后端调用 LLM）\n";
         *outHint = oss.str();
     }
     return ok;
@@ -163,6 +163,7 @@ bool AiBlessingService::isConfigured(std::string *outHint) const
 
 void AiBlessingService::requestBlessing(const std::string &userPrompt, const BlessingCallback &cb)
 {
+    // 兼容接口：直接赐福（无对话），仍通过后端 answer 接口走工具调用约束
     std::string hint;
     if (!isConfigured(&hint))
     {
@@ -176,59 +177,27 @@ void AiBlessingService::requestBlessing(const std::string &userPrompt, const Ble
         cfg.model = GameConfig::AI::Blessing::DEFAULT_MODEL;
     }
 
-    const std::vector<BlessingRange> ranges = buildRanges();
-
-    // 构造 system prompt：强制输出 JSON，且严格在范围内挑选
-    std::ostringstream sys;
-    sys << "你是游戏里的“赐福NPC”。玩家来请求赐福。\\n";
-    sys << "你必须在给定属性范围内选择赐福属性，返回严格 JSON（不要输出多余文字、不要 Markdown）。\\n";
-    sys << "JSON 格式必须为：{\\\"npcText\\\":string,\\\"buff\\\":[{\\\"key\\\":string,\\\"value\\\":number}...]}\\n";
-    sys << "要求：\\n";
-    sys << "- buff 数组长度必须等于 " << GameConfig::AI::Blessing::PICK_COUNT << "\\n";
-    sys << "- key 必须来自候选列表（不要发明新 key）\\n";
-    sys << "- value 必须落在对应的 [min,max] 范围内\\n";
-    sys << "- npcText 用一句中文台词（不超过 30 字）\\n";
-    sys << "候选列表：\\n";
-    for (size_t i = 0; i < ranges.size(); ++i)
-    {
-        sys << "- " << ranges[i].key << " : [" << ranges[i].minValue << "," << ranges[i].maxValue << "]\\n";
-    }
-
-    const std::string user = userPrompt.empty() ? "请赐予我新的赐福（会覆盖旧赐福）。" : userPrompt;
+    const std::string npcQuestions = "（无对话）";
+    const std::string playerAnswer = userPrompt.empty() ? "请赐予我赐福（覆盖旧赐福）。" : userPrompt;
 
     rapidjson::Document doc;
     doc.SetObject();
     auto &allocator = doc.GetAllocator();
-
     doc.AddMember("model", rapidjson::Value(cfg.model.c_str(), allocator).Move(), allocator);
-    doc.AddMember("temperature", 0.6, allocator);
-
-    rapidjson::Value messages(rapidjson::kArrayType);
-    {
-        rapidjson::Value m(rapidjson::kObjectType);
-        m.AddMember("role", "system", allocator);
-        m.AddMember("content", rapidjson::Value(sys.str().c_str(), allocator).Move(), allocator);
-        messages.PushBack(m, allocator);
-    }
-    {
-        rapidjson::Value m(rapidjson::kObjectType);
-        m.AddMember("role", "user", allocator);
-        m.AddMember("content", rapidjson::Value(user.c_str(), allocator).Move(), allocator);
-        messages.PushBack(m, allocator);
-    }
-    doc.AddMember("messages", messages, allocator);
+    doc.AddMember("npc_questions", rapidjson::Value(npcQuestions.c_str(), allocator).Move(), allocator);
+    doc.AddMember("player_answer", rapidjson::Value(playerAnswer.c_str(), allocator).Move(), allocator);
 
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     doc.Accept(writer);
 
-    const std::string url = buildChatCompletionsUrl(cfg.baseUrl);
+    const std::string url = buildBlessingAnswerUrl(cfg.baseUrl);
     sendJsonRequest(url, cfg.apiKey, buffer.GetString(),
                     [this, cb, url](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
                         if (!ok)
                         {
                             std::ostringstream oss;
-                            oss << "AI 请求失败";
+                            oss << "赐福请求失败";
                             if (httpCode > 0)
                             {
                                 oss << "（HTTP " << httpCode << "）";
@@ -237,7 +206,6 @@ void AiBlessingService::requestBlessing(const std::string &userPrompt, const Ble
                             {
                                 oss << "：" << err;
                             }
-                            // 关键排查信息：把实际请求 URL 打出来，避免 baseUrl 填错（例如误填云存服务端口）
                             oss << "\n请求URL：" << url;
                             if (!respBody.empty())
                             {
@@ -250,10 +218,10 @@ void AiBlessingService::requestBlessing(const std::string &userPrompt, const Ble
                         std::string npcText;
                         Attributes bonus;
                         std::string parseErr;
-                        if (!parseBlessingFromResponse(respBody, npcText, bonus, parseErr))
+                        if (!parseBlessingFromServerResponse(respBody, npcText, bonus, parseErr))
                         {
                             std::ostringstream oss;
-                            oss << "AI 响应解析失败：" << parseErr;
+                            oss << "赐福响应解析失败：" << parseErr;
                             oss << "\n原始响应片段：" << shortResp(respBody);
                             cb(false, "", Attributes{}, oss.str());
                             return;
@@ -278,49 +246,25 @@ void AiBlessingService::requestChallengeQuestions(const std::string &userPrompt,
         cfg.model = GameConfig::AI::Blessing::DEFAULT_MODEL;
     }
 
-    std::ostringstream sys;
-    sys << "你是游戏里的“赐福NPC”。\\n";
-    sys << "在给玩家赐福前，你需要先提出考验冒险决心的问题。\\n";
-    sys << "要求：\\n";
-    sys << "- 只输出中文问题，不要输出 JSON，不要输出 Markdown，不要解释。\\n";
-    sys << "- 提出 2~3 个问题，每个问题一行。\\n";
-    sys << "- 总字数不超过 120。\\n";
-
     const std::string user = userPrompt.empty() ? "我来请求赐福，请考验我的决心。" : userPrompt;
 
     rapidjson::Document doc;
     doc.SetObject();
     auto &allocator = doc.GetAllocator();
-
     doc.AddMember("model", rapidjson::Value(cfg.model.c_str(), allocator).Move(), allocator);
-    doc.AddMember("temperature", 0.6, allocator);
-
-    rapidjson::Value messages(rapidjson::kArrayType);
-    {
-        rapidjson::Value m(rapidjson::kObjectType);
-        m.AddMember("role", "system", allocator);
-        m.AddMember("content", rapidjson::Value(sys.str().c_str(), allocator).Move(), allocator);
-        messages.PushBack(m, allocator);
-    }
-    {
-        rapidjson::Value m(rapidjson::kObjectType);
-        m.AddMember("role", "user", allocator);
-        m.AddMember("content", rapidjson::Value(user.c_str(), allocator).Move(), allocator);
-        messages.PushBack(m, allocator);
-    }
-    doc.AddMember("messages", messages, allocator);
+    doc.AddMember("user_prompt", rapidjson::Value(user.c_str(), allocator).Move(), allocator);
 
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     doc.Accept(writer);
 
-    const std::string url = buildChatCompletionsUrl(cfg.baseUrl);
+    const std::string url = buildBlessingQuestionUrl(cfg.baseUrl);
     sendJsonRequest(url, cfg.apiKey, buffer.GetString(),
-                    [cb, url](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
+                    [this, cb, url](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
                         if (!ok)
                         {
                             std::ostringstream oss;
-                            oss << "AI 请求失败";
+                            oss << "生成问题失败";
                             if (httpCode > 0)
                             {
                                 oss << "（HTTP " << httpCode << "）";
@@ -338,57 +282,18 @@ void AiBlessingService::requestChallengeQuestions(const std::string &userPrompt,
                             return;
                         }
 
-                        rapidjson::Document root;
-                        root.Parse(respBody.c_str());
-                        if (root.HasParseError() || !root.IsObject())
+                        std::string questions;
+                        std::string parseErr;
+                        if (!parseQuestionsFromServerResponse(respBody, questions, parseErr))
                         {
-                            cb(false, "", "响应不是合法 JSON");
+                            std::ostringstream oss;
+                            oss << "问题解析失败：" << parseErr;
+                            oss << "\n原始响应片段：" << shortResp(respBody);
+                            cb(false, "", oss.str());
                             return;
                         }
 
-                        if (root.HasMember("error"))
-                        {
-                            std::string msg = "服务端返回 error";
-                            if (root["error"].IsObject() && root["error"].HasMember("message") && root["error"]["message"].IsString())
-                            {
-                                msg = root["error"]["message"].GetString();
-                            }
-                            cb(false, "", msg);
-                            return;
-                        }
-
-                        if (!root.HasMember("choices") || !root["choices"].IsArray() || root["choices"].Empty())
-                        {
-                            cb(false, "", "缺少 choices");
-                            return;
-                        }
-
-                        const auto &choice0 = root["choices"][0];
-                        std::string content;
-                        if (choice0.IsObject())
-                        {
-                            if (choice0.HasMember("message") && choice0["message"].IsObject())
-                            {
-                                const auto &msgObj = choice0["message"];
-                                if (msgObj.HasMember("content") && msgObj["content"].IsString())
-                                {
-                                    content = msgObj["content"].GetString();
-                                }
-                            }
-                            if (content.empty() && choice0.HasMember("text") && choice0["text"].IsString())
-                            {
-                                content = choice0["text"].GetString();
-                            }
-                        }
-
-                        content = stripCodeFence(content);
-                        if (content.empty())
-                        {
-                            cb(false, "", "AI 未返回问题内容");
-                            return;
-                        }
-
-                        cb(true, content, "");
+                        cb(true, questions, "");
                     });
 }
 
@@ -409,65 +314,24 @@ void AiBlessingService::requestBlessingFromDialogue(const std::string &npcQuesti
         cfg.model = GameConfig::AI::Blessing::DEFAULT_MODEL;
     }
 
-    const std::vector<BlessingRange> ranges = buildRanges();
-
-    std::ostringstream sys;
-    sys << "你是游戏里的“赐福NPC”。\\n";
-    sys << "你刚才已经对玩家提出了考验问题，玩家也给出了回答。\\n";
-    sys << "现在请你根据玩家的回答，在给定属性范围内选择赐福属性，并返回严格 JSON（不要输出多余文字、不要 Markdown）。\\n";
-    sys << "JSON 格式必须为：{\\\"npcText\\\":string,\\\"buff\\\":[{\\\"key\\\":string,\\\"value\\\":number}...]}\\n";
-    sys << "要求：\\n";
-    sys << "- buff 数组长度必须等于 " << GameConfig::AI::Blessing::PICK_COUNT << "\\n";
-    sys << "- key 必须来自候选列表（不要发明新 key）\\n";
-    sys << "- value 必须落在对应的 [min,max] 范围内\\n";
-    sys << "- npcText 用一句中文台词（不超过 30 字）\\n";
-    sys << "候选列表：\\n";
-    for (size_t i = 0; i < ranges.size(); ++i)
-    {
-        sys << "- " << ranges[i].key << " : [" << ranges[i].minValue << "," << ranges[i].maxValue << "]\\n";
-    }
-
     rapidjson::Document doc;
     doc.SetObject();
     auto &allocator = doc.GetAllocator();
-
     doc.AddMember("model", rapidjson::Value(cfg.model.c_str(), allocator).Move(), allocator);
-    doc.AddMember("temperature", 0.6, allocator);
-
-    rapidjson::Value messages(rapidjson::kArrayType);
-    {
-        rapidjson::Value m(rapidjson::kObjectType);
-        m.AddMember("role", "system", allocator);
-        m.AddMember("content", rapidjson::Value(sys.str().c_str(), allocator).Move(), allocator);
-        messages.PushBack(m, allocator);
-    }
-    if (!npcQuestions.empty())
-    {
-        rapidjson::Value m(rapidjson::kObjectType);
-        m.AddMember("role", "assistant", allocator);
-        m.AddMember("content", rapidjson::Value(npcQuestions.c_str(), allocator).Move(), allocator);
-        messages.PushBack(m, allocator);
-    }
-    {
-        const std::string user = playerAnswer.empty() ? "（玩家沉默）" : playerAnswer;
-        rapidjson::Value m(rapidjson::kObjectType);
-        m.AddMember("role", "user", allocator);
-        m.AddMember("content", rapidjson::Value(user.c_str(), allocator).Move(), allocator);
-        messages.PushBack(m, allocator);
-    }
-    doc.AddMember("messages", messages, allocator);
+    doc.AddMember("npc_questions", rapidjson::Value(npcQuestions.c_str(), allocator).Move(), allocator);
+    doc.AddMember("player_answer", rapidjson::Value(playerAnswer.c_str(), allocator).Move(), allocator);
 
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     doc.Accept(writer);
 
-    const std::string url = buildChatCompletionsUrl(cfg.baseUrl);
+    const std::string url = buildBlessingAnswerUrl(cfg.baseUrl);
     sendJsonRequest(url, cfg.apiKey, buffer.GetString(),
                     [this, cb, url](bool ok, long httpCode, const std::string &respBody, const std::string &err) {
                         if (!ok)
                         {
                             std::ostringstream oss;
-                            oss << "AI 请求失败";
+                            oss << "赐福请求失败";
                             if (httpCode > 0)
                             {
                                 oss << "（HTTP " << httpCode << "）";
@@ -488,10 +352,10 @@ void AiBlessingService::requestBlessingFromDialogue(const std::string &npcQuesti
                         std::string npcText;
                         Attributes bonus;
                         std::string parseErr;
-                        if (!parseBlessingFromResponse(respBody, npcText, bonus, parseErr))
+                        if (!parseBlessingFromServerResponse(respBody, npcText, bonus, parseErr))
                         {
                             std::ostringstream oss;
-                            oss << "AI 响应解析失败：" << parseErr;
+                            oss << "赐福响应解析失败：" << parseErr;
                             oss << "\n原始响应片段：" << shortResp(respBody);
                             cb(false, "", Attributes{}, oss.str());
                             return;
@@ -511,27 +375,17 @@ std::string AiBlessingService::trimTrailingSlash(const std::string &s)
     return out;
 }
 
-std::string AiBlessingService::buildChatCompletionsUrl(const std::string &baseUrl)
+std::string AiBlessingService::buildBlessingQuestionUrl(const std::string &baseUrl)
 {
-    std::string trimmed = trimTrailingSlash(baseUrl);
-    std::string lower = toLowerCopy(trimmed);
-    if (lower.size() >= 3 && lower.rfind("/v1") == lower.size() - 3)
-    {
-        return trimmed + "/chat/completions";
-    }
-    return trimmed + "/v1/chat/completions";
+    // baseUrl 为赐福后端根地址（不带 /api 前缀也可）
+    const std::string trimmed = trimTrailingSlash(baseUrl);
+    return trimmed + "/api/blessing/question";
 }
 
-std::string AiBlessingService::safeExtractJsonObject(const std::string &text)
+std::string AiBlessingService::buildBlessingAnswerUrl(const std::string &baseUrl)
 {
-    // 尝试从混杂输出中提取最外层 { ... }
-    const size_t first = text.find('{');
-    const size_t last = text.rfind('}');
-    if (first == std::string::npos || last == std::string::npos || last <= first)
-    {
-        return "";
-    }
-    return text.substr(first, last - first + 1);
+    const std::string trimmed = trimTrailingSlash(baseUrl);
+    return trimmed + "/api/blessing/answer";
 }
 
 void AiBlessingService::sendJsonRequest(const std::string &url,
@@ -540,6 +394,10 @@ void AiBlessingService::sendJsonRequest(const std::string &url,
                                        const std::function<void(bool ok, long httpCode, const std::string &respBody, const std::string &err)> &cb)
 {
     using namespace cocos2d::network;
+
+    // 超时：避免网络异常导致界面长时间无响应（HttpClient 为全局单例，此处设置为较保守的值）
+    HttpClient::getInstance()->setTimeoutForConnect(8);
+    HttpClient::getInstance()->setTimeoutForRead(25);
 
     // 安全提示：若使用 HTTP（非 HTTPS）发送 Bearer Token，会明文传输，存在被窃听风险。
     // 本项目展示阶段允许本地/自建服务使用 HTTP，但会在日志中提示风险。
@@ -612,10 +470,10 @@ void AiBlessingService::sendJsonRequest(const std::string &url,
     req->release();
 }
 
-bool AiBlessingService::parseBlessingFromResponse(const std::string &respBody,
-                                                 std::string &outNpcText,
-                                                 Attributes &outBonus,
-                                                 std::string &outErr) const
+bool AiBlessingService::parseBlessingFromServerResponse(const std::string &respBody,
+                                                        std::string &outNpcText,
+                                                        Attributes &outBonus,
+                                                        std::string &outErr) const
 {
     outNpcText.clear();
     outBonus.clear();
@@ -629,79 +487,35 @@ bool AiBlessingService::parseBlessingFromResponse(const std::string &respBody,
         return false;
     }
 
-    if (root.HasMember("error"))
+    // 统一后端格式：{ok:bool, data?:object, error?:string}
+    if (root.HasMember("ok") && root["ok"].IsBool() && !root["ok"].GetBool())
     {
-        outErr = "服务端返回 error";
-        if (root["error"].IsObject() && root["error"].HasMember("message") && root["error"]["message"].IsString())
+        outErr = "服务端返回失败";
+        if (root.HasMember("error") && root["error"].IsString())
         {
-            outErr = root["error"]["message"].GetString();
+            outErr = root["error"].GetString();
         }
         return false;
     }
 
-    if (!root.HasMember("choices") || !root["choices"].IsArray() || root["choices"].Empty())
+    if (!root.HasMember("data") || !root["data"].IsObject())
     {
-        outErr = "缺少 choices";
+        outErr = "缺少 data";
         return false;
     }
 
-    const auto &choice0 = root["choices"][0];
-    std::string content;
-    if (choice0.IsObject())
-    {
-        if (choice0.HasMember("message") && choice0["message"].IsObject())
-        {
-            const auto &msg = choice0["message"];
-            if (msg.HasMember("content") && msg["content"].IsString())
-            {
-                content = msg["content"].GetString();
-            }
-        }
-        // 兼容某些实现：choices[0].text
-        if (content.empty() && choice0.HasMember("text") && choice0["text"].IsString())
-        {
-            content = choice0["text"].GetString();
-        }
-    }
+    const auto &data = root["data"];
 
-    if (content.empty())
+    if (data.HasMember("npcText") && data["npcText"].IsString())
     {
-        outErr = "choices[0] 未包含 content";
-        return false;
-    }
-
-    content = stripCodeFence(content);
-    std::string jsonText = content;
-
-    rapidjson::Document obj;
-    obj.Parse(jsonText.c_str());
-    if (obj.HasParseError())
-    {
-        // 尝试从混杂文本中截取 JSON
-        jsonText = safeExtractJsonObject(content);
-        if (jsonText.empty())
-        {
-            outErr = "content 不是 JSON，且无法提取 { }";
-            return false;
-        }
-        obj.Parse(jsonText.c_str());
-    }
-    if (obj.HasParseError() || !obj.IsObject())
-    {
-        outErr = "无法解析赐福 JSON";
-        return false;
-    }
-
-    if (obj.HasMember("npcText") && obj["npcText"].IsString())
-    {
-        outNpcText = obj["npcText"].GetString();
+        outNpcText = data["npcText"].GetString();
     }
     if (outNpcText.empty())
     {
         outNpcText = "（NPC 沉默地看着你）";
     }
 
-    if (!obj.HasMember("buff") || !obj["buff"].IsArray())
+    if (!data.HasMember("buff") || !data["buff"].IsArray())
     {
         outErr = "缺少 buff 数组";
         return false;
@@ -719,7 +533,7 @@ bool AiBlessingService::parseBlessingFromResponse(const std::string &respBody,
         return nullptr;
     };
 
-    for (auto it = obj["buff"].Begin(); it != obj["buff"].End(); ++it)
+    for (auto it = data["buff"].Begin(); it != data["buff"].End(); ++it)
     {
         if (!it->IsObject())
         {
@@ -743,8 +557,12 @@ bool AiBlessingService::parseBlessingFromResponse(const std::string &respBody,
             continue;
         }
 
-        const float clamped = std::max(range->minValue, std::min(value, range->maxValue));
-        outBonus.add(range->type, clamped);
+        // 客户端二次校验：越界直接忽略（避免服务端异常/被篡改）
+        if (value < range->minValue || value > range->maxValue)
+        {
+            continue;
+        }
+        outBonus.add(range->type, value);
     }
 
     if (outBonus.values.empty())
@@ -753,6 +571,53 @@ bool AiBlessingService::parseBlessingFromResponse(const std::string &respBody,
         return false;
     }
 
-    // 保底：若 AI 没按数量返回，我们仍按“可用值”接受，但 UI 会提示这次的条目数
+    return true;
+}
+
+bool AiBlessingService::parseQuestionsFromServerResponse(const std::string &respBody,
+                                                         std::string &outQuestions,
+                                                         std::string &outErr) const
+{
+    outQuestions.clear();
+    outErr.clear();
+
+    rapidjson::Document root;
+    root.Parse(respBody.c_str());
+    if (root.HasParseError() || !root.IsObject())
+    {
+        outErr = "响应不是合法 JSON";
+        return false;
+    }
+
+    if (root.HasMember("ok") && root["ok"].IsBool() && !root["ok"].GetBool())
+    {
+        outErr = "服务端返回失败";
+        if (root.HasMember("error") && root["error"].IsString())
+        {
+            outErr = root["error"].GetString();
+        }
+        return false;
+    }
+
+    if (!root.HasMember("data") || !root["data"].IsObject())
+    {
+        outErr = "缺少 data";
+        return false;
+    }
+
+    const auto &data = root["data"];
+    if (!data.HasMember("npcQuestions") || !data["npcQuestions"].IsString())
+    {
+        outErr = "缺少 npcQuestions";
+        return false;
+    }
+
+    outQuestions = data["npcQuestions"].GetString();
+    outQuestions = stripCodeFence(outQuestions);
+    if (outQuestions.empty())
+    {
+        outErr = "npcQuestions 为空";
+        return false;
+    }
     return true;
 }

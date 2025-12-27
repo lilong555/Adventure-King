@@ -14,10 +14,29 @@
 
 -   **游戏引擎**: Cocos2d-x
 
-## 快速开始
+## 快速开始（开发者）
+
+> 本仓库默认是 **WSL 工作副本**（`~/code/fansqim`）+ **Windows 编译主目录**（`/mnt/e/code/fansqim`）的双目录协作模式。  
+> 代码编辑建议在 WSL 工作副本进行；编译运行建议在 Windows/Visual Studio 进行。详情见：`WSL_MIRROR.md`。
 
 ### Windows 构建与运行
 - Visual Studio：打开 `Adventure-King/proj.win32/Adventure-King.sln`，选择 `Debug/Win32` 构建并运行
+
+### WSL ↔ Windows 同步（强制）
+
+在 WSL 工作副本改完代码后，同步回 Windows 编译目录：
+
+```bash
+./scripts/wsl-mirror.sh push
+```
+
+如果你在 Windows 目录做了 `git pull`/切分支等操作，需要把变化拉回 WSL：
+
+```bash
+./scripts/wsl-mirror.sh pull
+```
+
+> 注意：请不要在 WSL 里用 `g++/cmake` 去编译/测试**游戏本体**（以 Windows/VS 构建为准）。
 
 ## 云端存档（WSL 后端 + 游戏端登录/游客）
 
@@ -95,6 +114,48 @@ export AK_CLOUD_SERVER_PORT=5174
 - token 为内存态（服务重启后需重新登录）
 - 密码落盘为 `salt + sha256`（仅为避免明文；生产应替换为 `bcrypt/argon2` 等专用口令哈希）
 - 云存目录权限/备份若泄露，可能导致离线暴力破解与存档被篡改
+
+## AI 赐福（LangChain 后端）
+
+本项目的“赐福”是一个**开发阶段演示功能**：游戏通过 HTTP 请求本地后端，由后端调用 OpenAI 兼容接口，并通过 LangChain 的 **工具调用** 约束输出，最终返回可直接应用的赐福属性（覆盖旧 buff）。  
+服务端代码位于：`tools/blessing_server/`（详见该目录 README）。
+
+### 1) 在 WSL 启动赐福后端
+
+```bash
+cd ~/code/fansqim/tools/blessing_server
+./run.sh
+```
+
+默认监听 `0.0.0.0:5181`，Windows 端通常可用：
+
+- `http://127.0.0.1:5181`
+
+可选环境变量：
+
+- `AK_BLESSING_HOST`（默认 `0.0.0.0`）
+- `AK_BLESSING_PORT`（默认 `5181`）
+- `AK_OPENAI_BASE_URL`（默认 `https://elysiver.h-e.top/v1`；可自行替换为任何 OpenAI 兼容网关）
+
+> 注意：如果你第一次运行报 `python3-venv` 缺失，请先安装 `python3-venv` 后再执行 `./run.sh`。
+
+### 2) 游戏端配置方式
+
+- 进入地图 `Home`，走到赐福 NPC（`spr_shutouj.png`）附近按 `W` 进入赐福界面
+- 在赐福界面填写：
+  - `Base URL`：例如 `http://127.0.0.1:5181`
+  - `API Key`：你的 OpenAI 兼容 Bearer Token（展示阶段由用户手动填写；不要写进仓库/文档）
+  - `Model`：默认 `gemini-3-flash-preview`（可按你的网关支持情况修改）
+
+### 3) 接口概览（用于联调）
+
+- `POST /api/blessing/question`：生成考验问题（中文，2~3 问）
+- `POST /api/blessing/answer`：提交玩家回答并返回赐福结构
+
+### 4) 常见问题排查
+
+- **404/连接不上**：确认端口是否被占用；浏览器访问 `http://127.0.0.1:5181/` 应返回 `{ "ok": true, ... }`
+- **WSL → Windows 访问异常**：把服务端 host 设为 `0.0.0.0`，并优先用 `127.0.0.1`；不支持转发时再改用 WSL IP
 
 
 ## 当前可玩内容（main）
