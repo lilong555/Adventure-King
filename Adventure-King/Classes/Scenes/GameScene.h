@@ -160,8 +160,9 @@ protected:
     /**
      * @brief 相机跟随相关
      */
-    virtual void initCameraFollow();
+    virtual void initCameraFollow(cocos2d::Node* target);
     cocos2d::Vec2 clampLayerPosition(cocos2d::Vec2 pos);
+    cocos2d::Vec2 calcFollowLayerPos(cocos2d::Vec2 targetWorldPos);
     void handleArenaCamera(bool lock, cocos2d::Vec2 targetPos);
 
     /**
@@ -246,6 +247,8 @@ protected:
     virtual LevelConfig getLevelConfig() const { return LevelConfig(); }
 
 private:
+    bool _inputEnabled = true;
+    cocos2d::Node* _cameraAnchor = nullptr;
     /**
      * @brief 显示地图加载失败的 UI
      */

@@ -152,6 +152,12 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     _gameLayer = Node::create();
     addChild(_gameLayer, 0);
 
+    if (!_cameraAnchor) {
+        _cameraAnchor = cocos2d::Node::create();
+        _cameraAnchor->retain();              // 生命周期和 GameScene 一致
+        _gameLayer->addChild(_cameraAnchor);  //  必须在 gameLayer 里
+    }
+
     //-------------------------------------------------------------------------
     // 步骤2：加载关卡地图（TMX/碰撞/门区/敌人点）
     //-------------------------------------------------------------------------
@@ -177,7 +183,7 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
     //-------------------------------------------------------------------------
     // 步骤5：设置相机跟随
     //-------------------------------------------------------------------------
-    initCameraFollow();
+    initCameraFollow(_player);
 
     //-------------------------------------------------------------------------
     // 步骤6：启用帧更新和初始化 UI
@@ -513,20 +519,26 @@ void GameScene::initInputController()
                                    { returnToMapScene(); });
 
     auto keyboardListener = EventListenerKeyboard::create();
-    keyboardListener->onKeyPressed = [this](EventKeyboard::KeyCode keyCode, Event *event)
-    {
-        if (_inputController)
+    keyboardListener->onKeyPressed =
+        [this](EventKeyboard::KeyCode keyCode, Event* event)
         {
-            _inputController->onKeyPressed(keyCode);
-        }
-    };
-    keyboardListener->onKeyReleased = [this](EventKeyboard::KeyCode keyCode, Event *event)
-    {
-        if (_inputController)
+            if (!_inputEnabled) return;   // 添加禁输入功能
+
+            if (_inputController)
+            {
+                _inputController->onKeyPressed(keyCode);
+            }
+        };
+    keyboardListener->onKeyReleased =
+        [this](EventKeyboard::KeyCode keyCode, Event* event)
         {
-            _inputController->onKeyReleased(keyCode);
-        }
-    };
+            if (!_inputEnabled) return;   // ⭐ 关键一行
+
+            if (_inputController)
+            {
+                _inputController->onKeyReleased(keyCode);
+            }
+        };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
 
     CCLOG("Input controller initialized");
@@ -589,22 +601,24 @@ void GameScene::initUIController()
     }
 }
 
-void GameScene::initCameraFollow()
+void GameScene::initCameraFollow(cocos2d::Node* target)
 {
-    if (!_player || !_gameLayer)return;
+    if (!target || !_gameLayer) return;
+
     _gameLayer->stopActionByTag(837);
-    Size mapSize = _levelMap ? _levelMap->getMapSizeInPixels() : Director::getInstance()->getVisibleSize();
+
+    Size mapSize = _levelMap
+        ? _levelMap->getMapSizeInPixels()
+        : Director::getInstance()->getVisibleSize();
+
     Rect worldBound(0, 0, mapSize.width, mapSize.height);
 
-    auto followAction = Follow::create(_player, worldBound);
+    auto followAction = Follow::create(target, worldBound);
+    followAction->setTag(837);
 
-    CCLOG("Camera follow enabled on gameLayer, world bound: (%.0f, %.0f, %.0f, %.0f)",
-          worldBound.origin.x, worldBound.origin.y,
-          worldBound.size.width, worldBound.size.height);
-
-    followAction->setTag(837); // 为跟随动作设置一个固定 Tag，方便寻找
     _gameLayer->runAction(followAction);
 }
+
 
 Vec2 GameScene::clampLayerPosition(Vec2 pos) {
     if (!_levelMap) return pos;
@@ -623,62 +637,68 @@ Vec2 GameScene::clampLayerPosition(Vec2 pos) {
     return Vec2(finalX, finalY);
 }
 
-void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos) {
-    // 停止当前正在执行的过渡动画，防止冲突
+Vec2 GameScene::calcFollowLayerPos(Vec2 targetWorldPos) {
+    auto visibleSize = Director::getInstance()->getVisibleSize();
+    Vec2 rawPos(
+        -targetWorldPos.x + visibleSize.width / 2,
+        -targetWorldPos.y + visibleSize.height / 2
+    );
+    return clampLayerPosition(rawPos);
+}
+
+void GameScene::handleArenaCamera(bool lock, cocos2d::Vec2 targetPos)
+{
     _gameLayer->stopActionByTag(1001);
+    _gameLayer->stopActionByTag(837);
 
-    if (lock) {
-        // --- 锁定逻辑 ---
-        _gameLayer->stopActionByTag(837); // 停止跟随玩家
-
-        auto visibleSize = cocos2d::Director::getInstance()->getVisibleSize();
+    if (lock)
+    {
+        // ---------- 锁定 ----------
+        auto visibleSize = Director::getInstance()->getVisibleSize();
         float targetScale = 1.0f;
 
-        // 计算锁定位置，并应用边界裁剪防止看到黑边
-        cocos2d::Vec2 layerPos(
-            (visibleSize.width / 2) - (targetPos.x * targetScale),
-            (visibleSize.height) - (targetPos.y * targetScale)
+        Vec2 layerPos(
+            visibleSize.width / 2 - targetPos.x * targetScale,
+            visibleSize.height - targetPos.y * targetScale
         );
 
-        auto moveTo = MoveTo::create(1.0f, this->clampLayerPosition(layerPos));
+        auto moveTo = MoveTo::create(1.0f, clampLayerPosition(layerPos));
         auto scaleTo = ScaleTo::create(1.0f, targetScale);
-        auto spawn = Spawn::create(moveTo, scaleTo, nullptr);
 
-        auto action = EaseSineOut::create(spawn);
+        auto action = EaseSineOut::create(
+            Spawn::create(moveTo, scaleTo, nullptr)
+        );
+
         action->setTag(1001);
         _gameLayer->runAction(action);
     }
-    else {
-        // --- 取消锁定逻辑 ---
+    else
+    {
+        // ① 禁用输入（立刻）
+        _inputEnabled = false;
 
-        auto onFinished = CallFunc::create([this]() {
-            if (!_player) return;
+        _gameLayer->stopActionByTag(837);
+        _gameLayer->stopActionByTag(1001);
 
-            // 1. 获取当前最新玩家位置（消除 0.8s 动画期间的位移差）
-            auto visibleSize = cocos2d::Director::getInstance()->getVisibleSize();
-            Vec2 nowPos = _player->getPosition();
-            Vec2 correctedPos(-nowPos.x + visibleSize.width / 2, -nowPos.y + visibleSize.height / 2);
+        // ② 计算“当前帧”玩家对应的相机位置
+        Vec2 targetLayerPos = calcFollowLayerPos(_player->getPosition());
 
-            // 2. 应用边界裁剪并瞬间同步
-            _gameLayer->setPosition(this->clampLayerPosition(correctedPos));
+        // ③ 相机平滑移动
+        auto move = MoveTo::create(0.4f, targetLayerPos);
+        auto ease = EaseSineOut::create(move);
 
-            // 3. 启动正式的 Follow 动作
-            this->initCameraFollow();
+        auto onFinish = CallFunc::create([this]() {
+
+            // ④ 动画结束 → 启用 Follow
+            initCameraFollow(_player);
+
+            // ⑤ 恢复输入（只在这里）
+            _inputEnabled = true;
             });
 
-        // 4. 计算动画开始时的目标位置
-        auto visibleSize = cocos2d::Director::getInstance()->getVisibleSize();
-        Vec2 startPlayerPos = _player->getPosition();
-        Vec2 targetLayerPos(-startPlayerPos.x + visibleSize.width / 2, -startPlayerPos.y + visibleSize.height / 2);
-
-        // 5. 执行平滑回归动画
-        auto moveTo = MoveTo::create(0.8f, this->clampLayerPosition(targetLayerPos));
-        auto resetScale = ScaleTo::create(0.8f, 1.0f);
-        auto spawn = Spawn::create(moveTo, resetScale, nullptr);
-
-        // 6. 按顺序：平移动画 -> 位置校正回调 -> 启动 Follow
-        auto seq = Sequence::create(EaseSineOut::create(spawn), onFinished, nullptr);
+        auto seq = Sequence::create(ease, onFinish, nullptr);
         seq->setTag(1001);
+
         _gameLayer->runAction(seq);
     }
 }
