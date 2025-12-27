@@ -423,6 +423,12 @@ namespace GameConfig
         // 目的：避免高等级回低级怪“秒杀”，同时也避免血量无限增长导致后期怪过于肉。
         namespace LevelScaling
         {
+            // 基础倍率：用于快速整体调参（不改动每个怪物的 MAX_HP 基础值）
+            // - 普通怪整体更脆：0.5 倍
+            // - Boss 整体更肉：1.5 倍
+            inline constexpr float NORMAL_BASE_MULTIPLIER = 0.5f;
+            inline constexpr float BOSS_BASE_MULTIPLIER = 1.5f;
+
             // 普通怪
             inline constexpr float NORMAL_HP_PER_LEVEL = 0.05f;      // 每级 +5% 最大生命倍率
             inline constexpr float NORMAL_HP_MAX_MULTIPLIER = 3.0f;  // 上限：最多 3 倍

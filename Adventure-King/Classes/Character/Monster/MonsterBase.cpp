@@ -244,6 +244,11 @@ void MonsterBase::applyHpScalingForPlayerLevel(int playerLevel, bool isBoss)
         return;
     }
 
+    // 基础倍率：用于快速整体调参（普通怪更脆 / Boss 更肉）
+    const float baseMultiplier = isBoss ? GameConfig::Monster::LevelScaling::BOSS_BASE_MULTIPLIER
+                                        : GameConfig::Monster::LevelScaling::NORMAL_BASE_MULTIPLIER;
+    baseHp *= std::max(0.0f, baseMultiplier);
+
     const float perLevel = isBoss ? GameConfig::Monster::LevelScaling::BOSS_HP_PER_LEVEL
                                   : GameConfig::Monster::LevelScaling::NORMAL_HP_PER_LEVEL;
     const float maxMultiplier = isBoss ? GameConfig::Monster::LevelScaling::BOSS_HP_MAX_MULTIPLIER
