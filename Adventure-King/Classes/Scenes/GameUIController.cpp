@@ -392,17 +392,7 @@ void GameUIController::togglePauseMenu() // 此时该函数建议理解为“han
     // 1. 角色死亡菜单显示时不允许任何操作
     if (_gameUI->isDeathMenuShowing()) return;
 
-    // 2. 核心修改：若背包正在显示，Esc 直接关闭背包并回到游戏（不再去暂停菜单）
-    if (_gameUI->isInventoryShowing())
-    {
-        _gameUI->hideInventory();
-        _paused = false;
-        if (_onPauseChanged) _onPauseChanged(false);
-        CCLOG("Inventory closed, game resumed");
-        return;
-    }
-
-    // 若赐福 NPC 弹窗正在显示，Esc 优先关闭弹窗并恢复游戏
+    // 2. 若赐福 NPC 弹窗正在显示，Esc 优先关闭弹窗并恢复游戏
     if (_gameUI->isBlessingNpcShowing())
     {
         _gameUI->hideBlessingNpc();
@@ -413,6 +403,22 @@ void GameUIController::togglePauseMenu() // 此时该函数建议理解为“han
         }
         return;
     }
+
+    // 3. 若背包正在显示，Esc 关闭背包并回到暂停菜单（保持暂停）
+    // 说明：背包属于“暂停态 UI”的子页面，不应直接回到游戏，避免玩家误触造成状态切换混乱。
+    if (_gameUI->isInventoryShowing())
+    {
+        _gameUI->hideInventory();
+        _gameUI->showPauseMenu();
+        _paused = true;
+        if (_onPauseChanged)
+        {
+            _onPauseChanged(true);
+        }
+        CCLOG("Inventory closed, back to pause menu");
+        return;
+    }
+
     if (_gameUI->isPauseMenuShowing())
     {
         _gameUI->hidePauseMenu();
@@ -420,13 +426,13 @@ void GameUIController::togglePauseMenu() // 此时该函数建议理解为“han
         if (_onPauseChanged) _onPauseChanged(false);
         CCLOG("Pause menu closed, game resumed");
     }
-    // 4. 默认行为：正常状态下按 Esc 直接呼出背包
+    // 4. 默认行为：正常状态下按 Esc 呼出暂停菜单（原始行为）
     else
     {
-        _gameUI->showInventory(); // 修改点：默认打开背包
+        _gameUI->showPauseMenu();
         _paused = true;
         if (_onPauseChanged) _onPauseChanged(true);
-        CCLOG("Inventory opened, game paused");
+        CCLOG("Pause menu opened");
     }
 }
 
