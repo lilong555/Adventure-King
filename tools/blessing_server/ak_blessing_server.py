@@ -33,7 +33,12 @@ from langchain_core.tools import tool
 
 
 DEFAULT_OPENAI_BASE_URL = "https://elysiver.h-e.top/v1"
-DEFAULT_MODEL = "gemini-3-flash-preview"
+# 允许通过环境变量覆盖默认模型（不建议写入仓库）
+DEFAULT_MODEL = (
+    os.environ.get("AK_BLESSING_MODEL")
+    or os.environ.get("AK_BLESSING_DEFAULT_MODEL")
+    or "gemini-3-flash-preview"
+)
 
 # 与 C++ 侧 GameConfig::AI::Blessing 保持一致（展示阶段写死）
 PICK_COUNT = 2
@@ -256,4 +261,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
