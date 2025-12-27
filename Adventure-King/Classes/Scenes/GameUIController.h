@@ -53,6 +53,9 @@ public:
     void showToast(const std::string &text, const cocos2d::Color3B &color = cocos2d::Color3B::WHITE);
 
 private:
+    /// @brief 背包关闭后的统一收敛：回到暂停菜单或回到游戏
+    void applyPostInventoryCloseState();
+
     cocos2d::Scene *_scene = nullptr;
     PlayerCharacter *_player = nullptr;
     GameUI *_gameUI = nullptr;

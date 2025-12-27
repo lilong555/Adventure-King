@@ -160,6 +160,7 @@ public:
 
     /**
      * @brief 设置背包按钮回调（HUD 上的 bag 图标）
+     * @param callback 点击回调函数
      */
     void setInventoryButtonCallback(const std::function<void()> &callback) { _inventoryButtonCallback = callback; }
 

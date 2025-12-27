@@ -59,8 +59,8 @@ bool GameUI::init()
                          origin.y + visibleSize.height  - GameSceneConfig::UI::MAP_BUTTON_OFFSET);*/
 
     // 背包按钮位置：右上角（与地图按钮逻辑无关，避免挡住技能栏）
-    _inventoryButtonPos = Vec2(origin.x + visibleSize.width - padding - 48.0f,
-                               origin.y + visibleSize.height - padding - 120.0f);
+    _inventoryButtonPos = Vec2(origin.x + visibleSize.width - padding - GameSceneConfig::UI::INVENTORY_BUTTON_OFFSET_X,
+                               origin.y + visibleSize.height - padding - GameSceneConfig::UI::INVENTORY_BUTTON_OFFSET_Y);
 
     // 交互提示位置：屏幕底部中央
     _interactionHintPos = Vec2(origin.x + visibleSize.width / 2,
@@ -186,7 +186,7 @@ void GameUI::createInventoryButton()
     // HUD 背包按钮：点击等同于按 B（打开/关闭背包）
     _inventoryButton = MenuItemImage::create(
         "Scene/UI/bag.png",
-        "Scene/UI/bag.png",
+        "Scene/UI/bagSelected.png",
         CC_CALLBACK_1(GameUI::onInventoryButtonClicked, this));
 
     if (_inventoryButton)

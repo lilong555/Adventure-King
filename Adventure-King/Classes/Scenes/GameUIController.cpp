@@ -210,23 +210,7 @@ bool GameUIController::init(Scene *scene,
                                     {
                                         if (!_gameUI)
                                             return;
-                                        if (_inventoryReturnToPauseOnClose)
-                                        {
-                                            _paused = true;
-                                            if (_onPauseChanged)
-                                            {
-                                                _onPauseChanged(true);
-                                            }
-                                            _gameUI->showPauseMenu();
-                                        }
-                                        else
-                                        {
-                                            _paused = false;
-                                            if (_onPauseChanged)
-                                            {
-                                                _onPauseChanged(false);
-                                            }
-                                        }
+                                        applyPostInventoryCloseState();
                                     });
     }
 
@@ -474,17 +458,7 @@ void GameUIController::toggleInventory()
     if (_gameUI->isInventoryShowing())
     {
         _gameUI->hideInventory();
-        if (_inventoryReturnToPauseOnClose)
-        {
-            _paused = true;
-            if (_onPauseChanged) _onPauseChanged(true);
-            _gameUI->showPauseMenu();
-        }
-        else
-        {
-            _paused = false;
-            if (_onPauseChanged) _onPauseChanged(false);
-        }
+        applyPostInventoryCloseState();
         return;
     }
 
@@ -504,6 +478,32 @@ void GameUIController::toggleInventory()
     _gameUI->showInventory();
     _paused = true;
     if (_onPauseChanged) _onPauseChanged(true);
+}
+
+void GameUIController::applyPostInventoryCloseState()
+{
+    if (!_gameUI)
+    {
+        return;
+    }
+
+    if (_inventoryReturnToPauseOnClose)
+    {
+        _paused = true;
+        if (_onPauseChanged)
+        {
+            _onPauseChanged(true);
+        }
+        _gameUI->showPauseMenu();
+    }
+    else
+    {
+        _paused = false;
+        if (_onPauseChanged)
+        {
+            _onPauseChanged(false);
+        }
+    }
 }
 
 void GameUIController::showDeathMenu()
