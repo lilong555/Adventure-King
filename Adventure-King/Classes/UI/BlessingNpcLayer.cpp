@@ -206,7 +206,7 @@ bool BlessingNpcLayer::init()
     const float guideRightEdge = _panel->getPositionX() - 18.0f;
     const float guideW = std::min(360.0f, std::max(240.0f, guideRightEdge - origin.x - 20.0f));
     _guideLabel = Label::createWithTTF(
-        "步骤1：填写 baseUrl / apiKey\n"
+        "步骤1：填写赐福后端 baseUrl / apiKey\n"
         "步骤2：点击【确认】生成问题\n"
         "步骤3：在对话框输入回答\n"
         "步骤4：点击【提交回答】获得赐福（覆盖旧赐福）\n"
@@ -271,10 +271,9 @@ bool BlessingNpcLayer::init()
 
     // baseUrl
     addRowLabel("baseUrl", startY);
-    // 公共服务默认URL：https://elysiver.h-e.top（来源：https://linux.do/t/topic/1175087/27）
-    // 注意：第三方社区服务存在安全与隐私风险，请谨慎填写与使用。
-    _urlField = ui::TextField::create("例如 https://elysiver.h-e.top（第三方服务有安全/隐私风险）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
-    _urlField->setString("https://elysiver.h-e.top");
+    // 注意：baseUrl 为“赐福后端服务”地址（FastAPI+LangChain），不是 OpenAI 的 /v1 地址。
+    _urlField = ui::TextField::create("例如 http://127.0.0.1:5181（赐福后端服务）", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 22);
+    _urlField->setString("http://127.0.0.1:5181");
     styleTextField(_urlField, startY, 220);
 
     // apiKey
