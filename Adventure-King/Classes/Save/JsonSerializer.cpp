@@ -272,6 +272,7 @@ std::string JsonSerializer::serialize(const SaveSlotData &data)
     progressObj.AddMember("currentSceneName", rapidjson::Value(data.progressData.currentSceneName.c_str(), allocator).Move(), allocator);
     progressObj.AddMember("playerPosX", data.progressData.playerPosX, allocator);
     progressObj.AddMember("playerPosY", data.progressData.playerPosY, allocator);
+    progressObj.AddMember("isLevelCleared", data.progressData.isLevelCleared, allocator);
     progressObj.AddMember("playTimeSeconds", data.progressData.playTimeSeconds, allocator);
 
     rapidjson::Value unlockedLevelsArr(rapidjson::kArrayType);
@@ -522,6 +523,9 @@ bool JsonSerializer::deserialize(const std::string &json, SaveSlotData &outData)
             outData.progressData.currentSceneName = getString(progress, "currentSceneName", outData.progressData.currentSceneName);
             outData.progressData.playerPosX = getFloat(progress, "playerPosX", outData.progressData.playerPosX);
             outData.progressData.playerPosY = getFloat(progress, "playerPosY", outData.progressData.playerPosY);
+            outData.progressData.isLevelCleared = (progress.HasMember("isLevelCleared") && progress["isLevelCleared"].IsBool())
+                ? progress["isLevelCleared"].GetBool()
+                : outData.progressData.isLevelCleared;
             outData.progressData.playTimeSeconds = getInt64(progress, "playTimeSeconds", outData.progressData.playTimeSeconds);
 
             if (progress.HasMember("unlockedLevels") && progress["unlockedLevels"].IsArray())

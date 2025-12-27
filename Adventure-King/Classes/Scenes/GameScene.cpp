@@ -272,6 +272,35 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
                     _gameLayer,
                     [this](const std::string &type)
                     { return this->createMonsterByType(type); });
+
+                // 读档恢复：关卡通关/传送门解锁状态
+                // 兼容旧存档：若缺失 isLevelCleared 字段，则根据“刷怪点/竞技场/存活怪快照”推断一次，避免读档后门被重新锁死。
+                bool shouldBeCleared = progress.isLevelCleared;
+                if (!shouldBeCleared && (!progress.enemySpawnPoints.empty() || !progress.arenas.empty()))
+                {
+                    const bool noAliveMonsters = progress.aliveMonsters.empty();
+                    bool allSpawnPointsDone = true;
+                    for (const auto &sp : progress.enemySpawnPoints)
+                    {
+                        if (!sp.hasSpawned)
+                        {
+                            allSpawnPointsDone = false;
+                            break;
+                        }
+                    }
+                    bool allArenasFinished = true;
+                    for (const auto &a : progress.arenas)
+                    {
+                        if (!a.isFinished)
+                        {
+                            allArenasFinished = false;
+                            break;
+                        }
+                    }
+                    shouldBeCleared = noAliveMonsters && allSpawnPointsDone && allArenasFinished;
+                }
+
+                _levelMap->restoreLevelClearedForLoad(shouldBeCleared);
             }
         }
     }
@@ -304,6 +333,8 @@ void GameScene::fillProgressDataForSave(GameProgressSaveData &outProgress) const
         outProgress.playerPosX = _player->getPositionX();
         outProgress.playerPosY = _player->getPositionY();
     }
+
+    outProgress.isLevelCleared = (_levelMap != nullptr) ? _levelMap->isLevelCleared() : false;
 
     outProgress.enemySpawnPoints.clear();
     outProgress.arenas.clear();

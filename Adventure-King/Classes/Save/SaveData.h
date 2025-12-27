@@ -115,6 +115,12 @@ struct GameProgressSaveData
 
     //================== 世界状态（用于“存档/读档恢复刷怪与关卡状态”） ==================
 
+    // 关卡是否已通关（用于恢复传送门可交互状态）
+    // @note
+    // - 旧版本在读档时会重新锁门，导致“已通关但无法离开”；
+    // - 若旧存档缺失该字段，读档时会根据 enemySpawnPoints/arenas/aliveMonsters 自动推断一次。
+    bool isLevelCleared = false;
+
     // 刷怪点状态（enemy_g）：用于避免读档后重复刷出已触发的刷怪点
     struct EnemySpawnPointState
     {
