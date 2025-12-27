@@ -182,8 +182,8 @@ void SaveMenuLayer::layoutUI()
         origin.y + visibleSize.height / 2));
 
     // 布局存档槽位
-    float slotStartY = _background->getContentSize().height / 12 * 9.5f;
-    float slotSpacing = _background->getContentSize().height / 12 * 1.5f;
+    float slotStartY = _background->getContentSize().height*0.72f;
+    float slotSpacing = _background->getContentSize().height *0.213f;
 
     for (size_t i = 0; i < _slotNodes.size(); ++i)
     {
@@ -196,17 +196,17 @@ void SaveMenuLayer::layoutUI()
 cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &slotData)
 {
     auto node = Node::create();
-    node->setContentSize(Size(_background->getContentSize().width * 0.9f, 80));
+    node->setContentSize(Size(_background->getContentSize().width * 0.6f, 120));
 
     // 背景
-    auto bg = LayerColor::create(Color4B(50, 50, 50, 200), node->getContentSize().width, node->getContentSize().height);
-    bg->setPosition(Vec2(-node->getContentSize().width / 2, -node->getContentSize().height / 2));
-    node->addChild(bg);
+    //auto bg = LayerColor::create(Color4B(50, 50, 50, 200), node->getContentSize().width, node->getContentSize().height);
+    //bg->setPosition(Vec2(-node->getContentSize().width / 2, -node->getContentSize().height / 2));
+    //node->addChild(bg);
 
     // 槽位标题
     std::string slotTitle = "槽位 " + std::to_string(slotIndex + 1);
-    auto titleLabel = Label::createWithTTF(slotTitle, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24);
-    titleLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 80, 0));
+    auto titleLabel = Label::createWithTTF(slotTitle, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 30);
+    titleLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, 20));
     titleLabel->setAnchorPoint(Vec2(0, 0.5f));
     node->addChild(titleLabel);
 
@@ -230,7 +230,7 @@ cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &
                                                    posY,
                                                    formatTimestamp(slotData.saveTimestamp).c_str());
         auto infoLabel = Label::createWithTTF(infoText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
-        infoLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 80, -20));
+        infoLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -20));
         infoLabel->setAnchorPoint(Vec2(0, 0.5f));
         infoLabel->setTextColor(Color4B(200, 200, 200, 255));
         node->addChild(infoLabel);
@@ -241,17 +241,18 @@ cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &
             [this, slotIndex](Ref *) {
                 onDeleteClicked(slotIndex);
             });
-        deleteItem->setPosition(Vec2(node->getContentSize().width / 2 - 80, 0));
+        deleteItem->setPosition(Vec2(node->getContentSize().width / 2 - 40, -40));
 
         auto deleteMenu = Menu::create(deleteItem, nullptr);
         deleteMenu->setPosition(Vec2::ZERO);
+        deleteMenu->setColor(Color3B::RED);
         node->addChild(deleteMenu);
     }
     else
     {
         // 空槽位
-        auto emptyLabel = Label::createWithTTF("空槽位", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 18);
-        emptyLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 80, -20));
+        auto emptyLabel = Label::createWithTTF("空槽位", "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 20);
+        emptyLabel->setPosition(Vec2(-node->getContentSize().width / 2 + 40, -30));
         emptyLabel->setAnchorPoint(Vec2(0, 0.5f));
         emptyLabel->setTextColor(Color4B(150, 150, 150, 255));
         node->addChild(emptyLabel);
@@ -260,11 +261,11 @@ cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &
     // 主按钮（保存/加载）
     std::string buttonText = (_mode == Mode::SAVE) ? "保存" : "加载";
     auto mainItem = MenuItemLabel::create(
-        Label::createWithTTF(buttonText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 24),
+        Label::createWithTTF(buttonText, "fonts/NotoSansSC/NotoSansSC-Regular.ttf", 30),
         [this, slotIndex](Ref *) {
             onSlotClicked(slotIndex);
         });
-    mainItem->setPosition(Vec2(node->getContentSize().width / 2 - 30, 0));
+    mainItem->setPosition(Vec2(node->getContentSize().width / 2 - 50, 20));
 
     // 如果是加载模式且槽位为空，禁用按钮
     if (_mode == Mode::LOAD && !hasSave)
@@ -275,6 +276,7 @@ cocos2d::Node *SaveMenuLayer::createSlotNode(int slotIndex, const SaveSlotData &
 
     auto mainMenu = Menu::create(mainItem, nullptr);
     mainMenu->setPosition(Vec2::ZERO);
+    mainMenu->setColor(Color3B::GREEN);
     node->addChild(mainMenu);
 
     return node;

@@ -92,7 +92,7 @@ void PauseMenu::createTitle()
     Vec2 center(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
 
     _titleLabel = Label::createWithTTF("游戏暂停", "fonts/ZCOOLKuaiLe-Regular.ttf", 36);
-    _titleLabel->setPosition(Vec2(center.x, center.y + 130));
+    _titleLabel->setPosition(Vec2(center.x, center.y + 180));
     _titleLabel->setColor(Color3B(255, 220, 100));
     _titleLabel->enableOutline(Color4B::BLACK, 2);
     _container->addChild(_titleLabel, 2);

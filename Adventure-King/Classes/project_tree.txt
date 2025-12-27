@@ -97,6 +97,10 @@ D:.
 |       SceneTransitionManager.h
 |       
 +---Objects
+|   +---Items
+|   |       DropItem.cpp
+|   |       DropItem.h
+|   |       
 |   \---Projectiles
 |           Bomb.cpp
 |           Bomb.h
@@ -160,6 +164,8 @@ D:.
 |       InventoryLayer.h
 |       PauseMenu.cpp
 |       PauseMenu.h
+|       PlayerDeathMenu.cpp
+|       PlayerDeathMenu.h
 |       PlayerStatusBar.cpp
 |       PlayerStatusBar.h
 |       SkillBar.cpp

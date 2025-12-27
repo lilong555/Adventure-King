@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Character/Base/CharacterBase.h"
 #include "Character/Base/CharacterData.h"
 
