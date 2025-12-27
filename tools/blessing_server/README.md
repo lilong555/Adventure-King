@@ -57,3 +57,21 @@
 - `http://127.0.0.1:5181`
 
 `apiKey` 填写你的 OpenAI 兼容 Bearer Token（展示阶段手动输入）。
+
+## Windows 一键启动（PowerShell）
+
+在 Windows 的仓库目录下打开 PowerShell（建议 Windows Terminal），进入该目录：
+
+`cd tools/blessing_server`
+
+一键启动（会自动创建 `.venv` 并安装依赖）：
+
+`powershell -ExecutionPolicy Bypass -File .\run_win.ps1`
+
+> 说明：该脚本为了兼容 Windows PowerShell 5.1 的脚本编码识别，内容刻意保持为 ASCII 输出；不影响功能。
+
+可选参数：
+
+- `-ListenHost 127.0.0.1 -Port 5181`
+- `-OpenAiBaseUrl "https://elysiver.h-e.top/v1"`（或你的 OpenAI 兼容网关）
+- `-BlessingModel "gemini-3-flash-preview"`
