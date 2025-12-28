@@ -7,6 +7,7 @@
 ; 说明：
 ; - 游戏是 Win32（32 位）构建，安装到 Program Files (x86) 属正常现象。
 ; - 赐福后端是 Python 脚本，首次启动会创建 .venv 并安装依赖（需要本机有 Python 3.10+）。
+; - 本项目使用静态 CRT（/MT）构建 Release.win32，一般不再需要额外安装 VC++ 运行库。
 
 #define AppName "Adventure-King"
 #define AppPublisher "Adventure-King Team"
@@ -28,6 +29,7 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableDirPage=no
 DisableProgramGroupPage=yes
+PrivilegesRequired=admin
 Compression=lzma2
 SolidCompression=yes
 OutputBaseFilename=Adventure-King-Setup
@@ -35,6 +37,7 @@ OutputDir=.
 WizardStyle=modern
 
 [Files]
+
 ; 游戏主体（Release.win32 输出目录）
 Source: "{#GameOutDir}\\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#GameOutDir}\\*.dll"; DestDir: "{app}"; Flags: ignoreversion

@@ -187,6 +187,8 @@ function Build-BlessingWheelhouse([string]$repoRoot) {
   Write-Host "[OK] Wheelhouse: $wheelDir"
 }
 
+$ErrorActionPreference = "Stop"
+
 $repoRoot = Resolve-RepoRoot
 $issPath = Join-Path $repoRoot "tools\\installer_win\\AdventureKing.iss"
 
