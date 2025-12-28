@@ -249,6 +249,11 @@ namespace GameConfig
                     growth.set(AttributeType::STRENGTH, 1.0f);
                     growth.set(AttributeType::DEFENSE, 0.5f);
                     break;
+                case CharacterRole::ASSASSIN:
+                    growth.set(AttributeType::MAX_HP, 10.0f);
+                    growth.set(AttributeType::MAX_MP, 5.0f);
+                    growth.set(AttributeType::STRENGTH, 2.0f);
+                    growth.set(AttributeType::DEFENSE, 1.0f);
                     // 其他职业...
                 default:
                     growth.set(AttributeType::MAX_HP, 10.0f);
@@ -286,7 +291,7 @@ namespace GameConfig
         namespace NormalAttack
         {
             // 击破值：普通攻击（TNT）每次命中对 Boss 击破条的累计值
-            inline constexpr int BREAK_DAMAGE = 1;
+            inline constexpr int BREAK_DAMAGE = 2;
             inline constexpr float ANIM_FRAME_DELAY = 0.13f;
             inline constexpr float BOMB_SCALE = 0.3f;
             inline constexpr float SPAWN_OFFSET_X_RATIO = 0.35f;
@@ -596,7 +601,7 @@ namespace GameConfig
         namespace Burning
         {
             inline constexpr float DURATION_SECONDS = 5.0f;
-            inline constexpr float TICK_INTERVAL_SECONDS = 0.5f;
+            inline constexpr float TICK_INTERVAL_SECONDS = 0.1f;
             inline constexpr float BASE_DAMAGE_SCALE = 0.1f;
             inline constexpr float PER_STACK_DAMAGE_SCALE = 0.1f;
         }

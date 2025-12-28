@@ -60,7 +60,7 @@ bool GameUI::init()
 
     // 背包按钮位置：右上角（与地图按钮逻辑无关，避免挡住技能栏）
     _inventoryButtonPos = Vec2(origin.x + visibleSize.width - padding - GameSceneConfig::UI::INVENTORY_BUTTON_OFFSET_X,
-                               origin.y + visibleSize.height - padding - GameSceneConfig::UI::INVENTORY_BUTTON_OFFSET_Y);
+                               origin.y + visibleSize.height - padding - 0.5f*GameSceneConfig::UI::INVENTORY_BUTTON_OFFSET_Y);
 
     // 交互提示位置：屏幕底部中央
     _interactionHintPos = Vec2(origin.x + visibleSize.width / 2,
