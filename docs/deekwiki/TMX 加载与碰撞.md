@@ -1,4 +1,4 @@
-# TMX Loading and Collision（TMX 加载与碰撞）
+# TMX 加载与碰撞
 
 > **相关源文件**
 > * [Adventure-King/Classes/Save/JsonSerializer.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/JsonSerializer.cpp)
@@ -105,7 +105,7 @@ bool LevelMap::load(Node *gameLayer, const std::string &tmxPath)
 
 **来源**：[Classes/Scenes/LevelMap.cpp L39-L70](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/LevelMap.cpp#L39-L70)
 
- [Classes/Scenes/LevelMap.h L42-L46]（原文此处截断：`http…12572 chars truncated…`）把传送门对象提取为矩形并存入 `_gateAreas`；在调试模式下，会渲染蓝色覆盖矩形用于可视化。
+ [Adventure-King/Classes/Scenes/LevelMap.h L66](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/LevelMap.h#L66-L66) 把传送门对象提取为矩形并存入 `_gateAreas`；在调试模式下，会渲染蓝色覆盖矩形用于可视化。
 
 **数据流：**
 

@@ -1,4 +1,4 @@
-# 怪物 AI 与行为（Monster AI and Behavior）
+# 怪物 AI 与行为
 
 > **相关源文件**
 > * [Adventure-King/Classes/Character/Base/CharacterData.h](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Base/CharacterData.h)
@@ -88,11 +88,49 @@ end
 
 怪物通过三个核心距离参数来定义行为区域：
 
-> 说明：本节原文在导出时被截断，以下截断片段按原样保留以避免遗漏。
+| 参数 | 成员变量 | 用途 |
+| --- | --- | --- |
+| 仇恨半径（Aggro Radius） | `_aggroRadius` | 怪物发现并锁定玩家的距离 |
+| 攻击距离（Attack Range） | `_attackRange` | 怪物停止移动并开始攻击的距离 |
+| 牵引半径（Leash Radius） | `_leashRadius` | 距离 home 超过该值就强制回家（`0` 表示无限牵引，不回家） |
 
-```text
-| Parameter | Member Variable | Purpose |
-| --- …1798 chars truncated… : "alive"
+额外的巡逻配置：
+
+| 成员变量 | 用途 |
+| --- | --- |
+| `_patrolEnabled` | 空闲时是否巡逻 |
+| `_patrolLeft`, `_patrolRight` | 巡逻边界（父节点坐标系） |
+| `_patrolDir` | 当前巡逻方向（±1） |
+
+### 配置示例
+
+```cpp
+// GoblinMonster 初始化
+setAIConfig(GameConfig::Monster::Goblin::VISION_RANGE,    // 700.0f（仇恨）
+            GameConfig::Monster::Goblin::CHASE_RANGE,     // 0.0f（无限牵引）
+            GameConfig::Monster::Goblin::PATROL_ENABLED); // true
+
+// 或者分别配置
+monster->setAggroRadius(700.0f);
+monster->setLeashRadius(800.0f);
+monster->enablePatrol(Vec2(100, 200), Vec2(500, 200));
+```
+
+**来源：** [Adventure-King/Classes/Character/Monster/MonsterBase.cpp L418-L424](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Monster/MonsterBase.cpp#L418-L424)
+
+ [Adventure-King/Classes/Character/Monster/Monsters/GoblinMonster.cpp L146-L148](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Monster/Monsters/GoblinMonster.cpp#L146-L148)
+
+ [Adventure-King/Classes/Configs/GameConfig.h L465-L467](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Configs/GameConfig.h#L465-L467)
+
+---
+
+## AI 决策流程
+
+`updateAI()` 会按 AI 更新间隔执行一套“优先级状态机”（默认 100ms；离屏时会更慢），用于决定进入 `IDLE`、`WALKING`、`STATE_PATROL`、`ATTACKING` 等状态：
+
+```mermaid
+stateDiagram-v2
+    [*] --> CheckDead : "alive"
     CheckDead --> Dead : "state==ATTACKING"
     CheckDead --> CheckStunned : "alive"
     CheckStunned --> IdleStunned : "state==ATTACKING"
@@ -105,8 +143,6 @@ end
     ReAcquire --> NoTarget : "no leash constraint"
     SetTarget --> CheckLeash : "_target acquired"
     NoTarget --> CheckMoveGoal : "!_hasMoveGoal"
-    NoTarget --> CheckPatrol : "!_hasMoveGoal"
-    CheckMoveGoal --> Walking : "continue to waypoint"
     NoTarget --> CheckPatrol : "!_hasMoveGoal"
     CheckMoveGoal --> Walking : "continue to waypoint"
     CheckPatrol --> Patrol : "_patrolEnabled && boundaries set"

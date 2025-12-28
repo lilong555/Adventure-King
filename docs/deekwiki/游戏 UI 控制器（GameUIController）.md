@@ -1,4 +1,4 @@
-# GameUIController（游戏 UI 控制器）
+# 游戏 UI 控制器（GameUIController）
 
 > **相关源文件**
 > * [Adventure-King/Classes/Configs/GameSceneConfig.h](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Configs/GameSceneConfig.h)
@@ -130,17 +130,29 @@ end
 | `GameUIController` | 管理 UI 状态机（暂停、背包、死亡），协调菜单显示/隐藏，对 UI 刷新做节流 |
 | `GameUI` | UI 元素容器节点，提供 child UI 的便捷访问与绑定入口 |
 
-> 说明：原文在本节后续存在生成器截断占位（`...15549 chars truncated...`），为保证不遗漏，下方保留原占位内容。
+### Toast 提示机制
 
-```text
-* `GameUI` | Container node for UI elements, provides s…15549 chars truncated…Scene
-CheckScene -.->|"false"| End
-CheckScene -.-> RemoveOld
+`showToast(text, color)` 用固定 tag（`TOAST_TAG = 88001`）保证同一时刻只显示一条提示，避免连续保存/连续点击导致屏幕堆叠。
+
+```mermaid
+flowchart TD
+
+CheckScene["_scene 为空?"]
+End["return"]
+RemoveOld["getChildByTag(TOAST_TAG)<br>removeFromParent()"]
+CreateLabel["Label::createWithTTF(text, font, 28)"]
+SetStyle["setColor/setOpacity(0)/setTag"]
+Position["setPosition(屏幕上方偏中)"]
+AddToScene["addChild(label, UI_Z_ORDER + 200)"]
+AnimSeq["FadeIn(0.12)<br>Delay(1.1)<br>FadeOut(0.35)<br>RemoveSelf()"]
+
+CheckScene -.->|"是"| End
+CheckScene -.->|"否"| RemoveOld
 RemoveOld -.-> CreateLabel
-CreateLabel -.-> Position
+CreateLabel -.-> SetStyle
+SetStyle -.-> Position
 Position -.-> AddToScene
 AddToScene -.-> AnimSeq
-AnimSeq -.-> End
 ```
 
 **实现：** [GameUIController.cpp L318-L355](https://github.com/lilong555/Adventure-King/blob/60df0f40/GameUIController.cpp#L318-L355)

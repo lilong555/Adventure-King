@@ -1,4 +1,4 @@
-# CharacterBase（角色基类）
+# 角色基类（CharacterBase）
 
 > **相关源文件**
 > * [Adventure-King/Classes/Character/Base/CharacterBase.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Base/CharacterBase.cpp)
@@ -90,7 +90,19 @@ CocosList -.-> SkillComp
 
 **来源**：[Classes/Character/Base/CharacterBase.h L31-L57](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Character/Base/CharacterBase.h#L31-L57)
 
- [Classes/Character/Base/CharacterBase.cpp L31-L62](h…13760 chars truncated… | Production use (pre-cached frames) |
+ [Classes/Character/Base/CharacterBase.cpp L31-L62](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Character/Base/CharacterBase.cpp#L31-L62)
+
+---
+
+## 初始化模式
+
+子类通常使用两种初始化方式之一来设置角色精灵：
+
+### 初始化方法
+
+| 方法 | 输入 | 用途 |
+| --- | --- | --- |
+| `initWithSpriteFrameName()` | 缓存中的 SpriteFrame 名称 | 正式资源（预缓存帧） |
 | `initWithFile()` | 文件路径 | 缓存不可用时用于调试/兜底加载 |
 
 **初始化顺序**：

@@ -1,4 +1,4 @@
-# CloudSyncService Client（CloudSyncService 客户端）
+# CloudSyncService 客户端
 
 > **相关源文件（Relevant source files）**
 > * [Adventure-King/Classes/Save/Cloud/CloudSyncService.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/Cloud/CloudSyncService.cpp)

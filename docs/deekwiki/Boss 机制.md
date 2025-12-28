@@ -1,4 +1,4 @@
-# Boss Mechanics（Boss 机制）
+# Boss 机制
 
 > **相关源文件**
 > * [Adventure-King/Classes/Character/Base/CharacterBase.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Base/CharacterBase.cpp)
@@ -94,18 +94,14 @@ Boss 实体实现破韧条相关方法，UI 轮询这些值以及伤害累计器
 
 `CharacterBase` 定义了 break meter 的接口，并提供默认实现返回 0（表示非 Boss 不支持此机制）：
 
-> 说明：原文在此处存在生成器截断占位（`...21998 chars truncated...`），为保证不遗漏，下方保留原占位内容。
-
 | 方法（Method） | 返回类型（Return Type） | 默认实现（Default Implementation） | 用途（Purpose） |
 | --- | --- | --- | --- |
 | `getBreakMeter()` | `int` | `return 0;` | 当前破韧值 |
 | `getBreakMax()` | `int` | `return 0;` | 最大破韧值 |
 
-> 说明：原文此处存在截断残片 `Maxi…21998 chars truncated…`，已在本文保留为引用，避免遗漏。
+**来源**：[Adventure-King/Classes/Character/Base/CharacterBase.h L93-L95](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Base/CharacterBase.h#L93-L95)
 
- [Adventure-King/Classes/Character/Monster/Monsters/GobluMonster.cpp L694](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Monster/Monsters/GobluMonster.cpp#L694-L694)
-
- [Adventure-King/Classes/Character/Monster/Monsters/GobluMonster.cpp L738](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Monster/Monsters/GobluMonster.cpp#L738-L738)
+ [Adventure-King/Classes/Character/Monster/Monsters/GobluMonster.h L25-L26](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Monster/Monsters/GobluMonster.h#L25-L26)
 
 ### 双形态攻击模式系统
 

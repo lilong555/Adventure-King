@@ -1,4 +1,4 @@
-# Player UI Components（玩家 UI 组件）
+# 玩家 UI 组件
 
 > **相关源文件**
 > * [Adventure-King/Classes/Character/Player/PlayerCharacter.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Player/PlayerCharacter.cpp)
@@ -89,33 +89,38 @@ end
 | `SkillBar` | `createSkillBar()` | 10 | 技能槽位与冷却 |
 | `BossHealthBar` | `createBossHealthBar()` | 10 | Boss 血条与破韧条 |
 | `PauseMenu` | `createPauseMenu()` | 100 | 暂停相关操作 |
-```text
-| `InventoryLayer` | `createInventor…15349 chars truncated…ene -.->|"Every Frame"| GUIC
-GUIC -.->|"Throttled (0.05s)"| GameUI
-GUIC -.->|"Every Frame"| IH
-GameUI -.-> PSB
-GameUI -.-> SB
-GameUI -.-> BHB
+| `InventoryLayer` | `createInventoryLayer()` | 101 | 装备/技能/属性管理（模态界面） |
+| `PlayerDeathMenu` | `createDeathMenu()` | 200 | 死亡菜单（强制暂停，阻断其它 UI） |
+| `BlessingNpcLayer` | `createBlessingNpcLayer()` | 220 | 赐福 NPC 弹窗（覆盖背包/暂停） |
+| `InteractionHint` | `createInteractionHint()` | 10 | 门/NPC 交互提示 |
+| `LevelNameLabel` | `createLevelNameLabel()` | 10 | 当前关卡名显示 |
+| `MapButton` | `createMapButton()` | 10 | 返回地图按钮 |
+| `InventoryButton` | `createInventoryButton()` | 10 | HUD 背包按钮（等同按 B） |
 
-subgraph subGraph1 ["Hint Logic"]
-    IH
-end
+### 更新节流与刷新边界
 
-subgraph subGraph0 ["Always Updated"]
-    PSB
-    SB
-    BHB
-end
+`GameUIController::update(dt)` 每帧运行，但会把“UI 全量刷新”做节流（默认 0.05s 一次），同时单独对交互提示做每帧检查以保证响应性。
 
-subgraph subGraph2 ["On-Demand Refresh"]
-    IL
-    Pages
-    IL -.->|"Tab Switch"| Pages
-    IL -.->|"Equipment Change"| Pages
-end
+```mermaid
+flowchart TD
+
+SceneUpdate["GameScene::update(dt)"]
+GUIC["GameUIController::update(dt)"]
+HintCheck["每帧：检查 Gate/NPC 临近"]
+HintUpdate["仅在来源变化时更新提示"]
+Throttle["累计 dt（节流）"]
+UIRefresh["触发：GameUI::updateDisplay()"]
+HUD["HUD：状态条/技能条/Boss 血条"]
+Inventory["InventoryLayer 页面刷新"]
+
+SceneUpdate -.-> GUIC
+GUIC -.-> HintCheck
+HintCheck -.-> HintUpdate
+GUIC -.-> Throttle
+Throttle -.->|">= 0.05s"| UIRefresh
+UIRefresh -.-> HUD
+Inventory -.->|"Tab 切换/装备变更等"| Inventory
 ```
-
-> 说明：本节原文在表格/图中间存在生成器截断占位（`...15349 chars truncated...`），为保证不遗漏，已按原样保留。
 
 **交互提示更新：**
 

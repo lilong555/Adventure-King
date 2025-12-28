@@ -100,8 +100,6 @@ end
 
 **来源：** [Classes/Scenes/DebugScene.cpp L90-L144](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.cpp#L90-L144)
 
-> 说明：原文在该图后半段出现生成器截断并混入其它 Mermaid 语法段落，会导致渲染报错；已清理为可渲染版本。
-
  [Classes/Scenes/DebugScene.cpp L169-L385](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.cpp#L169-L385)
 
 ### 初始化方法
@@ -262,13 +260,18 @@ Helper -.-> DamageLog
 
 **来源：** [Classes/Scenes/DebugScene.cpp L1265-L1323](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.cpp#L1265-L1323)
 
- [Classes/Scenes/DebugScene.cpp L708-L720](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.cpp#L7…3420 chars truncated…ax 10 lines) 并显示在 `_damageLogLabel` 中。`addDamageLog()` 同时也会注册到 `PlayerCharacter` 的回调上 [Classes/Scenes/DebugScene.cpp L379-L382](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.cpp#L379-L382)
+伤害日志会写入内部 `_damageLog` 列表，并刷新 `_damageLogLabel`（最多保留 `MAX_LOG_LINES` 行）。`addDamageLog()` 同时也会注册到 `PlayerCharacter` 的回调上，用于记录真实战斗过程中的命中/受击结果。
+
+**来源：** [Adventure-King/Classes/Scenes/DebugScene.cpp L1617-L1638](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/DebugScene.cpp#L1617-L1638)
+
+ [Adventure-King/Classes/Scenes/DebugScene.cpp L379-L382](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/DebugScene.cpp#L379-L382)
 
 因此角色内部事件（例如装备效果触发）也会被自动记录。
 
-```xml
+```cpp
 // Callback registration in initPlayer()
-_player->setDamageLogCallback(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> {
+_player->setDamageLogCallback([this](const std::string& log)
+{
     this->addDamageLog(log);
 });
 ```

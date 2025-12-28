@@ -1,4 +1,4 @@
-# HUD Elements（HUD 元素）
+# HUD 元素
 
 > **相关源文件**
 > * [Adventure-King/Classes/Character/Base/CharacterBase.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Base/CharacterBase.cpp)
@@ -78,8 +78,6 @@ subgraph subGraph1 ["游戏实体/组件"]
     AttrComp
 end
 ```
-
-> 说明：原文在该图后半段出现生成器截断与混入的非 flowchart 内容，会导致 Mermaid 渲染报错；已清理为可渲染版本。
 
 **字体加载优化：**
 

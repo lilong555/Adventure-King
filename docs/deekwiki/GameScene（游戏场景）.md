@@ -1,4 +1,4 @@
-# GameScene（核心玩法场景）
+# 游戏场景（GameScene）
 
 > **相关源文件**
 > * [Adventure-King/Classes/Scenes/DebugScene.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/DebugScene.cpp)
@@ -101,7 +101,6 @@ classDiagram
     LevelMap --o GameScene
     GameInputController --o GameScene
     GameUIController --o GameScene
-    %% 注：原文导出时此处存在截断占位，已移除以避免 Mermaid 渲染报错
 ```
 
 **来源：** [Adventure-King/Classes/Scenes/GameScene.h L86-L121](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/GameScene.h#L86-L121)
@@ -354,13 +353,20 @@ _eventDispatcher->addEventListenerWithSceneGraphPriority(contactListener, this);
 // Lines 537-583
 _inputController = std::make_unique<GameInputController>();
 _inputController->bindPlayer(_player);
-_inputController->setPauseToggle(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { togglePauseMenu(); });
-_inputController->setInventoryToggle(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { _uiController->toggleInventory(); });
-_inputController->setIsPausedGetter(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { return _isPaused; });
-_inputController->setGateQuery(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { 
-    return _levelMap && _player && _levelMap->isPointAtGate(_player->getPosition()); 
-});
-_inputController->setGateEnter(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { returnToMapScene(); });
+_inputController->setPauseToggle([this]() { togglePauseMenu(); });
+_inputController->setInventoryToggle([this]()
+                                     {
+                                         if (_uiController)
+                                         {
+                                             _uiController->toggleInventory();
+                                         }
+                                     });
+_inputController->setIsPausedGetter([this]() { return _isPaused; });
+_inputController->setGateQuery([this]()
+                               {
+                                   return _levelMap && _player && _levelMap->isPointAtGate(_player->getPosition());
+                               });
+_inputController->setGateEnter([this]() { returnToMapScene(); });
 ```
 
 这种基于回调的设计使输入处理与场景逻辑解耦：控制器可以查询状态并触发动作，而无需直接依赖场景内部细节。
@@ -404,12 +410,15 @@ _uiController->init(
     this,
     _player,
     getLevelName(),
-    <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { returnToMapScene(); },
-    <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { setGamePaused(paused); },
-    <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> -> bool {
+    [this]() { returnToMapScene(); },
+    [this](bool paused) { setGamePaused(paused); },
+    [this](std::string &outMessage) -> bool
+    {
         return this->saveToActiveSlotInternal("保存", "", outMessage);
     },
-    <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { return _levelMap && _player && _levelMap->isPointAtGate(...); },
+    [this]() {
+        return _levelMap && _player && _levelMap->isPointAtGate(_player->getPosition());
+    },
     [](const SaveSlotData& saveData) { /* Load game lambda */ }
 );
 ```
@@ -477,13 +486,13 @@ M -.-> N
 ```xml
 // Lines 308-318
 if (_levelMap && _player) {
-    _levelMap->updateEnemySpawns(
-        _player,
-        _gameLayer,
-        <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { return this->createMonsterByType(type); },
-        getEnemySpawnViewDistance(),
-        0.0f  // dt=0 for immediate check
-    );
+_levelMap->updateEnemySpawns(
+    _player,
+    _gameLayer,
+    [this](const std::string &type) { return this->createMonsterByType(type); },
+    getEnemySpawnViewDistance(),
+    0.0f  // dt=0 for immediate check
+);
 }
 ```
 
@@ -630,13 +639,13 @@ if (_boss && _boss->isDead()) {
 ```xml
 // Lines 916-924
 if (_levelMap && _player) {
-    _levelMap->updateEnemySpawns(
-        _player,
-        _gameLayer,
-        <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { return this->createMonsterByType(type); },
-        getEnemySpawnViewDistance(),
-        dt
-    );
+_levelMap->updateEnemySpawns(
+    _player,
+    _gameLayer,
+    [this](const std::string &type) { return this->createMonsterByType(type); },
+    getEnemySpawnViewDistance(),
+    dt
+);
 }
 ```
 
@@ -653,7 +662,7 @@ if (_levelMap && _player) {
 _levelMap->updateArenas(
     _player,
     _gameLayer,
-    <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> { return this->createMonsterByType(type); }
+    [this](const std::string &type) { return this->createMonsterByType(type); }
 );
 ```
 
@@ -1021,11 +1030,15 @@ void GameScene::onEnter() {
     if (_player && SaveManager::hasRuntimePlayerPosition()) {
         Vec2 savedPos = SaveManager::getRuntimePlayerPosition();
         SaveManager::clearRuntimePlayerPosition();
-        scheduleOnce(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this, savedPos" undefined  file-path="this, savedPos">Hii</FileRef> {
-            if (this->_player) {
-                this->_player->setPosition(savedPos);
-            }
-        }, 0.0f, "ApplyRuntimePlayerPosition");
+        scheduleOnce([this, savedPos](float)
+                     {
+                         if (this->_player)
+                         {
+                             this->_player->setPosition(savedPos);
+                         }
+                     },
+                     0.0f,
+                     "ApplyRuntimePlayerPosition");
     }
 }
 
