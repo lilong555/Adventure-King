@@ -214,6 +214,7 @@ void StatusEffectVfxComponent::updateBurningVfx(Node* owner, AttributeComponent*
     {
         existing = Node::create();
         existing->setName(BURNING_VFX_NAME);
+        existing->setScale(3.0f);
         owner->addChild(existing, 999);
 
         auto particle = ParticleSystemQuad::createWithTotalParticles(kBurningParticleConfig.totalParticles);
