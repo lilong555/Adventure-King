@@ -672,7 +672,7 @@ void PlayerCharacter::initAttributesByRole(CharacterRole role)
         attrs.set(AttributeType::CRITICAL_RATE, 0.10f);
         attrs.set(AttributeType::MOVE_SPEED, 200.0f);
         attrs.set(AttributeType::MAX_HP, 100.0f);
-        attrs.set(AttributeType::MAX_MP, GameConfig::Player::DEFAULT_MAX_MP);
+        attrs.set(AttributeType::MAX_MP, 100.0f); // 战士初始蓝量
         break;
     case CharacterRole::MAGE:
         attrs.set(AttributeType::STRENGTH, 4);
@@ -1090,7 +1090,8 @@ float PlayerCharacter::getAttackPower()
     }
 
     const float baseAttack = weaponDamage + strength * STRENGTH_DAMAGE_MULTIPLIER;
-    return baseAttack * std::max(0.0f, _outgoingDamageMultiplier);
+    const float roleMultiplier = GameConfig::Player::getBaseAttackMultiplierByRole(_role);
+    return baseAttack * roleMultiplier * std::max(0.0f, _outgoingDamageMultiplier);
 }
 
 void PlayerCharacter::setOutgoingDamageMultiplier(float multiplier)

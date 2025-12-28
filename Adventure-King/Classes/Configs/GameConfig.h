@@ -170,7 +170,7 @@ namespace GameConfig
     {
         const int FIREBALL_ID = 1002;    // 火球技能ID
         const float FIREBALL_CD = 1.2f;  // 火球冷却时间
-        const float FIREBALL_MP = 15.0f; // 火球蓝耗
+        const float FIREBALL_MP = 10.0f; // 火球蓝耗
         // 击破值：命中/爆炸每次结算对 Boss 击破条的累计值（可按技能单独调参）
         inline constexpr int BREAK_DAMAGE = 3;
 
@@ -214,7 +214,31 @@ namespace GameConfig
         inline constexpr float STRENGTH_DAMAGE_MULTIPLIER = 1.5f;
         inline constexpr float GROUND_VELOCITY_THRESHOLD = 5.0f;
         inline constexpr float GROUND_NORMAL_THRESHOLD = -0.3f;
-        inline constexpr float DEFAULT_MAX_MP = 1000.0f;
+        // 默认最大蓝量（仅用于历史兼容；目前各职业在 PlayerCharacter::initAttributesByRole 内分别指定初始蓝量）
+        inline constexpr float DEFAULT_MAX_MP = 100.0f;
+
+        // 不同职业的“基础攻击力”倍率（数值平衡用）
+        // 说明：
+        // - 该倍率会作用于 PlayerCharacter::getAttackPower() 的最终结果，影响普攻/技能（凡是走 getAttackPower 的地方）。
+        // - 这是数值平衡设计，不等同于“素材缩放倍率”（WARRIOR_SPRITE_SCALE_MULTIPLIER 等）。
+        inline constexpr float WARRIOR_BASE_ATTACK_MULTIPLIER = 1.5f;
+        inline constexpr float MAGE_BASE_ATTACK_MULTIPLIER = 2.0f;
+        inline constexpr float ASSASSIN_BASE_ATTACK_MULTIPLIER = 1.0f;
+
+        inline float getBaseAttackMultiplierByRole(CharacterRole role)
+        {
+            switch (role)
+            {
+            case CharacterRole::WARRIOR:
+                return WARRIOR_BASE_ATTACK_MULTIPLIER;
+            case CharacterRole::MAGE:
+                return MAGE_BASE_ATTACK_MULTIPLIER;
+            case CharacterRole::ASSASSIN:
+                return ASSASSIN_BASE_ATTACK_MULTIPLIER;
+            default:
+                return 1.0f;
+            }
+        }
 
         // 等级/经验曲线配置（避免逻辑与 UI 里各写一份）
         namespace Leveling
@@ -327,7 +351,7 @@ namespace GameConfig
         {
             const int SLASH_ID = 1003;   // 斩击技能ID
             const float SLASH_CD = 0.8f; // 冷却时间
-            const float SLASH_MP = 0.0f; // 蓝耗（暂不消耗）
+            const float SLASH_MP = 5.0f; // 蓝耗
             inline constexpr size_t SKILL_SLOT = 0;
             // 击破值：斩击是 4 段伤害（每帧一次），这里按“每段命中”累计（可按技能单独调参）
             inline constexpr int BREAK_DAMAGE_PER_HIT = 1;
@@ -384,11 +408,11 @@ namespace GameConfig
         {
             const int FIRE_ID = 1004;    // Fire 技能ID（避免与 Bomb/Fireball/Slash 冲突）
             const float FIRE_CD = 1.0f;  // 冷却时间（秒）
-            const float FIRE_MP = 0.0f;  // 蓝耗（暂不消耗）
+            const float FIRE_MP = 10.0f; // 蓝耗
             inline constexpr size_t SKILL_SLOT = 0; // 默认放在 0 号槽位（E/K）
 
             inline constexpr float CAST_ANIM_FRAME_DELAY = 0.12f; // fire_1~fire_3 播放速度
-            inline constexpr float DAMAGE_SCALE = 1.0f;           // “照抄伤害”：按攻击力等比结算
+            inline constexpr float DAMAGE_SCALE = 2.5f;           // 造成攻击力的 2.5 倍伤害
             // 击破值：Fire 命中一次对 Boss 击破条的累计值（可按技能单独调参）
             inline constexpr int BREAK_DAMAGE = 3;
 
