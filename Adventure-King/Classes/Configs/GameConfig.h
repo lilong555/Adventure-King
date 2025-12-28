@@ -214,7 +214,8 @@ namespace GameConfig
         inline constexpr float STRENGTH_DAMAGE_MULTIPLIER = 1.5f;
         inline constexpr float GROUND_VELOCITY_THRESHOLD = 5.0f;
         inline constexpr float GROUND_NORMAL_THRESHOLD = -0.3f;
-        inline constexpr float DEFAULT_MAX_MP = 1000.0f;
+        // 默认最大蓝量（仅用于历史兼容；目前各职业在 PlayerCharacter::initAttributesByRole 内分别指定初始蓝量）
+        inline constexpr float DEFAULT_MAX_MP = 100.0f;
 
         // 不同职业的“基础攻击力”倍率（数值平衡用）
         // 说明：
