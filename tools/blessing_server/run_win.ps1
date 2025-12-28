@@ -8,6 +8,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+Set-Location $PSScriptRoot
+
 function Find-Python {
   if (Get-Command py -ErrorAction SilentlyContinue) { return @{ Exe = "py"; Args = @("-3") } }
   if (Get-Command python3 -ErrorAction SilentlyContinue) { return @{ Exe = "python3"; Args = @() } }
@@ -16,7 +18,7 @@ function Find-Python {
 }
 
 function Ensure-Venv($PyCmd) {
-  $venvPython = Join-Path ".venv" "Scripts/python.exe"
+  $venvPython = Join-Path $PSScriptRoot ".venv\\Scripts\\python.exe"
   if (Test-Path $venvPython) { return }
   Write-Host "[INFO] Creating venv (.venv) ..."
   & $PyCmd.Exe @($PyCmd.Args) -m venv .venv
@@ -24,14 +26,20 @@ function Ensure-Venv($PyCmd) {
 
 function Pip-Install([string]$VenvPython) {
   Write-Host "[INFO] Installing dependencies ..."
+  # Ensure pip is available and not broken (some Python distributions ship without a fully working pip).
+  & $VenvPython -m ensurepip --upgrade
   & $VenvPython -m pip install -U pip
-  & $VenvPython -m pip install -r requirements.txt
+  & $VenvPython -m pip install -r (Join-Path $PSScriptRoot "requirements.txt")
 }
 
 $pyCmd = Find-Python
 Ensure-Venv $pyCmd
 
-$venvPython = (Resolve-Path (Join-Path ".venv" "Scripts/python.exe")).Path
+try {
+  $venvPython = (Resolve-Path (Join-Path $PSScriptRoot ".venv\\Scripts\\python.exe")).Path
+} catch {
+  throw "Venv python not found. Delete .venv and retry."
+}
 Pip-Install $venvPython
 
 if ($OpenAiBaseUrl -ne "") { $env:AK_OPENAI_BASE_URL = $OpenAiBaseUrl }
@@ -40,4 +48,4 @@ if ($BlessingModel -ne "") { $env:AK_BLESSING_MODEL = $BlessingModel }
 Write-Host "[OK] Starting Blessing server: http://$ListenHost`:$Port"
 Write-Host "[INFO] Stop: close this window or press Ctrl+C"
 
-& $venvPython ak_blessing_server.py serve --host $ListenHost --port $Port
+& $venvPython (Join-Path $PSScriptRoot "ak_blessing_server.py") serve --host $ListenHost --port $Port
