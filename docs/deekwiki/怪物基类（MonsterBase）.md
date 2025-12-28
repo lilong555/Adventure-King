@@ -104,9 +104,12 @@ classDiagram
 | 2 | 挂载 `AttributeComponent` | [MonsterBase.cpp L84-L90](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L84-L90) |
 | 3 | 挂载 `StateMachineComponent` | [MonsterBase.cpp L93-L98](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L93-L98) |
 | 4 | 挂载 `SkillComponent` | [MonsterBase.cpp L101-L106](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L101-L106) |
-| （原文截断：`…2662 chars truncated…`） | 将更新间隔在 `[0.5*interval, interval]` 之间随机化，避免多个怪物同时生成时出现帧率尖峰 | [MonsterBase.cpp L170-L179](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L170-L179) |
-
-> 说明：上表中包含导出时生成的截断占位 `…2662 chars truncated…`，这里按原样保留以避免遗漏。
+| 5 | 挂载 `StatusEffectVfxComponent` | [MonsterBase.cpp L109-L114](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L109-L114) |
+| 6 | `scheduleUpdateWithPriority(1)` | [MonsterBase.cpp L118](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L118-L118) |
+| 7 | 创建物理体（PhysicsBody） | [MonsterBase.cpp L132-L150](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L132-L150) |
+| 8 | 初始化 AI/移动/攻击更新间隔 | [MonsterBase.cpp L152-L155](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L152-L155) |
+| 9 | 设置活跃更新距离 | [MonsterBase.cpp L158-L166](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L158-L166) |
+| 10 | 错开更新累积器（抖动） | [MonsterBase.cpp L170-L179](https://github.com/lilong555/Adventure-King/blob/60df0f40/MonsterBase.cpp#L170-L179) |
 
 **来源：** [Classes/Character/Monster/MonsterBase.cpp L66-L181](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Character/Monster/MonsterBase.cpp#L66-L181)
 
@@ -333,8 +336,6 @@ CheckPatrol2 -.-> SetIdle2
 ---
 
 ## 移动系统（追击/回家/巡逻）
-
-> 说明：本节中包含导出时生成的截断占位 `MonsterBa…739 chars truncated…`，按原样保留以避免遗漏。
 
 ```mermaid
 flowchart TD
@@ -977,36 +978,42 @@ sequenceDiagram
 
 命中框完全由 `GameConfig::Monster::Goblin` 配置：
 
-```sql
-// From GoblinMonster.cpp:294-326
-auto logicSequence = Sequence::create(
-    DelayTime::create(hitTime),
-    CallFunc::create(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> {
-        float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
-        
-        // Scale adaptation
-        float scaleRatio = fabs(this->getScaleX()) / 
-                          GameConfig::Monster::Goblin::HITBOX_TUNE_SCALE;
-        
-        Vec2 offset(
-            GameConfig::Monster::Goblin::HITBOX_OFFSET_X * direction * scaleRatio,
-            GameConfig::Monster::Goblin::HITBOX_OFFSET_Y * scaleRatio
-        );
-        
-        Size hitboxSize(
-            GameConfig::Monster::Goblin::HITBOX_WIDTH * scaleRatio,
-            GameConfig::Monster::Goblin::HITBOX_HEIGHT * scaleRatio
-        );
-        
-        int damageTag = static_cast<int>(
-            round(getAttributeComponent()->getAttributeValue(AttributeType::STRENGTH))
-        );
-        
-        spawnMeleeHitbox(offset, hitboxSize, damageTag,
-                        GameConfig::Monster::Goblin::HITBOX_LIFE_SECONDS);
-    }),
-    nullptr
-);
+```cpp
+// From GoblinMonster.cpp:292-331（节选）
+auto logicSequence = cocos2d::Sequence::create(
+    cocos2d::DelayTime::create(hitTime),
+    cocos2d::CallFunc::create([this]()
+                              {
+                                  float direction = (this->getScaleX() > 0) ? 1.0f : -1.0f;
+
+                                  constexpr float kGoblinHitboxTuneScale = GameConfig::Monster::Goblin::HITBOX_TUNE_SCALE;
+                                  float scaleRatio = 1.0f;
+                                  if (kGoblinHitboxTuneScale > 0.0f)
+                                  {
+                                      scaleRatio = std::fabs(this->getScaleX()) / kGoblinHitboxTuneScale;
+                                  }
+
+                                  cocos2d::Vec2 offset(GameConfig::Monster::Goblin::HITBOX_OFFSET_X * direction * scaleRatio,
+                                                      GameConfig::Monster::Goblin::HITBOX_OFFSET_Y * scaleRatio);
+                                  cocos2d::Size hitboxSize(GameConfig::Monster::Goblin::HITBOX_WIDTH * scaleRatio,
+                                                           GameConfig::Monster::Goblin::HITBOX_HEIGHT * scaleRatio);
+
+                                  int damageTag = 1;
+                                  if (auto attr = getAttributeComponent())
+                                  {
+                                      float strength = attr->getAttributeValue(AttributeType::STRENGTH);
+                                      if (strength > 0.0f)
+                                      {
+                                          damageTag = static_cast<int>(std::round(strength));
+                                      }
+                                  }
+
+                                  spawnMeleeHitbox(offset,
+                                                   hitboxSize,
+                                                   std::max(1, damageTag),
+                                                   GameConfig::Monster::Goblin::HITBOX_LIFE_SECONDS);
+                              }),
+    nullptr);
 ```
 
 **来源：** [Classes/Character/Monster/Monsters/GoblinMonster.cpp L254-L354](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Character/Monster/Monsters/GoblinMonster.cpp#L254-L354)

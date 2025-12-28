@@ -1,4 +1,4 @@
-# SaveManager（存档管理器）
+# 存档管理器（SaveManager）
 
 > **相关源文件**
 > * [Adventure-King/Classes/Save/JsonSerializer.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/JsonSerializer.cpp)
@@ -80,14 +80,13 @@ classDiagram
         -writeToFile(string, string) : bool
         -readFromFile(string, string&) : bool
         -getSaveStorageKey(int) : string
+        -getSaveFilePath(int) : string
     }
 ```
 
-> 说明：原文此处存在生成器截断占位，会导致 Mermaid 渲染报错；已补齐为可渲染版本（类成员与方法列表仍按前文引用为准）。
+**来源：**[Adventure-King/Classes/Save/SaveManager.h L20-L334](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/SaveManager.h#L20-L334)
 
-**来源**：[Classes/Save/Cloud/CloudSyncService.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Save/Cloud/CloudSyncService.cpp#LNaN-LNaN)
-
- [Classes/Scenes/Layers/SaveMenuLayer.cpp L651-L679](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/Layers/SaveMenuLayer.cpp#L651-L679)
+ [Adventure-King/Classes/Save/SaveManager.cpp L28-L80](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/SaveManager.cpp#L28-L80)
 
 ---
 
@@ -142,7 +141,7 @@ GameScene 是 SaveManager 的主要使用方：
 | 恢复世界状态 | 把 `getRuntimeProgressData()` 应用到 LevelMap |
 | 场景切换 | 离开前调用 `cacheRuntimePlayerData(player)` |
 
-**来源**：[Classes/Scenes/GameScene.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/GameScene.cpp#LNaN-LNaN)
+**来源**：[Adventure-King/Classes/Scenes/GameScene.cpp L937-L1011](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/GameScene.cpp#L937-L1011)
 
 ### LevelMap 集成
 

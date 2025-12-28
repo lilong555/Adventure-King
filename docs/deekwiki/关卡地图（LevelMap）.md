@@ -1,4 +1,4 @@
-# LevelMap（关卡地图）
+# 关卡地图（LevelMap）
 
 > **相关源文件**
 > * [Adventure-King/Classes/Save/JsonSerializer.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/JsonSerializer.cpp)
@@ -106,9 +106,7 @@ classDiagram
 | 2 | 计算 `_mapSizeInPixels` | 存储世界边界（地图瓦片数 × 瓦片大小） |
 | 3 | 加入场景树 | 把 `_tileMap` 作为子节点挂载，z-order 为 0 |
 
-**来源**：原文此处存在生成器截断占位（`...21055 chars truncated...`），为保证不遗漏，保留如下残片：
-
-**来源：** [Adventure-King/Classes/Scenes/LevelMap.cpp …21055 chars truncated…]（原文此处截断：`…21055 chars truncated…`）由竞技场生成的怪物会设置 `monster->setName("arena:" + arenaID)`。保存时，GameScene 从名称前缀中提取 arena ID 并写入 `MonsterState::arenaID`；加载时，`registerRestoredArenaMonster()` 使用该 ID 来恢复怪物的竞技场归属关系。
+竞技场生成的怪物会设置 `monster->setName("arena:" + arenaID)`；存档时，GameScene 会从名称前缀中提取 arena ID 并写入 `MonsterState::arenaID`；读档时，`registerRestoredArenaMonster()` 使用该 ID 来恢复怪物的竞技场归属关系，并重新挂接死亡回调以便继续波次推进。
 
 **来源：** [Adventure-King/Classes/Save/SaveData.h L146-L158](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/SaveData.h#L146-L158)
 

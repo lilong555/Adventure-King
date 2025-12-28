@@ -1,4 +1,4 @@
-# GameInputController（游戏输入控制器）
+# 游戏输入控制器（GameInputController）
 
 > **相关源文件**
 > * [Adventure-King/Classes/Configs/GameSceneConfig.h](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Configs/GameSceneConfig.h)
@@ -120,8 +120,6 @@ subgraph GameInputController ["GameInputController"]
     Update -.-> JumpCount
 end
 ```
-
-> 说明：原文在该图后半段出现生成器截断并混入表格内容，会导致 Mermaid 渲染报错；已清理为可渲染版本。
 
 ### 输入状态字段
 

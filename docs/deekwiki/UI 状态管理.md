@@ -1,4 +1,4 @@
-# UI State Management（UI 状态管理）
+# UI 状态管理
 
 > **相关源文件**
 > * [Adventure-King/Classes/Configs/GameSceneConfig.h](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Configs/GameSceneConfig.h)
@@ -36,7 +36,7 @@
 
 `InteractionHintSource` 枚举定义了提示优先级：
 
-```python
+```cpp
 enum class InteractionHintSource
 {
     NONE = 0,
@@ -96,11 +96,37 @@ subgraph subGraph0 ["Priority Level 3 (Highest)"]
 end
 ```
 
-> 说明：原文在本节中间存在生成器截断占位（`...9702 chars truncated...`）以及 FileRef 残片。为保证不遗漏，下方保留原占位内容。
+### 输入阻断与关键回调
 
-**Input Blocking …9702 chars truncated…L90](https://github.com/lilong555/Adventure-King/blob/60df0f40/GameUIController.cpp#L83-L90) : ```xml pauseMenu->setResumeCallback(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> {     _paused = false;     if (_onPauseChanged) _onPauseChanged(false); }); ```
-2. **Inventory Close** [GameUIController.cpp L209-L214](https://github.com/lilong555/Adventure-King/blob/60df0f40/GameUIController.cpp#L209-L214) : ```xml inventory->setCloseCallback(<FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> {     applyPostInventoryCloseState();  // Context-aware behavior }); ```
-3. **死亡菜单重开（Death Menu Restart）** [GameUIController.cpp L236-L283](https://github.com/lilong555/Adventure-King/blob/60df0f40/GameUIController.cpp#L236-L283)：* 复活玩家 * 缓存运行时数据 * 通过 `LoadingScene` 重新加载关卡
+UI 的“阻断/恢复”主要通过三类回调完成：
+
+1. **暂停菜单 Resume：恢复游戏**
+
+```cpp
+pauseMenu->setResumeCallback([this]()
+                             {
+                                 _paused = false;
+                                 if (_onPauseChanged)
+                                 {
+                                     _onPauseChanged(false);
+                                 }
+                             });
+```
+
+2. **背包 Close：根据上下文返回**
+
+```cpp
+inventory->setCloseCallback([this]()
+                            {
+                                if (!_gameUI)
+                                    return;
+                                applyPostInventoryCloseState();
+                            });
+```
+
+3. **死亡菜单 Restart：复活并重载当前关卡**
+
+死亡菜单的“重开”会在转场前把玩家恢复到满血满蓝，避免把 `HP=0` 缓存进运行时数据导致“重进即死亡”，随后通过 `LoadingScene` 重载当前关卡场景。
 
 **来源**：[Adventure-King/Classes/Scenes/GameUIController.cpp L32-L316](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/GameUIController.cpp#L32-L316)
 

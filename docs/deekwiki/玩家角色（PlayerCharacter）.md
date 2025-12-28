@@ -102,8 +102,6 @@ sequenceDiagram
   p2->>p2: scheduleUpdateWithPriority(1)
 ```
 
-> 说明：原文此处包含生成器截断占位，会导致 Mermaid 渲染报错；已改为等价的可渲染初始化时序概览。
-
 5. **Animation（动画）**：为状态机预缓存动画帧
 6. **SkillSet（技能集）**：创建职业技能集（WarriorSkillSet、MageSkillSet、AssassinSkillSet）
 7. **Inventory（背包）**：为调试填充默认物品
@@ -652,7 +650,8 @@ std::vector<std::string> attackFrames = {
     "player/attack_2.png",
     "player/attack_3.png"
 };
-playOneShotAnimation(attackFrames, 0.15f, ACTION_TAG_ATTACK_ANIM, <FileRef file-url="https://github.com/lilong555/Adventure-King/blob/60df0f40/this" undefined  file-path="this">Hii</FileRef> {
+playOneShotAnimation(attackFrames, 0.15f, ACTION_TAG_ATTACK_ANIM, [this]()
+{
     // Attack animation finished
     _actionLocked = false;
 });

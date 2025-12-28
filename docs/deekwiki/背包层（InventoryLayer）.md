@@ -1,4 +1,4 @@
-# InventoryLayer（背包层）
+# 背包层（InventoryLayer）
 
 > **相关源文件**
 > * [Adventure-King/Classes/Character/Player/PlayerCharacter.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Player/PlayerCharacter.cpp)
@@ -99,9 +99,29 @@ Position["位置计算<br>(visW - 2560×scale)/2"]
 PanelRoot["_panelRoot<br>setScale(scale)<br>setPosition(designOrigin)"]
 
 VisibleSize -.-> ScaleCalc
+DesignSize -.-> ScaleCalc
+ScaleCalc -.-> Position
+Position -.-> PanelRoot
 ```
 
-设计尺寸…（原文此处被截断：`…19983 chars truncated…`）…初始化序列（Initialization Sequence）
+缩放逻辑会保持纵横比并把面板居中：
+
+```cpp
+const float scaleX = visibleSize.width / DESIGN_WIDTH;
+const float scaleY = visibleSize.height / DESIGN_HEIGHT;
+const float scale = std::min(scaleX, scaleY);
+
+const Vec2 designOrigin(
+    origin.x + (visibleSize.width - DESIGN_WIDTH * scale) * 0.5f,
+    origin.y + (visibleSize.height - DESIGN_HEIGHT * scale) * 0.5f);
+
+_panelRoot->setScale(scale);
+_panelRoot->setPosition(designOrigin);
+```
+
+**来源：** [Adventure-King/Classes/UI/InventoryLayer.cpp L20-L48](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/UI/InventoryLayer.cpp#L20-L48)
+
+ [Adventure-King/Classes/UI/InventoryLayer.cpp L474-L498](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/UI/InventoryLayer.cpp#L474-L498)
 
 ```mermaid
 sequenceDiagram
@@ -128,8 +148,6 @@ sequenceDiagram
   p2->>p2: Create close button<br/>Create close hint label<br/>setVisible(false)<br/>switchTab(EQUIPMENT)
   p2->>p2: refresh()
 ```
-
-> 说明：本节原文在图中间存在生成器截断占位（`...19983 chars truncated...`），为保证不遗漏，已按原样保留。
 
 ### 刷新流程
 
