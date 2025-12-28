@@ -1,0 +1,304 @@
+{
+  "repo_notes": [
+    {
+      "content": "use chinese to Introduce Adventure-King"
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduce Adventure-King, its architecture, and major systems at a high level",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "System Architecture",
+      "purpose": "Explain the high-level architecture including scene management, component systems, and data flow",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Key Concepts and Terminology",
+      "purpose": "Define important terms, classes, and patterns used throughout the codebase",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Scene System",
+      "purpose": "Document the scene management system, which is the core orchestrator of the game (highest importance: 128.91)",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "GameScene",
+      "purpose": "Detailed documentation of GameScene initialization, lifecycle, and orchestration of gameplay systems",
+      "parent": "Scene System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Initialization Pipeline",
+      "purpose": "Explain the initialization sequence including physics, player, level map, and UI setup",
+      "parent": "Scene System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Update Loop and Runtime Logic",
+      "purpose": "Document the per-frame update logic, spawn management, and pause handling",
+      "parent": "Scene System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Physics and Combat Contact",
+      "purpose": "Explain physics contact handling and combat interaction processing",
+      "parent": "Scene System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Scene Transitions",
+      "purpose": "Document scene loading, transitions, and the SceneRegistry system",
+      "parent": "Scene System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "DebugScene",
+      "purpose": "Document the debug scene used for testing character features and mechanics",
+      "parent": "Scene System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Character Systems",
+      "purpose": "Overview of character entities, both player and monsters",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "PlayerCharacter",
+      "purpose": "Comprehensive documentation of the player character system (importance: 101.62)",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Component Architecture",
+      "purpose": "Explain AttributeComponent, InventoryComponent, SkillComponent, and StateMachineComponent",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Equipment and Inventory",
+      "purpose": "Document the equipment system, inventory management, and item effects",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Skill System",
+      "purpose": "Explain active and passive skills, skill slots, and cooldown management",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Leveling and Progression",
+      "purpose": "Document experience, leveling, attribute points, and character growth",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "MonsterBase",
+      "purpose": "Document the monster system including AI, combat, and lifecycle (importance: 61.80)",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Monster AI and Behavior",
+      "purpose": "Explain AI decision system, aggro, leashing, and patrol mechanics",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Monster Combat",
+      "purpose": "Document monster attack mechanics, hitbox generation, and death/rewards",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Specific Monster Types",
+      "purpose": "Document concrete monster implementations like GoblinMonster with examples",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "CharacterBase",
+      "purpose": "Document the shared character base class and common mechanics (importance: 38.23)",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Damage System",
+      "purpose": "Explain damage calculation, defense mitigation, critical hits, and damage processing",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Boss Mechanics",
+      "purpose": "Document boss-specific features including break meters and BossHealthBar integration",
+      "parent": "Character Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "World and Level Systems",
+      "purpose": "Overview of level design, world management, and spawning systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "LevelMap",
+      "purpose": "Document the LevelMap system for TMX loading and world state management (importance: 44.32)",
+      "parent": "World and Level Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "TMX Loading and Collision",
+      "purpose": "Explain TMX parsing, collision body creation, backgrounds, and gate areas",
+      "parent": "World and Level Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Enemy Spawn System",
+      "purpose": "Document enemy spawn points, proximity triggering, and spawn management",
+      "parent": "World and Level Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Arena Combat System",
+      "purpose": "Explain arena triggers, wave spawning, gate locking, and completion tracking",
+      "parent": "World and Level Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Level Progression",
+      "purpose": "Document level clear conditions, gate activation, and victory triggers",
+      "parent": "World and Level Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "User Interface",
+      "purpose": "Overview of the UI system, input handling, and player interaction",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
