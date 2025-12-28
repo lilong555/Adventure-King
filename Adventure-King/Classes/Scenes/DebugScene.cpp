@@ -102,8 +102,13 @@ bool DebugScene::init()
     const float gravityY = LevelConfig{}.gravity; // 关卡默认重力（见 Configs/GameSceneConfig.h）
     physicsWorld->setGravity(Vec2(0, gravityY));
 
-    // 开启物理调试绘制（开发时可视化碰撞体，发布时应关闭）
+   #if COCOS2D_DEBUG > 0
+    // 开启显示物理形状、关节等
     physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
+#else
+    // 确保关闭
+    physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_NONE);
+#endif
 
     //-------------------------------------------------------------------------
     // 步骤1.5：创建游戏内容层（用于暂停时冻结世界，避免影响 UI）

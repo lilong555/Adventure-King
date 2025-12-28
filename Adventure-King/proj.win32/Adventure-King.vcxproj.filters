@@ -276,12 +276,6 @@
     <ClCompile Include="..\Classes\Character\StatusEffects\Implementations\AIBlessingEffect.cpp">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
     </ClCompile>
-    <ClCompile Include="..\Classes\Objects\Projectiles\Fireball.cpp">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Classes\Objects\Projectiles\ProjectilesBase.cpp">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -496,12 +490,6 @@
     </ClInclude>
     <ClInclude Include="..\Classes\Character\StatusEffects\Implementations\PoisonEffect.h">
       <Filter>src\Character\StatusEffects\Implementations</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Objects\Projectiles\Fireball.h">
-      <Filter>src\Objects\Projectiles</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Classes\Objects\Projectiles\ProjectilesBase.h">
-      <Filter>src\Objects\Projectiles</Filter>
     </ClInclude>
     <ClInclude Include="..\Classes\Configs\ArenaConfig.h">
       <Filter>src\Configs</Filter>
