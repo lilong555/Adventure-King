@@ -24,7 +24,7 @@ function Find-IsccExe {
   $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
   if ($cmd) { return $cmd.Path }
 
-  throw "未找到 Inno Setup 6（ISCC.exe）。请先安装 Inno Setup 6，并确保 ISCC.exe 可用。"
+  throw "Inno Setup 6 (ISCC.exe) not found. Please install Inno Setup 6 and ensure ISCC.exe is available."
 }
 
 $repoRoot = Resolve-RepoRoot
@@ -39,7 +39,7 @@ if ($OutputDir -eq "") {
 
 $gameExe = Join-Path $GameOutDir "Adventure-King.exe"
 if (!(Test-Path $gameExe)) {
-  throw "未找到 Release 输出：$gameExe。请先在 VS 用 Release|Win32 构建一次。"
+  throw "Release output not found: $gameExe. Please build Release|Win32 in Visual Studio first."
 }
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
@@ -50,4 +50,4 @@ Write-Host "[INFO] GameOutDir: $GameOutDir"
 Write-Host "[INFO] OutputDir: $OutputDir"
 
 & $iscc "/DGameOutDir=$GameOutDir" "/O$OutputDir" $issPath
-Write-Host "[OK] 已生成安装包到：$OutputDir（默认文件名：Adventure-King-Setup.exe）"
+Write-Host "[OK] Installer generated to: $OutputDir (default filename: Adventure-King-Setup.exe)"
