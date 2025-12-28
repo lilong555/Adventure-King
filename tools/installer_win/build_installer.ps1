@@ -43,6 +43,76 @@ function Find-IsccExe {
   throw "Inno Setup 6 (ISCC.exe) not found. Please install Inno Setup 6 and ensure ISCC.exe is available."
 }
 
+$ErrorActionPreference = "Stop"
+
+function Get-ProgramFilesX86 {
+  $pf86 = [System.Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+  if ($pf86) { return $pf86 }
+  return [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::ProgramFiles)
+}
+
+function Find-VsWhere {
+  $pf86 = Get-ProgramFilesX86
+  $pf64 = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::ProgramFiles)
+  $candidates = @(
+    (Join-Path $pf86 "Microsoft Visual Studio\\Installer\\vswhere.exe"),
+    (Join-Path $pf64 "Microsoft Visual Studio\\Installer\\vswhere.exe")
+  ) | Select-Object -Unique
+
+  foreach ($p in $candidates) {
+    if (Test-Path $p) { return $p }
+  }
+  return $null
+}
+
+function Find-VsDevCmd {
+  $vswhere = Find-VsWhere
+  if (-not $vswhere) { return $null }
+
+  $vsInstall = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+  if (-not $vsInstall) { return $null }
+
+  $vsDevCmd = Join-Path $vsInstall "Common7\\Tools\\VsDevCmd.bat"
+  if (Test-Path $vsDevCmd) { return $vsDevCmd }
+  return $null
+}
+
+function Build-Launcher([string]$repoRoot) {
+  $src = Join-Path $repoRoot "tools\\installer_win\\launcher\\AKLauncher.cpp"
+  if (!(Test-Path $src)) { throw "Launcher source not found: $src" }
+
+  $outDir = Join-Path $repoRoot "tools\\installer_win\\build"
+  New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+  $outExe = Join-Path $outDir "AKLauncher.exe"
+
+  $vsDevCmd = Find-VsDevCmd
+  if (-not $vsDevCmd) {
+    throw "Visual Studio C++ toolchain not found (VsDevCmd.bat). Please install 'Desktop development with C++' in VS Installer."
+  }
+
+  Write-Host "[INFO] Building AKLauncher.exe ..."
+
+  # Use cmd so VsDevCmd + cl run in the same process environment.
+  # Build x64 launcher (works fine with Win32 game). Keep flags minimal.
+  $cmd = '"' + $vsDevCmd + '" -arch=x64 >nul && ' +
+         'cl /nologo /std:c++17 /EHsc /O2 ' +
+         '"' + $src + '" ' +
+         '/Fe:"' + $outExe + '" ' +
+         'user32.lib'
+
+  & cmd.exe /c $cmd | Out-Host
+  if ($LASTEXITCODE -ne 0) {
+    throw "AKLauncher build failed (exit=$LASTEXITCODE)"
+  }
+
+  if (!(Test-Path $outExe)) {
+    throw "AKLauncher.exe not produced: $outExe"
+  }
+
+  Write-Host "[OK] Built: $outExe"
+  return $outExe
+}
+
 $repoRoot = Resolve-RepoRoot
 $issPath = Join-Path $repoRoot "tools\\installer_win\\AdventureKing.iss"
 
@@ -64,6 +134,9 @@ $iscc = Find-IsccExe
 Write-Host "[INFO] ISCC: $iscc"
 Write-Host "[INFO] GameOutDir: $GameOutDir"
 Write-Host "[INFO] OutputDir: $OutputDir"
+
+# Ensure launcher exists (installer expects tools/installer_win/build/AKLauncher.exe)
+Build-Launcher $repoRoot | Out-Null
 
 & $iscc "/DGameOutDir=$GameOutDir" "/O$OutputDir" $issPath
 Write-Host "[OK] Installer generated to: $OutputDir (default filename: Adventure-King-Setup.exe)"

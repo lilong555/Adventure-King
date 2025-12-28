@@ -11,6 +11,7 @@
 #define AppName "Adventure-King"
 #define AppPublisher "Adventure-King Team"
 #define AppExeName "Adventure-King.exe"
+#define LauncherExeName "AKLauncher.exe"
 
 ; 必须在 ISCC 编译时传入 /DGameOutDir=... 指向 Release.win32 输出目录
 ; 例如：ISCC /DGameOutDir="E:\\code\\fansqim\\Adventure-King\\proj.win32\\Release.win32" tools\\installer_win\\AdventureKing.iss
@@ -39,6 +40,9 @@ Source: "{#GameOutDir}\\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#GameOutDir}\\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#GameOutDir}\\Resources\\*"; DestDir: "{app}\\Resources"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+; 启动器（用于随游戏启动/关闭赐福后端）
+Source: "build\\{#LauncherExeName}"; DestDir: "{app}"; Flags: ignoreversion
+
 ; 赐福后端（Python/LangChain）- 仅打包脚本与依赖清单，不打包 .venv
 Source: "..\\blessing_server\\ak_blessing_server.py"; DestDir: "{app}\\tools\\blessing_server"; Flags: ignoreversion
 Source: "..\\blessing_server\\requirements.txt"; DestDir: "{app}\\tools\\blessing_server"; Flags: ignoreversion
@@ -50,8 +54,8 @@ Source: "scripts\\StartBlessingServer.cmd"; DestDir: "{app}"; Flags: ignoreversi
 Source: "scripts\\StartAdventureKing.cmd"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\\Adventure-King"; Filename: "{app}\\{#AppExeName}"; WorkingDir: "{app}"
-Name: "{group}\\Adventure-King（启动赐福后端）"; Filename: "{app}\\StartAdventureKing.cmd"; WorkingDir: "{app}"
+Name: "{group}\\Adventure-King"; Filename: "{app}\\{#LauncherExeName}"; WorkingDir: "{app}"
+Name: "{group}\\Adventure-King（直启，不启动赐福后端）"; Filename: "{app}\\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{group}\\赐福后端（Blessing Server）"; Filename: "{app}\\StartBlessingServer.cmd"; WorkingDir: "{app}"
 
 [Run]
