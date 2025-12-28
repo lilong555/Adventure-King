@@ -192,13 +192,43 @@ $ErrorActionPreference = "Stop"
 $ErrorActionPreference = "Stop"
 
 function Ensure-VcRedistX86([string]$repoRoot) {
-  $dst = Join-Path $repoRoot "tools\\installer_win\\build\\vc_redist.x86.exe"
+  $installerDir = Join-Path $repoRoot "tools\\installer_win"
+  $buildDir = Join-Path $installerDir "build"
+  New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+
+  $dst = Join-Path $buildDir "vc_redist.x86.exe"
   if (Test-Path $dst) {
     Write-Host "[INFO] vc_redist.x86.exe exists: $dst"
     return $dst
   }
 
-  throw "vc_redist.x86.exe not found. Please download it manually from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe."
+  # 允许用户把文件放在 tools/installer_win 根目录（例如：VC_redist.x86.exe），脚本自动复制到 build/。
+  $srcCandidates = @(
+    (Join-Path $installerDir "vc_redist.x86.exe"),
+    (Join-Path $installerDir "VC_redist.x86.exe")
+  ) | Select-Object -Unique
+
+  foreach ($src in $srcCandidates) {
+    if (Test-Path $src) {
+      Copy-Item -Force $src $dst
+      Write-Host "[INFO] Copied vc_redist.x86.exe -> $dst"
+      return $dst
+    }
+  }
+
+  # 你当前目录常见会误放 x64 版本，给出明确提示
+  $x64Candidates = @(
+    (Join-Path $installerDir "vc_redist.x64.exe"),
+    (Join-Path $installerDir "VC_redist.x64.exe")
+  ) | Select-Object -Unique
+
+  foreach ($x64 in $x64Candidates) {
+    if (Test-Path $x64) {
+      throw "Found VC_redist.x64.exe at: $x64`nBut the game is Win32 (x86) and requires vc_redist.x86.exe.`nPlease download https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
+    }
+  }
+
+  throw "vc_redist.x86.exe not found. Please download it from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
 }
 
 $repoRoot = Resolve-RepoRoot
