@@ -46,7 +46,7 @@ powershell -ExecutionPolicy Bypass -File tools\installer_win\build_installer.ps1
 
 说明：
 - 安装包脚本：`tools/installer_win/AdventureKing.iss`
-- Release|Win32 使用 `/MT` 静态链接 CRT，安装包不再额外安装 VC++ 运行库（体积会更大，但更易分发）。
+- Release|Win32 使用 `/MD` 动态链接 CRT，安装包会在安装时自动安装 VC++ 2015-2022 运行库（x86）。
 - 启动赐福后端依赖 Python；第一次启动会创建 `.venv` 并安装依赖（需联网或本机有可用 pip 源）。
 - 安装包构建脚本会尽量提前下载赐福后端依赖的离线 wheels（用于减少首次启动安装依赖失败/卡顿）。如果下载失败，会自动回退到“首次启动在线安装”。
 </details>

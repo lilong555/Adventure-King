@@ -189,6 +189,36 @@ function Build-BlessingWheelhouse([string]$repoRoot) {
 
 $ErrorActionPreference = "Stop"
 
+function Ensure-VcRedistX86([string]$repoRoot) {
+  # NOTE: keep this function ASCII-only to avoid Windows PowerShell encoding/parser issues.
+  $installerDir = Join-Path $repoRoot "tools\\installer_win"
+  $buildDir = Join-Path $installerDir "build"
+  New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+
+  $dst = Join-Path $buildDir "vc_redist.x86.exe"
+  if (Test-Path $dst) { return $dst }
+
+  $altLower = Join-Path $installerDir "vc_redist.x86.exe"
+  if (Test-Path $altLower) {
+    Copy-Item -Force $altLower $dst
+    return $dst
+  }
+
+  $altUpper = Join-Path $installerDir "VC_redist.x86.exe"
+  if (Test-Path $altUpper) {
+    Copy-Item -Force $altUpper $dst
+    return $dst
+  }
+
+  $x64a = Join-Path $installerDir "vc_redist.x64.exe"
+  $x64b = Join-Path $installerDir "VC_redist.x64.exe"
+  if ((Test-Path $x64a) -or (Test-Path $x64b)) {
+    throw "Found vc_redist.x64.exe in tools\\installer_win, but the game is Win32 (x86). Please download vc_redist.x86.exe from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
+  }
+
+  throw "vc_redist.x86.exe not found. Download https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
+}
+
 $repoRoot = Resolve-RepoRoot
 $issPath = Join-Path $repoRoot "tools\\installer_win\\AdventureKing.iss"
 
@@ -213,6 +243,7 @@ Write-Host "[INFO] OutputDir: $OutputDir"
 
 # Ensure launcher exists (installer expects tools/installer_win/build/AKLauncher.exe)
 Build-Launcher $repoRoot | Out-Null
+Ensure-VcRedistX86 $repoRoot | Out-Null
 Build-BlessingWheelhouse $repoRoot
 
 & $iscc "/DGameOutDir=$GameOutDir" "/O$OutputDir" $issPath

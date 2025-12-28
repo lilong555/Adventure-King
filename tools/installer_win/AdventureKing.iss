@@ -7,7 +7,7 @@
 ; 说明：
 ; - 游戏是 Win32（32 位）构建，安装到 Program Files (x86) 属正常现象。
 ; - 赐福后端是 Python 脚本，首次启动会创建 .venv 并安装依赖（需要本机有 Python 3.10+）。
-; - 本项目使用静态 CRT（/MT）构建 Release.win32，一般不再需要额外安装 VC++ 运行库。
+; - 游戏使用 MSVC 动态 CRT（/MD）构建，安装器会自动安装 VC++ 2015-2022 运行库（x86）。
 
 #define AppName "Adventure-King"
 #define AppPublisher "Adventure-King Team"
@@ -37,6 +37,8 @@ OutputDir=.
 WizardStyle=modern
 
 [Files]
+; VC++ 运行库（x86），安装时会从 {tmp} 运行并在结束后删除
+Source: "build\\vc_redist.x86.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion
 
 ; 游戏主体（Release.win32 输出目录）
 Source: "{#GameOutDir}\\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -64,4 +66,20 @@ Name: "{group}\\Adventure-King（直启，不启动赐福后端）"; Filename: "
 Name: "{group}\\赐福后端（Blessing Server）"; Filename: "{app}\\StartBlessingServer.cmd"; WorkingDir: "{app}"
 
 [Run]
+; 若系统已安装则跳过（避免反复安装）
+Filename: "{tmp}\\vc_redist.x86.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "正在安装 VC++ 运行库（x86）..."; Flags: waituntilterminated; Check: VCRedistX86NeedsInstall
 Filename: "{app}\\StartBlessingServer.cmd"; Description: "安装完成后启动赐福后端（需要 Python 3.10+）"; Flags: postinstall skipifsilent unchecked
+
+[Code]
+function VCRedistX86NeedsInstall: Boolean;
+var
+  Installed: Cardinal;
+begin
+  Result := True;
+
+  { VC++ 2015-2022 Redistributable（x86）常见注册表位置 }
+  if RegQueryDWordValue(HKLM32, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86', 'Installed', Installed) then
+  begin
+    Result := (Installed <> 1);
+  end;
+end;
