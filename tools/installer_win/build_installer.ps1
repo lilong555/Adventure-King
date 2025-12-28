@@ -14,15 +14,31 @@ function Resolve-RepoRoot {
 function Find-IsccExe {
   $candidates = @(
     "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
-    "C:\\Program Files\\Inno Setup 6\\ISCC.exe"
+    "C:\\Program Files\\Inno Setup 6\\ISCC.exe",
+    "$env:LOCALAPPDATA\\Programs\\Inno Setup 6\\ISCC.exe"
   )
 
   foreach ($p in $candidates) {
     if (Test-Path $p) { return $p }
   }
 
+  $cmd = Get-Command ISCC -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Path }
   $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
   if ($cmd) { return $cmd.Path }
+
+  $regKeys = @(
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Inno Setup 6_is1",
+    "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Inno Setup 6_is1",
+    "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Inno Setup 6_is1"
+  )
+  foreach ($k in $regKeys) {
+    $p = Get-ItemProperty -Path $k -ErrorAction SilentlyContinue
+    if ($null -ne $p -and $p.InstallLocation) {
+      $iscc = Join-Path $p.InstallLocation "ISCC.exe"
+      if (Test-Path $iscc) { return $iscc }
+    }
+  }
 
   throw "Inno Setup 6 (ISCC.exe) not found. Please install Inno Setup 6 and ensure ISCC.exe is available."
 }
