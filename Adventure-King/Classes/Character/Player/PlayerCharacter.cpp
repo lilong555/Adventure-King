@@ -1090,7 +1090,8 @@ float PlayerCharacter::getAttackPower()
     }
 
     const float baseAttack = weaponDamage + strength * STRENGTH_DAMAGE_MULTIPLIER;
-    return baseAttack * std::max(0.0f, _outgoingDamageMultiplier);
+    const float roleMultiplier = GameConfig::Player::getBaseAttackMultiplierByRole(_role);
+    return baseAttack * roleMultiplier * std::max(0.0f, _outgoingDamageMultiplier);
 }
 
 void PlayerCharacter::setOutgoingDamageMultiplier(float multiplier)
