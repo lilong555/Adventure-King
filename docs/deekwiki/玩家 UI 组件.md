@@ -20,7 +20,7 @@
 
 本页记录 Adventure-King 中用于展示并与玩家状态交互的 UI 组件。这些组件可视化玩家属性（HP/MP/XP）、技能（冷却、槽位）、装备与成长进度。所有玩家 UI 组件遵循一致的绑定模式：持有 `PlayerCharacter` 的引用，并在周期性更新中读取其状态。
 
-关于 UI 状态管理与编排（暂停菜单、可见性控制、模态切换），请参见 [GameUIController](游戏 UI 控制器（GameUIController）.md)。关于驱动玩家动作的键盘输入处理，请参见 [GameInputController](游戏输入控制器（GameInputController）.md)。关于具体组件的细节实现，请参见 [InventoryLayer](背包层（InventoryLayer）.md) 与 [HUD Elements](HUD 元素.md)。
+关于 UI 状态管理与编排（暂停菜单、可见性控制、模态切换），请参见 [GameUIController](<游戏 UI 控制器（GameUIController）.md>)。关于驱动玩家动作的键盘输入处理，请参见 [GameInputController](<游戏输入控制器（GameInputController）.md>)。关于具体组件的细节实现，请参见 [InventoryLayer](<背包层（InventoryLayer）.md>) 与 [HUD Elements](<HUD 元素.md>)。
 
 ## 组件架构
 

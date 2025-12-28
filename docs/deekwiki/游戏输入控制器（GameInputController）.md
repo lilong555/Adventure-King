@@ -15,7 +15,7 @@
 
 `GameInputController` 负责在游戏过程中处理键盘输入，并把它翻译为玩家动作。该控制器处理移动、战斗、跳跃与 UI 指令，同时尊重暂停状态、动作锁与上下文敏感交互。它充当原始键盘事件与 `PlayerCharacter` 实体之间的桥梁：在维护物理驱动移动所需的输入状态的同时，将动作委托给玩家实体执行。
 
-UI 状态管理（暂停/背包/死亡菜单）请参见 [GameUIController](游戏 UI 控制器（GameUIController）.md)。输入优先级规则与上下文敏感行为请参见 [Input Priority and Context](输入优先级与上下文.md)。
+UI 状态管理（暂停/背包/死亡菜单）请参见 [GameUIController](<游戏 UI 控制器（GameUIController）.md>)。输入优先级规则与上下文敏感行为请参见 [Input Priority and Context](<输入优先级与上下文.md>)。
 
 **来源**：[Classes/Scenes/GameInputController.h L1-L78](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/GameInputController.h#L1-L78)
 
@@ -114,13 +114,24 @@ subgraph GameInputController ["GameInputController"]
     OnKeyReleased -.-> RunPressed
     Update -.-> MovingLeft
     Update -.-> MovingRight
-    Update -.-> RunP…15932 chars truncated…sed` | `bool` | Frame | Shift key held |
-| `_grounded` | `bool` | Physics | Standing on ground |
-| `_groundContactCount` | `int` | Physics | Active ground contact count |
-| `_jumpCount` | `int` | Physics | Jumps since last grounding |
+    Update -.-> RunPressed
+    Update -.-> Grounded
+    Update -.-> GroundContact
+    Update -.-> JumpCount
+end
 ```
 
-> 说明：原文在图中间存在生成器截断占位（`...15932 chars truncated...`），为保证不遗漏，已原样保留该占位。
+> 说明：原文在该图后半段出现生成器截断并混入表格内容，会导致 Mermaid 渲染报错；已清理为可渲染版本。
+
+### 输入状态字段
+
+| 字段 | 类型 | 来源 | 含义 |
+| --- | --- | --- | --- |
+| `_movingLeft` / `_movingRight` | `bool` | Frame | 是否按住左右移动键 |
+| `_runPressed` | `bool` | Frame | 是否按住冲刺键（Shift） |
+| `_grounded` | `bool` | Physics | 是否站在地面上 |
+| `_groundContactCount` | `int` | Physics | 当前地面接触计数 |
+| `_jumpCount` | `int` | Physics | 自上次落地以来的跳跃次数 |
 
 **来源**：[Classes/Scenes/GameInputController.h L59-L67](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/GameInputController.h#L59-L67)
 

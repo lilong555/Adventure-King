@@ -12,7 +12,7 @@
 
 本文描述 Adventure-King 中与 Boss 相关的特性：破韧条（break meter）系统、Boss 血条 UI，以及 Boss 实体与专用 HUD 组件之间的集成方式。Boss 机制在基础角色系统之上扩展了额外的玩法元素，例如破韧条、连击伤害统计与更丰富的视觉反馈。
 
-通用的角色伤害与战斗机制请参见 [Damage System](伤害系统.md)。怪物 AI 与生成相关内容请参见 [Monster AI and Behavior](怪物 AI 与行为.md)。
+通用的角色伤害与战斗机制请参见 [Damage System](<伤害系统.md>)。怪物 AI 与生成相关内容请参见 [Monster AI and Behavior](<怪物 AI 与行为.md>)。
 
 ---
 

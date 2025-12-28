@@ -13,12 +13,12 @@
 
 **相关页面：**
 
-* 怪物/敌人实体请参见 [MonsterBase](怪物基类（MonsterBase）.md)
-* 共享角色机制（伤害计算、状态效果）请参见 [CharacterBase](角色基类（CharacterBase）.md)
-* 与玩家交互的 UI（技能栏、背包 UI）请参见 [Player UI Components](玩家 UI 组件.md)
-* 玩家状态的存档/读档请参见 [SaveManager](存档管理器（SaveManager）.md)
+* 怪物/敌人实体请参见 [MonsterBase](<怪物基类（MonsterBase）.md>)
+* 共享角色机制（伤害计算、状态效果）请参见 [CharacterBase](<角色基类（CharacterBase）.md>)
+* 与玩家交互的 UI（技能栏、背包 UI）请参见 [Player UI Components](<玩家 UI 组件.md>)
+* 玩家状态的存档/读档请参见 [SaveManager](<存档管理器（SaveManager）.md>)
 
-**范围：** 本页聚焦 `PlayerCharacter` 类本身：生命周期、组件组成，以及如何管理玩家状态。单个组件（AttributeComponent、SkillComponent、InventoryComponent）的细节，请参见 [组件架构](组件架构.md)。
+**范围：** 本页聚焦 `PlayerCharacter` 类本身：生命周期、组件组成，以及如何管理玩家状态。单个组件（AttributeComponent、SkillComponent、InventoryComponent）的细节，请参见 [组件架构](<组件架构.md>)。
 
 ---
 
@@ -89,10 +89,20 @@ sequenceDiagram
   participant p6 as StateMachineComponent
   participant p7 as PlayerSkillSet
 
-  …1405 chars truncated…sks for PLAYER category
+  p1->>p2: PlayerCharacter::create(role)
+  p2->>p2: init()
+  p2->>p3: addComponent(AttributeComponent)
+  p2->>p4: addComponent(InventoryComponent)
+  p2->>p5: addComponent(SkillComponent)
+  p2->>p6: addComponent(StateMachineComponent)
+  p2->>p2: ensureMoveAnimations()
+  p2->>p2: ensureStateAnimations()
+  p2->>p7: createSkillSet(role)
+  p2->>p7: initSkills()
+  p2->>p2: scheduleUpdateWithPriority(1)
 ```
 
-> 说明：原文此处包含生成器截断占位 `…1405 chars truncated…`，其余内容按原样保留。
+> 说明：原文此处包含生成器截断占位，会导致 Mermaid 渲染报错；已改为等价的可渲染初始化时序概览。
 
 5. **Animation（动画）**：为状态机预缓存动画帧
 6. **SkillSet（技能集）**：创建职业技能集（WarriorSkillSet、MageSkillSet、AssassinSkillSet）

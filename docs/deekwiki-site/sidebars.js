@@ -21,9 +21,11 @@ import {fileURLToPath} from 'node:url';
 function parseReadmeOrder(readmeContent) {
   const items = [];
   for (const line of readmeContent.split(/\r?\n/)) {
-    const match = line.match(/^\s*-\s*\[[^\]]+\]\(([^)]+\.md)\)\s*$/);
+    const match = line.match(/^\s*-\s*\[[^\]]+\]\((<[^>]+\.md>|[^)]+\.md)\)\s*$/);
     if (match) {
-      items.push(match[1]);
+      const raw = match[1];
+      const cleaned = raw.startsWith('<') && raw.endsWith('>') ? raw.slice(1, -1) : raw;
+      items.push(cleaned);
     }
   }
   return items;

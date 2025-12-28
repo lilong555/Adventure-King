@@ -15,7 +15,7 @@
 
 本文描述由 `GameUIController` 实现的 UI 状态管理系统：它负责编排 `GameScene` 中所有模态 UI 的显示与交互逻辑。系统会在暂停菜单、背包界面、死亡菜单与交互提示之间进行状态切换，并通过优先级层级避免冲突 UI 状态。
 
-关于具体 UI 组件（HUD、菜单、背包）请参见 [Player UI Components](玩家 UI 组件.md)。关于触发状态变化的输入处理请参见 [GameInputController](游戏输入控制器（GameInputController）.md)。
+关于具体 UI 组件（HUD、菜单、背包）请参见 [Player UI Components](<玩家 UI 组件.md>)。关于触发状态变化的输入处理请参见 [GameInputController](<游戏输入控制器（GameInputController）.md>)。
 
 **来源**：[Adventure-King/Classes/Scenes/GameUIController.h L1-L84](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/GameUIController.h#L1-L84)
 

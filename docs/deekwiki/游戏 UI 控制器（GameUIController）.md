@@ -11,9 +11,9 @@
 > * [Adventure-King/Resources/Scene/UI/bag.png](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Resources/Scene/UI/bag.png)
 > * [Adventure-King/Resources/Scene/UI/bagSelected.png](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Resources/Scene/UI/bagSelected.png)
 
-**GameUIController** 是 `GameScene` 的 UI 状态管理与编排系统。它负责初始化 `GameUI` 容器、管理菜单生命周期、协调暂停状态、处理交互提示，并提供存/读档集成。该控制器与 `GameInputController` 并行工作（见 [GameInputController](游戏输入控制器（GameInputController）.md)），后者负责底层键盘输入处理。
+**GameUIController** 是 `GameScene` 的 UI 状态管理与编排系统。它负责初始化 `GameUI` 容器、管理菜单生命周期、协调暂停状态、处理交互提示，并提供存/读档集成。该控制器与 `GameInputController` 并行工作（见 [GameInputController](<游戏输入控制器（GameInputController）.md>)），后者负责底层键盘输入处理。
 
-关于 `InventoryLayer`、`SkillBar` 等具体 UI 组件，请参见 [Player UI Components](玩家 UI 组件.md)。
+关于 `InventoryLayer`、`SkillBar` 等具体 UI 组件，请参见 [Player UI Components](<玩家 UI 组件.md>)。
 
 ---
 

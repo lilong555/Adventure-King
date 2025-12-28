@@ -17,7 +17,7 @@
 
 本页记录在玩法过程中为玩家提供实时反馈的 HUD（heads-up display）组件。这些 UI 元素会随时间更新，用于展示技能冷却、Boss 血条、伤害数字与玩家状态等关键信息。
 
-关于模态 UI（背包、暂停菜单）请参见 [InventoryLayer](背包层（InventoryLayer）.md)。关于触发 UI 更新的输入处理请参见 [GameInputController](游戏输入控制器（GameInputController）.md)。关于整体 UI 状态管理请参见 [GameUIController](游戏 UI 控制器（GameUIController）.md)。
+关于模态 UI（背包、暂停菜单）请参见 [InventoryLayer](<背包层（InventoryLayer）.md>)。关于触发 UI 更新的输入处理请参见 [GameInputController](<游戏输入控制器（GameInputController）.md>)。关于整体 UI 状态管理请参见 [GameUIController](<游戏 UI 控制器（GameUIController）.md>)。
 
 ---
 
@@ -46,61 +46,40 @@ HUD 系统由多个相互独立的组件组成：它们从游戏实体读取数�
 ```mermaid
 flowchart TD
 
-SkillBar["SkillBar<br>(skill cooldowns)"]
-BossHealthBar["BossHealthBar<br>(boss HP + combo)"]
-DamageNumbers["Damage/Heal Numbers<br>(floating text)"]
-PlayerStatusBar["PlayerStatusBar<br>(HP/MP/XP)"]
+SkillBar["SkillBar<br/>（技能栏/冷却）"]
+BossHealthBar["BossHealthBar<br/>（Boss 血条/破韧/连击）"]
+DamageNumbers["伤害/治疗数字<br/>（浮动文字）"]
+PlayerStatusBar["PlayerStatusBar<br/>（玩家 HP/MP/XP）"]
 Player["PlayerCharacter"]
-Boss["CharacterBase<br>(Boss)"]
+Boss["CharacterBase（Boss）"]
 SkillComp["SkillComponent"]
 AttrComp["AttributeComponent"]
 GameUI["GameUIController::update()"]
 
-SkillBar -.->|"read HP/MP/XP"| Player
+SkillBar -.->|"读状态"| Player
 SkillBar -.->|"bindPlayer()"| SkillComp
 BossHealthBar -.->|"bindPlayer()"| Boss
 BossHealthBar -.->|"consumePendingUiNonDotDamage()"| AttrComp
 BossHealthBar -.->|"updateDisplay()"| Boss
-PlayerStatusBar -.->|"takeDamage()triggers"| Player
-PlayerStatusBar -.->|"heal()triggers"| Player
 GameUI -.->|"update()"| SkillBar
 GameUI -.->|"updateDisplay()"| BossHealthBar
 GameUI -.-> PlayerStatusBar
 Boss -.-> DamageNumbers
 Player -.-> DamageNumbers
 
-subgraph subGraph2 ["Per-Frame Updates"]
+subgraph subGraph2 ["逐帧驱动"]
     GameUI
 end
 
-subgraph subGraph1 ["Game Entities"]
+subgraph subGraph1 ["游戏实体/组件"]
     Player
     Boss
     SkillComp
-    AttrCom…14604 chars truncated…Parent Node (GameLayer)
-  participant p4 as Label (Floating Text)
-
-  p1->>p2: takeDamage(info)
-  p2->>p2: Calculate finalDamage
-  p2->>p2: showDamageNumber(finalDamage, isCritical)
-  alt Damage numbers enabled
-    p2->>p2: Format text: "%.0f" or "暴击 %.0f!"
-    p2->>p2: Check font existence (once_flag)
-  alt Font exists
-    p2->>p4: createWithTTF(text, "fonts/ZCOOLKuaiLe-Regular.ttf", size)
-  else Font missing
-  else Font missing
-    p2->>p4: createWithSystemFont(text, "Arial", size)
-  end
-    p2->>p4: setColor(isCritical ? red : yellow)
-    p2->>p4: enableOutline(BLACK, 2)
-    p2->>p2: Calculate spawn position:<br/>bbox.getMidX(), bbox.getMaxY() + random offset
-    p2->>p3: addChild(label, 9999)
-    p2->>p4: Run action sequence:<br/>MoveUp + FadeOut + RemoveSelf
-  end
+    AttrComp
+end
 ```
 
-> 说明：上方图中包含生成器截断占位（`...14604 chars truncated...`），为保证不遗漏，已按原样保留。
+> 说明：原文在该图后半段出现生成器截断与混入的非 flowchart 内容，会导致 Mermaid 渲染报错；已清理为可渲染版本。
 
 **字体加载优化：**
 

@@ -20,7 +20,7 @@
 
 本页记录云存档同步系统的客户端实现，重点是 `CloudSyncService` 类。该服务为游戏存档提供基于 HTTP 的云存储集成，包括账号管理、认证，以及带冲突合并策略的双向同步。
 
-关于后端服务器实现请参见 [Cloud Save Server](云存档服务器.md)。关于呈现登录/注册对话框的 UI 层请参见 [Cloud Authentication](云端认证.md)。关于 CloudSyncService 集成的本地存档系统请参见 [SaveManager](存档管理器（SaveManager）.md)。
+关于后端服务器实现请参见 [Cloud Save Server](<云存档服务器.md>)。关于呈现登录/注册对话框的 UI 层请参见 [Cloud Authentication](<云端认证.md>)。关于 CloudSyncService 集成的本地存档系统请参见 [SaveManager](<存档管理器（SaveManager）.md>)。
 
 **来源：** [Adventure-King/Classes/Save/Cloud/CloudSyncService.h L1-L111](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Save/Cloud/CloudSyncService.h#L1-L111)
 

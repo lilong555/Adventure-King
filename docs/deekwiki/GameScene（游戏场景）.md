@@ -10,7 +10,7 @@
 
 **GameScene** 是核心玩法编排场景：在关卡运行期间负责协调所有实时玩法系统。它是中心枢纽，用于初始化并管理玩家角色、敌人生成、物理模拟、战斗结算、UI 渲染，以及存/读档集成。
 
-关于场景切换与 LoadingScene 流水线，请参阅 [场景切换](场景切换.md)。关于具体关卡实现（MysteryForestScene、OriginMushroomScene），请参阅关卡系统下的子章节。关于测试与调试玩法机制，请参阅 [DebugScene](调试场景（DebugScene）.md)。
+关于场景切换与 LoadingScene 流水线，请参阅 [场景切换](<场景切换.md>)。关于具体关卡实现（MysteryForestScene、OriginMushroomScene），请参阅关卡系统下的子章节。关于测试与调试玩法机制，请参阅 [DebugScene](<调试场景（DebugScene）.md>)。
 
 ---
 
@@ -101,7 +101,7 @@ classDiagram
     LevelMap --o GameScene
     GameInputController --o GameScene
     GameUIController --o GameScene
-    Monst…849 chars truncated…r arena camera lock target positioning |
+    %% 注：原文导出时此处存在截断占位，已移除以避免 Mermaid 渲染报错
 ```
 
 **来源：** [Adventure-King/Classes/Scenes/GameScene.h L86-L121](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/GameScene.h#L86-L121)
@@ -661,11 +661,12 @@ _levelMap->updateArenas(
 
 1. 检测玩家进入竞技场矩形
 2. 通过 `onArenaCameraRequest` 回调锁定相机
-3. 关闭闸门 …17 chars truncated…4. 生成第一波怪物
+3. 关闭闸门
+4. 生成第一波怪物
 5. 监测波次是否完成（怪物全灭）
 6. 继续生成后续波次或在全部清空后解锁闸门
 
-竞技场细节参见 [竞技场战斗系统](竞技场战斗系统.md)。
+竞技场细节参见 [竞技场战斗系统](<竞技场战斗系统.md>)。
 
 **来源：** [Adventure-King/Classes/Scenes/GameScene.cpp L916-L932](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Scenes/GameScene.cpp#L916-L932)
 
