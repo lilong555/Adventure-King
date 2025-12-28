@@ -50,4 +50,4 @@ Write-Host "[INFO] GameOutDir: $GameOutDir"
 Write-Host "[INFO] OutputDir: $OutputDir"
 
 & $iscc "/DGameOutDir=$GameOutDir" "/O$OutputDir" $issPath
-Write-Host "[OK] 已生成安装包到：$OutputDir"
+Write-Host "[OK] 已生成安装包到：$OutputDir（默认文件名：Adventure-King-Setup.exe）"
