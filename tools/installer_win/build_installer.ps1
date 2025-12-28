@@ -201,9 +201,6 @@ function Ensure-VcRedistX86([string]$repoRoot) {
 
   # 官方下载地址（会重定向到具体版本）
   $url = "https://aka.ms/vs/17/release/vc_redist.x86.exe"
-  # 预先绑定到局部变量，避免 StrictMode 在 catch 中误判“未设置变量”
-  $urlLocal = $url
-  $dstLocal = $dst
   Write-Host "[INFO] Downloading vc_redist.x86.exe ..."
   try {
     # 兼容旧版 Windows PowerShell：确保使用 TLS 1.2
@@ -214,7 +211,11 @@ function Ensure-VcRedistX86([string]$repoRoot) {
     }
     Invoke-WebRequest -Uri $url -OutFile $dst -UseBasicParsing | Out-Null
   } catch {
-    throw ("Failed to download vc_redist.x86.exe. Please download it manually from:`n{0}`nAnd place it at:`n{1}" -f $urlLocal, $dstLocal)
+    # 注意：StrictMode 下 catch 里引用未初始化变量会直接抛异常；这里用字面量/可重算的值，避免脚本自身报错。
+    $manualUrl = "https://aka.ms/vs/17/release/vc_redist.x86.exe"
+    $manualPath = Join-Path $outDir "vc_redist.x86.exe"
+    $reason = $_.Exception.Message
+    throw ("Failed to download vc_redist.x86.exe. Please download it manually from:`n{0}`nAnd place it at:`n{1}`nReason:`n{2}" -f $manualUrl, $manualPath, $reason)
   }
 
   if (!(Test-Path $dst)) {
