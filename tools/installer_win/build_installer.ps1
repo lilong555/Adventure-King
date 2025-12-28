@@ -189,84 +189,6 @@ function Build-BlessingWheelhouse([string]$repoRoot) {
 
 $ErrorActionPreference = "Stop"
 
-function Ensure-VcRedistX86([string]$repoRoot) {
-  $outDir = Join-Path $repoRoot "tools\\installer_win\\build"
-  New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-
-  $dst = Join-Path $outDir "vc_redist.x86.exe"
-  if (Test-Path $dst) {
-    Write-Host "[INFO] vc_redist.x86.exe exists: $dst"
-    return $dst
-  }
-
-  # 官方下载地址（会重定向到具体版本）
-  $url = "https://aka.ms/vs/17/release/vc_redist.x86.exe"
-  Write-Host "[INFO] Downloading vc_redist.x86.exe ..."
-  try {
-    # 兼容旧版 Windows PowerShell：确保使用 TLS 1.2
-    try {
-      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    } catch {
-      # ignore
-    }
-    Invoke-WebRequest -Uri $url -OutFile $dst -UseBasicParsing | Out-Null
-  } catch {
-    # 注意：StrictMode 下 catch 中引用任何“可能未初始化”的变量都可能让脚本自身崩溃；
-    # 这里直接使用纯字面量提示，确保无论什么环境都能稳定给出可执行的手动方案。
-    throw "Failed to download vc_redist.x86.exe. Please download it manually from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe."
-  }
-
-  # 某些网络/代理环境下 Invoke-WebRequest 可能“不报错但也没写出文件”，这里增加兜底下载方式。
-  $needsFallback = $false
-  if (!(Test-Path $dst)) {
-    $needsFallback = $true
-  } else {
-    try {
-      $len = (Get-Item $dst).Length
-      if ($len -le 0) { $needsFallback = $true }
-    } catch {
-      $needsFallback = $true
-    }
-  }
-
-  if ($needsFallback) {
-    Write-Host "[WARN] Invoke-WebRequest did not produce a valid file; trying curl.exe ..."
-    $curlCmd = Get-Command curl.exe -ErrorAction SilentlyContinue
-    if ($curlCmd) {
-      try {
-        & $curlCmd.Path -L --fail --silent --show-error -o $dst $url | Out-Host
-      } catch {
-        # ignore, try next fallback
-      }
-    }
-  }
-
-  if ($needsFallback -and !(Test-Path $dst)) {
-    Write-Host "[WARN] curl.exe failed or not available; trying Start-BitsTransfer ..."
-    try {
-      Start-BitsTransfer -Source $url -Destination $dst
-    } catch {
-      # ignore, will fall through to manual instructions below
-    }
-  }
-
-  if (!(Test-Path $dst)) {
-    throw "vc_redist.x86.exe not found after download: $dst. Please download it manually from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe."
-  }
-
-  try {
-    $len2 = (Get-Item $dst).Length
-    if ($len2 -le 0) {
-      throw "vc_redist.x86.exe downloaded but file size is 0: $dst"
-    }
-  } catch {
-    throw "vc_redist.x86.exe downloaded but seems invalid: $dst. Please re-download manually from https://aka.ms/vs/17/release/vc_redist.x86.exe."
-  }
-
-  Write-Host "[OK] Downloaded: $dst"
-  return $dst
-}
-
 $repoRoot = Resolve-RepoRoot
 $issPath = Join-Path $repoRoot "tools\\installer_win\\AdventureKing.iss"
 
@@ -291,7 +213,6 @@ Write-Host "[INFO] OutputDir: $OutputDir"
 
 # Ensure launcher exists (installer expects tools/installer_win/build/AKLauncher.exe)
 Build-Launcher $repoRoot | Out-Null
-Ensure-VcRedistX86 $repoRoot | Out-Null
 Build-BlessingWheelhouse $repoRoot
 
 & $iscc "/DGameOutDir=$GameOutDir" "/O$OutputDir" $issPath
