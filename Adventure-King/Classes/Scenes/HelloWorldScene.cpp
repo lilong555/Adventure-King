@@ -502,64 +502,41 @@ void HelloWorld::menuStartCallback(Ref* pSender)
             return;
         }
 
-        // 读取存档：统一走 LoadingScene（与 MapScene/关卡内读档一致）
+        // 读取存档：先写入 SaveManager 的 runtime 数据
+        // 需求：读档之后强制先进 HomeScene（作为“中转/大厅”）
         const std::string &sceneName = saveData.progressData.currentSceneName;
-        auto registry = SceneRegistry::getInstance();
-        SceneID targetID = registry ? registry->getSceneIDByName(sceneName) : SceneID::NONE;
-
-        if (targetID == SceneID::NONE)
-        {
-            CCLOG("HelloWorld - 读档失败：注册表中不存在场景 [%s]，跳转到地图选择", sceneName.c_str());
-            auto mapScene = MapScene::createScene();
-            if (mapScene)
-            {
-                // 场景跳转前恢复按钮可点（避免 MapScene 创建失败/转场中断导致主菜单卡死）
-                if (startMenuItem)
-                {
-                    startMenuItem->setEnabled(true);
-                }
-                auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
-                Director::getInstance()->replaceScene(transition);
-            }
-            else
-            {
-                // 仍停留在主菜单：必须恢复按钮可点
-                if (startMenuItem)
-                {
-                    startMenuItem->setEnabled(true);
-                }
-            }
-            return;
-        }
 
         auto saveManager = SaveManager::getInstance();
         if (saveManager)
         {
             saveManager->setRuntimePlayerData(saveData.playerData);
-            saveManager->setRuntimePlayerPosition(Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY));
-            saveManager->setRuntimeProgressData(saveData.progressData);
-        }
 
-        auto loadingScene = LoadingScene::createScene(targetID);
-        if (!loadingScene)
-        {
-            CCLOG("HelloWorld - 创建 LoadingScene 失败，跳转到地图选择");
-            auto mapScene = MapScene::createScene();
-            if (mapScene)
+            auto registry = SceneRegistry::getInstance();
+            SceneID targetID = registry ? registry->getSceneIDByName(sceneName) : SceneID::NONE;
+            if (targetID != SceneID::NONE)
             {
-                if (startMenuItem)
-                {
-                    startMenuItem->setEnabled(true);
-                }
-                auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
-                Director::getInstance()->replaceScene(transition);
+                // 把“存档落点/刷怪点状态”留给真正进入目标关卡时应用
+                saveManager->setRuntimePlayerPositionForScene(
+                    Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY),
+                    sceneName);
+                saveManager->setRuntimeProgressData(saveData.progressData);
             }
             else
             {
-                if (startMenuItem)
-                {
-                    startMenuItem->setEnabled(true);
-                }
+                // 存档指向未知关卡：仍允许加载角色数据，但不应用关卡进度
+                CCLOG("HelloWorld - 读档提示：注册表中不存在场景 [%s]，将仅加载角色数据并进入 HomeScene", sceneName.c_str());
+                saveManager->clearRuntimePlayerPosition();
+                saveManager->clearRuntimeProgressData();
+            }
+        }
+
+        auto loadingScene = LoadingScene::createScene(SceneID::HOME);
+        if (!loadingScene)
+        {
+            CCLOG("HelloWorld - 创建 LoadingScene(HOME) 失败");
+            if (startMenuItem)
+            {
+                startMenuItem->setEnabled(true);
             }
             return;
         }
@@ -587,45 +564,35 @@ void HelloWorld::menuSaveCallback(Ref *pSender)
                                      {
         CCLOG("HelloWorld - 加载存档成功，场景: %s", saveData.progressData.currentSceneName.c_str());
 
-        // 注意：主菜单读档不能先 createScene 再 setRuntimeXXX，
-        // 否则 GameScene::initPlayer 读取不到 runtime 数据，会导致“读档仍是 Lv.1 + 出生点”。
-        // 统一走 LoadingScene（与 MapScene/关卡内读档一致）：
-        // 1) 先写入 SaveManager 的 runtime 数据
-        // 2) 再进入 LoadingScene，由 LoadingScene 创建目标关卡并自动恢复
+        // 需求：读档之后强制先进 HomeScene（作为“中转/大厅”）
         const std::string& sceneName = saveData.progressData.currentSceneName;
-        auto registry = SceneRegistry::getInstance();
-        SceneID targetID = registry ? registry->getSceneIDByName(sceneName) : SceneID::NONE;
-
-        if (targetID == SceneID::NONE)
-        {
-            CCLOG("HelloWorld - 读档失败：注册表中不存在场景 [%s]，跳转到地图选择", sceneName.c_str());
-            auto mapScene = MapScene::createScene();
-            if (mapScene)
-            {
-                auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
-                Director::getInstance()->replaceScene(transition);
-            }
-            return;
-        }
 
         auto saveManager = SaveManager::getInstance();
         if (saveManager)
         {
             saveManager->setRuntimePlayerData(saveData.playerData);
-            saveManager->setRuntimePlayerPosition(Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY));
-            saveManager->setRuntimeProgressData(saveData.progressData);
+
+            auto registry = SceneRegistry::getInstance();
+            SceneID targetID = registry ? registry->getSceneIDByName(sceneName) : SceneID::NONE;
+            if (targetID != SceneID::NONE)
+            {
+                saveManager->setRuntimePlayerPositionForScene(
+                    Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY),
+                    sceneName);
+                saveManager->setRuntimeProgressData(saveData.progressData);
+            }
+            else
+            {
+                CCLOG("HelloWorld - 读档提示：注册表中不存在场景 [%s]，将仅加载角色数据并进入 HomeScene", sceneName.c_str());
+                saveManager->clearRuntimePlayerPosition();
+                saveManager->clearRuntimeProgressData();
+            }
         }
 
-        auto loadingScene = LoadingScene::createScene(targetID);
+        auto loadingScene = LoadingScene::createScene(SceneID::HOME);
         if (!loadingScene)
         {
-            CCLOG("HelloWorld - 创建 LoadingScene 失败，跳转到地图选择");
-            auto mapScene = MapScene::createScene();
-            if (mapScene)
-            {
-                auto transition = TransitionFade::create(GameSceneConfig::Scene::TRANSITION_DURATION, mapScene, Color3B::BLACK);
-                Director::getInstance()->replaceScene(transition);
-            }
+            CCLOG("HelloWorld - 创建 LoadingScene(HOME) 失败");
             return;
         }
 

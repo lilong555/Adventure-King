@@ -246,9 +246,20 @@ public:
     void setRuntimePlayerPosition(const cocos2d::Vec2& pos);
 
     /**
+     * 设置运行时玩家位置，并绑定目标关卡名（避免 HomeScene 等中转场景误用）
+     * @note sceneName 需与 GameScene::getLevelName() 一致
+     */
+    void setRuntimePlayerPositionForScene(const cocos2d::Vec2& pos, const std::string& sceneName);
+
+    /**
      * 当前是否存在运行时玩家位置
      */
     bool hasRuntimePlayerPosition() const { return _hasRuntimePlayerPosition; }
+
+    /**
+     * 获取运行时玩家位置对应的关卡名（为空表示“未绑定”）
+     */
+    const std::string& getRuntimePlayerPositionSceneName() const { return _runtimePlayerPositionSceneName; }
 
     /**
      * 获取运行时玩家位置（调用前请先判断 hasRuntimePlayerPosition）
@@ -304,6 +315,7 @@ private:
     // 运行时玩家位置：用于读档后恢复落点（只对下一次进入 GameScene 生效）
     bool _hasRuntimePlayerPosition = false;
     cocos2d::Vec2 _runtimePlayerPosition = cocos2d::Vec2::ZERO;
+    std::string _runtimePlayerPositionSceneName;
 
     // 当前会话绑定的存档槽位：用于“开始游戏强制选槽位”与后续保存
     bool _hasActiveSaveSlot = false;

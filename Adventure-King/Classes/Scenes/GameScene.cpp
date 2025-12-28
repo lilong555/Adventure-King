@@ -104,18 +104,28 @@ void GameScene::onEnter()
         {
             if (saveManager->hasRuntimePlayerPosition())
             {
-                const Vec2 savedPos = saveManager->getRuntimePlayerPosition();
-                saveManager->clearRuntimePlayerPosition();
+                // 防止“读档后强制先进 HomeScene”时把玩家位置应用到 HomeScene：
+                // 只有当位置绑定的关卡名与当前关卡一致时才应用。
+                const std::string& sceneName = saveManager->getRuntimePlayerPositionSceneName();
+                if (!sceneName.empty() && sceneName != getLevelName())
+                {
+                    // 不应用也不清空，让真正进入目标关卡时再应用
+                }
+                else
+                {
+                    const Vec2 savedPos = saveManager->getRuntimePlayerPosition();
+                    saveManager->clearRuntimePlayerPosition();
 
-                scheduleOnce([this, savedPos](float)
-                             {
-                                 if (this->_player)
+                    scheduleOnce([this, savedPos](float)
                                  {
-                                     this->_player->setPosition(savedPos);
-                                 }
-                             },
-                             0.0f,
-                             "ApplyRuntimePlayerPosition");
+                                     if (this->_player)
+                                     {
+                                         this->_player->setPosition(savedPos);
+                                     }
+                                 },
+                                 0.0f,
+                                 "ApplyRuntimePlayerPosition");
+                }
             }
         }
     }
@@ -207,106 +217,115 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
         {
             if (saveManager->hasRuntimeProgressData())
             {
-                GameProgressSaveData progress = saveManager->getRuntimeProgressData();
-                saveManager->clearRuntimeProgressData();
-
-                _levelMap->applyEnemySpawnPointStates(progress.enemySpawnPoints);
-                _levelMap->applyArenaStates(
-                    progress.arenas,
-                    _player,
-                    _gameLayer,
-                    [this](const std::string &type)
-                    { return this->createMonsterByType(type); });
-
-                // 恢复场上存活怪物（包含竞技场怪物：若标记了 arenaID，则登记死亡回调避免重刷整波）
-                for (const auto &m : progress.aliveMonsters)
+                const GameProgressSaveData &progressRef = saveManager->getRuntimeProgressData();
+                if (!progressRef.currentSceneName.empty() && progressRef.currentSceneName != getLevelName())
                 {
-                    if (m.monsterType.empty())
-                    {
-                        continue;
-                    }
-
-                    // 注意：必须通过 createMonsterByType 创建怪物，保证与正常刷怪一致的初始化逻辑：
-                    // - HP 随玩家等级缩放（如 Goblin）
-                    // - Boss 绑定 UI（如 Goblu）
-                    auto monster = createMonsterByType(m.monsterType);
-                    if (!monster)
-                    {
-                        continue;
-                    }
-
-                    const Vec2 pos(m.posX, m.posY);
-                    monster->setPosition(pos);
-                    monster->setTarget(_player);
-                    monster->setHome(pos);
-                    _gameLayer->addChild(monster, GameConfig::LevelMap::DEFAULT_CHARACTER_Z_ORDER);
-
-                    if (m.currentHP > 0.0f)
-                    {
-                        monster->setCurrentHP(m.currentHP);
-                    }
-                    if (m.currentMP >= 0.0f)
-                    {
-                        monster->setCurrentMP(m.currentMP);
-                    }
-
-                    // Boss 击破条：仅恢复数值（不恢复倒地/起身序列状态）
-                    if (m.breakMeter > 0)
-                    {
-                        if (auto goblu = dynamic_cast<GobluMonster *>(monster))
-                        {
-                            goblu->setBreakMeterForSave(m.breakMeter);
-                        }
-                    }
-
-                    // 竞技场怪物：登记回调与计数，避免读档后重刷整波导致进度倒退
-                    if (_levelMap && !m.arenaID.empty())
-                    {
-                        _levelMap->registerRestoredArenaMonster(
-                            m.arenaID,
-                            monster,
-                            _player,
-                            _gameLayer,
-                            [this](const std::string &type)
-                            { return this->createMonsterByType(type); });
-                    }
+                    // 读档后可能会先进入 HomeScene 等中转场景，这里避免误用其它关卡的进度数据；
+                    // 不清空，让真正进入目标关卡时再应用。
                 }
-
-                // 若竞技场已触发但当前没有存活怪，则补刷当前波次（例如刚清完一波、或老存档未记录竞技场怪物）
-                _levelMap->resumeActiveArenasIfNeeded(
-                    _player,
-                    _gameLayer,
-                    [this](const std::string &type)
-                    { return this->createMonsterByType(type); });
-
-                // 读档恢复：关卡通关/传送门解锁状态
-                // 兼容旧存档：若缺失 isLevelCleared 字段，则根据“刷怪点/竞技场/存活怪快照”推断一次，避免读档后门被重新锁死。
-                bool shouldBeCleared = progress.isLevelCleared;
-                if (!shouldBeCleared && (!progress.enemySpawnPoints.empty() || !progress.arenas.empty()))
+                else
                 {
-                    const bool noAliveMonsters = progress.aliveMonsters.empty();
-                    bool allSpawnPointsDone = true;
-                    for (const auto &sp : progress.enemySpawnPoints)
-                    {
-                        if (!sp.hasSpawned)
-                        {
-                            allSpawnPointsDone = false;
-                            break;
-                        }
-                    }
-                    bool allArenasFinished = true;
-                    for (const auto &a : progress.arenas)
-                    {
-                        if (!a.isFinished)
-                        {
-                            allArenasFinished = false;
-                            break;
-                        }
-                    }
-                    shouldBeCleared = noAliveMonsters && allSpawnPointsDone && allArenasFinished;
-                }
+                    GameProgressSaveData progress = progressRef;
+                    saveManager->clearRuntimeProgressData();
 
-                _levelMap->restoreLevelClearedForLoad(shouldBeCleared);
+                    _levelMap->applyEnemySpawnPointStates(progress.enemySpawnPoints);
+                    _levelMap->applyArenaStates(
+                        progress.arenas,
+                        _player,
+                        _gameLayer,
+                        [this](const std::string &type)
+                        { return this->createMonsterByType(type); });
+
+                    // 恢复场上存活怪物（包含竞技场怪物：若标记了 arenaID，则登记死亡回调避免重刷整波）
+                    for (const auto &m : progress.aliveMonsters)
+                    {
+                        if (m.monsterType.empty())
+                        {
+                            continue;
+                        }
+
+                        // 注意：必须通过 createMonsterByType 创建怪物，保证与正常刷怪一致的初始化逻辑：
+                        // - HP 随玩家等级缩放（如 Goblin）
+                        // - Boss 绑定 UI（如 Goblu）
+                        auto monster = createMonsterByType(m.monsterType);
+                        if (!monster)
+                        {
+                            continue;
+                        }
+
+                        const Vec2 pos(m.posX, m.posY);
+                        monster->setPosition(pos);
+                        monster->setTarget(_player);
+                        monster->setHome(pos);
+                        _gameLayer->addChild(monster, GameConfig::LevelMap::DEFAULT_CHARACTER_Z_ORDER);
+
+                        if (m.currentHP > 0.0f)
+                        {
+                            monster->setCurrentHP(m.currentHP);
+                        }
+                        if (m.currentMP >= 0.0f)
+                        {
+                            monster->setCurrentMP(m.currentMP);
+                        }
+
+                        // Boss 击破条：仅恢复数值（不恢复倒地/起身序列状态）
+                        if (m.breakMeter > 0)
+                        {
+                            if (auto goblu = dynamic_cast<GobluMonster *>(monster))
+                            {
+                                goblu->setBreakMeterForSave(m.breakMeter);
+                            }
+                        }
+
+                        // 竞技场怪物：登记回调与计数，避免读档后重刷整波导致进度倒退
+                        if (_levelMap && !m.arenaID.empty())
+                        {
+                            _levelMap->registerRestoredArenaMonster(
+                                m.arenaID,
+                                monster,
+                                _player,
+                                _gameLayer,
+                                [this](const std::string &type)
+                                { return this->createMonsterByType(type); });
+                        }
+                    }
+
+                    // 若竞技场已触发但当前没有存活怪，则补刷当前波次（例如刚清完一波、或老存档未记录竞技场怪物）
+                    _levelMap->resumeActiveArenasIfNeeded(
+                        _player,
+                        _gameLayer,
+                        [this](const std::string &type)
+                        { return this->createMonsterByType(type); });
+
+                    // 读档恢复：关卡通关/传送门解锁状态
+                    // 兼容旧存档：若缺失 isLevelCleared 字段，则根据“刷怪点/竞技场/存活怪快照”推断一次，避免读档后门被重新锁死。
+                    bool shouldBeCleared = progress.isLevelCleared;
+                    if (!shouldBeCleared && (!progress.enemySpawnPoints.empty() || !progress.arenas.empty()))
+                    {
+                        const bool noAliveMonsters = progress.aliveMonsters.empty();
+                        bool allSpawnPointsDone = true;
+                        for (const auto &sp : progress.enemySpawnPoints)
+                        {
+                            if (!sp.hasSpawned)
+                            {
+                                allSpawnPointsDone = false;
+                                break;
+                            }
+                        }
+                        bool allArenasFinished = true;
+                        for (const auto &a : progress.arenas)
+                        {
+                            if (!a.isFinished)
+                            {
+                                allArenasFinished = false;
+                                break;
+                            }
+                        }
+                        shouldBeCleared = noAliveMonsters && allSpawnPointsDone && allArenasFinished;
+                    }
+
+                    _levelMap->restoreLevelClearedForLoad(shouldBeCleared);
+                }
             }
         }
     }
@@ -615,25 +634,30 @@ void GameScene::initUIController()
             auto registry = SceneRegistry::getInstance();
             SceneID targetID = registry ? registry->getSceneIDByName(sceneName) : SceneID::NONE;
 
-            if (targetID == SceneID::NONE)
-            {
-                CCLOG("GameScene - 读档失败：注册表中不存在场景 [%s]", sceneName.c_str());
-                return;
-            }
-
             // 2. 运行时数据同步
             // 目标关卡在创建玩家时会优先检查 SaveManager 里的 runtime 数据
             auto saveManager = SaveManager::getInstance();
             if (saveManager)
             {
                 saveManager->setRuntimePlayerData(saveData.playerData);
-                saveManager->setRuntimePlayerPosition(Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY));
-                saveManager->setRuntimeProgressData(saveData.progressData);
+                if (targetID != SceneID::NONE)
+                {
+                    // 读档后强制先进 HomeScene：把关卡进度留待真正进入目标关卡时应用
+                    saveManager->setRuntimePlayerPositionForScene(
+                        Vec2(saveData.progressData.playerPosX, saveData.progressData.playerPosY),
+                        sceneName);
+                    saveManager->setRuntimeProgressData(saveData.progressData);
+                }
+                else
+                {
+                    CCLOG("GameScene - 读档提示：注册表中不存在场景 [%s]，将仅加载角色数据并进入 HomeScene", sceneName.c_str());
+                    saveManager->clearRuntimePlayerPosition();
+                    saveManager->clearRuntimeProgressData();
+                }
             }
 
-            // 3. 统一进入 LoadingScene
-            // 现在的 LoadingScene 会根据 targetID 自动去 SceneRegistry 读资源列表并预热
-            auto loadingScene = LoadingScene::createScene(targetID);
+            // 3. 需求：读档之后强制先进 HomeScene（作为“中转/大厅”）
+            auto loadingScene = LoadingScene::createScene(SceneID::HOME);
             if (loadingScene)
             {
                 // 使用 GameSceneConfig 中统一定义的转场时间
@@ -641,7 +665,7 @@ void GameScene::initUIController()
                 auto transition = TransitionFade::create(duration, loadingScene, Color3B::BLACK);
                 Director::getInstance()->replaceScene(transition);
 
-                CCLOG("GameScene - 读档成功，开始通过 LoadingScene 切换至 ID: %d", static_cast<int>(targetID));
+                CCLOG("GameScene - 读档成功，开始通过 LoadingScene 切换至 HomeScene");
             }
         });
 
