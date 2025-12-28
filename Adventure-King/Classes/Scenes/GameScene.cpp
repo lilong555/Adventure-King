@@ -143,7 +143,13 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
 
     if (config.enablePhysicsDebug)
     {
+#if COCOS2D_DEBUG > 0
+        // 开启显示物理形状、关节等
         physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
+#else
+        // 确保关闭
+        physicsWorld->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_NONE);
+#endif
     }
 
     //-------------------------------------------------------------------------
