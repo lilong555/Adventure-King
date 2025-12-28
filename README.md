@@ -8,7 +8,7 @@
 
 ##  项目介绍
 
-- 如果你是第一次了解这个项目，建议先读：`docs/deekwiki/README`
+- 如果你希望详细了解，建议读：[详细文档](https://lilong555.github.io/Adventure-King)
 
 ## 🛠️ 技术栈
 
