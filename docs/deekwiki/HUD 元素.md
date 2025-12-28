@@ -132,7 +132,7 @@ std::call_once(s_damageFontCheckOnce, []() {
 
 ## 交互提示
 
-交互提示（传送门/NPC 提示）在高层架构中被提及，但在本页提供的文件中没有展开。根据上下文推测：
+交互提示（传送门/NPC 提示）在高层架构中被提及：
 
 * 由 `GameUIController` 管理
 * 上下文敏感显示（当 `isAtGate` 或 `isAtNpc` 为 true 时显示）
