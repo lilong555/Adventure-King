@@ -113,6 +113,80 @@ function Build-Launcher([string]$repoRoot) {
   return $outExe
 }
 
+function Find-AnyPython {
+  $cmd = Get-Command python -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Path }
+
+  $cmd = Get-Command python3 -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Path }
+
+  $cmd = Get-Command py -ErrorAction SilentlyContinue
+  if ($cmd) { return "py -3" }
+
+  return $null
+}
+
+function Build-BlessingWheelhouse([string]$repoRoot) {
+  $py = Find-AnyPython
+  if (-not $py) {
+    Write-Host "[WARN] Python not found; skip offline wheelhouse."
+    return
+  }
+
+  $req = Join-Path $repoRoot "tools\\blessing_server\\requirements.txt"
+  if (!(Test-Path $req)) {
+    Write-Host "[WARN] requirements.txt not found; skip offline wheelhouse."
+    return
+  }
+
+  $wheelDir = Join-Path $repoRoot "tools\\installer_win\\build\\blessing_wheels"
+  New-Item -ItemType Directory -Force -Path $wheelDir | Out-Null
+
+  Write-Host "[INFO] Preparing offline wheelhouse (cp310/cp311/cp312) ..."
+
+  # ensurepip for the host python (best-effort)
+  try {
+    if ($py -eq "py -3") {
+      & py -3 -m ensurepip --upgrade | Out-Host
+    } else {
+      & $py -m ensurepip --upgrade | Out-Host
+    }
+  } catch {
+    Write-Host "[WARN] ensurepip failed; continue."
+  }
+
+  $targets = @(
+    @{ pyver = "310"; abi = "cp310" },
+    @{ pyver = "311"; abi = "cp311" },
+    @{ pyver = "312"; abi = "cp312" }
+  )
+
+  foreach ($t in $targets) {
+    $args = @(
+      "-m", "pip", "download",
+      "-r", $req,
+      "-d", $wheelDir,
+      "--only-binary", ":all:",
+      "--platform", "win_amd64",
+      "--implementation", "cp",
+      "--python-version", $t.pyver,
+      "--abi", $t.abi
+    )
+
+    try {
+      if ($py -eq "py -3") {
+        & py -3 @args | Out-Host
+      } else {
+        & $py @args | Out-Host
+      }
+    } catch {
+      Write-Host "[WARN] Wheel download failed for cp$t($t.pyver) ($($t.abi)); continue."
+    }
+  }
+
+  Write-Host "[OK] Wheelhouse: $wheelDir"
+}
+
 $repoRoot = Resolve-RepoRoot
 $issPath = Join-Path $repoRoot "tools\\installer_win\\AdventureKing.iss"
 
@@ -137,6 +211,7 @@ Write-Host "[INFO] OutputDir: $OutputDir"
 
 # Ensure launcher exists (installer expects tools/installer_win/build/AKLauncher.exe)
 Build-Launcher $repoRoot | Out-Null
+Build-BlessingWheelhouse $repoRoot
 
 & $iscc "/DGameOutDir=$GameOutDir" "/O$OutputDir" $issPath
 Write-Host "[OK] Installer generated to: $OutputDir (default filename: Adventure-King-Setup.exe)"

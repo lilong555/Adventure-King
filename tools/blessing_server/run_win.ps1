@@ -28,8 +28,17 @@ function Pip-Install([string]$VenvPython) {
   Write-Host "[INFO] Installing dependencies ..."
   # Ensure pip is available and not broken (some Python distributions ship without a fully working pip).
   & $VenvPython -m ensurepip --upgrade
+
+  $req = Join-Path $PSScriptRoot "requirements.txt"
+  $wheelDir = Join-Path $PSScriptRoot "wheels"
+  if (Test-Path $wheelDir) {
+    Write-Host "[INFO] Using offline wheels: $wheelDir"
+    & $VenvPython -m pip install --no-index --find-links $wheelDir -r $req
+    return
+  }
+
   & $VenvPython -m pip install -U pip
-  & $VenvPython -m pip install -r (Join-Path $PSScriptRoot "requirements.txt")
+  & $VenvPython -m pip install -r $req
 }
 
 $pyCmd = Find-Python

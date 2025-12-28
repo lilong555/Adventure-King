@@ -68,3 +68,9 @@ xcuserdata/
 .venv/
 venv/
 __pycache__/
+
+# ========================
+# Windows 安装包构建产物
+# ========================
+dist/
+tools/installer_win/build/

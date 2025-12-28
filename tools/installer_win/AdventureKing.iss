@@ -48,6 +48,8 @@ Source: "..\\blessing_server\\ak_blessing_server.py"; DestDir: "{app}\\tools\\bl
 Source: "..\\blessing_server\\requirements.txt"; DestDir: "{app}\\tools\\blessing_server"; Flags: ignoreversion
 Source: "..\\blessing_server\\run_win.ps1"; DestDir: "{app}\\tools\\blessing_server"; Flags: ignoreversion
 Source: "..\\blessing_server\\README.md"; DestDir: "{app}\\tools\\blessing_server"; Flags: ignoreversion
+; 离线依赖包（由 build_installer.ps1 生成）
+Source: "build\\blessing_wheels\\*"; DestDir: "{app}\\tools\\blessing_server\\wheels"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; 启动脚本（安装后可直接点快捷方式启动）
 Source: "scripts\\StartBlessingServer.cmd"; DestDir: "{app}"; Flags: ignoreversion
