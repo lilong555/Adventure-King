@@ -211,11 +211,9 @@ function Ensure-VcRedistX86([string]$repoRoot) {
     }
     Invoke-WebRequest -Uri $url -OutFile $dst -UseBasicParsing | Out-Null
   } catch {
-    # 注意：StrictMode 下 catch 里引用未初始化变量会直接抛异常；这里用字面量/可重算的值，避免脚本自身报错。
-    $manualUrl = "https://aka.ms/vs/17/release/vc_redist.x86.exe"
-    $manualPath = Join-Path $outDir "vc_redist.x86.exe"
-    $reason = $_.Exception.Message
-    throw ("Failed to download vc_redist.x86.exe. Please download it manually from:`n{0}`nAnd place it at:`n{1}`nReason:`n{2}" -f $manualUrl, $manualPath, $reason)
+    # 注意：StrictMode 下 catch 中引用任何“可能未初始化”的变量都可能让脚本自身崩溃；
+    # 这里直接使用纯字面量提示，确保无论什么环境都能稳定给出可执行的手动方案。
+    throw "Failed to download vc_redist.x86.exe. Please download it manually from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe."
   }
 
   if (!(Test-Path $dst)) {
