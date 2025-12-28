@@ -98,7 +98,7 @@ function Build-Launcher([string]$repoRoot) {
          'cl /nologo /std:c++17 /EHsc /O2 ' +
          '"' + $src + '" ' +
          '/Fe:"' + $outExe + '" ' +
-         'user32.lib'
+         'user32.lib shell32.lib ole32.lib'
 
   & cmd.exe /c $cmd | Out-Host
   if ($LASTEXITCODE -ne 0) {
