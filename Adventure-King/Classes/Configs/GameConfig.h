@@ -21,7 +21,8 @@ namespace GameConfig
         // 帧率控制
         inline constexpr float DEFAULT_FPS = 144.0f;
         inline constexpr int MAX_FPS = 300;
-        inline constexpr bool SHOW_FPS = true;
+        // 发布/评审默认不显示 FPS（避免干扰画面）；如需开启可在此改为 true
+        inline constexpr bool SHOW_FPS = false;
         const char *const FPS_ENV_NAME = "ADVENTURE_KING_FPS";
     }
 

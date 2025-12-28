@@ -156,13 +156,26 @@ void SaveManager::setRuntimePlayerPosition(const cocos2d::Vec2& pos)
 {
     _runtimePlayerPosition = pos;
     _hasRuntimePlayerPosition = true;
+    _runtimePlayerPositionSceneName.clear();
     CCLOG("SaveManager::setRuntimePlayerPosition - 已设置运行时玩家位置 (%.1f, %.1f)", pos.x, pos.y);
+}
+
+void SaveManager::setRuntimePlayerPositionForScene(const cocos2d::Vec2& pos, const std::string& sceneName)
+{
+    _runtimePlayerPosition = pos;
+    _hasRuntimePlayerPosition = true;
+    _runtimePlayerPositionSceneName = sceneName;
+    CCLOG("SaveManager::setRuntimePlayerPositionForScene - 已设置运行时玩家位置 (%.1f, %.1f), scene=%s",
+          pos.x,
+          pos.y,
+          sceneName.c_str());
 }
 
 void SaveManager::clearRuntimePlayerPosition()
 {
     _hasRuntimePlayerPosition = false;
     _runtimePlayerPosition = Vec2::ZERO;
+    _runtimePlayerPositionSceneName.clear();
 }
 
 //================== 当前会话绑定的存档槽位（强制选槽位） ==================

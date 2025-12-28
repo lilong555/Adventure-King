@@ -114,6 +114,7 @@ protected:
     bool _isPaused = false; ///< 游戏是否暂停
     bool _cachedPhysicsAutoStep = true; ///< 暂停前物理世界 autoStep 状态
     float _cachedPhysicsSpeed = 1.0f;   ///< 暂停前物理世界 speed 值
+    bool _wasLevelCleared = false; ///< 用于检测“关卡通关”从未通关->通关的瞬间（触发一次自动保存）
 
     // -------------------------------
     // UI 系统
