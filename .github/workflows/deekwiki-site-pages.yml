@@ -1,0 +1,60 @@
+name: 发布 DeepWiki（GitHub Pages）
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/deekwiki/**
+      - docs/deekwiki-site/**
+      - .github/workflows/deekwiki-site-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 配置 GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: docs/deekwiki-site/package-lock.json
+
+      - name: 安装依赖
+        working-directory: docs/deekwiki-site
+        run: npm ci
+
+      - name: 构建站点
+        working-directory: docs/deekwiki-site
+        run: npm run build
+
+      - name: 上传 Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/deekwiki-site/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
