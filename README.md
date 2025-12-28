@@ -2,29 +2,28 @@
 
 **作者**: 元梓浩, 李胤龙
 
-## 🚀 简介
+##  简介
 
 参考同名游戏《冒险王之神兵传奇》，开发一款基于 Cocos2d-x 引擎的横版动作冒险游戏。玩家将扮演一名冒险者，探索未知世界、击败怪物、收集神兵利器，并通过升级与战斗不断提升自己的能力。游戏融合了角色成长、装备收集与战斗策略，强调流畅的操作手感与丰富的关卡设计。
 
-## 📣 项目介绍（对外展示）
+##  项目介绍
 
-- 如果你是第一次了解这个项目，建议先读：`docs/PROJECT_SHOWCASE.md`
+- 如果你是第一次了解这个项目，建议先读：`docs/deekwiki/README`
 
 ## 🛠️ 技术栈
 
 -   **游戏引擎**: Cocos2d-x
+-   **数据库**: SQLite
+-   **AI相关架构**: Langchain 
 
-## 快速开始（开发者）
-
-> 本仓库默认是 **WSL 工作副本**（`~/code/fansqim`）+ **Windows 编译主目录**（`/mnt/e/code/fansqim`）的双目录协作模式。  
-> 代码编辑建议在 WSL 工作副本进行；编译运行建议在 Windows/Visual Studio 进行。详情见：`WSL_MIRROR.md`。
 
 ### Windows 构建与运行
 - Visual Studio：打开 `Adventure-King/proj.win32/Adventure-King.sln`，选择 `Debug/Win32` 构建并运行
 
-### Windows 发布（安装包，方案 A）
-
-> 目标：给外部用户一个“安装包（.exe）”，安装后即可运行游戏；同时把“赐福后端（Python/LangChain）”脚本一并安装到本机目录（可选启动）。
+<details>
+  <summary>Windows 发布（安装包）</summary>
+  > 
+  目标：给外部用户一个“安装包（.exe）”，安装后即可运行游戏；同时把“赐福后端（Python/LangChain）”脚本一并安装到本机目录（可选启动）。
 
 前置条件：
 - 已安装 **Inno Setup 6**（用于生成安装包）
@@ -49,29 +48,18 @@ powershell -ExecutionPolicy Bypass -File tools\installer_win\build_installer.ps1
 - 安装包脚本：`tools/installer_win/AdventureKing.iss`
 - 启动赐福后端依赖 Python；第一次启动会创建 `.venv` 并安装依赖（需联网或本机有可用 pip 源）。
 - 安装包构建脚本会尽量提前下载赐福后端依赖的离线 wheels（用于减少首次启动安装依赖失败/卡顿）。如果下载失败，会自动回退到“首次启动在线安装”。
-
-### WSL ↔ Windows 同步（强制）
-
-在 WSL 工作副本改完代码后，同步回 Windows 编译目录：
-
-```bash
-./scripts/wsl-mirror.sh push
-```
-
-如果你在 Windows 目录做了 `git pull`/切分支等操作，需要把变化拉回 WSL：
-
-```bash
-./scripts/wsl-mirror.sh pull
-```
-
-> 注意：请不要在 WSL 里用 `g++/cmake` 去编译/测试**游戏本体**（以 Windows/VS 构建为准）。
+</details>
 
 ## 云端存档（WSL 后端 + 游戏端登录/游客）
 
-本项目提供一套**本地可跑的 C++ 云存后端**（HTTP），推荐在 **WSL** 内启动服务；Windows 端运行游戏通过 `localhost` 访问即可。  
+本项目提供一套**本地可跑的 C++ 云存后端**（HTTP），推荐在 **WSL** 等liunx内启动服务；Windows 端运行游戏通过 `localhost` 访问即可。  
 服务端代码位于：`tools/cloud_save_server/`（详见该目录 README）。
 
-### 1) 在 WSL 启动云存服务
+
+<details>
+  <summary>具体内容</summary>
+
+  ### 1) 在 WSL 启动云存服务
 
 ```bash
 cd ~/code/fansqim/tools/cloud_save_server
@@ -90,8 +78,6 @@ export AK_CLOUD_SERVER_ROOT="$HOME/mnt/ecs/adventure-king-cloud"
 export AK_CLOUD_SERVER_PORT=5174
 ./run_wsl.sh
 ```
-
-> 注意：仓库内不会写死任何公网 IP。若你需要把服务跑在远端机器上，请自行在运行时配置地址。
 
 ### 2) Windows 端访问 WSL 服务
 
@@ -143,12 +129,20 @@ export AK_CLOUD_SERVER_PORT=5174
 - 密码落盘为 `salt + sha256`（仅为避免明文；生产应替换为 `bcrypt/argon2` 等专用口令哈希）
 - 云存目录权限/备份若泄露，可能导致离线暴力破解与存档被篡改
 
+</details>
+
+
+
+
 ## AI 赐福（LangChain 后端）
 
 本项目的“赐福”是一个**开发阶段演示功能**：游戏通过 HTTP 请求本地后端，由后端调用 OpenAI 兼容接口，并通过 LangChain 的 **工具调用** 约束输出，最终返回可直接应用的赐福属性（覆盖旧 buff）。  
 服务端代码位于：`tools/blessing_server/`（详见该目录 README）。
 
-### 1) 在 WSL 启动赐福后端
+<details>
+  <summary>点击展开查看更多</summary>
+
+  ### 1) 在 WSL 启动赐福后端
 
 ```bash
 cd ~/code/fansqim/tools/blessing_server
@@ -184,6 +178,9 @@ cd ~/code/fansqim/tools/blessing_server
 
 - **404/连接不上**：确认端口是否被占用；浏览器访问 `http://127.0.0.1:5181/` 应返回 `{ "ok": true, ... }`
 - **WSL → Windows 访问异常**：把服务端 host 设为 `0.0.0.0`，并优先用 `127.0.0.1`；不支持转发时再改用 WSL IP
+</details>
+
+
 
 
 ## 当前可玩内容（main）
@@ -212,7 +209,7 @@ cd ~/code/fansqim/tools/blessing_server
 - 刷怪：从 TMX 对象组 `enemy_g` 读取生成点，首次进入视野触发，约每 `0.4s` 生成一个
 - 连战模式：`Mystery_Forest` 场景支持波次刷怪，击败当前波次后触发下一波
 - 敌人：
-  - 哥布林（Goblin）：HP 随玩家等级缩放（`200 + level*100 + floor(level/10)*1000`），血条显示放大 2x
+  - 哥布林（Goblin）：HP 随玩家等级缩放
   - 哥布鲁（Goblu）：远近攻击判定，更强的属性
   - 黑暗法师（Obscur）：远近双模式攻击，释放冰系法术
 - 存档系统：5 个存档槽位，支持保存/加载游戏进度
@@ -228,24 +225,19 @@ cd ~/code/fansqim/tools/blessing_server
 | `J`/`4` | 普攻：扔炸弹 |
 | `E`/`K` | 技能1：导弹（火球） |
 | `Esc` | 暂停菜单 |
+| `B` | 背包菜单 |
 
-## 地图（Tiled）约定
-- 碰撞图层：`collisions`（多边形/折线/矩形对象会生成 `COLLISION` 碰撞体）
-- 对象组：
-  - `born`：玩家出生点（取第一个对象）
-  - `gate`：传送门区域（矩形对象）
-  - `enemy_g`：敌人生成点  
-    - `class`（或 `type`）= 怪物类型（如 `goblin`）  
-    - `name` = 数量（如 `3`）
+## 地图
+- 两个地图：起源之菇，神秘之森
 
 
 ## 游戏核心功能
 
 ### 角色系统
 
-至少支持两种角色：
+支持三种角色：
 
-> 战士，法师，刺客，坦克
+> 战士，法师，刺客
 
 核心状态切换：
 
@@ -261,9 +253,8 @@ cd ~/code/fansqim/tools/blessing_server
 >
 > 攻击
 >
-> 攀爬
 
--   角色有技能点系统，升级获得技能点解锁主动技能
+-   角色有技能点系统，升级获得技能点解锁主动技能/被动技能
 -   角色有属性系统，升级获得属性点提高属性（力量、防御、暴击率、移速……）
 -   生命值与能量值系统
 -   等级与经验值系统
@@ -271,22 +262,22 @@ cd ~/code/fansqim/tools/blessing_server
 
 ### 武器与装备系统
 
--   至少2种不同类型的武器（剑和法杖）
--   武器可切换，具备不同攻击方式与攻击特效
+-   多种武器
+-   武器可切换，具备不同攻击特效
 -   装备属性影响角色属性
 
 ### 敌人系统
 
--   至少3种普通敌人（近战/远程）/ 每场景
--   1个Boss敌人，具备特殊技能，可具备二阶段
--   敌人具备基础AI：追击、闪避、巡逻
--   击杀敌人可能掉落血瓶、蓝瓶、和不同品质的武器装备
+-   至少2种普通敌人（近战/远程）
+-   1个Boss敌人，具备特殊技能
+-   敌人具备基础AI：追击、巡逻
+-   击杀敌人可能掉落血瓶、蓝瓶
 -   击败敌人必定获取经验，等级越高掉得越多
 
 ### 关卡与场景
 
 -   至少2个不同主题的关卡（如森林、地牢）
--   场景可交互元素（如宝箱、陷阱、传送点）
+-   场景可交互元素（传送点）
 -   支持场景音乐和动作特效
 
 ### UI 系统
@@ -297,21 +288,13 @@ cd ~/code/fansqim/tools/blessing_server
 -   背包界面
 -   地图界面
 -   游戏结束与重新开始界面
--   玩家状态栏（血量、能量、经验值、技能图标）
--   Boss血条显示
+-   玩家状态栏（血量、能量、经验值、技能图标，状态栏）
+-   Boss血条/击破条显示
 
-## 可选扩展功能
+## 扩展功能
 
--   在Android系统上运行
--   双人游戏模式
--   武器幻化（同一个武器在不同职业呈现不同效果）
--   支持货币系统
--   宠物系统，可在特殊关卡中捕捉宠物
--   下劈障碍物进行跳跃
+-   AI赐福
+-   云端存档，登录
 -   更丰富的技能
--   成就系统与收集图鉴
--   地图编辑器支持自定义地图、小怪和boss
 -   剧情对话系统与NPC交互
--   天气系统与动态光影
 -   被动技能或符文（build玩法）
--   多职业实时切换（类似于原神的队伍系统）
