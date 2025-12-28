@@ -216,8 +216,51 @@ function Ensure-VcRedistX86([string]$repoRoot) {
     throw "Failed to download vc_redist.x86.exe. Please download it manually from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe."
   }
 
+  # 某些网络/代理环境下 Invoke-WebRequest 可能“不报错但也没写出文件”，这里增加兜底下载方式。
+  $needsFallback = $false
   if (!(Test-Path $dst)) {
-    throw "vc_redist.x86.exe not found after download: $dst"
+    $needsFallback = $true
+  } else {
+    try {
+      $len = (Get-Item $dst).Length
+      if ($len -le 0) { $needsFallback = $true }
+    } catch {
+      $needsFallback = $true
+    }
+  }
+
+  if ($needsFallback) {
+    Write-Host "[WARN] Invoke-WebRequest did not produce a valid file; trying curl.exe ..."
+    $curlCmd = Get-Command curl.exe -ErrorAction SilentlyContinue
+    if ($curlCmd) {
+      try {
+        & $curlCmd.Path -L --fail --silent --show-error -o $dst $url | Out-Host
+      } catch {
+        # ignore, try next fallback
+      }
+    }
+  }
+
+  if ($needsFallback -and !(Test-Path $dst)) {
+    Write-Host "[WARN] curl.exe failed or not available; trying Start-BitsTransfer ..."
+    try {
+      Start-BitsTransfer -Source $url -Destination $dst
+    } catch {
+      # ignore, will fall through to manual instructions below
+    }
+  }
+
+  if (!(Test-Path $dst)) {
+    throw "vc_redist.x86.exe not found after download: $dst. Please download it manually from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe."
+  }
+
+  try {
+    $len2 = (Get-Item $dst).Length
+    if ($len2 -le 0) {
+      throw "vc_redist.x86.exe downloaded but file size is 0: $dst"
+    }
+  } catch {
+    throw "vc_redist.x86.exe downloaded but seems invalid: $dst. Please re-download manually from https://aka.ms/vs/17/release/vc_redist.x86.exe."
   }
 
   Write-Host "[OK] Downloaded: $dst"
