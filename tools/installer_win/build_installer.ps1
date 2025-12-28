@@ -187,6 +187,35 @@ function Build-BlessingWheelhouse([string]$repoRoot) {
   Write-Host "[OK] Wheelhouse: $wheelDir"
 }
 
+$ErrorActionPreference = "Stop"
+
+function Ensure-VcRedistX86([string]$repoRoot) {
+  $outDir = Join-Path $repoRoot "tools\\installer_win\\build"
+  New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+  $dst = Join-Path $outDir "vc_redist.x86.exe"
+  if (Test-Path $dst) {
+    Write-Host "[INFO] vc_redist.x86.exe exists: $dst"
+    return $dst
+  }
+
+  # 官方下载地址（会重定向到具体版本）
+  $url = "https://aka.ms/vs/17/release/vc_redist.x86.exe"
+  Write-Host "[INFO] Downloading vc_redist.x86.exe ..."
+  try {
+    Invoke-WebRequest -Uri $url -OutFile $dst -UseBasicParsing | Out-Null
+  } catch {
+    throw "Failed to download vc_redist.x86.exe. Please download it manually from:`n$url`nAnd place it at:`n$dst"
+  }
+
+  if (!(Test-Path $dst)) {
+    throw "vc_redist.x86.exe not found after download: $dst"
+  }
+
+  Write-Host "[OK] Downloaded: $dst"
+  return $dst
+}
+
 $repoRoot = Resolve-RepoRoot
 $issPath = Join-Path $repoRoot "tools\\installer_win\\AdventureKing.iss"
 
@@ -211,6 +240,7 @@ Write-Host "[INFO] OutputDir: $OutputDir"
 
 # Ensure launcher exists (installer expects tools/installer_win/build/AKLauncher.exe)
 Build-Launcher $repoRoot | Out-Null
+Ensure-VcRedistX86 $repoRoot | Out-Null
 Build-BlessingWheelhouse $repoRoot
 
 & $iscc "/DGameOutDir=$GameOutDir" "/O$OutputDir" $issPath
