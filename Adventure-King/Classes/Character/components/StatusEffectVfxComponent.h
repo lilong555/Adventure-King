@@ -14,7 +14,7 @@ public:
     // 燃烧特效调参（在头文件修改即可生效）
     struct BurningVfxParams
     {
-        static constexpr float EMITTER_OFFSET_Y_RATIO = 0.30f;
+        static constexpr float EMITTER_OFFSET_Y_RATIO = 0.35f;
         static constexpr float POS_VAR_X_RATIO = 0.12f;
         static constexpr float POS_VAR_Y_RATIO = 0.10f;
         static constexpr float POS_VAR_X_MAX = 70.0f;

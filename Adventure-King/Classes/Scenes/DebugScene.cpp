@@ -194,10 +194,10 @@ void DebugScene::initBackground()
     _gameLayer->addChild(drawNode, 0);
 
     // 场景标题
-    auto titleLabel = Label::createWithTTF("角色调试场景", "fonts/ZCOOLKuaiLe-Regular.ttf", 36);
-    titleLabel->setPosition(Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - 30));
-    titleLabel->setColor(Color3B::WHITE);
-    this->addChild(titleLabel, 10);
+    //auto titleLabel = Label::createWithTTF("角色调试场景", "fonts/ZCOOLKuaiLe-Regular.ttf", 36);
+    //titleLabel->setPosition(Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height - 30));
+    //titleLabel->setColor(Color3B::WHITE);
+    //this->addChild(titleLabel, 10);
 }
 
 /**
@@ -266,7 +266,31 @@ void DebugScene::initPlatforms()
         _gameLayer->addChild(platformNode, 1);
 
         _platforms.push_back(rect);
+
     };
+    // --- 新增：创建两边的碰撞墙（空气墙） ---
+
+    float wallThickness = visibleSize.width * 0.3f; // 墙的厚度
+    float wallHeight = visibleSize.height * 2; // 墙的高度，设高一点防止角色跳过去
+
+    // 1. 左侧墙壁：紧贴屏幕左边缘，向左延伸 wallThickness 宽度
+    Rect leftWall(
+        origin.x - wallThickness,
+        origin.y,
+        wallThickness,
+        wallHeight
+    );
+    createPlatform(leftWall, Color4F(0.4f, 0.3f, 0.2f, 1.0f));
+
+    // 2. 右侧墙壁：紧贴屏幕右边缘，向右延伸 wallThickness 宽度
+    Rect rightWall(
+        origin.x + visibleSize.width,
+        origin.y,
+        wallThickness,
+        wallHeight
+    );
+    createPlatform(rightWall, Color4F(0.4f, 0.3f, 0.2f, 1.0f));
+
 
     // 创建地面平台（覆盖屏幕底部）
     Rect groundPlatform(origin.x, origin.y + GROUND_Y - 20, visibleSize.width, 20);
@@ -303,7 +327,7 @@ void DebugScene::initPlayer()
     Vec2 startPos(origin.x + visibleSize.width * 0.5f, origin.y + GROUND_Y + 40.0f);
 
     // 创建玩家角色（默认法师；素材沿用 Klee）
-    _player = PlayerCharacter::create(CharacterRole::MAGE, PlayerRoleConfig::getDefaultSpritePath(CharacterRole::MAGE));
+    _player = PlayerCharacter::create(CharacterRole::WARRIOR, PlayerRoleConfig::getDefaultSpritePath(CharacterRole::WARRIOR));
 
     if (!_player)
     {
@@ -431,7 +455,7 @@ void DebugScene::initDebugUI()
     // 左侧：属性信息面板
     //=========================================================================
     float panelX = origin.x + 20;
-    float panelY = origin.y + visibleSize.height - 80;
+    float panelY = origin.y + visibleSize.height*0.8f;
 
     _infoLabel = Label::createWithTTF("加载中...", "fonts/ZCOOLKuaiLe-Regular.ttf", 18);
     _infoLabel->setAnchorPoint(Vec2(0, 1));
