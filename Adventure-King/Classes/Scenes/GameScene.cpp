@@ -346,6 +346,9 @@ bool GameScene::initWithPhysicsConfig(const LevelConfig &config)
             this->handleArenaCamera(lock, pos);
             };
     }
+
+    // 初始化“通关状态”快照，避免读档进入已通关关卡时在第一帧误触发一次“通关自动保存”
+    _wasLevelCleared = (_levelMap != nullptr) ? _levelMap->isLevelCleared() : false;
     CCLOG("Scene initialized with physics config: %s", getLevelName().c_str());
     return true;
 }
@@ -959,6 +962,25 @@ void GameScene::update(float dt)
             _gameLayer,
             [this](const std::string& type) { return this->createMonsterByType(type); }
         );
+    }
+
+    // 关卡通关：触发一次自动保存（避免“通关后不离开地图原地存档，读档回来门被锁/进度丢失”等问题）
+    // 说明：只在“未通关 -> 通关”的瞬间触发一次；已通关关卡读档进入不会触发。
+    if (_levelMap)
+    {
+        const bool clearedNow = _levelMap->isLevelCleared();
+        if (clearedNow && !_wasLevelCleared)
+        {
+            _wasLevelCleared = true;
+            if (auto saveManager = SaveManager::getInstance())
+            {
+                saveManager->requestImmediateSave("关卡通关");
+            }
+        }
+        else if (!clearedNow)
+        {
+            _wasLevelCleared = false;
+        }
     }
 
     processSaveRequests(dt);
