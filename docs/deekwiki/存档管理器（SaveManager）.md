@@ -16,7 +16,7 @@
 
 SaveManager 是 Adventure-King 中负责管理持久化游戏状态的单例。它处理玩家进度、装备、关卡状态与设置项的存取，并支持 5 个存档槽位。系统使用双存储方案（SQLite + JSON 备份），并提供运行时缓存层以支持无缝场景切换。
 
-关于使用 SaveManager 的导出/导入 hooks 的云同步服务，请参见 [CloudSyncService](云存档服务.md)。关于 SaveManager 存储的数据结构，请参见 [Save Data Structures](存档数据结构.md)。关于底层存储实现细节，请参见 [Storage Layer](存储层.md)。
+关于使用 SaveManager 的导出/导入 hooks 的云同步服务，请参见 [CloudSyncService](<云存档服务.md>)。关于 SaveManager 存储的数据结构，请参见 [Save Data Structures](<存档数据结构.md>)。关于底层存储实现细节，请参见 [Storage Layer](<存储层.md>)。
 
 **来源**：[Classes/Save/SaveManager.h L1-L335](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Save/SaveManager.h#L1-L335)
 
@@ -80,10 +80,10 @@ classDiagram
         -writeToFile(string, string) : bool
         -readFromFile(string, string&) : bool
         -getSaveStorageKey(int) : string
-     …25607 chars truncated…ps.
+    }
 ```
 
-> 说明：上方类图包含生成器截断占位（`...25607 chars truncated...`），为保证不遗漏，已按原样保留该占位与残片。
+> 说明：原文此处存在生成器截断占位，会导致 Mermaid 渲染报错；已补齐为可渲染版本（类成员与方法列表仍按前文引用为准）。
 
 **来源**：[Classes/Save/Cloud/CloudSyncService.cpp](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Save/Cloud/CloudSyncService.cpp#LNaN-LNaN)
 

@@ -12,10 +12,10 @@
 
 具体实现可参考：
 
-* 玩家特有能力：[PlayerCharacter](玩家角色（PlayerCharacter）.md)
-* 怪物 AI 与行为：[MonsterBase](怪物基类（MonsterBase）.md)
-* 伤害计算细节：[Damage System](伤害系统.md)
-* Boss 特有机制：[Boss Mechanics](Boss 机制.md)
+* 玩家特有能力：[PlayerCharacter](<玩家角色（PlayerCharacter）.md>)
+* 怪物 AI 与行为：[MonsterBase](<怪物基类（MonsterBase）.md>)
+* 伤害计算细节：[Damage System](<伤害系统.md>)
+* Boss 特有机制：[Boss Mechanics](<Boss 机制.md>)
 
 ---
 

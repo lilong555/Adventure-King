@@ -9,9 +9,9 @@
 
 ## 目的与范围
 
-`MonsterBase` 是 Adventure-King 中所有敌对怪物的抽象基类。它提供一套完整的 AI 驱动战斗实体系统，包含仇恨/牵引（aggro/leash）机制、巡逻行为、攻击协调以及基于物理的移动。该类继承自 `CharacterBase`（[3.3](角色基类（CharacterBase）.md)），并在其基础上扩展怪物专属 AI 逻辑与生命周期管理。
+`MonsterBase` 是 Adventure-King 中所有敌对怪物的抽象基类。它提供一套完整的 AI 驱动战斗实体系统，包含仇恨/牵引（aggro/leash）机制、巡逻行为、攻击协调以及基于物理的移动。该类继承自 `CharacterBase`（[3.3](<角色基类（CharacterBase）.md>)），并在其基础上扩展怪物专属 AI 逻辑与生命周期管理。
 
-玩家角色实现请参见 [PlayerCharacter](玩家角色（PlayerCharacter）.md)。AI 行为细节请参见 [Monster AI and Behavior](怪物 AI 与行为.md)。战斗机制请参见 [Monster Combat](怪物战斗.md)。
+玩家角色实现请参见 [PlayerCharacter](<玩家角色（PlayerCharacter）.md>)。AI 行为细节请参见 [Monster AI and Behavior](<怪物 AI 与行为.md>)。战斗机制请参见 [Monster Combat](<怪物战斗.md>)。
 
 **来源：** [Classes/Character/Monster/MonsterBase.h L1-L184](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Character/Monster/MonsterBase.h#L1-L184)
 

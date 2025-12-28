@@ -12,7 +12,7 @@
 
 `DebugScene` 是一个隔离的测试环境，用于在开发期间验证角色机制、战斗系统、装备与状态效果。它提供了一个尽量“最小化”的场景：包含物理世界、玩家角色、测试怪物与调试控制，但不引入完整关卡逻辑的复杂度。该场景不属于正常游戏流程，通常在开发者模式下从主菜单直接进入。
 
-关于主玩法场景请参见 [GameScene](GameScene（游戏场景）.md)。关于场景切换与注册表系统请参见 [Scene Transitions](场景切换.md)。
+关于主玩法场景请参见 [GameScene](<GameScene（游戏场景）.md>)。关于场景切换与注册表系统请参见 [Scene Transitions](<场景切换.md>)。
 
 **来源：** [Classes/Scenes/DebugScene.h L1-L16](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.h#L1-L16)
 
@@ -74,26 +74,33 @@ GUIC -.-> GameUI
 ControlButtons -.-> DebugCallbacks
 CCH -.-> ContactListener
 
+DS -.->|"manages"| GIC
+DS -.->|"manages"| GUIC
+DS -.->|"uses"| CCH
+DS -.->|"uses"| GPH
+DS -.-> BG
+DS -.-> Platforms
+DS -.-> Player
+DS -.-> Monsters
+DS -.-> InfoLabel
+DS -.-> StateLabel
+DS -.-> StatusLabel
+DS -.-> DamageLog
+DS -.-> ControlButtons
+
 subgraph subGraph5 ["DebugScene Structure"]
     DS
-    DS -.->|"manages"| GIC
-    DS -.->|"combat…3298 chars truncated…Toggle, setIsPausedGetter
-  note over p2,p9: Step 5: Equipment & Debug UI
-  p2->>p2: initEquipments()
-  p2->>p2: initPassiveSkills()
-  p2->>p2: initTestMonsters()
-  p2->>p2: initDebugUI()
-  p2->>p9: create _infoLabel, _stateLabel, etc.
-  p2->>p2: initControlButtons()
-  note over p2,p3: Step 6: Physics Listener
-  p2->>p2: initPhysicsContactListener()
-  p2->>p3: setContactListener(onContactBegin)
-  p2->>p2: scheduleUpdate()
+    GIC
+    GUIC
+    ContactListener
+end
 ```
 
 **DebugScene 初始化流程**：该顺序用于确保每个组件的依赖都已就绪。必须先初始化物理世界，才能创建任何 `PhysicsBody`。必须先创建玩家对象，输入/UI 控制器才能绑定到玩家。
 
 **来源：** [Classes/Scenes/DebugScene.cpp L90-L144](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.cpp#L90-L144)
+
+> 说明：原文在该图后半段出现生成器截断并混入其它 Mermaid 语法段落，会导致渲染报错；已清理为可渲染版本。
 
  [Classes/Scenes/DebugScene.cpp L169-L385](https://github.com/lilong555/Adventure-King/blob/60df0f40/Classes/Scenes/DebugScene.cpp#L169-L385)
 

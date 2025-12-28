@@ -11,7 +11,7 @@
 
 `InventoryLayer` 是一个模态 UI 组件，为玩家提供完整界面用于管理装备、技能（主动与被动）以及角色属性。它以全屏覆盖层的形式运行，允许玩家查看、装备、卸下、学习与升级各类角色成长系统。
 
-本文覆盖背包 UI 的结构、布局系统与功能。关于底层数据结构（装备、技能、属性）请参见 [PlayerCharacter](玩家角色（PlayerCharacter）.md)。关于 UI 状态编排请参见 [GameUIController](游戏 UI 控制器（GameUIController）.md)。关于 HUD 上技能冷却显示请参见 [HUD Elements](HUD 元素.md)。
+本文覆盖背包 UI 的结构、布局系统与功能。关于底层数据结构（装备、技能、属性）请参见 [PlayerCharacter](<玩家角色（PlayerCharacter）.md>)。关于 UI 状态编排请参见 [GameUIController](<游戏 UI 控制器（GameUIController）.md>)。关于 HUD 上技能冷却显示请参见 [HUD Elements](<HUD 元素.md>)。
 
 **来源**：[Adventure-King/Classes/UI/InventoryLayer.h L1-L161](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/UI/InventoryLayer.h#L1-L161)
 
@@ -180,7 +180,7 @@ sequenceDiagram
 * 玩家按下 ESC 或点击关闭按钮时调用 `hide()`
 * 通过 `setCloseCallback()` 设置关闭回调，用于处理“返回暂停菜单”与“返回玩法”的逻辑分支
 
-暂停/背包上下文标记系统详见 [GameUIController](游戏 UI 控制器（GameUIController）.md)。
+暂停/背包上下文标记系统详见 [GameUIController](<游戏 UI 控制器（GameUIController）.md>)。
 
 ### 与 SaveManager 的集成
 
@@ -192,7 +192,7 @@ SaveManager::getInstance()->requestImmediateSave(reason);
 
 这会标记存档系统在下一次自动存档 tick 或玩家离开关卡时立即持久化。
 
-延迟存档系统详见 [SaveManager](存档管理器（SaveManager）.md)。
+延迟存档系统详见 [SaveManager](<存档管理器（SaveManager）.md>)。
 
 ### 与 GameConfig 的集成
 
@@ -206,7 +206,7 @@ SaveManager::getInstance()->requestImmediateSave(reason);
 
 这让策划可以通过修改单一配置文件来平衡游戏，而不需要改动 UI 代码。
 
-完整配置命名空间列表请参见 [Configuration System](配置系统.md)。
+完整配置命名空间列表请参见 [Configuration System](<配置系统.md>)。
 
 **来源**：[Adventure-King/Classes/UI/InventoryLayer.cpp L13-L17](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/UI/InventoryLayer.cpp#L13-L17)
 

@@ -9,7 +9,7 @@
 
 **用途**：本文档描述 `LevelMap` 类。它负责加载与管理 TMX 瓦片地图、创建碰撞几何、生成敌人、管理竞技场战斗遭遇，以及追踪关卡完成状态。`LevelMap` 充当玩法关卡的“世界状态管理器”。
 
-**范围**：本页覆盖 LevelMap 的核心类结构、TMX 解析，以及生成/竞技场/传送门等系统的集成。关于 GameScene 中更细的初始化流程请参见 [2.1](GameScene（游戏场景）.md)。关于存/读档机制请参见 [6.1](存档管理器（SaveManager）.md)。
+**范围**：本页覆盖 LevelMap 的核心类结构、TMX 解析，以及生成/竞技场/传送门等系统的集成。关于 GameScene 中更细的初始化流程请参见 [2.1](<GameScene（游戏场景）.md>)。关于存/读档机制请参见 [6.1](<存档管理器（SaveManager）.md>)。
 
 ---
 
@@ -147,7 +147,7 @@ GameScene 以如下方式编排 LevelMap：
 5. 存档时通过 `exportEnemySpawnPointStates()` / `exportArenaStates()` 导出状态
 6. 读档时通过 `applyEnemySpawnPointStates()` / `applyArenaStates()` 恢复状态
 
-**来源**：GameScene 初始化管线详见 [2.1](GameScene（游戏场景）.md)。
+**来源**：GameScene 初始化管线详见 [2.1](<GameScene（游戏场景）.md>)。
 
 ### SaveManager 集成
 

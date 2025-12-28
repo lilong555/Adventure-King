@@ -15,7 +15,7 @@
 
 本页介绍驱动 Adventure-King 怪物行为的 AI 决策系统，涵盖目标获取（aggro）、追击机制、牵引回家（leashing/home-return）、巡逻模式，以及当大量怪物同时活跃时用于优化性能的节流更新架构。
 
-怪物战斗机制（攻击执行、命中框生成、伤害计算）请参见 [Monster Combat](怪物战斗.md)。具体怪物实现与示例请参见 [Specific Monster Types](具体怪物类型.md)。玩家与怪物共享的战斗逻辑请参见 [CharacterBase](角色基类（CharacterBase）.md)。
+怪物战斗机制（攻击执行、命中框生成、伤害计算）请参见 [Monster Combat](<怪物战斗.md>)。具体怪物实现与示例请参见 [Specific Monster Types](<具体怪物类型.md>)。玩家与怪物共享的战斗逻辑请参见 [CharacterBase](<角色基类（CharacterBase）.md>)。
 
 **来源：** [Adventure-King/Classes/Character/Monster/MonsterBase.cpp L1-L1111](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Monster/MonsterBase.cpp#L1-L1111)
 
@@ -71,13 +71,14 @@ subgraph subGraph1 ["Update Subsystems"]
     Attack
 end
 
-	subgraph subGraph0 ["MonsterBase AI State"]
-	    Target
-	    Primary
-	    Home
-	    Goal
-	    Flags
-	end
+subgraph subGraph0 ["MonsterBase AI State"]
+    Target
+    Primary
+    Home
+    Goal
+    Flags
+end
+```
 
 **来源：** [Adventure-King/Classes/Character/Monster/MonsterBase.h L142-L163](https://github.com/lilong555/Adventure-King/blob/60df0f40/Adventure-King/Classes/Character/Monster/MonsterBase.h#L142-L163)
 
@@ -89,6 +90,7 @@ end
 
 > 说明：本节原文在导出时被截断，以下截断片段按原样保留以避免遗漏。
 
+```text
 | Parameter | Member Variable | Purpose |
 | --- …1798 chars truncated… : "alive"
     CheckDead --> Dead : "state==ATTACKING"
