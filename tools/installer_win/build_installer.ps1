@@ -189,38 +189,34 @@ function Build-BlessingWheelhouse([string]$repoRoot) {
 
 $ErrorActionPreference = "Stop"
 
-$ErrorActionPreference = "Stop"
-
 function Ensure-VcRedistX86([string]$repoRoot) {
+  # NOTE: keep this function ASCII-only to avoid Windows PowerShell encoding/parser issues.
   $installerDir = Join-Path $repoRoot "tools\\installer_win"
   $buildDir = Join-Path $installerDir "build"
   New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 
   $dst = Join-Path $buildDir "vc_redist.x86.exe"
-  if (Test-Path $dst) {
-    Write-Host "[INFO] vc_redist.x86.exe exists: $dst"
+  if (Test-Path $dst) { return $dst }
+
+  $altLower = Join-Path $installerDir "vc_redist.x86.exe"
+  if (Test-Path $altLower) {
+    Copy-Item -Force $altLower $dst
     return $dst
   }
 
-  # 允许用户把文件放在 tools/installer_win 根目录（例如：VC_redist.x86.exe），脚本自动复制到 build/。
-  if (Test-Path (Join-Path $installerDir "vc_redist.x86.exe")) {
-    Copy-Item -Force (Join-Path $installerDir "vc_redist.x86.exe") $dst
-    Write-Host "[INFO] Copied vc_redist.x86.exe -> $dst"
+  $altUpper = Join-Path $installerDir "VC_redist.x86.exe"
+  if (Test-Path $altUpper) {
+    Copy-Item -Force $altUpper $dst
     return $dst
   }
 
-  if (Test-Path (Join-Path $installerDir "VC_redist.x86.exe")) {
-    Copy-Item -Force (Join-Path $installerDir "VC_redist.x86.exe") $dst
-    Write-Host "[INFO] Copied VC_redist.x86.exe -> $dst"
-    return $dst
+  $x64a = Join-Path $installerDir "vc_redist.x64.exe"
+  $x64b = Join-Path $installerDir "VC_redist.x64.exe"
+  if ((Test-Path $x64a) -or (Test-Path $x64b)) {
+    throw "Found vc_redist.x64.exe in tools\\installer_win, but the game is Win32 (x86). Please download vc_redist.x86.exe from https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
   }
 
-  # 你当前目录常见会误放 x64 版本，给出明确提示
-  if ((Test-Path (Join-Path $installerDir "vc_redist.x64.exe")) -or (Test-Path (Join-Path $installerDir "VC_redist.x64.exe"))) {
-    throw "Detected VC_redist.x64.exe in tools\\installer_win, but the game is Win32 (x86) and requires vc_redist.x86.exe.`nPlease download: https://aka.ms/vs/17/release/vc_redist.x86.exe`nThen place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
-  }
-
-  throw "vc_redist.x86.exe not found. Please download: https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
+  throw "vc_redist.x86.exe not found. Download https://aka.ms/vs/17/release/vc_redist.x86.exe and place it at tools\\installer_win\\build\\vc_redist.x86.exe (or tools\\installer_win\\VC_redist.x86.exe)."
 }
 
 $repoRoot = Resolve-RepoRoot
